@@ -63,7 +63,16 @@
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Suspend Hotkeys-Hotkey" )
             }
         }
-          
+
+        if (This.Login_Screen_Cycle_Hotkey != "") {
+            try {
+                Hotkey This.Login_Screen_Cycle_Hotkey, (*) => This.Cycle_Login_Windows(), "P1"
+            }
+            catch ValueError as e {
+                MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
+            }
+        }
+
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
         
@@ -87,7 +96,6 @@
         
         ;Register the Hotkeys for cycle groups 
         This.Register_Hotkey_Groups()
-        This.Register_Login_Screen_Cycle_Hotkey()
         This.BorderActive := 0
 
         return This
@@ -95,7 +103,7 @@
 
     HandleMainTimer() {
         static HideShowToggle := 0, WinList := {}
-        global allWins
+
         try
             WinList := WinGetList(This.EVEExe)
         Catch 
@@ -117,9 +125,7 @@
                         if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
                             This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                             }
-                        }                         
-                        allWins := WinGetList("EVE")
-                        allWins := This.BubbleSort(allWins)
+                        }
                 }
             }
             catch
@@ -324,19 +330,11 @@
         }
     }
 
-    Register_Login_Screen_Cycle_Hotkey() {
-        if (This.Login_Screen_Cycle_Hotkey != "") {
-            try {
-                Hotkey This.Login_Screen_Cycle_Hotkey, (*) => This.Cycle_Login_Windows()
-            }
-            catch ValueError as e {
-                MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
-            }
-        }
-    }
-
     Cycle_Login_Windows() {
         static currentIndex := 1
+
+        allWins := WinGetList("EVE")
+        allWins := This.BubbleSort(allWins)      
 
         if !allWins.Length
             return

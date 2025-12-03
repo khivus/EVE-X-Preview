@@ -36,8 +36,6 @@ class Propertys extends TrayMenu {
     ThumbnailStartLocation[key] {
         get => This._JSON["global_Settings"]["ThumbnailStartLocation"][key]
         set => This._JSON["global_Settings"]["ThumbnailStartLocation"][key] := value
-
-
     }
 
     Minimizeclients_Delay {
