@@ -1,4 +1,9 @@
-﻿##  EVE-X-Preview
+﻿# WHAT CHANGED
+
+* Added login (character selection) screen cycle hotkey support. You can find it in global settings.
+* Preserving thumbnail position on logout. Thumbnail don't resets to default position when you logout of the game.
+
+##  EVE-X-Preview
 
 EVE-X-Preview is a tool for Windows for the game EVE Online that makes it easy to manage and use multiple EVE clients. 
 It allows displaying thumbnails of the running EVE clients and bringing EVE clients to the foreground with a click on the thumbnail or with a set hotkey. <br>
