@@ -108,8 +108,9 @@
     Global_Settings(visible?) {
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h280 w500")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h300 w500")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+15 yp+20 Section", "Suspend Hotkeys - Hotkey:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Login Screen Cycle Hotkey:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hotkey activation Scope:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Background Color:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Default Location:")
@@ -120,6 +121,10 @@
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xs+230 ys-3 w150 Section vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
         This.S_Gui["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+5 w150 section vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        This.S_Gui["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp y+5 w180 vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
         This.S_Gui["Hotkey_Scoope"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
@@ -167,6 +172,10 @@
         gSettings_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Login_Screen_Cycle_Hotkey") {
+                This.Login_Screen_Cycle_Hotkey := Trim(obj.value, "`n ")
                 This.NeedRestart := 1
             }
             else if (obj.name = "Hotkey_Scoope") {
@@ -744,6 +753,7 @@
     Refresh_ControlValues() {
         ; Global Settings
         This.S_Gui["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
+        This.S_Gui["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
         This.S_Gui["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
         This.S_Gui["ThumbnailBackgroundColor"].value := This.ThumbnailBackgroundColor
         This.S_Gui["ThumbnailStartLocationx"].value := This.ThumbnailStartLocation["x"]

@@ -1,6 +1,4 @@
-﻿
-
-Class Main_Class extends ThumbWindow {
+﻿Class Main_Class extends ThumbWindow {
     Static  WM_DESTROY := 0x02,
             WM_SIZE := 0x05,
             WM_NCCALCSIZE := 0x83,
@@ -65,7 +63,7 @@ Class Main_Class extends ThumbWindow {
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Suspend Hotkeys-Hotkey" )
             }
         }
-        
+          
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
         
@@ -89,6 +87,7 @@ Class Main_Class extends ThumbWindow {
         
         ;Register the Hotkeys for cycle groups 
         This.Register_Hotkey_Groups()
+        This.Register_Login_Screen_Cycle_Hotkey()
         This.BorderActive := 0
 
         return This
@@ -96,6 +95,7 @@ Class Main_Class extends ThumbWindow {
 
     HandleMainTimer() {
         static HideShowToggle := 0, WinList := {}
+        global allWins
         try
             WinList := WinGetList(This.EVEExe)
         Catch 
@@ -118,6 +118,8 @@ Class Main_Class extends ThumbWindow {
                             This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                             }
                         }                         
+                        allWins := WinGetList("EVE")
+                        allWins := This.BubbleSort(allWins)
                 }
             }
             catch
@@ -322,6 +324,30 @@ Class Main_Class extends ThumbWindow {
         }
     }
 
+    Register_Login_Screen_Cycle_Hotkey() {
+        if (This.Login_Screen_Cycle_Hotkey != "") {
+            try {
+                Hotkey This.Login_Screen_Cycle_Hotkey, (*) => This.Cycle_Login_Windows()
+            }
+            catch ValueError as e {
+                MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
+            }
+        }
+    }
+
+    Cycle_Login_Windows() {
+        static currentIndex := 1
+
+        if !allWins.Length
+            return
+        
+        currentIndex += 1
+        if currentIndex > allWins.Length
+            currentIndex := 1
+
+        This.ActivateEVEWindow(allWins[currentIndex])
+    }    
+
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
     OnWinExist(Arr, *) {
         for index, Name in Arr {
@@ -358,12 +384,12 @@ Class Main_Class extends ThumbWindow {
             ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
             This.RestoreClientPossitions(hwnd, title)
 
-            if (title = "") {
-                This.EvEWindowDestroy(hwnd, title)
-                This.EVE_WIN_Created(hwnd,title)
-            }
+            ; if (title = "") {
+            ;     This.EvEWindowDestroy(hwnd, title)
+            ;     This.EVE_WIN_Created(hwnd,title)
+            ; }
 
-            else If (This.ThumbnailPositions.Has(title)) {
+            If (This.ThumbnailPositions.Has(title)) {
                 This.EvEWindowDestroy(hwnd, title)
                 This.EVE_WIN_Created(hwnd,title)
                 rect := This.ThumbnailPositions[title]  
@@ -732,6 +758,38 @@ Class Main_Class extends ThumbWindow {
     SaveJsonToFile() {
         FileDelete("EVE-X-Preview.json")
         FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json")
+    }
+
+    BubbleSort(arr, ascending := true) {
+        n := arr.Length
+        if (n < 2)
+            return arr
+    
+        loop n - 1 {
+            swapped := false
+            for j, _ in arr {
+                if (j >= n)
+                    break
+                if (ascending) {
+                    if (arr[j] > arr[j + 1]) {
+                        tmp := arr[j]
+                        arr[j] := arr[j + 1]
+                        arr[j + 1] := tmp
+                        swapped := true
+                    }
+                } else {
+                    if (arr[j] < arr[j + 1]) {
+                        tmp := arr[j]
+                        arr[j] := arr[j + 1]
+                        arr[j + 1] := tmp
+                        swapped := true
+                    }
+                }
+            }
+            if !swapped
+                break
+        }
+        return arr
     }
 }
 

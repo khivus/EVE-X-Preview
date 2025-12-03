@@ -50,6 +50,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["Suspend_Hotkeys_Hotkey"] := value
     }
 
+    Login_Screen_Cycle_Hotkey {
+        get => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"]
+        set => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"] := value
+    }
+
     ThumbnailBackgroundColor {
         get => convertToHex(This._JSON["global_Settings"]["ThumbnailBackgroundColor"])
         set => This._JSON["global_Settings"]["ThumbnailBackgroundColor"] := convertToHex(value)

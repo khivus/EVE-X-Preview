@@ -3,6 +3,7 @@
 {
     "global_Settings": {
         "Suspend_Hotkeys_Hotkey": "",
+        "Login_Screen_Cycle_Hotkey": "",
         "Global_Hotkeys": 1,
         "LastUsedProfile": "Default",
         "Minimize_Delay": 100,
