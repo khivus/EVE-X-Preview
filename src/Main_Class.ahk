@@ -66,7 +66,8 @@
 
         if (This.Login_Screen_Cycle_Hotkey != "") {
             try {
-                Hotkey This.Login_Screen_Cycle_Hotkey, (*) => This.Cycle_Login_Windows(), "P1"
+                Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
+                ; Hotkey This.Login_Screen_Cycle_Hotkey, (*) => This.Cycle_Login_Windows(), "P1"
             }
             catch ValueError as e {
                 MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
@@ -110,26 +111,31 @@
             return
         ; If any EVE Window exist
         if (WinList.Length) {
-            try {
-                ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
-                for index, hwnd in WinList {
-                    WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
-                    if !This.ThumbWindows.HasProp(hwnd) {
-                        This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                        if (!This.HideThumbnailsOnLostFocus)                            
-                            This.ShowThumb(hwnd, "Show")
-                        HideShowToggle := 1                  
-                    }
-                    ;if in Character selection screen 
-                    else if (This.ThumbWindows.HasProp(hwnd)) {
-                        if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
-                            This.EVENameChange(hwnd, WinList.%hwnd%.Title)
-                            }
-                        }
+            ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
+            for index, hwnd in WinList {
+                WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
+
+                if !This.ThumbWindows.HasProp(hwnd) {
+                    This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
+                    if (!This.HideThumbnailsOnLostFocus)                            
+                        This.ShowThumb(hwnd, "Show")
+                    HideShowToggle := 1                  
                 }
+                ;if in Character selection screen 
+                else if (This.ThumbWindows.HasProp(hwnd)) {
+                    if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "") {
+                        This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
+                        ;This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].value := "Char Screen"
+                        if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                            This.EVENameChange(hwnd, WinList.%hwnd%.Title)
+                        }
+                    }
+                    else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
+                        This.EVENameChange(hwnd, WinList.%hwnd%.Title)
+                    }
+
+                }                         
             }
-            catch
-                return
              
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
@@ -330,20 +336,42 @@
         }
     }
 
-    Cycle_Login_Windows() {
-        static currentIndex := 1
-
+    Cycle_Login_Windows(*) {
+        static currentIndex
+        allWins_sort := ""
         allWins := WinGetList("EVE")
-        allWins := This.BubbleSort(allWins)      
+        currentHWND := WinExist("A")
 
         if !allWins.Length
             return
-        
+
+        if allWins.Length == 1 {
+            This.ActivateEVEWindow(allWins[1],,)
+            return
+        }
+
+        if (allWins.Length > 1 ) {
+            for i, hwnds in allWins {
+                allWins_sort .= hwnds ","
+            }
+            allWins_sort := Sort(allWins_sort, "N D,")      
+            allWins := StrSplit(allWins_sort, ",")
+            allWins.Pop()
+        }
+
+        currentIndex := 1
+        for HWND in allWins {
+            if currentHWND != HWND
+                currentIndex += 1
+            else
+                break
+        }
+
         currentIndex += 1
         if currentIndex > allWins.Length
             currentIndex := 1
 
-        This.ActivateEVEWindow(allWins[currentIndex])
+        This.ActivateEVEWindow(allWins[currentIndex],,)
     }    
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
@@ -756,38 +784,6 @@
     SaveJsonToFile() {
         FileDelete("EVE-X-Preview.json")
         FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json")
-    }
-
-    BubbleSort(arr, ascending := true) {
-        n := arr.Length
-        if (n < 2)
-            return arr
-    
-        loop n - 1 {
-            swapped := false
-            for j, _ in arr {
-                if (j >= n)
-                    break
-                if (ascending) {
-                    if (arr[j] > arr[j + 1]) {
-                        tmp := arr[j]
-                        arr[j] := arr[j + 1]
-                        arr[j + 1] := tmp
-                        swapped := true
-                    }
-                } else {
-                    if (arr[j] < arr[j + 1]) {
-                        tmp := arr[j]
-                        arr[j] := arr[j + 1]
-                        arr[j + 1] := tmp
-                        swapped := true
-                    }
-                }
-            }
-            if !swapped
-                break
-        }
-        return arr
     }
 }
 

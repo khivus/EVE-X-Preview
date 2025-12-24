@@ -1,7 +1,7 @@
 ﻿# WHAT CHANGED
 
 * Added login (character selection) screen cycle hotkey support. You can find it in global settings.
-* Preserving thumbnail position on logout. Thumbnail don't resets to default position when you logout of the game.
+* Preserving thumbnail position and last character nickname on logout. Thumbnail don't resets to default position when you logout of the game.
 
 ##  EVE-X-Preview
 
