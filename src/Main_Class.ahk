@@ -336,42 +336,41 @@
         }
     }
 
+    ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
-        static currentIndex
-        allWins_sort := ""
-        allWins := WinGetList("EVE")
+        static currentIndex := 1
+        LoginWins := []
         currentHWND := WinExist("A")
+        loginHWNDs := WinGetList("EVE")
 
-        if !allWins.Length
+        for hwnd in loginHWNDs {
+            PID := WinGetPID(hwnd)
+            CreationTime := This.GetProcessCreationTime(PID)[3]
+            LoginWins.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
+        }
+
+        if !LoginWins.Length
             return
 
-        if allWins.Length == 1 {
-            This.ActivateEVEWindow(allWins[1],,)
+        if LoginWins.Length == 1 {
+            This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
             return
         }
 
-        if (allWins.Length > 1 ) {
-            for i, hwnds in allWins {
-                allWins_sort .= hwnds ","
-            }
-            allWins_sort := Sort(allWins_sort, "N D,")      
-            allWins := StrSplit(allWins_sort, ",")
-            allWins.Pop()
+        if (LoginWins.Length > 1 ) {
+            LoginWins := This.CustomSort(LoginWins, "CreationTime")
         }
 
-        currentIndex := 1
-        for HWND in allWins {
-            if currentHWND != HWND
-                currentIndex += 1
-            else
-                break
+        for i, Win in LoginWins {
+            if currentHWND == Win["hwnd"]
+                currentIndex := i
         }
 
         currentIndex += 1
-        if currentIndex > allWins.Length
+        if currentIndex > LoginWins.Length
             currentIndex := 1
 
-        This.ActivateEVEWindow(allWins[currentIndex],,)
+        This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
     }    
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
@@ -410,10 +409,10 @@
             ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
             This.RestoreClientPossitions(hwnd, title)
 
-            ; if (title = "") {
-            ;     This.EvEWindowDestroy(hwnd, title)
-            ;     This.EVE_WIN_Created(hwnd,title)
-            ; }
+            if (title = "") {
+                This.EvEWindowDestroy(hwnd, title)
+                This.EVE_WIN_Created(hwnd,title)
+            }
 
             If (This.ThumbnailPositions.Has(title)) {
                 This.EvEWindowDestroy(hwnd, title)
@@ -784,6 +783,59 @@
     SaveJsonToFile() {
         FileDelete("EVE-X-Preview.json")
         FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json")
+    }
+
+    ; Thanks to SKAN
+    GetProcessCreationTime(PID) {
+        Local  hProcess, T1601 := 0,  ExitCode := 0
+            ,  CT := 0,  XT := 0,  KT := 0,  UT := 0           ;  PROCESS_QUERY_LIMITED_INFORMATION := 0x1000
+
+        If ! ( hProcess := DllCall("Kernel32\OpenProcess", "uint",0x1000, "uint",0, "uint",PID, "ptr") )
+            Return [0, 0, 0, 0, 0]
+
+        DllCall("Kernel32\GetSystemTimeAsFileTime", "int64p",&T1601)
+        , DllCall("Kernel32\GetProcessTimes", "ptr",hProcess, "int64p",&CT, "int64p",&XT, "int64p",&KT, "int64p",&UT)
+        , DllCall("Kernel32\GetExitCodeProcess", "ptr",hProcess, "ptrp",&ExitCode)
+        , DllCall("Kernel32\CloseHandle", "ptr",hProcess)          
+
+        Return [ Round((KT / 10000000) + (UT / 10000000), 7)  ;  CPU Time (in seconds)
+            , Round((T1601 - CT) / 10000000, 7 )           ;  Running  time: Seconds elapsed since creation time
+            , Round(CT / 10000000, 7)                      ;  Creation time: Seconds elapsed since 1-Jan-1601 (UTC)
+            , Round(XT / 10000000, 7)                      ;  Exit time:     Seconds elapsed since 1-Jan-1601 (UTC)
+            , ExitCode ]                                   ;  will be 259 (STILL_ACTIVE) for running process
+    }
+
+    ; Bubble sort my beloved
+    CustomSort(arr, sortBy, ascending := true) {
+        n := arr.Length
+        if (n < 2)
+            return arr
+    
+        loop n - 1 {
+            swapped := false
+            for j, _ in arr {
+                if (j >= n)
+                    break
+                if (ascending) {
+                    if (arr[j][sortBy] > arr[j + 1][sortBy]) {
+                        tmp := arr[j]
+                        arr[j] := arr[j + 1]
+                        arr[j + 1] := tmp
+                        swapped := true
+                    }
+                } else {
+                    if (arr[j][sortBy] < arr[j + 1][sortBy]) {
+                        tmp := arr[j]
+                        arr[j] := arr[j + 1]
+                        arr[j + 1] := tmp
+                        swapped := true
+                    }
+                }
+            }
+            if !swapped
+                break
+        }
+        return arr
     }
 }
 
