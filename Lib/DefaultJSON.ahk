@@ -27,6 +27,7 @@
         "PreserveCharNameOnLogout": true,
         "HideThumbForActiveWin": false,
         "ShiftThumbsForLoginScreen": true,
+        "ShiftThumbsDirection": 1,
         "ShiftThumbHorizontalStep": 0,
         "ShiftThumbVerticalStep": 0
     },

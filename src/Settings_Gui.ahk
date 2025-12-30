@@ -1,4 +1,16 @@
 ﻿Class Settings_Gui {
+
+    static directions := Map(
+        1, "left -> right, top -> bottom",
+        2, "left -> right, bottom -> top",
+        3, "right -> left, top -> bottom",
+        4, "right -> left, bottom -> top",
+        5, "top -> bottom, left -> right",
+        6, "top -> bottom, right -> left",
+        7, "bottom -> top, left -> right",
+        8, "bottom -> top, right -> left"
+    )
+
     MainGui() {
         ;if settings got chnaged which require a restart to apply
         This.NeedRestart := 0
@@ -108,7 +120,7 @@
     Global_Settings(visible?) {
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h500 w500")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h610 w500")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+15 yp+20 Section", "Suspend Hotkeys - Hotkey:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hotkey activation Scope:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Background Color:")
@@ -126,7 +138,7 @@
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve character name on logout:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hide thumbnail for active window:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails for login screen:")
-        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails direction:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails direction:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails horizontal step (0 = w):")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails vertical step (0 = h):")
 
@@ -204,9 +216,10 @@
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
         This.S_Gui["ShiftThumbsForLoginScreen"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
-        ; TEMPORARY SOLUTION UNTIL WE HAVE MORE DIRECTIONS
-        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp y+5 w180 vShiftThumbsDirection Choose" (This.ShiftThumbsDirection = "Horizontal" ? 1 : 2), ["Horizontal", "Vertical"])
-        ; This.S_Gui["ShiftThumbsDirection"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+        ddl_options := ["left -> right, top -> bottom", "left -> right, bottom -> top", "right -> left, top -> bottom", "right -> left, bottom -> top", "top -> bottom, left -> right", "top -> bottom, right -> left", "bottom -> top, left -> right", "bottom -> top, right -> left"]
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DropDownList", "xp y+5 w180 vShiftThumbsDirection Choose" . Integer(This.ShiftThumbsDirection), ddl_options)
+        This.S_Gui["ShiftThumbsDirection"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w150 section vShiftThumbHorizontalStep 0", This.ShiftThumbHorizontalStep)
         This.S_Gui["ShiftThumbHorizontalStep"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
@@ -294,10 +307,10 @@
                 This.ShiftThumbsForLoginScreen := obj.value
                 This.NeedRestart := 1
             }
-            ; else if (obj.name = "ShiftThumbsDirection") {
-            ;     This.ShiftThumbsDirection := (obj.value = 1 ? "Horizontal" : "Vertical")
-            ;     This.NeedRestart := 1
-            ; }
+            else if (obj.name = "ShiftThumbsDirection") {
+                This.ShiftThumbsDirection := obj.Value
+                This.NeedRestart := 1
+            }
             else if (obj.name = "ShiftThumbHorizontalStep") {
                 This.ShiftThumbHorizontalStep := obj.value
                 This.NeedRestart := 1
@@ -840,6 +853,7 @@
     }
 
     Refresh_ControlValues() {
+
         ; Global Settings
         This.S_Gui["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
         This.S_Gui["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
@@ -862,7 +876,8 @@
         This.S_Gui["PreserveCharNameOnLogout"].value := This.PreserveCharNameOnLogout
         This.S_Gui["HideThumbForActiveWin"].value := This.HideThumbForActiveWin
         This.S_Gui["ShiftThumbsForLoginScreen"].value := This.ShiftThumbsForLoginScreen
-        ; This.S_Gui["ShiftThumbsDirection"].value := (This.ShiftThumbsDirection = "Horizontal" ? 1 : 2)
+        current_index := Settings_Gui.directions.Get(This.ShiftThumbsDirection, 8)
+        This.S_Gui["ShiftThumbsDirection"].Choose(current_index)
         This.S_Gui["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
         This.S_Gui["ShiftThumbVerticalStep"].value := This.ShiftThumbVerticalStep
 

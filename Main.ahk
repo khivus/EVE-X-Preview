@@ -26,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.0.4f3.2
+;@Ahk2Exe-Let U_version = 1.0.4f3.3
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83
@@ -152,10 +152,31 @@ MergeJson(Settingsfile := "EVE-X-Preview.json", dJson := JSON.Load(default_JSON)
 Error_Handler(Thrown, Mode) {
     ; There we try to get right layout of keyboard
     if Thrown.Message == "Invalid key name." {
-        hwnd := WinGetID("A")
+        if !hwnd := WinActive("A") {
+            try {
+                WinActivate "ahk_class Shell_TrayWnd"
+                WinActivate "ahk_class Button"
+                hwnd := WinActive("A")
+            }
+        }
+
+        try {
+            Send "{LAlt down}{Shift down}"
+            Sleep(10)
+            Send "{Shift up}{LAlt up}"
+        }
+        Sleep(50)
+
+        EN_US := 0x0409
+
+        try {
+            PostMessage(0x50, 0, EN_US, , hwnd)
+        }
+        Sleep(50)
+
         try {
             control := ControlGetFocus(hwnd)
-            PostMessage(0x50, 0, 0x0409, , control)
+            PostMessage(0x50, 0, EN_US, , control)
         }
         Sleep(50)
 

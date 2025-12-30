@@ -118,10 +118,10 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"] := value
     }
 
-    ; ShiftThumbsDirection {
-    ;     get => This._JSON["global_Settings"]["ShiftThumbsDirection"]
-    ;     set => This._JSON["global_Settings"]["ShiftThumbsDirection"] := value
-    ; }
+    ShiftThumbsDirection {
+        get => This._JSON["global_Settings"]["ShiftThumbsDirection"]
+        set => This._JSON["global_Settings"]["ShiftThumbsDirection"] := value
+    }
 
     ShiftThumbHorizontalStep {
         get => This._JSON["global_Settings"]["ShiftThumbHorizontalStep"]
