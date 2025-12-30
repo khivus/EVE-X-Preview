@@ -108,9 +108,8 @@
     Global_Settings(visible?) {
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h300 w500")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h500 w500")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+15 yp+20 Section", "Suspend Hotkeys - Hotkey:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Login Screen Cycle Hotkey:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hotkey activation Scope:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Background Color:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Default Location:")
@@ -118,12 +117,21 @@
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Snap:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Snap Distance:")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Minimize EVE Window Delay:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Switch language to EN on error:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Login Screen Cycle Hotkey:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Close active EVE window Hotkey:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Close all EVE windows Hotkey:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Reload EVE-X-Preview Hotkey:")
+        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve thumbnail position on logout:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve character name on logout:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hide thumbnail for active window:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails for login screen:")
+        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails direction:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails horizontal step (0 = w):")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift thumbnails vertical step (0 = h):")
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xs+230 ys-3 w150 Section vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
         This.S_Gui["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+5 w150 section vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
-        This.S_Gui["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp y+5 w180 vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
         This.S_Gui["Hotkey_Scoope"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
@@ -169,13 +177,46 @@
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+80 yp-3 w40 vMinimizeclients_Delay", This.Minimizeclients_Delay)
         This.S_Gui["Minimizeclients_Delay"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+10 vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
+        This.S_Gui["SwitchLangOnErr"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w150 section vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        This.S_Gui["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
+        This.S_Gui["Close_Active_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
+        This.S_Gui["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        This.S_Gui["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+12 vPreserveThumbPosOnLogout Checked" This.PreserveThumbPosOnLogout, "On/Off")
+        ; This.S_Gui["PreserveThumbPosOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vPreserveCharNameOnLogout Checked" This.PreserveCharNameOnLogout, "On/Off")
+        This.S_Gui["PreserveCharNameOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vHideThumbForActiveWin Checked" This.HideThumbForActiveWin, "On/Off")
+        This.S_Gui["HideThumbForActiveWin"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
+        This.S_Gui["ShiftThumbsForLoginScreen"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        ; TEMPORARY SOLUTION UNTIL WE HAVE MORE DIRECTIONS
+        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp y+5 w180 vShiftThumbsDirection Choose" (This.ShiftThumbsDirection = "Horizontal" ? 1 : 2), ["Horizontal", "Vertical"])
+        ; This.S_Gui["ShiftThumbsDirection"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w150 section vShiftThumbHorizontalStep 0", This.ShiftThumbHorizontalStep)
+        This.S_Gui["ShiftThumbHorizontalStep"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vShiftThumbVerticalStep 0", This.ShiftThumbVerticalStep)
+        This.S_Gui["ShiftThumbVerticalStep"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
         gSettings_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
-            }
-            else if (obj.name = "Login_Screen_Cycle_Hotkey") {
-                This.Login_Screen_Cycle_Hotkey := Trim(obj.value, "`n ")
                 This.NeedRestart := 1
             }
             else if (obj.name = "Hotkey_Scoope") {
@@ -215,6 +256,54 @@
             }
             else if (obj.name = "Minimizeclients_Delay") {
                 This.Minimizeclients_Delay := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "SwitchLangOnErr") {
+                This.SwitchLangOnErr := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Login_Screen_Cycle_Hotkey") {
+                This.Login_Screen_Cycle_Hotkey := Trim(obj.value, "`n ")
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Close_Active_EVE_Win_Hotkey") {
+                This.Close_Active_EVE_Win_Hotkey := Trim(obj.value, "`n ")
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Close_All_EVE_Win_Hotkey") {
+                This.Close_All_EVE_Win_Hotkey := Trim(obj.value, "`n ")
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Reload_Program_Hotkey") {
+                This.Reload_Program_Hotkey := Trim(obj.value, "`n ")
+                This.NeedRestart := 1
+            }
+            ; else if (obj.name = "PreserveThumbPosOnLogout") {
+            ;     This.PreserveThumbPosOnLogout := obj.value
+            ;     This.NeedRestart := 1
+            ; }
+            else if (obj.name = "PreserveCharNameOnLogout") {
+                This.PreserveCharNameOnLogout := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "HideThumbForActiveWin") {
+                This.HideThumbForActiveWin := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "ShiftThumbsForLoginScreen") {
+                This.ShiftThumbsForLoginScreen := obj.value
+                This.NeedRestart := 1
+            }
+            ; else if (obj.name = "ShiftThumbsDirection") {
+            ;     This.ShiftThumbsDirection := (obj.value = 1 ? "Horizontal" : "Vertical")
+            ;     This.NeedRestart := 1
+            ; }
+            else if (obj.name = "ShiftThumbHorizontalStep") {
+                This.ShiftThumbHorizontalStep := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "ShiftThumbVerticalStep") {
+                This.ShiftThumbVerticalStep := obj.value
                 This.NeedRestart := 1
             }
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -753,7 +842,6 @@
     Refresh_ControlValues() {
         ; Global Settings
         This.S_Gui["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
-        This.S_Gui["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
         This.S_Gui["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
         This.S_Gui["ThumbnailBackgroundColor"].value := This.ThumbnailBackgroundColor
         This.S_Gui["ThumbnailStartLocationx"].value := This.ThumbnailStartLocation["x"]
@@ -765,6 +853,18 @@
         This.S_Gui["ThumbnailSnapOn"].value := This.ThumbnailSnap
         This.S_Gui["ThumbnailSnapOff"].value := (This.ThumbnailSnap ? 0 : 1)
         This.S_Gui["ThumbnailSnap_Distance"].value := This.ThumbnailSnap_Distance
+        This.S_Gui["SwitchLangOnErr"].value := This.SwitchLangOnErr
+        This.S_Gui["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
+        This.S_Gui["Close_Active_EVE_Win_Hotkey"].value := This.Close_Active_EVE_Win_Hotkey
+        This.S_Gui["Close_All_EVE_Win_Hotkey"].value := This.Close_All_EVE_Win_Hotkey
+        This.S_Gui["Reload_Program_Hotkey"].value := This.Reload_Program_Hotkey
+        ; This.S_Gui["PreserveThumbPosOnLogout"].value := This.PreserveThumbPosOnLogout
+        This.S_Gui["PreserveCharNameOnLogout"].value := This.PreserveCharNameOnLogout
+        This.S_Gui["HideThumbForActiveWin"].value := This.HideThumbForActiveWin
+        This.S_Gui["ShiftThumbsForLoginScreen"].value := This.ShiftThumbsForLoginScreen
+        ; This.S_Gui["ShiftThumbsDirection"].value := (This.ShiftThumbsDirection = "Horizontal" ? 1 : 2)
+        This.S_Gui["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
+        This.S_Gui["ShiftThumbVerticalStep"].value := This.ShiftThumbVerticalStep
 
         ;Client Settings
         This.S_Gui["MinimizeInactiveClients"].value := This.MinimizeInactiveClients

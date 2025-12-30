@@ -3,7 +3,6 @@
 {
     "global_Settings": {
         "Suspend_Hotkeys_Hotkey": "",
-        "Login_Screen_Cycle_Hotkey": "",
         "Global_Hotkeys": 1,
         "LastUsedProfile": "Default",
         "Minimize_Delay": 100,
@@ -19,7 +18,17 @@
         "ThumbnailMinimumSize": {
             "width": 50,
             "height": 50
-        }
+        },
+        "SwitchLangOnErr": false,
+        "Login_Screen_Cycle_Hotkey": "",
+        "Close_Active_EVE_Win_Hotkey": "",
+        "Close_All_EVE_Win_Hotkey": "",
+        "Reload_Program_Hotkey": "",
+        "PreserveCharNameOnLogout": true,
+        "HideThumbForActiveWin": false,
+        "ShiftThumbsForLoginScreen": true,
+        "ShiftThumbHorizontalStep": 0,
+        "ShiftThumbVerticalStep": 0
     },
     "_Profiles": {
         "Default": {

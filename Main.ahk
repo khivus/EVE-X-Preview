@@ -26,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.0.4f3.1
+;@Ahk2Exe-Let U_version = 1.0.4f3.2
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83
@@ -150,5 +150,19 @@ MergeJson(Settingsfile := "EVE-X-Preview.json", dJson := JSON.Load(default_JSON)
 
 ; Hanles unmanaged Errors
 Error_Handler(Thrown, Mode) {
+    ; There we try to get right layout of keyboard
+    if Thrown.Message == "Invalid key name." {
+        hwnd := WinGetID("A")
+        try {
+            control := ControlGetFocus(hwnd)
+            PostMessage(0x50, 0, 0x0409, , control)
+        }
+        Sleep(50)
+
+        Reload
+    }
+
+    MsgBox("Error: " Thrown.Message "`n" Thrown.Extra)
+    
     return -1
 }

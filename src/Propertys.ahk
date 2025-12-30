@@ -48,11 +48,6 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["Suspend_Hotkeys_Hotkey"] := value
     }
 
-    Login_Screen_Cycle_Hotkey {
-        get => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"]
-        set => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"] := value
-    }
-
     ThumbnailBackgroundColor {
         get => convertToHex(This._JSON["global_Settings"]["ThumbnailBackgroundColor"])
         set => This._JSON["global_Settings"]["ThumbnailBackgroundColor"] := convertToHex(value)
@@ -73,12 +68,70 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["ThumbnailSnap_Distance"] := (value ? value : "20")
     }
 
-
     ThumbnailMinimumSize[key] {
         get => This._JSON["global_Settings"]["ThumbnailMinimumSize"][key]
         set => This._JSON["global_Settings"]["ThumbnailMinimumSize"][key] := value
     }
 
+    SwitchLangOnErr {
+        get => This._JSON["global_Settings"]["SwitchLangOnErr"]
+        set => This._JSON["global_Settings"]["SwitchLangOnErr"] := value
+    }
+
+    Login_Screen_Cycle_Hotkey {
+        get => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"]
+        set => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"] := value
+    }
+
+    Close_Active_EVE_Win_Hotkey {
+        get => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"]
+        set => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"] := value
+    }
+
+    Close_All_EVE_Win_Hotkey {
+        get => This._JSON["global_Settings"]["Close_All_EVE_Win_Hotkey"]
+        set => This._JSON["global_Settings"]["Close_All_EVE_Win_Hotkey"] := value
+    }
+
+    Reload_Program_Hotkey {
+        get => This._JSON["global_Settings"]["Reload_Program_Hotkey"]
+        set => This._JSON["global_Settings"]["Reload_Program_Hotkey"] := value
+    }
+
+    ; PreserveThumbPosOnLogout {
+    ;     get => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"]
+    ;     set => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"] := value
+    ; }
+
+    PreserveCharNameOnLogout {
+        get => This._JSON["global_Settings"]["PreserveCharNameOnLogout"]
+        set => This._JSON["global_Settings"]["PreserveCharNameOnLogout"] := value
+    }
+
+    HideThumbForActiveWin {
+        get => This._JSON["global_Settings"]["HideThumbForActiveWin"]
+        set => This._JSON["global_Settings"]["HideThumbForActiveWin"] := value
+    }
+
+    ShiftThumbsForLoginScreen {
+        get => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"]
+        set => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"] := value
+    }
+
+    ; ShiftThumbsDirection {
+    ;     get => This._JSON["global_Settings"]["ShiftThumbsDirection"]
+    ;     set => This._JSON["global_Settings"]["ShiftThumbsDirection"] := value
+    ; }
+
+    ShiftThumbHorizontalStep {
+        get => This._JSON["global_Settings"]["ShiftThumbHorizontalStep"]
+        set => This._JSON["global_Settings"]["ShiftThumbHorizontalStep"] := value
+    }
+
+    ShiftThumbVerticalStep {
+        get => This._JSON["global_Settings"]["ShiftThumbVerticalStep"]
+        set => This._JSON["global_Settings"]["ShiftThumbVerticalStep"] := value
+    }
 
     ;########################
     ;## Profile ThumbnailSettings
