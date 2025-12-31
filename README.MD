@@ -3,6 +3,8 @@
 * Added login (character selection) screen cycle hotkey support. You can find it in global settings.
 * Preserving thumbnail position and last character nickname on logout. Thumbnail don't resets to default position when you logout of the game.
 
+### If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new).
+
 ##  EVE-X-Preview
 
 EVE-X-Preview is a tool for Windows for the game EVE Online that makes it easy to manage and use multiple EVE clients. 
