@@ -21,6 +21,8 @@
         },
         "SwitchLangOnErr": false,
         "Login_Screen_Cycle_Hotkey": "",
+        "LoginScreenCycleDirection": 1,
+        "PreserveHotkeysOnLogout": false,
         "Close_Active_EVE_Win_Hotkey": "",
         "Close_All_EVE_Win_Hotkey": "",
         "Reload_Program_Hotkey": "",

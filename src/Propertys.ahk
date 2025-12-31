@@ -83,6 +83,16 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"] := value
     }
 
+    LoginScreenCycleDirection[*] {
+        get => This._JSON["global_Settings"]["LoginScreenCycleDirection"]
+        set => This._JSON["global_Settings"]["LoginScreenCycleDirection"] := Value
+    }
+
+    PreserveHotkeysOnLogout {
+        get => This._JSON["global_Settings"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["global_Settings"]["PreserveHotkeysOnLogout"] := value
+    }
+
     Close_Active_EVE_Win_Hotkey {
         get => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"]
         set => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"] := value

@@ -180,6 +180,10 @@
                 }
                 ;if in Character selection screen 
                 else if (This.ThumbWindows.HasProp(hwnd)) {
+                    if This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
+                        This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                    }
+
                     if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
                         This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
                         ;This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].value := "Char Screen"
@@ -299,7 +303,7 @@
             ;This makes it possible to still use all keys outside from EVE 
             else {
                 HotIf (*) => WinExist("EVE - " title ) && WinActive(This.EVEExe)
-                if !This.SwitchLangOnErr { 
+                if !This.SwitchLangOnErr {
                     try {
                         Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title),"P1"
                     }
@@ -391,45 +395,88 @@
 
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
      Cycle_Hotkey_Groups(Arr, direction,*) {
-        static Index := 0 
+        static Index := 0
+        HWND := 0
+        activateByHWND := 0
         length := Arr.Length
 
         if (direction == "ForwardsHotkey") {
-            Try
-                Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n+1 : 1
-              
+            try {
+                if !This.PreserveHotkeysOnLogout
+                    Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n+1 : 1
+
+                else {
+                    AHWND := WinExist("A")
+                    if WinGetProcessName(AHWND) == "exefile.exe"
+                        Index := (n := IsActiveWinInGroup(This.ThumbWindows.%AHWND%["Window"].OldTitle, Arr)) ? n+1 : 1
+                    else
+                        Index := 1
+                }
+            }
+
+        
             if (Index > length)
                 Index := 1
 
             if (This.OnWinExist(Arr)) {
-                Try {
+                try {
                     if !(WinExist("EVE - " This.CleanTitle(Arr[Index]))) {
                         while (!(WinExist("EVE - " This.CleanTitle(Arr[Index])))) {
+                            if HWND := This.hasMathcingOldTitle(This.CleanTitle(Arr[Index])) {
+                                activateByHWND := 1
+                                break
+                            }
                             index += 1
                             if (Index > length)
                                 Index := 1
                         }
                     }
-                This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
+
+                    if !activateByHWND
+                        This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
+
+                    else
+                        This.ActivateEVEWindow(HWND,,)
                 }
             }
         }
 
         else if (direction == "BackwardsHotkey") {
-            Try
-                Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n-1 : length
+            try {
+                if !This.PreserveHotkeysOnLogout
+                    Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n-1 : length
+
+                else {
+                    AHWND := WinExist("A")
+                    if WinGetProcessName(AHWND) == "exefile.exe"
+                        Index := (n := IsActiveWinInGroup(This.ThumbWindows.%AHWND%["Window"].OldTitle, Arr)) ? n-1 : length
+                    else 
+                        Index := length
+                }
+            }
+            
             if (Index <= 0)
                 Index := length
 
             if (This.OnWinExist(Arr)) {
-                if !(WinExist("EVE - " This.CleanTitle(Arr[Index]))) {
-                    while (!(WinExist("EVE - " This.CleanTitle(Arr[Index])))) {
-                        Index -= 1
-                        if (Index <= 0)
-                            Index := length
+                try {
+                    if !(WinExist("EVE - " This.CleanTitle(Arr[Index]))) {
+                        while (!(WinExist("EVE - " This.CleanTitle(Arr[Index])))) {
+                            if HWND := This.hasMathcingOldTitle(This.CleanTitle(Arr[Index])) {
+                                activateByHWND := 1
+                                break
+                            }
+                            Index -= 1
+                            if (Index <= 0)
+                                Index := length
+                        }
                     }
+                    if !activateByHWND
+                        This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
+
+                    else
+                        This.ActivateEVEWindow(HWND,,)
                 }
-                This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
             }
         }
 
@@ -442,6 +489,21 @@
         }
     }
 
+    ; Checks for OldTitle == CleanTitle in all login screen windows
+    ; return HWND if found
+    hasMathcingOldTitle(CleanTitle) {
+        if !This.PreserveHotkeysOnLogout
+            return
+
+        loginHWNDs := WinGetList("EVE")
+
+        for hwnd in loginHWNDs {
+            if This.ThumbWindows.%hwnd%["Window"].OldTitle == CleanTitle
+                return hwnd
+        }
+        return
+    }
+
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
         static currentIndex := 1
@@ -450,8 +512,16 @@
         loginHWNDs := WinGetList("EVE")
 
         for hwnd in loginHWNDs {
+            if This.ThumbWindows.%hwnd%["Window"].OldTitle && This.PreserveHotkeysOnLogout
+                continue
+
             PID := WinGetPID(hwnd)
-            CreationTime := This.GetProcessCreationTime(PID)[3]
+
+            if This.LoginScreenCycleDirection
+                CreationTime := This.GetProcessCreationTime(PID)[3]
+            else
+                CreationTime := This.GetProcessCreationTime(PID)[2]
+
             LoginWins.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
         }
 
@@ -493,7 +563,11 @@
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
     OnWinExist(Arr, *) {
         for index, Name in Arr {
+            ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") && !This.PreserveHotkeysOnLogout) {
             If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") ) {
+                return true
+            }
+            else if This.PreserveHotkeysOnLogout && This.hasMathcingOldTitle(Name) && !WinActive("EVE-X-Preview - Settings") {
                 return true
             }
         }
@@ -603,6 +677,7 @@
         If !(This.ThumbWindows.HasProp(Win_Hwnd)) {       
             This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
             This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
+            This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := ""
 
             ;if the User is in character selection screen show the window always 
             if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "") {
