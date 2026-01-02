@@ -26,9 +26,11 @@
         "Close_Active_EVE_Win_Hotkey": "",
         "Close_All_EVE_Win_Hotkey": "",
         "Reload_Program_Hotkey": "",
-        "PreserveCharNameOnLogout": true,
+        "PreserveThumbPosOnLogout": true,
+        "PreserveCharNameOnLogout": false,
         "HideThumbForActiveWin": false,
         "ShiftThumbsForLoginScreen": true,
+        "ShiftThumbsCollisionCheck": false,
         "ShiftThumbsDirection": 1,
         "ShiftThumbHorizontalStep": 0,
         "ShiftThumbVerticalStep": 0

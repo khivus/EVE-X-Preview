@@ -108,10 +108,10 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["Reload_Program_Hotkey"] := value
     }
 
-    ; PreserveThumbPosOnLogout {
-    ;     get => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"]
-    ;     set => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"] := value
-    ; }
+    PreserveThumbPosOnLogout {
+        get => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"]
+        set => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"] := value
+    }
 
     PreserveCharNameOnLogout {
         get => This._JSON["global_Settings"]["PreserveCharNameOnLogout"]
@@ -126,6 +126,11 @@ class Propertys extends TrayMenu {
     ShiftThumbsForLoginScreen {
         get => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"]
         set => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"] := value
+    }
+
+    ShiftThumbsCollisionCheck {
+        get => This._JSON["global_Settings"]["ShiftThumbsCollisionCheck"]
+        set => This._JSON["global_Settings"]["ShiftThumbsCollisionCheck"] := value
     }
 
     ShiftThumbsDirection {

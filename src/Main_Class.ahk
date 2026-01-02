@@ -53,8 +53,6 @@
         for index, prefix in prefixArr
             Hotkey(  prefix . Main_Class.virtualKey, ObjBindMethod(This, "ActivateForgroundWindow"), "S P1")
 
-        This.allLoginClosed := 0
-
         ; Register Hotkey for Puase Hotkeys if the user has is Set
         if (This.Suspend_Hotkeys_Hotkey != "") {
             HotIf (*) => WinExist(This.EVEExe)
@@ -131,6 +129,9 @@
             }
         }
 
+        ; Resets the position of Shifting thubmnails
+        This.allLoginClosed := 0
+
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
         
@@ -160,14 +161,40 @@
     }
 
     HandleMainTimer() {
-        static HideShowToggle := 0, LastActiveHWND := 0, WinList := {}
+        static HideShowToggle := 0, LastActiveHWND := 0, WinList := {}, SortedWinList := []
 
         try
             WinList := WinGetList(This.EVEExe)
         Catch 
             return
+
         ; If any EVE Window exist
         if (WinList.Length) {
+
+            ; Sort all windows by uptime if we use ShiftThumbsForLoginScreen
+            ; We need separate SortThumbnailsByUptime checkbox because this sort will slow down code
+            ; This is not working properly
+            ; if This.SortThumbnailsByUptime {
+            ;     if This.ShiftThumbsForLoginScreen && WinList.Length > 1 {
+            ;         for hwnd in WinList {
+            ;             PID := WinGetPID(hwnd)
+
+            ;             if This.LoginScreenCycleDirection
+            ;                 CreationTime := This.GetProcessCreationTime(PID)[3]
+            ;             else
+            ;                 CreationTime := This.GetProcessCreationTime(PID)[2]
+
+            ;             SortedWinList.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
+            ;         }
+
+            ;         SortedWinList := This.CustomSort(SortedWinList, "CreationTime")
+            ;         WinList := []
+            ;         for win in SortedWinList {
+            ;             WinList.Push(win["hwnd"])
+            ;         }
+            ;     }
+            ; }
+
             ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
             for index, hwnd in WinList {
                 WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
@@ -180,13 +207,25 @@
                 }
                 ;if in Character selection screen 
                 else if (This.ThumbWindows.HasProp(hwnd)) {
-                    if This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
+                    ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
+                    if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
                         This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                    }
+
+                    ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
+                    if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
+                        if This.ShiftThumbsForLoginScreen
+                            This.ShiftThumbs(hwnd)
+                        else
+                            This.ThumbMove( This.ThumbnailStartLocation["x"],
+                                            This.ThumbnailStartLocation["y"],
+                                            This.ThumbnailStartLocation["width"],
+                                            This.ThumbnailStartLocation["height"],
+                                            This.ThumbWindows.%hwnd%)
                     }
 
                     if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
                         This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
-                        ;This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].value := "Char Screen"
                         if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
                             This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                         }
@@ -506,7 +545,7 @@
 
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
-        static currentIndex := 1
+        currentIndex := 1
         LoginWins := []
         currentHWND := WinExist("A")
         loginHWNDs := WinGetList("EVE")
@@ -600,10 +639,10 @@
             ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
             This.RestoreClientPossitions(hwnd, title)
 
-            if (title = "") {
-                This.EvEWindowDestroy(hwnd, title)
-                This.EVE_WIN_Created(hwnd,title)
-            }
+            ; if (title = "") {
+            ;     This.EvEWindowDestroy(hwnd, title)
+            ;     This.EVE_WIN_Created(hwnd,title)
+            ; }
 
             If (This.ThumbnailPositions.Has(title)) {
                 This.EvEWindowDestroy(hwnd, title)
@@ -682,7 +721,7 @@
             ;if the User is in character selection screen show the window always 
             if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "") {
                 This.SetThumbnailText[Win_Hwnd] := Win_Title
-                This.ShiftThumbs(Win_Hwnd, Win_Title)
+                This.ShiftThumbs(Win_Hwnd)
                 ;if the Title is just "EVE" that means it is in the Charakter selection screen
                 ;in this case show always the Thumbnail 
                 This.ShowThumb(Win_Hwnd, "Show")
@@ -711,10 +750,11 @@
     }
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
-    ShiftThumbs(Win_Hwnd, Win_Title) {
+    ShiftThumbs(Win_Hwnd) {
         if !This.ShiftThumbsForLoginScreen
             return
 
+        static firstIteration := 1
         static nextPosX := This.ThumbnailStartLocation["x"]
         static nextPosY := This.ThumbnailStartLocation["y"]
         step_x := This.ShiftThumbHorizontalStep
@@ -726,17 +766,12 @@
             step_y := This.ThumbnailStartLocation["height"]
         
         if This.allLoginClosed {
+            firstIteration := 1
             nextPosX := This.ThumbnailStartLocation["x"]
             nextPosY := This.ThumbnailStartLocation["y"]
             This.allLoginClosed := 0
         }
 
-        This.ThumbMove( nextPosX,
-                        nextPosY,
-                        This.ThumbnailStartLocation["width"],
-                        This.ThumbnailStartLocation["height"],
-                        This.ThumbWindows.%Win_Hwnd%)
-        
         switch This.ShiftThumbsDirection {
             case 2 || 7:
                 step_y := -step_y
@@ -747,65 +782,76 @@
                 step_y := -step_y
         }
 
-        ; Horizontal -> Vertical
-        if This.ShiftThumbsDirection <= 4 {
-            nextPosX += step_x
-            if nextPosX + This.ThumbnailStartLocation["width"] > A_ScreenWidth || nextPosX < 0 {
-                nextPosX := This.ThumbnailStartLocation["x"]
-                nextPosY += step_y
-                ; Probably useless handling incoming ->
-                if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
-                    nextPosX := This.ThumbnailStartLocation["x"]
-                    nextPosY := This.ThumbnailStartLocation["y"]
-                    MsgBox("You reached end of screen! Try change thumbnail default position, size, shift direction or step.")
-                }
+        ; if ShiftThumbsCollisionCheck enabled checks position of all thumbnails and tries to avoid collision
+        Collision := 1
+        while Collision {
+            if firstIteration {
+                firstIteration := 0
+                break
             }
-        }
-        ; Vertical -> Horizontal
-        else {
-            nextPosY += step_y
-            if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
-                nextPosY := This.ThumbnailStartLocation["y"]
+            ; Horizontal -> Vertical
+            if This.ShiftThumbsDirection <= 4 {
                 nextPosX += step_x
-                ; Probably useless handling incoming ->
                 if nextPosX + This.ThumbnailStartLocation["width"] > A_ScreenWidth || nextPosX < 0 {
                     nextPosX := This.ThumbnailStartLocation["x"]
-                    nextPosY := This.ThumbnailStartLocation["y"]
-                    MsgBox("You reached end of screen! Try change thumbnail default position, size, shift direction or step.")
+                    nextPosY += step_y
+                    ; if end of screen reached, return to the default position
+                    if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
+                        nextPosX := This.ThumbnailStartLocation["x"]
+                        nextPosY := This.ThumbnailStartLocation["y"]
+                        MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
+                    }
                 }
             }
+            ; Vertical -> Horizontal
+            else {
+                nextPosY += step_y
+                if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
+                    nextPosY := This.ThumbnailStartLocation["y"]
+                    nextPosX += step_x
+                    ; if end of screen reached, return to the default position
+                    if nextPosX + This.ThumbnailStartLocation["width"] > A_ScreenWidth || nextPosX < 0 {
+                        nextPosX := This.ThumbnailStartLocation["x"]
+                        nextPosY := This.ThumbnailStartLocation["y"]
+                        MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
+                    }
+                }
+            }
+
+            Collision := This.CheckCollisions(nextPosX, nextPosY)
         }
+
+        This.ThumbMove( nextPosX,
+                        nextPosY,
+                        This.ThumbnailStartLocation["width"],
+                        This.ThumbnailStartLocation["height"],
+                        This.ThumbWindows.%Win_Hwnd%)
     }
 
-    ; ; Checks collisions for the new thumbnail position
-    ; CheckCollisions(nextPosX, nextPosY, step_x, step_y, Collision) {
-    ;     Collision := 0
-    ;     positions := [nextPosX, nextPosY]
+    ; Checks collisions for the new thumbnail position
+    CheckCollisions(nextPosX, nextPosY) {
+        if !This.ShiftThumbsCollisionCheck
+            return
 
-    ;     for EVEHWND in This.ThumbWindows.OwnProps() {
-    ;         ; get the GUI window object for this thumbnail
-    ;         GuiObj := This.ThumbWindows.%EVEHWND%
+        Collision := 0
 
-    ;         for Names, Obj in GuiObj {
-    ;             if Names != "Window"
-    ;                 continue
+        for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
+            for Name, Obj in ThumbObj {
+                if (Name = "Window") {
+                    WinGetPos(&posX, &posY, &wWidth, &wHeight, Obj.Hwnd)
 
-    ;             WinGetPos(&posX, &posY, &wWidth, &wHeight, Obj.Hwnd)
+                    if (posX == nextPosX && posY == nextPosY) {
+                        Collision := 1
+                        break
+                    }
+                }
+                if Collision
+                    break
+            }
+        }
 
-    ;             if (posX == nextPosX && posY == nextPosY) {
-    ;                 positions := This.CalcNextPos(nextPosX, nextPosY, step_x, step_y)
-    ;                 Collision := 1
-    ;                 break
-    ;             }
-    ;         }
-
-    ;         if Collision
-    ;             break
-    ;     }
-
-    ;     positions.Push(Collision)
-    ;     return positions
-    ; }
+        return Collision
+    }
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
     EvEWindowDestroy(hwnd?, WinTitle?) {

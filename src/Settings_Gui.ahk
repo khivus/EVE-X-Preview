@@ -118,124 +118,174 @@
 
     ;This Function creates all Settings controls for the Global Settings Button
     Global_Settings(visible?) {
+        RowSpacing := 30
+        SeparatorSpacing := 10
+        LabelOffset := 15
+        FieldOffset := 289
+        DefaultWidth := 180
+        DigitWidth := 40
+
+        ddl_options := ["left -> right, top -> bottom", "left -> right, bottom -> top", "right -> left, top -> bottom", "right -> left, bottom -> top", "top -> bottom, left -> right", "top -> bottom, right -> left", "bottom -> top, left -> right", "bottom -> top, right -> left"]
+
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h666 w510")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+15 yp+20 Section", "Suspend Hotkeys - Hotkey:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hotkey activation Scope:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Background Color:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Default Location:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Minimum Size:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Snap:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Thumbnail Snap Distance:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Minimize EVE Window Delay:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Switch language to EN on error:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Login Screen Cycle Hotkey:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Login Screen Cycle Direction:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve Hotkeys On Logout:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Close Active EVE Window Hotkey:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Close All EVE Windows Hotkey:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Reload EVE-X-Preview Hotkey:")
-        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve thumbnail position on logout:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Preserve Character Name On logout:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Hide Thumbnail For Active window:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift Thumbnails For Login Screen:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift Thumbnails Direction:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift Thumbnails Horizontal Step (0 = w):")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15", "Shift Thumbnails Vertical Step (0 = h):")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h800 w500")
+    
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xs+240 ys-3 w150 Section vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . LabelOffset . " yp+" . RowSpacing . " Section", "Suspend All Hotkeys – Hotkey")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
         This.S_Gui["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp y+5 w180 vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Hotkey Activation Scope")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DDL", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
         This.S_Gui["Hotkey_Scoope"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+5 w120 section vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+130 yp+4", "Hex or RGB")
-        This.S_Gui["ThumbnailBackgroundColor"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Cycle Login Screens – Hotkey")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs+2 y+17 section", "x:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailStartLocationx", This.ThumbnailStartLocation["x"])
-        This.S_Gui["ThumbnailStartLocationx"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "y:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailStartLocationy", This.ThumbnailStartLocation["y"])
-        This.S_Gui["ThumbnailStartLocationy"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "w:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailStartLocationwidth", This.ThumbnailStartLocation["width"])
-        This.S_Gui["ThumbnailStartLocationwidth"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "h:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailStartLocationheight", This.ThumbnailStartLocation["height"])
-        This.S_Gui["ThumbnailStartLocationheight"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+10 section ", "width:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailMinimumSizewidth", This.ThumbnailMinimumSize["width"])
-        This.S_Gui["ThumbnailMinimumSizewidth"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "height:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailMinimumSizeheight", This.ThumbnailMinimumSize["height"])
-        This.S_Gui["ThumbnailMinimumSizeheight"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xs y+10 w37 vThumbnailSnapOn Checked" This.ThumbnailSnap, "On")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", " xp+50 yp w37 vThumbnailSnapOff Checked" (This.ThumbnailSnap ? 0 : 1), "Off")
-        This.S_Gui["ThumbnailSnapOn"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
-        This.S_Gui["ThumbnailSnapOff"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+15 ", "pixel:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w40 vThumbnailSnap_Distance", This.ThumbnailSnap_Distance)
-        This.S_Gui["ThumbnailSnap_Distance"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs y+9 ", "Milliseconds:")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+80 yp-3 w40 vMinimizeclients_Delay", This.Minimizeclients_Delay)
-        This.S_Gui["Minimizeclients_Delay"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+10 vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
-        This.S_Gui["SwitchLangOnErr"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
-
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w150 section vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
         This.S_Gui["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xs y+11 w37 vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Forwards")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Login Screen Cycle Direction")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xp+" . FieldOffset . " ys w37 vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Forwards")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", " xp+80 yp w37 vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "Backwards")
         This.S_Gui["LoginScreenCycleDirectionForwards"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
         This.S_Gui["LoginScreenCycleDirectionBackwards"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+16 vPreserveHotkeysOnLogout Checked" This.PreserveHotkeysOnLogout, "On/Off")
-        This.S_Gui["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Close Active EVE Window – Hotkey")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w150 section vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
         This.S_Gui["Close_Active_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Close All EVE Windows – Hotkey")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
         This.S_Gui["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w150 section vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Reload EVE-X-Preview – Hotkey")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
         This.S_Gui["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        ; This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+12 vPreserveThumbPosOnLogout Checked" This.PreserveThumbPosOnLogout, "On/Off")
-        ; This.S_Gui["PreserveThumbPosOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+        ; Category Separator
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section w473 h2 +0x10")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+12 vPreserveCharNameOnLogout Checked" This.PreserveCharNameOnLogout, "On/Off")
-        This.S_Gui["PreserveCharNameOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . SeparatorSpacing . " Section", "Thumbnail Background Color (Hex/RGB)")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vHideThumbForActiveWin Checked" This.HideThumbForActiveWin, "On/Off")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
+        This.S_Gui["ThumbnailBackgroundColor"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+        
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Default Thumbnail Position (px)")
+        
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . FieldOffset . " ys", "x:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailStartLocationx", This.ThumbnailStartLocation["x"])
+        This.S_Gui["ThumbnailStartLocationx"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+        
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "y:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailStartLocationy", This.ThumbnailStartLocation["y"])
+        This.S_Gui["ThumbnailStartLocationy"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Default Thumbnail Size (px)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . FieldOffset . " ys ", "width:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailStartLocationwidth", This.ThumbnailStartLocation["width"])
+        This.S_Gui["ThumbnailStartLocationwidth"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "height:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailStartLocationheight", This.ThumbnailStartLocation["height"])
+        This.S_Gui["ThumbnailStartLocationheight"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Minimum Thumbnail Size (px)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . FieldOffset . " ys", "width:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailMinimumSizewidth", This.ThumbnailMinimumSize["width"])
+        This.S_Gui["ThumbnailMinimumSizewidth"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys ", "height:")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "x+5 y+-18 w" . DigitWidth . " vThumbnailMinimumSizeheight", This.ThumbnailMinimumSize["height"])
+        This.S_Gui["ThumbnailMinimumSizeheight"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Enable Thumbnail Snap")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xp+" . FieldOffset . " ys w37 vThumbnailSnapOn Checked" This.ThumbnailSnap, "On")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", " xp+50 yp w37 vThumbnailSnapOff Checked" (This.ThumbnailSnap ? 0 : 1), "Off")
+        This.S_Gui["ThumbnailSnapOn"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+        This.S_Gui["ThumbnailSnapOff"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Snap Distance (px)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DigitWidth . " vThumbnailSnap_Distance", This.ThumbnailSnap_Distance)
+        This.S_Gui["ThumbnailSnap_Distance"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Hide Thumbnail for Active Window")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vHideThumbForActiveWin Checked" This.HideThumbForActiveWin, "On/Off")
         This.S_Gui["HideThumbForActiveWin"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xs y+15 vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
+        ; Category Separator
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section w473 h2 +0x10")
+        
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . SeparatorSpacing . " Section", "Shift Thumbnails on Login Screen")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
         This.S_Gui["ShiftThumbsForLoginScreen"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
-        ddl_options := ["left -> right, top -> bottom", "left -> right, bottom -> top", "right -> left, top -> bottom", "right -> left, bottom -> top", "top -> bottom, left -> right", "top -> bottom, right -> left", "bottom -> top, left -> right", "bottom -> top, right -> left"]
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Enable Thumbnail Collision Avoidance")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DropDownList", "xp y+7 w180 vShiftThumbsDirection Choose" . Integer(This.ShiftThumbsDirection), ddl_options)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vShiftThumbsCollisionCheck Checked" This.ShiftThumbsCollisionCheck, "On/Off")
+        This.S_Gui["ShiftThumbsCollisionCheck"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Shift Direction")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DropDownList", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vShiftThumbsDirection Choose" . Integer(This.ShiftThumbsDirection), ddl_options)
         This.S_Gui["ShiftThumbsDirection"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+10 w50 section vShiftThumbHorizontalStep 0", This.ShiftThumbHorizontalStep)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Shift Horizontal Step (px)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DigitWidth . " vShiftThumbHorizontalStep 0", This.ShiftThumbHorizontalStep)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys+3 ", "0 = Width")
         This.S_Gui["ShiftThumbHorizontalStep"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp y+7 w50 section vShiftThumbVerticalStep 0", This.ShiftThumbVerticalStep)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Shift Vertical Step (px)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DigitWidth . " vShiftThumbVerticalStep 0", This.ShiftThumbVerticalStep)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "x+8 ys+3 ", "0 = Height")
         This.S_Gui["ShiftThumbVerticalStep"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        ; Category Separator
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section w473 h2 +0x10")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . SeparatorSpacing . " Section", "Preserve Hotkeys on Logout")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vPreserveHotkeysOnLogout Checked" This.PreserveHotkeysOnLogout, "On/Off")
+        This.S_Gui["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Preserve Character Name On logout")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vPreserveCharNameOnLogout Checked" This.PreserveCharNameOnLogout, "On/Off")
+        This.S_Gui["PreserveCharNameOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Preserve Thumbnail Position on Logout")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vPreserveThumbPosOnLogout Checked" This.PreserveThumbPosOnLogout, "On/Off")
+        This.S_Gui["PreserveThumbPosOnLogout"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+        ; Category Separator
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section w473 h2 +0x10")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . SeparatorSpacing . " Section", "EVE Window Minimize Delay (ms)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DigitWidth . " vMinimizeclients_Delay", This.Minimizeclients_Delay)
+        This.S_Gui["Minimizeclients_Delay"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Switch Language to English on Error (Unstable!)")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
+        This.S_Gui["SwitchLangOnErr"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
+
+
 
         gSettings_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
@@ -313,10 +363,10 @@
                 This.Reload_Program_Hotkey := Trim(obj.value, "`n ")
                 This.NeedRestart := 1
             }
-            ; else if (obj.name = "PreserveThumbPosOnLogout") {
-            ;     This.PreserveThumbPosOnLogout := obj.value
-            ;     This.NeedRestart := 1
-            ; }
+            else if (obj.name = "PreserveThumbPosOnLogout") {
+                This.PreserveThumbPosOnLogout := obj.value
+                This.NeedRestart := 1
+            }
             else if (obj.name = "PreserveCharNameOnLogout") {
                 This.PreserveCharNameOnLogout := obj.value
                 This.NeedRestart := 1
@@ -327,6 +377,10 @@
             }
             else if (obj.name = "ShiftThumbsForLoginScreen") {
                 This.ShiftThumbsForLoginScreen := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "ShiftThumbsCollisionCheck") {
+                This.ShiftThumbsCollisionCheck := obj.value
                 This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsDirection") {
@@ -897,10 +951,11 @@
         This.S_Gui["Close_Active_EVE_Win_Hotkey"].value := This.Close_Active_EVE_Win_Hotkey
         This.S_Gui["Close_All_EVE_Win_Hotkey"].value := This.Close_All_EVE_Win_Hotkey
         This.S_Gui["Reload_Program_Hotkey"].value := This.Reload_Program_Hotkey
-        ; This.S_Gui["PreserveThumbPosOnLogout"].value := This.PreserveThumbPosOnLogout
+        This.S_Gui["PreserveThumbPosOnLogout"].value := This.PreserveThumbPosOnLogout
         This.S_Gui["PreserveCharNameOnLogout"].value := This.PreserveCharNameOnLogout
         This.S_Gui["HideThumbForActiveWin"].value := This.HideThumbForActiveWin
         This.S_Gui["ShiftThumbsForLoginScreen"].value := This.ShiftThumbsForLoginScreen
+        This.S_Gui["ShiftThumbsCollisionCheck"].value := This.ShiftThumbsCollisionCheck
         current_index := Settings_Gui.directions.Get(This.ShiftThumbsDirection, 8)
         This.S_Gui["ShiftThumbsDirection"].Choose(current_index)
         This.S_Gui["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
