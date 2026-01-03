@@ -368,10 +368,10 @@ Class ThumbWindow extends Propertys {
                 }
             }
             else {
-                if (This.ThumbWindows.%EVEWindowHwnd%["Window"].Title = "" && !This.HideThumbForActiveWin) {
-                    This.ThumbWindows.%EVEWindowHwnd%["Border"].Show("Hide")
-                    return
-                }
+                ; if (This.ThumbWindows.%EVEWindowHwnd%["Window"].Title = "" && !This.HideThumbForActiveWin) {
+                ;     This.ThumbWindows.%EVEWindowHwnd%["Border"].Show("Hide")
+                ;     return
+                ; }
                 for k, v in This.ThumbWindows.%EVEWindowHwnd% {
                     if (k = "Thumbnail")
                         continue

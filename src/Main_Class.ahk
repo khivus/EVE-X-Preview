@@ -201,8 +201,9 @@
 
                 if !This.ThumbWindows.HasProp(hwnd) {
                     This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                    if (!This.HideThumbnailsOnLostFocus)                            
+                    if (!This.HideThumbnailsOnLostFocus) {
                         This.ShowThumb(hwnd, "Show")
+                    }                      
                     HideShowToggle := 1                  
                 }
                 ;if in Character selection screen 
@@ -246,11 +247,12 @@
                 }
                 else if ( ActiveProcessName == "exefile.exe" && !DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe"))) {
                     Ahwnd := WinExist("A")
-                    if This.HideThumbForActiveWin {
+                    if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
 
                         if LastActiveHWND && LastActiveHWND != Ahwnd
                             This.ShowThumb(LastActiveHWND, "Show")
+                            This.UpdateThumb_AfterActivation(, Ahwnd)
                         LastActiveHWND := Ahwnd
                     }
                     else {
@@ -452,16 +454,15 @@
                         Index := 1
                 }
             }
-
         
             if (Index > length)
                 Index := 1
 
             if (This.OnWinExist(Arr)) {
                 try {
-                    if !(WinExist("EVE - " This.CleanTitle(Arr[Index]))) {
-                        while (!(WinExist("EVE - " This.CleanTitle(Arr[Index])))) {
-                            if HWND := This.hasMathcingOldTitle(This.CleanTitle(Arr[Index])) {
+                    if !(WinExist("EVE - " Arr[Index])) {
+                        while (!(WinExist("EVE - " Arr[Index]))) {
+                            if HWND := This.hasMathcingOldTitle(Arr[Index]) {
                                 activateByHWND := 1
                                 break
                             }
@@ -472,7 +473,7 @@
                     }
 
                     if !activateByHWND
-                        This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
+                        This.ActivateEVEWindow(,,Arr[Index])
 
                     else
                         This.ActivateEVEWindow(HWND,,)
@@ -499,9 +500,9 @@
 
             if (This.OnWinExist(Arr)) {
                 try {
-                    if !(WinExist("EVE - " This.CleanTitle(Arr[Index]))) {
-                        while (!(WinExist("EVE - " This.CleanTitle(Arr[Index])))) {
-                            if HWND := This.hasMathcingOldTitle(This.CleanTitle(Arr[Index])) {
+                    if !(WinExist("EVE - " Arr[Index])) {
+                        while (!(WinExist("EVE - " Arr[Index]))) {
+                            if HWND := This.hasMathcingOldTitle(Arr[Index]) {
                                 activateByHWND := 1
                                 break
                             }
@@ -511,7 +512,7 @@
                         }
                     }
                     if !activateByHWND
-                        This.ActivateEVEWindow(,,This.CleanTitle(Arr[Index]))
+                        This.ActivateEVEWindow(,,Arr[Index])
 
                     else
                         This.ActivateEVEWindow(HWND,,)
@@ -724,7 +725,7 @@
                 This.ShiftThumbs(Win_Hwnd)
                 ;if the Title is just "EVE" that means it is in the Charakter selection screen
                 ;in this case show always the Thumbnail 
-                This.ShowThumb(Win_Hwnd, "Show")
+                ; This.ShowThumb(Win_Hwnd, "Show")
                 return
             }  
 
@@ -765,13 +766,6 @@
         if step_y == 0
             step_y := This.ThumbnailStartLocation["height"]
         
-        if This.allLoginClosed {
-            firstIteration := 1
-            nextPosX := This.ThumbnailStartLocation["x"]
-            nextPosY := This.ThumbnailStartLocation["y"]
-            This.allLoginClosed := 0
-        }
-
         switch This.ShiftThumbsDirection {
             case 2 || 7:
                 step_y := -step_y
@@ -783,7 +777,23 @@
         }
 
         ; if ShiftThumbsCollisionCheck enabled checks position of all thumbnails and tries to avoid collision
-        Collision := 1
+        ; if we have collision check enabled we can reset nextPos so we start checking from beginning
+        if This.ShiftThumbsCollisionCheck {
+            nextPosX := This.ThumbnailStartLocation["x"]
+            nextPosY := This.ThumbnailStartLocation["y"]
+            Collision := This.CheckCollisions(nextPosX, nextPosY)
+        }
+        ; if all login windows are closed we reset the position to start from beginning
+        else if This.allLoginClosed {
+            firstIteration := 1
+            nextPosX := This.ThumbnailStartLocation["x"]
+            nextPosY := This.ThumbnailStartLocation["y"]
+            This.allLoginClosed := 0
+            Collision := 1
+        }
+        else
+            Collision := 1
+
         while Collision {
             if firstIteration {
                 firstIteration := 0
@@ -826,6 +836,7 @@
                         This.ThumbnailStartLocation["width"],
                         This.ThumbnailStartLocation["height"],
                         This.ThumbWindows.%Win_Hwnd%)
+
     }
 
     ; Checks collisions for the new thumbnail position
@@ -916,6 +927,7 @@
             SetTimer(This.timer, -This.MinimizeDelay)
         }
     }
+
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
     ActivateForgroundWindow(*) {
         ; 2 attempts for brining the window in foreground 
@@ -931,9 +943,6 @@
         Return 
     }
 
-
-
-
     ; Minimize All windows after Activting one with the exception of Titels in the DontMinimize Wintitels
     ; gets called by the timer to run async
     EVEMinimize() {
@@ -944,7 +953,8 @@
             catch
                 continue
 
-            if (EveHwnd = This.wHwnd || Dont_Minimze_Enum(EveHwnd, WinTitle) || WinTitle == "EVE" || WinTitle = "")
+            ; if (EveHwnd = This.wHwnd || Dont_Minimze_Enum(EveHwnd, WinTitle) || WinTitle == "EVE" || WinTitle = "")
+            if (EveHwnd = This.wHwnd || Dont_Minimze_Enum(EveHwnd, WinTitle))
                 continue
             else {
                 ; Just to make sure its not minimizeing the active Window

@@ -30,7 +30,7 @@
         "PreserveCharNameOnLogout": false,
         "HideThumbForActiveWin": false,
         "ShiftThumbsForLoginScreen": true,
-        "ShiftThumbsCollisionCheck": false,
+        "ShiftThumbsCollisionCheck": true,
         "ShiftThumbsDirection": 1,
         "ShiftThumbHorizontalStep": 0,
         "ShiftThumbVerticalStep": 0
