@@ -161,7 +161,7 @@
     }
 
     HandleMainTimer() {
-        static HideShowToggle := 0, LastActiveHWND := 0, WinList := {}, SortedWinList := []
+        static HideShowToggle := 0, LastActiveHWND := 0, WinList := {}
 
         try
             WinList := WinGetList(This.EVEExe)
@@ -170,30 +170,6 @@
 
         ; If any EVE Window exist
         if (WinList.Length) {
-
-            ; Sort all windows by uptime if we use ShiftThumbsForLoginScreen
-            ; We need separate SortThumbnailsByUptime checkbox because this sort will slow down code
-            ; This is not working properly
-            ; if This.SortThumbnailsByUptime {
-            ;     if This.ShiftThumbsForLoginScreen && WinList.Length > 1 {
-            ;         for hwnd in WinList {
-            ;             PID := WinGetPID(hwnd)
-
-            ;             if This.LoginScreenCycleDirection
-            ;                 CreationTime := This.GetProcessCreationTime(PID)[3]
-            ;             else
-            ;                 CreationTime := This.GetProcessCreationTime(PID)[2]
-
-            ;             SortedWinList.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
-            ;         }
-
-            ;         SortedWinList := This.CustomSort(SortedWinList, "CreationTime")
-            ;         WinList := []
-            ;         for win in SortedWinList {
-            ;             WinList.Push(win["hwnd"])
-            ;         }
-            ;     }
-            ; }
 
             ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
             for index, hwnd in WinList {
@@ -828,7 +804,7 @@
                 }
             }
 
-            Collision := This.CheckCollisions(nextPosX, nextPosY)
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
         }
 
         This.ThumbMove( nextPosX,
@@ -840,28 +816,22 @@
     }
 
     ; Checks collisions for the new thumbnail position
-    CheckCollisions(nextPosX, nextPosY) {
+    CheckCollisions(x1, y1, w1, h1) {
         if !This.ShiftThumbsCollisionCheck
             return
-
-        Collision := 0
 
         for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
             for Name, Obj in ThumbObj {
                 if (Name = "Window") {
-                    WinGetPos(&posX, &posY, &wWidth, &wHeight, Obj.Hwnd)
+                    WinGetPos(&x2, &y2, &w2, &h2, Obj.Hwnd)
 
-                    if (posX == nextPosX && posY == nextPosY) {
-                        Collision := 1
-                        break
+                    if (x1 < x2 + w2) && (x2 < x1 + w1) && (y1 < y2 + h2) && (y2 < y1 + h1) {
+                        return 1
                     }
                 }
-                if Collision
-                    break
             }
         }
-
-        return Collision
+        return
     }
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
