@@ -522,7 +522,6 @@
 
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
-        currentIndex := 1
         LoginWins := []
         currentHWND := WinExist("A")
         loginHWNDs := WinGetList("EVE")
@@ -554,8 +553,12 @@
         }
 
         for i, Win in LoginWins {
-            if currentHWND == Win["hwnd"]
+            if currentHWND == Win["hwnd"] {
                 currentIndex := i
+                break
+            }
+            else
+                currentIndex := 0
         }
 
         currentIndex += 1
@@ -757,7 +760,7 @@
         if This.ShiftThumbsCollisionCheck {
             nextPosX := This.ThumbnailStartLocation["x"]
             nextPosY := This.ThumbnailStartLocation["y"]
-            Collision := This.CheckCollisions(nextPosX, nextPosY)
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
         }
         ; if all login windows are closed we reset the position to start from beginning
         else if This.allLoginClosed {
