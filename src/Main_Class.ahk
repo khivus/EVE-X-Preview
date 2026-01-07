@@ -734,7 +734,6 @@
         if !This.ShiftThumbsForLoginScreen
             return
 
-        static firstIteration := 1
         static nextPosX := This.ThumbnailStartLocation["x"]
         static nextPosY := This.ThumbnailStartLocation["y"]
         step_x := This.ShiftThumbHorizontalStep
@@ -760,24 +759,19 @@
         if This.ShiftThumbsCollisionCheck {
             nextPosX := This.ThumbnailStartLocation["x"]
             nextPosY := This.ThumbnailStartLocation["y"]
-            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
         }
         ; if all login windows are closed we reset the position to start from beginning
         else if This.allLoginClosed {
-            firstIteration := 1
             nextPosX := This.ThumbnailStartLocation["x"]
             nextPosY := This.ThumbnailStartLocation["y"]
             This.allLoginClosed := 0
-            Collision := 1
+            Collision := 0
         }
         else
             Collision := 1
 
         while Collision {
-            if firstIteration {
-                firstIteration := 0
-                break
-            }
             ; Horizontal -> Vertical
             if This.ShiftThumbsDirection <= 4 {
                 nextPosX += step_x
@@ -807,7 +801,7 @@
                 }
             }
 
-            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
         }
 
         This.ThumbMove( nextPosX,
@@ -819,7 +813,7 @@
     }
 
     ; Checks collisions for the new thumbnail position
-    CheckCollisions(x1, y1, w1, h1) {
+    CheckCollisions(x1, y1, w1, h1, ThumbHwnd) {
         if !This.ShiftThumbsCollisionCheck
             return
 
@@ -828,7 +822,7 @@
                 if (Name = "Window") {
                     WinGetPos(&x2, &y2, &w2, &h2, Obj.Hwnd)
 
-                    if (x1 < x2 + w2) && (x2 < x1 + w1) && (y1 < y2 + h2) && (y2 < y1 + h1) {
+                    if (x1 < x2 + w2) && (x2 < x1 + w1) && (y1 < y2 + h2) && (y2 < y1 + h1) && (Obj.Hwnd != ThumbHwnd) {
                         return 1
                     }
                 }
