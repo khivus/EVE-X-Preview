@@ -26,10 +26,11 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.0.4f3.9
+;@Ahk2Exe-Let U_version = 1.0.4f3.10
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83
+;@Ahk2Exe-Let U_ForkAuth = khivus
 ;@Ahk2Exe-SetDescription EVE-X-Preview
 ;@Ahk2Exe-SetProductName EVE-X-Preview
 ;@Ahk2Exe-ExeName EVE-X-Preview
