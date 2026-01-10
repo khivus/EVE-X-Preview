@@ -126,7 +126,7 @@
         }
 
         About_Button_Handler() {
-            MsgBox("EVE-X-Preview v1.0.4f3.10`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
+            MsgBox("EVE-X-Preview v1.3.11.0`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
         }
 
         Help_Button_Handler() {
@@ -147,7 +147,7 @@
 
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h800 w500")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h820 w500")
     
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . LabelOffset . " yp+" . RowSpacing . " Section", "Suspend All Hotkeys – Hotkey")
@@ -303,6 +303,10 @@
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
         This.S_Gui["SwitchLangOnErr"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Check for Updates on Startup")
+
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("CheckBox", "xp+" . FieldOffset . " ys vCheck_Updates Checked" This.Check_Updates, "On/Off")
+        This.S_Gui["Check_Updates"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
 
         gSettings_EventHandler(obj) {
@@ -411,6 +415,10 @@
             }
             else if (obj.name = "ShiftThumbVerticalStep") {
                 This.ShiftThumbVerticalStep := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "Check_Updates") {
+                This.Check_Updates := obj.value
                 This.NeedRestart := 1
             }
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -978,6 +986,7 @@
         This.S_Gui["ShiftThumbsDirection"].Choose(current_index)
         This.S_Gui["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
         This.S_Gui["ShiftThumbVerticalStep"].value := This.ShiftThumbVerticalStep
+        This.S_Gui["Check_Updates"].value := This.Check_Updates
 
         ;Client Settings
         This.S_Gui["MinimizeInactiveClients"].value := This.MinimizeInactiveClients

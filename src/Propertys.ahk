@@ -148,6 +148,16 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["ShiftThumbVerticalStep"] := value
     }
 
+    Check_Updates {
+        get => This._JSON["global_Settings"]["Check_Updates"]
+        set => This._JSON["global_Settings"]["Check_Updates"] := value
+    }
+
+    First_Start_After_Update {
+        get => This._JSON["global_Settings"]["First_Start_After_Update"]
+        set => This._JSON["global_Settings"]["First_Start_After_Update"] := value
+    }
+
     ;########################
     ;## Profile ThumbnailSettings
 

@@ -33,7 +33,9 @@
         "ShiftThumbsCollisionCheck": true,
         "ShiftThumbsDirection": 1,
         "ShiftThumbHorizontalStep": 0,
-        "ShiftThumbVerticalStep": 0
+        "ShiftThumbVerticalStep": 0,
+        "Check_Updates": true,
+        "First_Start_After_Update": false
     },
     "_Profiles": {
         "Default": {
