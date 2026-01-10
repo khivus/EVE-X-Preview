@@ -53,10 +53,9 @@
         for index, prefix in prefixArr
             Hotkey(  prefix . Main_Class.virtualKey, ObjBindMethod(This, "ActivateForgroundWindow"), "S P1")
 
-        ; Check app updates if setting checked
-        This.Updates_Checker()
+        This.Updates_Checker() ; Check app updates if setting checked
 
-        if This.First_Start_After_Update {
+        if This.First_Start_After_Update { ; Display message after succsessful update
             Version := FileGetVersion("EVE-X-Preview.exe")
             MsgBox("EVE-X-Preview succsessfully updated to version " Version)
             This.First_Start_After_Update := 0
@@ -290,80 +289,90 @@
         if !This.Check_Updates
             return
 
-        ; Getting .exe version
-        Version := FileGetVersion("EVE-X-Preview.exe")
+        try {
+            ; Getting .exe version
+            Version := FileGetVersion("EVE-X-Preview.exe")
 
-        ; Getting json of latest release
-        apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest"
-        whr := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr.Open("GET", apiUrl)
-        whr.SetRequestHeader("User-Agent", "AHK")
-        whr.Send()
-        whr.WaitForResponse()
-        json_ans := whr.ResponseText
+            ; Getting json of latest release
+            apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest"
+            whr := ComObject("WinHttp.WinHttpRequest.5.1")
+            whr.Open("GET", apiUrl)
+            whr.SetRequestHeader("User-Agent", "AHK")
+            whr.Send()
+            whr.WaitForResponse()
+            json_ans := whr.ResponseText
 
-        ; Finding tag of latest release
-        tag := RegExReplace(json_ans, '.*"tag_name":\s*"([^"]+)".*', "$1")
-        tag := StrReplace(tag, "v")
+            ; Finding tag of latest release
+            tag := RegExReplace(json_ans, '.*"tag_name":\s*"([^"]+)".*', "$1")
+            tag := StrReplace(tag, "v")
 
-        if tag == Version
-            return ; No update available
+            if tag == Version
+                return ; No update available
 
-        ; Finding download link
-        if RegExMatch(json_ans, '"browser_download_url"\s*:\s*"([^"]+\.exe)"', &m)
-            exeUrl := m[1]
+            ; Finding download link
+            if RegExMatch(json_ans, '"browser_download_url"\s*:\s*"([^"]+\.exe)"', &m)
+                exeUrl := m[1]
 
-        Message := "New version " tag " available!`n" . 
-            "Current version:" Version "`n`n" . 
-            "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
-            "Do you want automatically download and install the update now?`n" . 
-            "Please don`'t touch the application until the update is complete."
+            Message := "New version " tag " available!`n" . 
+                "Current version:" Version "`n`n" . 
+                "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
+                "Do you want automatically download and install the update now?`n" . 
+                "Please don`'t touch the application until the update is complete."
 
-        result := MsgBox(Message, "EVE-X-Preview update", "YesNoCancel")
+            result := MsgBox(Message, "EVE-X-Preview update", "YesNoCancel")
 
-        if result = "Yes" {
-            ; Downloading file and running
-            scriptDir := A_ScriptDir
-            scriptName := A_ScriptName
-            scriptPath := (scriptDir "\" scriptName)
-            newPath := scriptDir "\EVE-X-Preview_new.exe"
+            if result = "Yes" {
+                ; Downloading file and running
+                scriptDir := A_ScriptDir
+                scriptName := A_ScriptName
+                scriptPath := (scriptDir "\" scriptName)
+                newPath := scriptDir "\EVE-X-Preview_new.exe"
 
-            if FileExist("EVE-X-Preview_new.exe")
-                FileDelete("EVE-X-Preview_new.exe")
+                ; Checking if files exist and deleting if so
+                if FileExist("EVE-X-Preview_new.exe")
+                    FileDelete("EVE-X-Preview_new.exe")
+                
+                Download(exeUrl, newPath) ; Download file from GitHub
 
-            Download(exeUrl, newPath)
+                ; Checking if all variables are correct
+                if !FileExist(scriptPath)
+                    Throw Error("Could not get application path!")
+                if !FileExist(newPath)
+                    Throw Error("Error downloading new version!")
+                if !scriptName
+                    Throw Error("Could not get application name!")
+                
+                batContent := '@echo off' . "`r`n" .
+                    'ping 127.0.0.1 -n 6 >nul' . "`r`n" .
+                    'del /f /q "' . scriptPath . '"' . "`r`n" .
+                    'if exist "' . newPath . '" (' . "`r`n" .
+                    '  ren "' . newPath . '" "' . scriptName . '"' . "`r`n" .
+                    '  start "" "' . scriptPath . '"' . "`r`n" .
+                    ')' . "`r`n" .
+                    'del "' . scriptDir '\update.bat"'
 
-            if !FileExist(scriptPath) || !FileExist(newPath) {
-                MsgBox("Could not get scriptPath or newPath!")
-                return
+                ; Removing old update.bat if exist
+                if FileExist("update.bat")
+                    FileDelete("update.bat")
+
+                FileAppend(batContent, "update.bat") ; Creating update.bat
+
+                if !FileExist("update.bat")
+                    Throw Error("Could not create update.bat!")
+
+                This.First_Start_After_Update := 1 ; For showing update message
+                This.SaveJsonToFile()
+
+                Run("update.bat", scriptDir, "hide") ; Running update.bat
+                ExitApp()
             }
-
-            batContent := '@echo off' . "`r`n" .
-                'ping 127.0.0.1 -n 6 >nul' . "`r`n" .
-                'del /f /q "' . scriptPath . '"' . "`r`n" .
-                'if exist "' . newPath . '" (' . "`r`n" .
-                '  ren "' . newPath . '" "' . scriptName . '"' . "`r`n" .
-                '  start "" "' . scriptPath . '"' . "`r`n" .
-                ')' . "`r`n" .
-                'del "' . scriptDir '\update.bat"'
-
-            if FileExist("update.bat")
-                FileDelete("update.bat")
-
-            FileAppend(batContent, "update.bat")
-
-            if !FileExist("update.bat") {
-                MsgBox("Could not create update.bat!")
-                return
+            else if result = "Cancel" {
+                This.Check_Updates := 0
+                This.SaveJsonToFile()
             }
-
-            This.First_Start_After_Update := 1
-            This.SaveJsonToFile()
-
-            Run("update.bat", scriptDir, "hide")
-            ExitApp()
         }
-        else if result = "Cancel" {
+        catch ValueError as e {
+            MsgBox("An error occurred while trying to update the application:`n" e.Message "`n" e.Extra "`nUpdate checker is disabled.")
             This.Check_Updates := 0
             This.SaveJsonToFile()
         }

@@ -126,7 +126,8 @@
         }
 
         About_Button_Handler() {
-            MsgBox("EVE-X-Preview v1.3.11.0`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
+            Version := FileGetVersion("EVE-X-Preview.exe")
+            MsgBox("EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
         }
 
         Help_Button_Handler() {
@@ -167,8 +168,8 @@
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Login Screen Cycle Direction")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xp+" . FieldOffset . " ys w37 vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Forwards")
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", " xp+80 yp w37 vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "Backwards")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", "xp+" . FieldOffset . " ys w37 vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Old->New")
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Radio", " xp+90 yp w37 vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "New->Old")
         This.S_Gui["LoginScreenCycleDirectionForwards"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
         This.S_Gui["LoginScreenCycleDirectionBackwards"].OnEvent("Click", (obj, *) => gSettings_EventHandler(obj))
 
