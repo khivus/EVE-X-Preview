@@ -138,6 +138,11 @@
             }
         }
 
+        ; Profiling
+        This.ProfActive := false
+        ProfEnabled := false
+        ProfEnabled ? This.StartProfiling() : 0
+
         ; Resets the position of Shifting thubmnails
         This.allLoginClosed := 0
 
@@ -169,7 +174,45 @@
         return This
     }
 
+    ; Profiling for optimization testing
+    StartProfiling(minutes := 1) {
+        This.TickCount := 0
+        This.TotalTime := 0
+        This.MaxTime := 0
+        This.Spike5 := 0
+        This.Spike10 := 0
+
+        This.ProfStart := A_TickCount
+        This.ProfActive := true
+
+        SetTimer(ObjBindMethod(This, "StopProfiling"), -(minutes * 60000))
+    }
+
+    StopProfiling() {
+        This.ProfActive := false
+
+        elapsedMs := A_TickCount - This.ProfStart
+        seconds := elapsedMs / 1000
+        avg := This.TickCount ? (This.TotalTime / This.TickCount) : 0
+        rate := This.TickCount / seconds
+
+        MsgBox(
+            "Profiling results:`n`n"
+            "Duration: " Round(seconds, 1) " s`n"
+            "Ticks: " This.TickCount "`n"
+            "Rate: " Round(rate, 2) " /sec`n"
+            "Avg time: " Round(avg, 2) " ms`n"
+            "Max spike: " This.MaxTime " ms`n"
+            ">5 ms spikes: " This.Spike5 "`n"
+            ">10 ms spikes: " This.Spike10
+        )
+    }
+
+
     HandleMainTimer() {
+        if This.ProfActive ; Profiling
+            __t0 := A_TickCount
+
         static HideShowToggle := 0, LastActiveHWND := 0, WinList := {}
 
         try
@@ -282,6 +325,20 @@
                     This.allLoginClosed := 1
                 }
             }
+        }
+
+    if This.ProfActive { ; Profiling
+        elapsed := A_TickCount - __t0
+
+        This.TickCount++
+        This.TotalTime += elapsed
+        if elapsed > This.MaxTime
+            This.MaxTime := elapsed
+
+        if elapsed > 5
+            This.Spike5++
+        if elapsed > 10
+            This.Spike10++
         }
     }
 
