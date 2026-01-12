@@ -22,19 +22,19 @@
         ;Sets Margins for the following Buttons
         This.S_Gui.MarginX := 80, This.S_Gui.MarginY := 20
 
-        ;Font options for the Utility Buttons
-        This.S_Gui.SetFont("s10")
-        
-        ; Utility buttons
-        This.S_Gui.Add("Button", "x19 y12 w90 h28 vAbout_Button", "About").OnEvent("Click", (*) => About_Button_Handler())
-        This.S_Gui.Add("Button", "xp yp+36 wp hp vHelp_Button", "Help").OnEvent("Click", (*) => Help_Button_Handler())
-
         ;Font options for the Profiles Buttons
         This.S_Gui.SetFont("s12 Bold")
 
         ; Primary buttons
-        This.S_Gui.Add("Button", "xp+100 y12 w196 h64 vGlobal_Settings", "Global Settings").OnEvent("Click", (obj, *) => Button_Handler(obj))
+        This.S_Gui.Add("Button", "x19 y12 w196 h64 vGlobal_Settings", "Global Settings").OnEvent("Click", (obj, *) => Button_Handler(obj))
         This.S_Gui.Add("Button", "xp+206 yp wp hp vProfile_Settings", "Profile Settings").OnEvent("Click", (obj, *) => Button_Handler(obj))
+
+        ;Font options for the Utility Buttons
+        This.S_Gui.SetFont("s10")
+
+        ; Utility buttons
+        This.S_Gui.Add("Button", "xp+206 y12 w90 h28 vAbout_Button", "About").OnEvent("Click", (*) => About_Button_Handler())
+        This.S_Gui.Add("Button", "xp yp+36 wp hp vHelp_Button", "Help").OnEvent("Click", (*) => Help_Button_Handler())
 
         This.S_Gui.Show("hide")
 
