@@ -221,88 +221,87 @@
             return
 
         ; If any EVE Window exist
-        if !WinList.Length 
-            return
+        if WinList.Length {
+            ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
+            for index, hwnd in WinList {
+                WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
 
-        ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
-        for index, hwnd in WinList {
-            WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
-
-            if !This.ThumbWindows.HasProp(hwnd) {
-                This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                if (!This.HideThumbnailsOnLostFocus) {
-                    This.ShowThumb(hwnd, "Show")
-                }                      
-                HideShowToggle := 1
-            }
-            else { ; This change improved performance by ~15-17%
-                ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
-                if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
-                    This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                if !This.ThumbWindows.HasProp(hwnd) {
+                    This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
+                    if (!This.HideThumbnailsOnLostFocus) {
+                        This.ShowThumb(hwnd, "Show")
+                    }                      
+                    HideShowToggle := 1
                 }
+                else { ; This change improved performance by ~15-17%
+                    ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
+                    if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
+                        This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                    }
 
-                ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
-                if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
-                    if This.ShiftThumbsForLoginScreen
-                        This.ShiftThumbs(hwnd)
-                    else
-                        This.ThumbMove( This.ThumbnailStartLocation["x"],
-                                        This.ThumbnailStartLocation["y"],
-                                        This.ThumbnailStartLocation["width"],
-                                        This.ThumbnailStartLocation["height"],
-                                        This.ThumbWindows.%hwnd%)
-                }
+                    ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
+                    if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
+                        if This.ShiftThumbsForLoginScreen
+                            This.ShiftThumbs(hwnd)
+                        else
+                            This.ThumbMove( This.ThumbnailStartLocation["x"],
+                                            This.ThumbnailStartLocation["y"],
+                                            This.ThumbnailStartLocation["width"],
+                                            This.ThumbnailStartLocation["height"],
+                                            This.ThumbWindows.%hwnd%)
+                    }
 
-                ; if in Character selection screen 
-                if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
-                    This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
-                    if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                    ; if in Character selection screen 
+                    if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
+                        This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
+                        if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                            This.EVENameChange(hwnd, WinList.%hwnd%.Title)
+                        }
+                    }
+                    else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
                         This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                     }
                 }
-                else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
-                    This.EVENameChange(hwnd, WinList.%hwnd%.Title)
-                }
             }
-        }
 
-        try {
-            ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-            ActiveProcessName := WinGetProcessName("A")
-            CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
+            try {
+                ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
+                ActiveProcessName := WinGetProcessName("A")
+                CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
 
-            if ((CallResponse || ActiveProcessName != "exefile.exe") && !HideShowToggle && This.HideThumbnailsOnLostFocus) {
-                SetTimer(This.CheckforActiveWindow, -500)
-                HideShowToggle := 1
-            }
-            else if ( ActiveProcessName == "exefile.exe" && !CallResponse) {
-                Ahwnd := WinExist("A")
-                if This.HideThumbForActiveWin && !HideShowToggle {
-                    This.ShowThumb(Ahwnd, "Hide")
-
-                    if LastActiveHWND && LastActiveHWND != Ahwnd
-                        This.ShowThumb(LastActiveHWND, "Show")
-                        This.UpdateThumb_AfterActivation(, Ahwnd)
-                    LastActiveHWND := Ahwnd
+                if ((CallResponse || ActiveProcessName != "exefile.exe") && !HideShowToggle && This.HideThumbnailsOnLostFocus) {
+                    SetTimer(This.CheckforActiveWindow, -500)
+                    HideShowToggle := 1
                 }
-                else {
-                    if HideShowToggle {
-                        for EVEHWND in This.ThumbWindows.OwnProps() {
-                            This.ShowThumb(EVEHWND, "Show")
-                        }
-                        HideShowToggle := 0
-                        This.BorderActive := 0
+                else if ( ActiveProcessName == "exefile.exe" && !CallResponse) {
+                    Ahwnd := WinExist("A")
+                    if This.HideThumbForActiveWin && !HideShowToggle {
+                        This.ShowThumb(Ahwnd, "Hide")
+
+                        if LastActiveHWND && LastActiveHWND != Ahwnd
+                            This.ShowThumb(LastActiveHWND, "Show")
+                            This.UpdateThumb_AfterActivation(, Ahwnd)
+                        LastActiveHWND := Ahwnd
                     }
-                    
-                    ; sets the Border to the active window thumbnail 
-                    else if (Ahwnd != This.BorderActive) {
-                        ;Shows the Thumbnail on top of other thumbnails
-                        if (This.ShowThumbnailsAlwaysOnTop)
-                            WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
+                    else {
+                        if HideShowToggle {
+                            for EVEHWND in This.ThumbWindows.OwnProps() {
+                                This.ShowThumb(EVEHWND, "Show")
+                            }
+                            HideShowToggle := 0
+                            This.BorderActive := 0
+                        }
                         
-                        This.ShowActiveBorder(Ahwnd)
-                        This.UpdateThumb_AfterActivation(, Ahwnd)
-                        This.BorderActive := Ahwnd
+                        ; sets the Border to the active window thumbnail 
+                        else if (Ahwnd != This.BorderActive) {
+                            ;Shows the Thumbnail on top of other thumbnails
+                            if (This.ShowThumbnailsAlwaysOnTop)
+                                WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
+                            
+                            This.ShowActiveBorder(Ahwnd)
+                            This.UpdateThumb_AfterActivation(, Ahwnd)
+                            This.BorderActive := Ahwnd
+                        }
                     }
                 }
             }
