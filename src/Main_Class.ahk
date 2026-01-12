@@ -53,13 +53,15 @@
         for index, prefix in prefixArr
             Hotkey(  prefix . Main_Class.virtualKey, ObjBindMethod(This, "ActivateForgroundWindow"), "S P1")
 
+        This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
+
         This.Updates_Checker() ; Check app updates if setting checked
 
         if This.First_Start_After_Update { ; Display message after succsessful update
-            Version := FileGetVersion("EVE-X-Preview.exe")
+            Version := FileGetVersion(A_ScriptName)
             MsgBox("EVE-X-Preview succsessfully updated to version " Version)
             This.First_Start_After_Update := 0
-            This.SaveJsonToFile()
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
         ; Register Hotkey for Puase Hotkeys if the user has is Set
@@ -166,7 +168,7 @@
 
         ;The Main Timer who checks for new EVE Windows or closes Windows 
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), 50)
-        This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
+        
         ;Timer property to remove Thumbnails for closed EVE windows 
         This.DestroyThumbnails := ObjBindMethod(This, "EvEWindowDestroy")
         This.DestroyThumbnailsToggle := 1
@@ -346,7 +348,7 @@
 
         try {
             ; Getting .exe version
-            Version := FileGetVersion("EVE-X-Preview.exe")
+            Version := FileGetVersion(A_ScriptName)
 
             ; Getting json of latest release
             apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest"
@@ -378,58 +380,54 @@
 
             if result = "Yes" {
                 ; Downloading file and running
-                scriptDir := A_ScriptDir
                 scriptName := A_ScriptName
-                scriptPath := (scriptDir "\" scriptName)
-                newPath := scriptDir "\EVE-X-Preview_new.exe"
+                newScriptName := "EVE-X-Preview_new_version.exe"
 
-                ; Checking if files exist and deleting if so
-                if FileExist("EVE-X-Preview_new.exe")
-                    FileDelete("EVE-X-Preview_new.exe")
+                ; Checking if file of new verison exist and deleting if so
+                if FileExist(newScriptName)
+                    FileDelete(newScriptName)
                 
-                Download(exeUrl, newPath) ; Download file from GitHub
+                Download(exeUrl, newScriptName) ; Download file from GitHub
 
-                ; Checking if all variables are correct
-                if !FileExist(scriptPath)
-                    Throw Error("Could not get application path!")
-                if !FileExist(newPath)
+                ; Checking if new version downloaded
+                if !FileExist(newScriptName)
                     Throw Error("Error downloading new version!")
-                if !scriptName
-                    Throw Error("Could not get application name!")
                 
+                batName := "EVE-X-Preview_update.bat"
                 batContent := '@echo off' . "`r`n" .
-                    'ping 127.0.0.1 -n 6 >nul' . "`r`n" .
-                    'del /f /q "' . scriptPath . '"' . "`r`n" .
-                    'if exist "' . newPath . '" (' . "`r`n" .
-                    '  ren "' . newPath . '" "' . scriptName . '"' . "`r`n" .
-                    '  start "" "' . scriptPath . '"' . "`r`n" .
+                    'timeout /t 3 /nobreak >nul' . "`r`n" .
+                    'del /f /q "%~dp0\' . scriptName . '"' . "`r`n" .
+                    'if exist "%~dp0' . newScriptName . '" (' . "`r`n" .
+                    '  ren "%~dp0' . newScriptName . '" "' . scriptName . '"' . "`r`n" .
+                    '  start "" "' . scriptName . '"' . "`r`n" .
                     ')' . "`r`n" .
-                    'del "' . scriptDir '\update.bat"'
+                    'del "%~dp0\' . batName . '"'
 
                 ; Removing old update.bat if exist
-                if FileExist("update.bat")
-                    FileDelete("update.bat")
+                if FileExist(batName)
+                    FileDelete(batName)
 
-                FileAppend(batContent, "update.bat") ; Creating update.bat
+                FileAppend(batContent, batName) ; Creating update.bat
 
-                if !FileExist("update.bat")
+                if !FileExist(batName)
                     Throw Error("Could not create update.bat!")
 
                 This.First_Start_After_Update := 1 ; For showing update message
-                This.SaveJsonToFile()
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+                Sleep 250 ; Waiting for settings to save
 
-                Run("update.bat", scriptDir, "hide") ; Running update.bat
+                Run(batName, "hide") ; Running update.bat
                 ExitApp()
             }
             else if result = "Cancel" {
                 This.Check_Updates := 0
-                This.SaveJsonToFile()
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
         }
         catch ValueError as e {
             MsgBox("An error occurred while trying to update the application:`n" e.Message "`n" e.Extra "`nUpdate checker is disabled.")
             This.Check_Updates := 0
-            This.SaveJsonToFile()
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
 

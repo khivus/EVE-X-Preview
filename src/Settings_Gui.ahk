@@ -126,7 +126,7 @@
         }
 
         About_Button_Handler() {
-            Version := FileGetVersion("EVE-X-Preview.exe")
+            Version := FileGetVersion(A_ScriptName)
             MsgBox("EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
         }
 
