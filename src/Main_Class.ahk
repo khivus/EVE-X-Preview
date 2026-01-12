@@ -145,7 +145,10 @@
             This.StartProfiling()
 
         ; Resets the position of Shifting thubmnails
-        This.allLoginClosed := 0
+        This.allLoginClosed := false
+
+        ; Skips collision check and thumb move if thumb "touch" screen edge
+        This.skipShiftThumbs := false
 
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
@@ -314,14 +317,14 @@
                 }
             }
             if !WinList.Length
-                This.allLoginClosed := 1
+                This.allLoginClosed := true
             else {
                 for EVEHWND in This.ThumbWindows.OwnProps() {
                     if This.ThumbWindows.%EVEHWND%["Window"].Title == "" {
-                        This.allLoginClosed := 0
+                        This.allLoginClosed := false
                         break
                     }
-                    This.allLoginClosed := 1
+                    This.allLoginClosed := true
                 }
             }
         }
@@ -886,7 +889,7 @@
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
     ShiftThumbs(Win_Hwnd) {
-        if !This.ShiftThumbsForLoginScreen
+        if !This.ShiftThumbsForLoginScreen || This.skipShiftThumbs
             return
 
         static nextPosX := This.ThumbnailStartLocation["x"]
@@ -920,7 +923,7 @@
         else if This.allLoginClosed {
             nextPosX := This.ThumbnailStartLocation["x"]
             nextPosY := This.ThumbnailStartLocation["y"]
-            This.allLoginClosed := 0
+            This.allLoginClosed := false
             Collision := 0
         }
         else
@@ -938,6 +941,8 @@
                         nextPosX := This.ThumbnailStartLocation["x"]
                         nextPosY := This.ThumbnailStartLocation["y"]
                         MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
+                        This.skipShiftThumbs := true
+                        break
                     }
                 }
             }
@@ -952,6 +957,8 @@
                         nextPosX := This.ThumbnailStartLocation["x"]
                         nextPosY := This.ThumbnailStartLocation["y"]
                         MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
+                        This.skipShiftThumbs := true
+                        break
                     }
                 }
             }
