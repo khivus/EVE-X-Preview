@@ -4,17 +4,17 @@
 <img width="548" height="952" alt="EVE-X-Preview_usB30Vwy9H" src="https://github.com/user-attachments/assets/294f8f7e-3ebe-44af-b99a-81c5d458c79b" />
 </p>
 
-# WHAT ADDED
+# What’s New
 {Setting Name} = {Default Value}. {Description}.
-### Hotkeys and Managment
+### Hotkeys and Management
 * __Cycle Login Screens – Hotkey__ = _Empty_. Login (character selection) screen windows sorted by process time (powered by __*bubble sort!!!*__). 
-* __Login Screen Cycle Direction__ = _Old->New_. Direction for Cycle Login Screens. Old->New means the first window launched will be the first in the list and other one is opposite.
+* __Login Screen Cycle Direction__ = _Old->New_. Direction for Cycle Login Screens. Old->New means the first window launched will be the first in the list and other way around.
 * __Close Active EVE Window – Hotkey__ = _Empty_. This hotkey closes active EVE client.
 * __Close All EVE Windows – Hotkey__ = _Empty_. This hotkey closes all EVE clients.
 * __Reload EVE-X-Preview – Hotkey__ = _Empty_. This hotkey reloads EVE-X-Preview.
 
 ### Thumbnail Settings
-* __Hide Thumbnail for Active Window__ = _False_. When you activate the EVE window, it's thumbnail will be hidden.
+* __Hide Thumbnail for Active Window__ = _False_. When you activate the EVE window, its thumbnail will be hidden.
 
 ### Shifting Thumbnails
 * __Shift Thumbnails on Login Screen__ = _True_. When a new thumbnail is created it shifts from the default position by a set amount of pixels.
@@ -24,13 +24,13 @@
 * __Thumbnail Shift Vertical Step (px)__ = _0_. Vertical step in pixels. If set to 0, the default thumbnail height will be used.
 
 ### Thumbnail Preservations
-* __Preserve Hotkeys on Logout__ = _False_. When you log out of your character, program saves your nickname and "adds" it back to the hotkey groups. It also removes it from the "Cycle Login Screens" group.
-* __Preserve Character Name On logout__ = _False_. If enabled, your character name will still be visible on the thumbnail on the character selection screen after you log out.
-* __Preserve Thumbnail Position on Logout__ = _True_. If enabled, thumbnail will keep position after log out.
+* __Preserve Hotkeys on Logout__ = _False_. When you logout of your character, program saves your nickname and you still can use profile hotkeys on these windows. It also removes it from the "Cycle Login Screens" group.
+* __Preserve Character Name On logout__ = _False_. If enabled, your character name will still be visible on the thumbnail on the character selection screen after you logout.
+* __Preserve Thumbnail Position on Logout__ = _True_. If enabled, thumbnail will keep position after logout.
 
 ### Other
 * __Switch Language to English on Error__ = _False_. __*This feature may be unstable. If program repeatedly restarts, disable it.*__ If you have multiple languages on your PC, you may encounter the error "Invalid key name". This function switches the language to English, but disables a few error messages for hotkey registration.
-* __Check for Updates on Startup__ = _True_. When program starts it compares version of app with [github latest release](https://github.com/khivus/EVE-X-Preview/releases/latest) version and if they not equal it suggests to download and install update. All what user need to do is click "yes". After update, program will show message of succsessfull instalation.
+* __Check for Updates on Startup__ = _True_. When program starts it compares version of app with [github latest release](https://github.com/khivus/EVE-X-Preview/releases/latest) version and if they are not equal it suggests to download and install update. All what user need to do is click "yes". After update, program will show message of successful installation.
 * __About button__. Shows program version and developers.
 * __Help button__. Opens link to [this page](https://github.com/khivus/EVE-X-Preview/blob/main/README.MD).
 
@@ -39,8 +39,8 @@
 * Reorganized and renamed Global Settings.
 * Small Cycle Hotkey Groups optimization.
 * "Hide Thumbnail on Lost Focus" setting now also hides thumbnails in login screen.
-* Minimize Inactive Clients now also minimizes clients in login (character selection) screen. This can greatly improve performance on weak pc's.
-* Added profile testing for future optimization updates.
+* Minimize Inactive Clients now also minimizes clients in login (character selection) screen. This can greatly improve performance on low-end PCs.
+* Added profiling testing for optimization checks.
 * Improved performance of main function by ~30-40%.
 
 ##  EVE-X-Preview
