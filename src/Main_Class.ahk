@@ -346,10 +346,10 @@
         if !This.Check_Updates
             return
 
-        try {
-            ; Getting .exe version
-            Version := FileGetVersion(A_ScriptName)
+        ; Getting .exe version
+        Version := FileGetVersion(A_ScriptName)
 
+        try {
             ; Getting json of latest release
             apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest"
             whr := ComObject("WinHttp.WinHttpRequest.5.1")
@@ -358,26 +358,28 @@
             whr.Send()
             whr.WaitForResponse()
             json_ans := whr.ResponseText
+        }
+        catch {
+            MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
+            return
+        }
 
-            ; Finding tag of latest release
-            tag := RegExReplace(json_ans, '.*"tag_name":\s*"([^"]+)".*', "$1")
-            tag := StrReplace(tag, "v")
+        ; Finding tag of latest release
+        tag := RegExReplace(json_ans, '.*"tag_name":\s*"([^"]+)".*', "$1")
+        tag := StrReplace(tag, "v")
 
-            if tag == Version
-                return ; No update available
+        if tag == Version
+            return ; No update available
 
-            ; Finding download link
-            if RegExMatch(json_ans, '"browser_download_url"\s*:\s*"([^"]+\.exe)"', &m)
-                exeUrl := m[1]
+        Message := "New version " tag " available!`n" . 
+            "Current version:" Version "`n`n" . 
+            "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
+            "Do you want automatically download and install the update now?`n" . 
+            "Please don`'t touch the application until the update is complete."
 
-            Message := "New version " tag " available!`n" . 
-                "Current version:" Version "`n`n" . 
-                "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
-                "Do you want automatically download and install the update now?`n" . 
-                "Please don`'t touch the application until the update is complete."
+        result := MsgBox(Message, "EVE-X-Preview update", "YesNoCancel")
 
-            result := MsgBox(Message, "EVE-X-Preview update", "YesNoCancel")
-
+        try {
             if result = "Yes" {
                 ; Downloading file and running
                 scriptName := A_ScriptName
@@ -387,6 +389,7 @@
                 if FileExist(newScriptName)
                     FileDelete(newScriptName)
                 
+                exeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" tag "/EVE-X-Preview.exe"
                 Download(exeUrl, newScriptName) ; Download file from GitHub
 
                 ; Checking if new version downloaded
@@ -395,7 +398,7 @@
                 
                 batName := "EVE-X-Preview_update.bat"
                 batContent := '@echo off' . "`r`n" .
-                    'timeout /t 3 /nobreak >nul' . "`r`n" .
+                    'timeout /t 2 /nobreak >nul' . "`r`n" .
                     'del /f /q "%~dp0\' . scriptName . '"' . "`r`n" .
                     'if exist "%~dp0' . newScriptName . '" (' . "`r`n" .
                     '  ren "%~dp0' . newScriptName . '" "' . scriptName . '"' . "`r`n" .
@@ -416,7 +419,7 @@
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
                 Sleep 250 ; Waiting for settings to save
 
-                Run(batName, "hide") ; Running update.bat
+                Run(batName) ; For some unknown reason the hidden mode does not work on some systems
                 ExitApp()
             }
             else if result = "Cancel" {
