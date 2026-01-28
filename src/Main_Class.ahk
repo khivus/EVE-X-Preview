@@ -180,6 +180,7 @@
         return This
     }
 
+
     ; Profiling for optimization testing
     StartProfiling(minutes := 1) {
         This.TickCount := 0
@@ -192,6 +193,7 @@
         SetTimer(ObjBindMethod(This, "StopProfiling"), -(minutes * 60000))
     }
 
+    
     StopProfiling() {
         This.ProfActive := false
 
