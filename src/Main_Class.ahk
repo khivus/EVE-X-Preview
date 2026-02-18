@@ -1251,10 +1251,15 @@
     }
 
     ;removes "EVE" from the Titel and leaves only the Character names
-    CleanTitle(title) {
-        Return RegExReplace(title, "^(?i)eve(?:\s*-\s*)?\b", "")
+    CleanTitle(title) { ; More optimized than regex
+        len := StrLen(title)
+        if len >= 6 && SubStr(title, 1, 6) == "EVE - "
+            return SubStr(title, 7)
+        if len == 3 && title == "EVE"
+            return ""
+        return title
+        ; Return RegExReplace(title, "^(?i)eve(?:\s*-\s*)?\b", "")
         ;RegExReplace(title, "(?i)eve\s*-\s*", "")
-
     }
 
     SaveJsonToFile() {

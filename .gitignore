@@ -1,0 +1,6 @@
+# Folders
+.vs/
+
+# Files
+*.exe
+*.json
