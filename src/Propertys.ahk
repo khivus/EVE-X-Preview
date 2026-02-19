@@ -158,6 +158,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["global_Settings"]["First_Start_After_Update"] := value
     }
 
+    ThisThat {
+        get => This._JSON["global_Settings"]["ThisThat"]
+        set => This._JSON["global_Settings"]["ThisThat"] := value
+    }
+
     ;########################
     ;## Profile ThumbnailSettings
 

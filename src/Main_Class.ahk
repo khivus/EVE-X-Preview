@@ -656,6 +656,8 @@
             }
         }
 
+        This.hitThis()
+
         IsActiveWinInGroup(Title, Arr) {
             for index, names in Arr {
                 if names = Title
@@ -664,6 +666,33 @@
             return false
         }
     }
+
+
+    hitThis() {
+        if not This.ThisThat
+            return
+
+        static counter := 0
+        static hit_score := 0
+        static last_tick := A_TickCount
+        tick := A_TickCount
+
+        if tick - last_tick > 1000
+            hit_score := 0
+
+        hit_score++
+        counter++
+
+        x := A_ScreenWidth
+        y := A_ScreenHeight
+
+        CoordMode "ToolTip", "Screen"
+        ToolTip("Combo " hit_score "`nTotal " counter, x, y)
+        SetTimer(() => ToolTip(), -1000)
+
+        last_tick := tick
+    }
+
 
     ; Checks for OldTitle == CleanTitle in all login screen windows
     ; return HWND if found
@@ -726,6 +755,8 @@
             currentIndex := 1
 
         This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
+        
+        This.hitThis()
     }
 
     ; Close Active EVE Client 
@@ -1259,7 +1290,7 @@
             return ""
         return title
         ; Return RegExReplace(title, "^(?i)eve(?:\s*-\s*)?\b", "")
-        ;RegExReplace(title, "(?i)eve\s*-\s*", "")
+        ; RegExReplace(title, "(?i)eve\s*-\s*", "")
     }
 
     SaveJsonToFile() {

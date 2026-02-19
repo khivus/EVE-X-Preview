@@ -19,23 +19,24 @@
             "width": 50,
             "height": 50
         },
-        "SwitchLangOnErr": false,
+        "SwitchLangOnErr": 0,
         "Login_Screen_Cycle_Hotkey": "",
         "LoginScreenCycleDirection": 1,
-        "PreserveHotkeysOnLogout": false,
+        "PreserveHotkeysOnLogout": 0,
         "Close_Active_EVE_Win_Hotkey": "",
         "Close_All_EVE_Win_Hotkey": "",
         "Reload_Program_Hotkey": "",
-        "PreserveThumbPosOnLogout": true,
-        "PreserveCharNameOnLogout": false,
-        "HideThumbForActiveWin": false,
-        "ShiftThumbsForLoginScreen": true,
-        "ShiftThumbsCollisionCheck": true,
+        "PreserveThumbPosOnLogout": 1,
+        "PreserveCharNameOnLogout": 0,
+        "HideThumbForActiveWin": 0,
+        "ShiftThumbsForLoginScreen": 1,
+        "ShiftThumbsCollisionCheck": 1,
         "ShiftThumbsDirection": 1,
         "ShiftThumbHorizontalStep": 0,
         "ShiftThumbVerticalStep": 0,
-        "Check_Updates": true,
-        "First_Start_After_Update": false
+        "Check_Updates": 1,
+        "First_Start_After_Update": 0,
+        "ThisThat" : 0
     },
     "_Profiles": {
         "Default": {

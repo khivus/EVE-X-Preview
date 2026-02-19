@@ -127,7 +127,24 @@
 
         About_Button_Handler() {
             Version := FileGetVersion(A_ScriptName)
-            MsgBox("EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus", "EVE-X-Preview - About")
+            static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n"
+            text_len := StrLen(text)
+
+            if This.ThisThat
+                text := text "`nFunny"
+
+            what := MsgBox(text, "EVE-X-Preview - About", "CancelTryAgainContinue Iconi")
+
+            if what == "Cancel" || what == "Continue"
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+            else if what == "TryAgain" {
+                This.ThisThat := !This.ThisThat
+
+                if not This.ThisThat
+                    text := SubStr(text, 1, text_len - 1)
+
+                About_Button_Handler()
+            }
         }
 
         Help_Button_Handler() {
@@ -150,7 +167,6 @@
         This.S_Gui.SetFont("s10 w400")
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("GroupBox", "x20 y80 h820 w500")
     
-
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xp+" . LabelOffset . " yp+" . RowSpacing . " Section", "Suspend All Hotkeys – Hotkey")
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Edit", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)

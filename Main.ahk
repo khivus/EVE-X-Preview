@@ -14,7 +14,7 @@ Persistent
 ListLines False
 KeyHistory 0
 
-CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
+; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
 SetWinDelay -1
 FileEncoding("UTF-8") ; Encoding for JSSON file
 
@@ -26,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.4.0.5
+;@Ahk2Exe-Let U_version = 1.4.0.6
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83

@@ -195,6 +195,7 @@ Class ThumbWindow extends Propertys {
     ;## Moves the Window by holding down the Right Mousebutton
     ;## By Holding CTRL and SHIFT it moves all Windows
     Mouse_DragMove(wparam, lparam, msg, hwnd) {
+        CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
         This.Resize := 1
         dragging := 0
         ThumbMap := Map()
@@ -248,6 +249,7 @@ Class ThumbWindow extends Propertys {
 
     ;   wparam, lparam, msg, hwnd
     Mouse_ResizeThumb(wparam, lparam, msg, hwnd) {
+        CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
         This.Resize := 0
         while (GetKeyState("LButton") && GetKeyState("RButton")) {
             Sleep 10
