@@ -26,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.4.1.0
+;@Ahk2Exe-Let U_version = 1.4.1.1
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -95,21 +95,50 @@ Load_JSON() {
         FileMove(tmpPath, userPath, true)
 
     } catch Error as e {
-        ; MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
+        MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
-        value := MsgBox("The settings file is corrupted. Do you want to create a new one?",, "OKCancel")
-        if (value = "Cancel")
+        value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")
+        if (value = "No")
             ExitApp()
 
         ; backup the corrupted file (if not already moved)
         try FileMove(userPath, backupPath, true)
-        catch 
+        catch
+
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
         _JSON := JSON.Load(FileRead(userPath))
         return _JSON
     }
 
     return _JSON
+}
+
+DeepClone(obj) {
+    if !IsObject(obj)
+        return obj
+
+    ; Detect array
+
+    if IsArrayLike(obj) {
+        newArr := obj.Clone()   ; create same-type array
+
+        while (newArr.Length > 0)
+            newArr.Pop()
+
+        for _, v in obj
+            newArr.Push(DeepClone(v))
+
+        return newArr
+    }
+
+    ; Create same-type object
+    newObj := obj.Clone()
+    newObj.Clear()
+
+    for k, v in obj
+        newObj[k] := DeepClone(v)
+
+    return newObj
 }
 
 IsArrayLike(obj) {
@@ -128,7 +157,7 @@ IsArrayLike(obj) {
 JsonMergeNoOverwrite(objDefault, objUser) {
     ; If objUser is NOT an object, replace it entirely
     if !IsObject(objUser) {
-        return objDefault
+        return DeepClone(objDefault)
     }
 
     for key, defVal in objDefault {
@@ -137,8 +166,11 @@ JsonMergeNoOverwrite(objDefault, objUser) {
             ; if objUser is array, skip keyed assignment
             if IsArrayLike(objUser)
                 continue
+            else if IsObject(defVal)
+                objUser[key] := DeepClone(defVal)
+            else
+                objUser[key] := defVal
 
-            objUser[key] := defVal
             continue
         }
 
@@ -163,11 +195,11 @@ JsonMergeNoOverwrite(objDefault, objUser) {
             ; add any default-only profiles (copy whole profile objects)
             for defProfName, defProfObj in defVal {
                 if !userVal.Has(defProfName) {
-                    userVal[defProfName] := defProfObj
+                    userVal[defProfName] := DeepClone(defProfObj)
                 }
             }
 
-            objUser[key] := userVal
+            objUser[key] := DeepClone(userVal)
             continue
         }
 
@@ -179,7 +211,7 @@ JsonMergeNoOverwrite(objDefault, objUser) {
 
         ; TYPE MISMATCH: default object vs user primitive -> prefer default structure
         if IsObject(defVal) && !IsObject(userVal) {
-            objUser[key] := defVal
+            objUser[key] := DeepClone(defVal)
             continue
         }
 
