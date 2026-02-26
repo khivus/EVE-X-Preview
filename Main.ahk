@@ -26,11 +26,10 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.4.0.6
+;@Ahk2Exe-Let U_version = 1.4.1.0
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
-;@Ahk2Exe-SetCopyright gonzo83
-;@Ahk2Exe-Let U_ForkAuth = khivus
+;@Ahk2Exe-SetCopyright gonzo83+khivus
 ;@Ahk2Exe-SetDescription EVE-X-Preview
 ;@Ahk2Exe-SetProductName EVE-X-Preview
 ;@Ahk2Exe-ExeName EVE-X-Preview
@@ -51,102 +50,154 @@ OnError(Error_Handler)
 Call := Main_Class()
 
 
-
+; Improved settings loader
 Load_JSON() {
-    DJSON := JSON.Load(default_JSON)
-    if !(FileExist("EVE-X-Preview.json")) {
-        FileAppend(JSON.Dump(DJSON,,"    " ), "EVE-X-Preview.json")
-        _JSON :=  JSON.Load(FileRead("EVE-X-Preview.json"))
+    defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
+    userPath    := "EVE-X-Preview.json"
+    tmpPath     := "EVE-X-Preview.tmp.json"
+    backupPath  := "EVE-X-Preview." . A_Now . ".bak.json"
+
+    ; Load default JSON (throws on failure)
+    DJSON := JSON.Load(defaultPath)
+
+    ; If user file doesn't exist -> create it from default and return
+    if !FileExist(userPath) {
+        FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+        return JSON.Load(FileRead(userPath))
+    }
+
+    ; Try reading & merging
+    try {
+        UJSON := JSON.Load(FileRead(userPath))  ; may throw if corrupted
+
+        ; If you keep a version key in JSON, run migrations before merging
+        if (DJSON.Has("settings_version")) {
+            dver := DJSON["settings_version"]
+            uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
+            if (uver != dver) {
+                ; Migrate in-place (implement logic inside MigrateSettings)
+                UJSON := MigrateSettings(UJSON, uver, dver)
+                ; ensure we set new version so merge will not re-trigger
+                UJSON["settings_version"] := dver
+            }
+        }
+
+        ; Merge: default -> user, but don't overwrite user's explicit values
+        _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
+
+        ; Create a timestamped backup of the existing file before changing it
+        ; FileMove(userPath, backupPath, true)  ; Used only for debug purposes
+
+        ; Atomic write: write to tmp file then move/rename to target
+        if FileExist(tmpPath)
+            FileDelete(tmpPath)
+        FileAppend(JSON.Dump(_JSON, , "    "), tmpPath)
+        FileMove(tmpPath, userPath, true)
+
+    } catch Error as e {
+        ; MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
+        ; corrupted or other error: ask user and recreate from default if they agree
+        value := MsgBox("The settings file is corrupted. Do you want to create a new one?",, "OKCancel")
+        if (value = "Cancel")
+            ExitApp()
+
+        ; backup the corrupted file (if not already moved)
+        try FileMove(userPath, backupPath, true)
+        catch 
+        FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+        _JSON := JSON.Load(FileRead(userPath))
         return _JSON
     }
-    else {
-        Try {
-            if (FileExist("EVE-X-Preview.json")) {
-                ;if needed because of Backward combativity from the alpha versions 
-                MergeJson()
-            }
-            _JSON := JsonMergeNoOverwrite(
-                                            DJSON,
-                                            JSON.Load(FileRead("EVE-X-Preview.json"))
-                                        )
-            FileDelete("EVE-X-Preview.json")   
-            FileAppend(JSON.Dump(_JSON,,"    " ), "EVE-X-Preview.json")
-        }
-        catch as e  {
-            value := MsgBox("The settings file is corrupted. Do you want to create a new one?",,"OKCancel")
-            if (value = "Cancel") 
-                ExitApp()
 
-            FileDelete("EVE-X-Preview.json")
-            FileAppend(JSON.Dump(DJSON,, "    "), "EVE-X-Preview.json")
-            _JSON :=  JSON.Load(FileRead("EVE-X-Preview.json"))
-        }
-    }
     return _JSON
 }
 
-;Compare the User json wit the default Json to check if any key changed for possible future updates.
-JsonMergeNoOverwrite(obj1, obj2) {
-    for key, value in obj1 {
-        if (obj2.Has(key)) {
-            if (IsObject(value) && IsObject(obj2[key]))
-                obj2[key] := JsonMergeNoOverwrite(value, obj2[key])
-        } else {
-            obj2[key] := value
-        }
+IsArrayLike(obj) {
+    if !IsObject(obj)
+        return false
+    try {
+        _ := obj.Length
+        return true
+    } catch {
+        return false
     }
-    return obj2
 }
 
+; Profile aware JsonMergeNoOverwrite
+; Merge defaults (objDefault) into user's object (objUser) without overwriting user's explicit values.
+JsonMergeNoOverwrite(objDefault, objUser) {
+    ; If objUser is NOT an object, replace it entirely
+    if !IsObject(objUser) {
+        return objDefault
+    }
 
-;THis function is only used to merge the Json from old versions into the new one 
-MergeJson(Settingsfile := "EVE-X-Preview.json", dJson := JSON.Load(default_JSON)) {    
-    ;Load the content from the existing Json File
-    fileObj := FileOpen(Settingsfile,"r", "Utf-8")
-    JsonRaw := fileObj.Read(), fileObj.Close()
-    OldJson := JSON.Load(JsonRaw)
-    savetofile := 0
+    for key, defVal in objDefault {
 
-       
-    for Profiles, settings in OldJson["_Profiles"] {
-        if (Profiles = "Default") {
-           continue
+        if !objUser.Has(key) {
+            ; if objUser is array, skip keyed assignment
+            if IsArrayLike(objUser)
+                continue
+
+            objUser[key] := defVal
+            continue
         }
-        dJson["_Profiles"][Profiles] := Map()
-        for k, v in settings { 
-            if (OldJson["_Profiles"][Profiles].Has("ClientPossitions")) { 
-                savetofile := 1
-                if (k = "ClientPossitions")
-                    dJson["_Profiles"][Profiles]["Client Possitions"] := v            
-                else if (k = "ClientSettings")
-                    dJson["_Profiles"][Profiles]["Client Settings"] :=  v
-                else if (k = "ThumbnailSettings")
-                    dJson["_Profiles"][Profiles]["Thumbnail Settings"] := v
-                else if (k = "ThumbnailPositions")
-                    dJson["_Profiles"][Profiles]["Thumbnail Positions"] :=  v
-                else if (k = "Thumbnail_visibility")
-                    dJson["_Profiles"][Profiles]["Thumbnail Visibility"] := v
-                else if (k = "Custom_Colors")
-                    dJson["_Profiles"][Profiles]["Custom Colors"] := dJson["_Profiles"]["Default"]["Custom Colors"]
-                else if (k = "Hotkey_Groups")
-                    dJson["_Profiles"][Profiles]["Hotkey Groups"] := v
-                else if (k = "Hotkeys") {
-                    if (Type(v) = "Map") {
-                        Arr := []
-                        for char, hotkey in v
-                            Arr.Push(Map(char, hotkey))
-                        dJson["_Profiles"][Profiles]["Hotkeys"] := Arr
-                    }                
+
+        userVal := objUser[key]
+
+        ; If both are arrays -> do NOT treat as object recursion
+        if IsArrayLike(defVal) && IsArrayLike(userVal)
+            continue
+
+        ; _Profiles is an object keyed by profile-name
+        if (key = "_Profiles" && IsObject(defVal) && IsObject(userVal)) {
+            ; find canonical default profile (if present)
+            defaultProfile := defVal.Has("Default") ? defVal["Default"] : {}
+
+            ; merge canonical profile into every existing user profile
+            for profName, profObj in userVal {
+                if IsObject(profObj) && IsObject(defaultProfile) {
+                    userVal[profName] := JsonMergeNoOverwrite(defaultProfile, profObj)
                 }
             }
+
+            ; add any default-only profiles (copy whole profile objects)
+            for defProfName, defProfObj in defVal {
+                if !userVal.Has(defProfName) {
+                    userVal[defProfName] := defProfObj
+                }
+            }
+
+            objUser[key] := userVal
+            continue
         }
+
+        ; RECURSIVE OBJECT MERGE
+        if IsObject(defVal) && IsObject(userVal) {
+            objUser[key] := JsonMergeNoOverwrite(defVal, userVal)
+            continue
+        }
+
+        ; TYPE MISMATCH: default object vs user primitive -> prefer default structure
+        if IsObject(defVal) && !IsObject(userVal) {
+            objUser[key] := defVal
+            continue
+        }
+
+        ; default primitive & user object -> keep user's object
+        ; both primitives -> keep user's value (no overwrite)
     }
-    if savetofile {
-        dJson["global_Settings"] := OldJson["global_Settings"]  
-        
-        fileObj := FileOpen(Settingsfile,"w", "Utf-8")
-        fileObj.Write(JSON.Dump(dJson,, "    ")), fileObj.Close()
-    }
+
+    return objUser
+}
+
+; Simple migration hook: implement any structural changes between versions here.
+; - uver may be "", meaning user has no version key (old file).
+; - Return the modified userObj.
+MigrateSettings(userObj, uver, dver) {
+    ; Will be used later
+    ; Add more conditionals for each version step as needed.
+    ; By default do nothing and return userObj
+    return userObj
 }
 
 ; Hanles unmanaged Errors

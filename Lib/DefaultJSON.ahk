@@ -1,6 +1,7 @@
 ﻿default_JSON := "
 (
 {
+    "settings_version": "1",
     "global_Settings": {
         "Suspend_Hotkeys_Hotkey": "",
         "Global_Hotkeys": 1,
@@ -87,6 +88,14 @@
                     "Bordercolor":["FFFFFF"],                
                     "IABordercolor":["FFFFFF"]                    
                 }                               
+            },
+            "Exclude from Closing": {
+                "ExcludeOnLoginScreen": 0,
+                "DontCloseClients" : [
+                    "Example Name1",
+                    "Example Name2",
+                    "Example Name3"
+                ]
             }
         }
     }
