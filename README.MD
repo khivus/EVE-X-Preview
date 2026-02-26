@@ -34,6 +34,11 @@
 * __About button__. Shows program version and developers.
 * __Help button__. Opens link to [this page](https://github.com/khivus/EVE-X-Preview/blob/main/README.MD).
 
+### Exclude from Closing category in Profiles settings
+Settings for not closing windows when you use "close all EVE Clients" in tray menu or keybind.
+* __Exclude on Login Screen__ = _False_. If True don't closes windows in login (character selection) screen.
+* __Don't Close Clients__ = _Empty_. List of character names (case sensitive) divided by new line that don't need to be closed.
+
 ## Changes
 * New version system 1.{Release}.{Pre Release}.{Hot Fix}. This is done to make "Check for Updates" feature possible.
 * Reorganized and renamed Global Settings.
@@ -42,6 +47,7 @@
 * Minimize Inactive Clients now also minimizes clients in login (character selection) screen. This can greatly improve performance on low-end PCs.
 * Added profiling testing for optimization checks.
 * Improved performance of main function by ~30-40%.
+* Added "Hide Thumbnails on Lost Focus" toggle to tray menu (QoL).
 
 ##  EVE-X-Preview
 
@@ -206,4 +212,5 @@ There are several ways to specify hotkeys <br> For a detailed description you ca
 
 
 ## About
-EVE-X-Preview is Created and Maintained by [g0nzo83](https://github.com/g0nzo83) also known as "*John Xer*" in EVE Online 
+EVE-X-Preview is Created and Maintained by [g0nzo83](https://github.com/g0nzo83) also known as "*John Xer*" in EVE Online
+Forked and updated by [khivus](https://github.com/khivus) same name in EVE Online: [Khivus](https://evewho.com/character/2121577034)
