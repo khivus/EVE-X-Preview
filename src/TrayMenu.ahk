@@ -24,6 +24,13 @@ Class TrayMenu extends Settings_Gui {
         TrayMenu.Add("Profiles", Profiles_Submenu)
         TrayMenu.Add() ; Seperator
         TrayMenu.Add("Suspend Hotkeys", MenuHandler)
+
+        TrayMenu.Add("Hide Thumbnails On Lost Focus", MenuHandler)
+        if (This.HideThumbnailsOnLostFocus)
+            TrayMenu.check("Hide Thumbnails On Lost Focus")
+        else
+            TrayMenu.Uncheck("Hide Thumbnails On Lost Focus")
+
         TrayMenu.Add()
         TrayMenu.Add()
         TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
@@ -56,6 +63,13 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.ToggleCheck("Restore Client Positions")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
+            Else if (ItemName = "Hide Thumbnails On Lost Focus") {
+                This.HideThumbnailsOnLostFocus := !This.HideThumbnailsOnLostFocus
+                TrayMenu.ToggleCheck("Hide Thumbnails On Lost Focus")
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+                Sleep(300)
+                Reload()
+            }
             Else if (This.Profiles.Has(ItemName)) {
                 ; Change the lastUsedProfile to the Profile name, save it to Json file and reload the script with the new Settings
                 This.LastUsedProfile := ItemName
@@ -83,6 +97,11 @@ Class TrayMenu extends Settings_Gui {
             list := WinGetList("Ahk_Exe exefile.exe")
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
             for k in list {
+                WinTitle := This.CleanTitle(WinGetTitle(k))
+
+                if This.DontCloseWIn(WinTitle)
+                    continue
+
                 PostMessage 0x0112, 0xF060, , , k
                 Sleep(50)
             }

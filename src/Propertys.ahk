@@ -287,6 +287,27 @@ class Propertys extends TrayMenu {
 
 
     ;########################
+    ;## Profile Exclude from Closing
+
+    ExcludeOnLoginScreen {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["ExcludeOnLoginScreen"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["ExcludeOnLoginScreen"] := value
+    }
+    DontCloseClients {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"]
+        set {
+            This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"] := []
+
+            For index, Client in StrSplit(Value, ["`n", ","]) {
+                if (Client = "")
+                    continue
+                This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"].Push(Trim(Client, "`n "))
+            }
+        }
+    }
+
+
+    ;########################
     ;## Profile ClientSettings
 
 

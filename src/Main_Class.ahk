@@ -734,6 +734,7 @@
 
         if LoginWins.Length == 1 {
             This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
+            This.hitThis()
             return
         }
 
@@ -755,7 +756,6 @@
             currentIndex := 1
 
         This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
-        
         This.hitThis()
     }
 
@@ -1349,6 +1349,20 @@
                 break
         }
         return arr
+    }
+
+    DontCloseWIn(WinTitle) {
+        if !(WinTitle = "") {
+            for k in This.DontCloseClients {
+                value := This.CleanTitle(k)
+                if value == WinTitle
+                    return 1
+            }
+        }
+        else if (WinTitle = "" && This.ExcludeOnLoginScreen) {
+            return 1
+        }
+    return 0
     }
 }
 

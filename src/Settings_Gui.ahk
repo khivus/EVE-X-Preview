@@ -50,6 +50,7 @@
         ;Creates the Controls
         This.Global_Settings(), This.Profile_Settings(), This.ClientSettings_Ctrl(), This.Custom_ColorsCtrl()
         This.Hotkey_GroupsCtrl(), This.HotkeysCtrl(), This.ThumbnailSettings_Ctrl(), This.Thumbnail_visibilityCtrl()
+        This.ExcludeFromClosing_Ctrl()
 
         This.S_Gui.Show("AutoSize Center")
         This._Button_Load()
@@ -923,6 +924,34 @@
             v.Visible := 0
     }
 
+    ExcludeFromClosing_Ctrl() {
+        This.S_Gui.Controls.Profile_Settings.PsDDL["Exclude from Closing"] := [], ExcludeFromClosing := []
+
+        ExcludeFromClosing.Push This.S_Gui.Add("GroupBox", "x20 y80 h400 w500 Section", "")
+        ExcludeFromClosing.Push This.S_Gui.Add("Text", " xp+15 yp+140 Section ", "Exclude on Login Screen:")
+        ExcludeFromClosing.Push This.S_Gui.Add("Text", "xs y+15 ", "Don't Close Clients:")
+
+        ExcludeFromClosing.Push This.S_Gui.Add("CheckBox", "xs+230 ys Section vExcludeOnLoginScreen Checked" This.ExcludeOnLoginScreen, "On/Off")
+        This.S_Gui["ExcludeOnLoginScreen"].OnEvent("Click", (obj, *) => cExcludeFromClosing_EventHandler(obj))
+
+        ExcludeFromClosing.Push This.S_Gui.Add("Edit", "xs y+15 w220 h180 vDontCloseClients -Wrap", This.DontCloseList())
+        This.S_Gui["DontCloseClients"].OnEvent("Change", (obj, *) => cExcludeFromClosing_EventHandler(obj))
+
+        cExcludeFromClosing_EventHandler(obj) {
+            if (obj.name = "ExcludeOnLoginScreen") {
+                This.ExcludeOnLoginScreen := obj.value
+            }
+            else if (obj.name = "DontCloseClients") {
+                This.DontCloseClients := obj.value
+            }
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.S_Gui.Controls.Profile_Settings.PsDDL["Exclude from Closing"] := ExcludeFromClosing
+        for k, v in This.S_Gui.Controls.Profile_Settings.PsDDL["Exclude from Closing"]
+            v.Visible := 0
+    }
+
     On_WM_MOUSEMOVE(wParam, lParam, msg, Hwnd) {
         static PrevHwnd := 0
         if (Hwnd != PrevHwnd) {
@@ -949,6 +978,14 @@
     Dont_Minimize_List() {
         list := ""
         for k in This.Dont_Minimize_Clients {
+            list .= k "`n"
+        }
+        return list
+    }
+
+    DontCloseList() {
+        list := ""
+        for k in This.DontCloseClients {
             list .= k "`n"
         }
         return list
@@ -1063,6 +1100,10 @@
                     This.Tv_LV.Add("", v,)
             }
         }
+
+        ;Exclude from Closing
+        This.S_Gui["ExcludeOnLoginScreen"].value := This.ExcludeOnLoginScreen
+        This.S_Gui["DontCloseClients"].value := This.DontCloseList()
 
         for k, v in This.S_Gui.Controls.Profile_Settings.PsDDL {
             for _, ob in v {
