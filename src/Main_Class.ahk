@@ -313,21 +313,23 @@
 
         ; Check if a Thumbnail exist without EVE Window. if so destroy the Thumbnail and free memory
         if ( This.DestroyThumbnailsToggle ) {
-            for k, v in This.ThumbWindows.Clone().OwnProps() {
-                if !Winlist.HasProp(k) {
-                    SetTimer(This.DestroyThumbnails, -500)
-                    This.DestroyThumbnailsToggle := 0
-                }
-            }
-            if !WinList.Length
-                This.allLoginClosed := true
-            else {
-                for EVEHWND in This.ThumbWindows.OwnProps() {
-                    if This.ThumbWindows.%EVEHWND%["Window"].Title == "" {
-                        This.allLoginClosed := false
-                        break
+            try {
+                for k, v in This.ThumbWindows.Clone().OwnProps() {
+                    if !Winlist.HasProp(k) {
+                        SetTimer(This.DestroyThumbnails, -500)
+                        This.DestroyThumbnailsToggle := 0
                     }
+                }
+                if !WinList.Length
                     This.allLoginClosed := true
+                else {
+                    for EVEHWND in This.ThumbWindows.OwnProps() {
+                        if This.ThumbWindows.%EVEHWND%["Window"].Title == "" {
+                            This.allLoginClosed := false
+                            break
+                        }
+                        This.allLoginClosed := true
+                    }
                 }
             }
         }
@@ -864,8 +866,10 @@
             Else If (msg == Main_Class.WM_LBUTTONDOWN) {
                 ;Activates the EVE Window by clicking on the Thumbnail 
                 if (wparam = 1) {
-                    if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
-                        This.ActivateEVEWindow(hwnd)
+                    try { ; Probably fix for bug
+                        if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
+                            This.ActivateEVEWindow(hwnd)
+                    }
                 }
                 ; Ctrl+Lbutton, Minimizes the Window on whose thumbnail the user clicks
                 else if (wparam = 9) { 
