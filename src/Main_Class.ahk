@@ -254,16 +254,18 @@
                                             This.ThumbnailStartLocation["height"],
                                             This.ThumbWindows.%hwnd%)
                     }
-
-                    ; if in Character selection screen 
-                    if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
-                        This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
-                        if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                    
+                    try { ; Another attempt to fix error on thumbnail destruction
+                        ; if in Character selection screen 
+                        if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
+                            This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
+                            if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                                This.EVENameChange(hwnd, WinList.%hwnd%.Title)
+                            }
+                        }
+                        else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
                             This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                         }
-                    }
-                    else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
-                        This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                     }
                 }
             }
