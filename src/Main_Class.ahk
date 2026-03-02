@@ -226,36 +226,36 @@
 
         ; If any EVE Window exist
         if WinList.Length {
-            ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
-            for index, hwnd in WinList {
-                WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
+            try { ; Another++ attempt to fix error on thumbnail destruction
+                ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
+                for index, hwnd in WinList {
+                    WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
 
-                if !This.ThumbWindows.HasProp(hwnd) {
-                    This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                    if (!This.HideThumbnailsOnLostFocus) {
-                        This.ShowThumb(hwnd, "Show")
-                    }                      
-                    HideShowToggle := 1
-                }
-                else { ; This change improved performance by ~15-17%
-                    ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
-                    if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
-                        This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                    if !This.ThumbWindows.HasProp(hwnd) {
+                        This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
+                        if (!This.HideThumbnailsOnLostFocus) {
+                            This.ShowThumb(hwnd, "Show")
+                        }                      
+                        HideShowToggle := 1
                     }
+                    else { ; This change improved performance by ~15-17%
+                        ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
+                        if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
+                            This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
+                        }
 
-                    ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
-                    if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
-                        if This.ShiftThumbsForLoginScreen
-                            This.ShiftThumbs(hwnd)
-                        else
-                            This.ThumbMove( This.ThumbnailStartLocation["x"],
-                                            This.ThumbnailStartLocation["y"],
-                                            This.ThumbnailStartLocation["width"],
-                                            This.ThumbnailStartLocation["height"],
-                                            This.ThumbWindows.%hwnd%)
-                    }
+                        ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
+                        if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
+                            if This.ShiftThumbsForLoginScreen
+                                This.ShiftThumbs(hwnd)
+                            else
+                                This.ThumbMove( This.ThumbnailStartLocation["x"],
+                                                This.ThumbnailStartLocation["y"],
+                                                This.ThumbnailStartLocation["width"],
+                                                This.ThumbnailStartLocation["height"],
+                                                This.ThumbWindows.%hwnd%)
+                        }
                     
-                    try { ; Another attempt to fix error on thumbnail destruction
                         ; if in Character selection screen 
                         if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
                             This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"

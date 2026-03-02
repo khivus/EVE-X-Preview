@@ -129,10 +129,12 @@
         About_Button_Handler() {
             Version := FileGetVersion(A_ScriptName)
             static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n"
+            funny := "`nF`nu`nn`nn`ny"
             text_len := StrLen(text)
+            funny_len := StrLen(funny)
 
-            if This.ThisThat
-                text := text "`nFunny"
+            if This.ThisThat && SubStr(text, text_len - funny_len + 1, funny_len) != funny
+                text := text . funny
 
             what := MsgBox(text, "EVE-X-Preview - About", "CancelTryAgainContinue Iconi")
 
