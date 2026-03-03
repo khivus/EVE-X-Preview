@@ -1,24 +1,115 @@
 ﻿Class Settings_Gui {
 
-    static directions := Map(
-        1, "left -> right, top -> bottom",
-        2, "left -> right, bottom -> top",
-        3, "right -> left, top -> bottom",
-        4, "right -> left, bottom -> top",
-        5, "top -> bottom, left -> right",
-        6, "top -> bottom, right -> left",
-        7, "bottom -> top, left -> right",
-        8, "bottom -> top, right -> left"
-    )
-
     MainGui() {
         ;if settings got chnaged which require a restart to apply
         This.NeedRestart := 0
 
         SetControlDelay(-1)
-        This.S_Gui := Gui("+OwnDialogs +MinimizeBox -Resize -MaximizeBox SysMenu +MinSize500x250")
+        ; This.S_Gui := Gui("+OwnDialogs +MinimizeBox -Resize -MaximizeBox SysMenu +MinSize500x250")
+        This.S_Gui := Gui("+OwnDialogs -MinimizeBox -Resize -MaximizeBox SysMenu")
         This.S_Gui.Title := "EVE-X-Preview - Settings"
 
+        This.SetState()
+        This.Sidebar()
+        This.MainFrame()
+
+        This.S_Gui.OnEvent("Close", (*) => GuiDestroy())
+
+        GuiDestroy(*) {
+            This.S_Gui.Destroy()
+            if (This.NeedRestart)
+                Reload()
+        }
+
+        This.S_Gui.Show("w" This.guiWidth " h" This.guiHeight " Center")
+    }
+
+    SetState() {
+        This.baseGrid := 8
+        This.groupBoxOffset := 6
+        This.contentGap := 16
+        This.objH := 20
+    
+        This.guiWidth := 1000
+        This.guiHeight := 650
+
+        This.boxY := This.contentGap - This.groupBoxOffset
+        This.boxH := This.guiHeight - (This.contentGap * 2) + This.groupBoxOffset + 1
+
+        This.sidebarX := This.contentGap
+        This.sidebarW := 240
+
+        This.sidebarInnerX := This.sidebarX + This.contentGap
+        This.sidebarInnerY := This.boxY + This.contentGap + This.groupBoxOffset
+        This.sidebarInnerW := This.sidebarW - This.contentGap * 2
+
+        This.sidebar3BtnW := (This.sidebarInnerW - This.contentGap) / 3
+
+        This.contentX := This.sidebarX + This.sidebarW + This.contentGap
+        This.contentY := This.contentGap - This.groupBoxOffset
+        This.contentW := This.guiWidth - This.contentX - This.contentGap
+
+        This.contentInnerX := This.contentX + This.contentGap
+        This.contentInnerY := This.boxY + This.contentGap + This.groupBoxOffset
+        This.contentInnerW := This.contentW - This.contentGap * 2
+
+        This.SepC := "DCDCDC"
+
+        This.directions := Map(
+            1, "left -> right, top -> bottom",
+            2, "left -> right, bottom -> top",
+            3, "right -> left, top -> bottom",
+            4, "right -> left, bottom -> top",
+            5, "top -> bottom, left -> right",
+            6, "top -> bottom, right -> left",
+            7, "bottom -> top, left -> right",
+            8, "bottom -> top, right -> left"
+        )
+
+        This.ddl_options := [
+            "left -> right, top -> bottom", 
+            "left -> right, bottom -> top", 
+            "right -> left, top -> bottom", 
+            "right -> left, bottom -> top", 
+            "top -> bottom, left -> right", 
+            "top -> bottom, right -> left", 
+            "bottom -> top, left -> right", 
+            "bottom -> top, right -> left"
+        ]
+
+    }
+
+    Sidebar() {
+        This.S_Gui.Add("GroupBox", Format("x{} y{} w{} h{}", This.sidebarX, This.boxY, This.sidebarW, This.boxH))
+
+        This.S_Gui.Add("Text", Format("x{} y{}", This.sidebarInnerX, This.sidebarInnerY), "Select profile:")
+        
+        This.SelectProfile_DDL := This.S_Gui.Add("DDL", Format("xp yp+{} w{}", This.contentGap, This.sidebarInnerW) " Section vSelectedProfile", This.Profiles_to_Array())
+        This.SelectProfile_DDL.Choose(This.LastUsedProfile)
+        ; This.SelectProfile_DDL.OnEvent("Change", (obj,*) => This._Button_Load(Obj))
+
+        This.S_Gui.Add("Button", Format("xp-1 ys+{} w{}", This.objH + This.baseGrid, This.sidebar3BtnW), "Add")
+        This.S_Gui.Add("Button", Format("xp+{} ys+{} w{}", This.sidebar3BtnW + This.baseGrid + 1, This.objH + This.baseGrid, This.sidebar3BtnW), "Rename")
+        This.S_Gui.Add("Button", Format("xp+{} ys+{} w{}", This.sidebar3BtnW + This.baseGrid + 1, This.objH + This.baseGrid, This.sidebar3BtnW), "Delete")
+
+        ; Separator
+        ; This.S_Gui.Add("Text", Format("x{} yp+{} w{} h2 +0x10", This.sidebarX + This.baseGrid + 1, This.objH + This.baseGrid, This.sidebarW - This.contentGap))
+        This.S_Gui.Add("Text", Format("xs yp+{}", This.objH + This.contentGap), "Select setting?s? ?group/category?")
+
+        for index, btn_text in This._ProfileProps {
+            if index == 1
+                This.S_Gui.Add("Button", Format("xp yp+{} w{}", This.contentGap, This.sidebarInnerW), btn_text)
+            else
+                This.S_Gui.Add("Button", Format("xp yp+{} w{}", This.objH + This.baseGrid, This.sidebarInnerW), btn_text)
+        }
+    }
+
+    MainFrame() {
+        This.S_Gui.Add("GroupBox", Format("x{} y{} w{} h{}", This.contentX, This.boxY, This.contentW, This.boxH))
+
+    }
+
+    miau() {
         ;Sets Margins for the following Buttons
         This.S_Gui.MarginX := 80, This.S_Gui.MarginY := 20
 
@@ -48,8 +139,14 @@
         This.S_Gui.SetFont("s9 w400")
 
         ;Creates the Controls
-        This.Global_Settings(), This.Profile_Settings(), This.ClientSettings_Ctrl(), This.Custom_ColorsCtrl()
-        This.Hotkey_GroupsCtrl(), This.HotkeysCtrl(), This.ThumbnailSettings_Ctrl(), This.Thumbnail_visibilityCtrl()
+        This.Global_Settings()
+        This.Profile_Settings()
+        This.ClientSettings_Ctrl()
+        This.Custom_ColorsCtrl()
+        This.Hotkey_GroupsCtrl()
+        This.HotkeysCtrl()
+        This.ThumbnailSettings_Ctrl()
+        This.Thumbnail_visibilityCtrl()
         This.ExcludeFromClosing_Ctrl()
 
         This.S_Gui.Show("AutoSize Center")
@@ -155,6 +252,8 @@
         }
     }
 
+
+
     ;This Function creates all Settings controls for the Global Settings Button
     Global_Settings(visible?) {
         RowSpacing := 30
@@ -164,7 +263,6 @@
         DefaultWidth := 180
         DigitWidth := 40
 
-        ddl_options := ["left -> right, top -> bottom", "left -> right, bottom -> top", "right -> left, top -> bottom", "right -> left, bottom -> top", "top -> bottom, left -> right", "top -> bottom, right -> left", "bottom -> top, left -> right", "bottom -> top, right -> left"]
 
         This.S_Gui.Controls.Global_Settings := []
         This.S_Gui.SetFont("s10 w400")
@@ -277,7 +375,7 @@
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Shift Direction")
 
-        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DropDownList", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vShiftThumbsDirection Choose" . Integer(This.ShiftThumbsDirection), ddl_options)
+        This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("DropDownList", "xp+" . FieldOffset . " ys w" . DefaultWidth . " vShiftThumbsDirection Choose" . Integer(This.ShiftThumbsDirection), This.ddl_options)
         This.S_Gui["ShiftThumbsDirection"].OnEvent("Change", (obj, *) => gSettings_EventHandler(obj))
 
         This.S_Gui.Controls.Global_Settings.Push This.S_Gui.Add("Text", "xs ys+" . RowSpacing . " Section", "Thumbnail Shift Horizontal Step (px)")
@@ -1038,7 +1136,7 @@
         This.S_Gui["HideThumbForActiveWin"].value := This.HideThumbForActiveWin
         This.S_Gui["ShiftThumbsForLoginScreen"].value := This.ShiftThumbsForLoginScreen
         This.S_Gui["ShiftThumbsCollisionCheck"].value := This.ShiftThumbsCollisionCheck
-        current_index := Settings_Gui.directions.Get(This.ShiftThumbsDirection, 8)
+        current_index := This.directions.Get(This.ShiftThumbsDirection, 8)
         This.S_Gui["ShiftThumbsDirection"].Choose(current_index)
         This.S_Gui["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
         This.S_Gui["ShiftThumbVerticalStep"].value := This.ShiftThumbVerticalStep
