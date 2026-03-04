@@ -32,148 +32,94 @@ class Propertys extends TrayMenu {
 
 
     ;######################
-    ;## global Settings
-    ThumbnailStartLocation[key] {
-        get => This._JSON["global_Settings"]["ThumbnailStartLocation"][key]
-        set => This._JSON["global_Settings"]["ThumbnailStartLocation"][key] := value
-    }
-
-    Minimizeclients_Delay {
-        get => This._JSON["global_Settings"]["Minimize_Delay"]
-        set => This._JSON["global_Settings"]["Minimize_Delay"] := (value < 50 ? "50" : value)
-    }
-
-    Suspend_Hotkeys_Hotkey {
-        get => This._JSON["global_Settings"]["Suspend_Hotkeys_Hotkey"]
-        set => This._JSON["global_Settings"]["Suspend_Hotkeys_Hotkey"] := value
-    }
-
-    ThumbnailBackgroundColor {
-        get => convertToHex(This._JSON["global_Settings"]["ThumbnailBackgroundColor"])
-        set => This._JSON["global_Settings"]["ThumbnailBackgroundColor"] := convertToHex(value)
-    }
-
-    ThumbnailSnap[*] {
-        get => This._JSON["global_Settings"]["ThumbnailSnap"]
-        set => This._JSON["global_Settings"]["ThumbnailSnap"] := Value
-    }
-
-    Global_Hotkeys {
-        get => This._JSON["global_Settings"]["Global_Hotkeys"]
-        set => This._JSON["global_Settings"]["Global_Hotkeys"] := value
-    }
-
-    ThumbnailSnap_Distance {
-        get => This._JSON["global_Settings"]["ThumbnailSnap_Distance"]
-        set => This._JSON["global_Settings"]["ThumbnailSnap_Distance"] := (value ? value : "20")
-    }
-
-    ThumbnailMinimumSize[key] {
-        get => This._JSON["global_Settings"]["ThumbnailMinimumSize"][key]
-        set => This._JSON["global_Settings"]["ThumbnailMinimumSize"][key] := value
-    }
-
-    SwitchLangOnErr {
-        get => This._JSON["global_Settings"]["SwitchLangOnErr"]
-        set => This._JSON["global_Settings"]["SwitchLangOnErr"] := value
-    }
-
-    Login_Screen_Cycle_Hotkey {
-        get => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"]
-        set => This._JSON["global_Settings"]["Login_Screen_Cycle_Hotkey"] := value
-    }
-
-    LoginScreenCycleDirection[*] {
-        get => This._JSON["global_Settings"]["LoginScreenCycleDirection"]
-        set => This._JSON["global_Settings"]["LoginScreenCycleDirection"] := Value
-    }
-
-    PreserveHotkeysOnLogout {
-        get => This._JSON["global_Settings"]["PreserveHotkeysOnLogout"]
-        set => This._JSON["global_Settings"]["PreserveHotkeysOnLogout"] := value
-    }
-
-    Close_Active_EVE_Win_Hotkey {
-        get => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"]
-        set => This._JSON["global_Settings"]["Close_Active_EVE_Win_Hotkey"] := value
-    }
-
-    Close_All_EVE_Win_Hotkey {
-        get => This._JSON["global_Settings"]["Close_All_EVE_Win_Hotkey"]
-        set => This._JSON["global_Settings"]["Close_All_EVE_Win_Hotkey"] := value
-    }
-
-    Reload_Program_Hotkey {
-        get => This._JSON["global_Settings"]["Reload_Program_Hotkey"]
-        set => This._JSON["global_Settings"]["Reload_Program_Hotkey"] := value
-    }
-
-    PreserveThumbPosOnLogout {
-        get => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"]
-        set => This._JSON["global_Settings"]["PreserveThumbPosOnLogout"] := value
-    }
-
-    PreserveCharNameOnLogout {
-        get => This._JSON["global_Settings"]["PreserveCharNameOnLogout"]
-        set => This._JSON["global_Settings"]["PreserveCharNameOnLogout"] := value
-    }
-
-    HideThumbForActiveWin {
-        get => This._JSON["global_Settings"]["HideThumbForActiveWin"]
-        set => This._JSON["global_Settings"]["HideThumbForActiveWin"] := value
-    }
-
-    ShiftThumbsForLoginScreen {
-        get => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"]
-        set => This._JSON["global_Settings"]["ShiftThumbsForLoginScreen"] := value
-    }
-
-    ShiftThumbsCollisionCheck {
-        get => This._JSON["global_Settings"]["ShiftThumbsCollisionCheck"]
-        set => This._JSON["global_Settings"]["ShiftThumbsCollisionCheck"] := value
-    }
-
-    ShiftThumbsDirection {
-        get => This._JSON["global_Settings"]["ShiftThumbsDirection"]
-        set => This._JSON["global_Settings"]["ShiftThumbsDirection"] := value
-    }
-
-    ShiftThumbHorizontalStep {
-        get => This._JSON["global_Settings"]["ShiftThumbHorizontalStep"]
-        set => This._JSON["global_Settings"]["ShiftThumbHorizontalStep"] := value
-    }
-
-    ShiftThumbVerticalStep {
-        get => This._JSON["global_Settings"]["ShiftThumbVerticalStep"]
-        set => This._JSON["global_Settings"]["ShiftThumbVerticalStep"] := value
-    }
-
-    Check_Updates {
-        get => This._JSON["global_Settings"]["Check_Updates"]
-        set => This._JSON["global_Settings"]["Check_Updates"] := value
-    }
+    ; General settings
 
     First_Start_After_Update {
-        get => This._JSON["global_Settings"]["First_Start_After_Update"]
-        set => This._JSON["global_Settings"]["First_Start_After_Update"] := value
+        get => This._JSON["First_Start_After_Update"]
+        set => This._JSON["First_Start_After_Update"] := value
     }
 
     ThisThat {
-        get => This._JSON["global_Settings"]["ThisThat"]
-        set => This._JSON["global_Settings"]["ThisThat"] := value
+        get => This._JSON["ThisThat"]
+        set => This._JSON["ThisThat"] := value
+    }
+
+    LastUsedProfile {
+        get => This._JSON["LastUsedProfile"]
+        set => This._JSON["LastUsedProfile"] := value
     }
 
     ;########################
     ;## Profile ThumbnailSettings
 
+    ThumbnailStartLocation[key] {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailStartLocation"][key]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailStartLocation"][key] := value
+    }
+
+    ThumbnailBackgroundColor {
+        get => convertToHex(This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailBackgroundColor"])
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailBackgroundColor"] := convertToHex(value)
+    }
+
+    ThumbnailSnap[*] {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap"] := Value
+    }
+
+    ThumbnailSnap_Distance {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap_Distance"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap_Distance"] := (value ? value : "20")
+    }
+
+    ThumbnailMinimumSize[key] {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailMinimumSize"][key]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailMinimumSize"][key] := value
+    }
+
+    PreserveThumbPosOnLogout {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveThumbPosOnLogout"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveThumbPosOnLogout"] := value
+    }
+
+    PreserveCharNameOnLogout {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveCharNameOnLogout"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveCharNameOnLogout"] := value
+    }
+
+    HideThumbForActiveWin {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbForActiveWin"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbForActiveWin"] := value
+    }
+
+    ShiftThumbsForLoginScreen {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsForLoginScreen"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsForLoginScreen"] := value
+    }
+
+    ShiftThumbsCollisionCheck {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsCollisionCheck"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsCollisionCheck"] := value
+    }
+
+    ShiftThumbsDirection {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsDirection"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsDirection"] := value
+    }
+
+    ShiftThumbHorizontalStep {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbHorizontalStep"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbHorizontalStep"] := value
+    }
+
+    ShiftThumbVerticalStep {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbVerticalStep"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbVerticalStep"] := value
+    }
+
     ShowAllColoredBorders {
         get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowAllColoredBorders"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowAllColoredBorders"] := value
-    }
-
-    LastUsedProfile {
-        get => This._JSON["global_Settings"]["LastUsedProfile"]
-        set => This._JSON["global_Settings"]["LastUsedProfile"] := value
     }
 
     _ProfileProps {
@@ -439,7 +385,10 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColorActive"] := Value
     }
 
-
+    Minimizeclients_Delay {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Minimize_Delay"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Minimize_Delay"] := (value < 50 ? "50" : value)
+    }
     MinimizeInactiveClients {
         get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["MinimizeInactiveClients"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["MinimizeInactiveClients"] := value
@@ -503,8 +452,60 @@ class Propertys extends TrayMenu {
         }
     }
 
+    ;#########
+    ; Other
+    Check_Updates {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Check_Updates"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Check_Updates"] := value
+    }
+    SwitchLangOnErr {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["SwitchLangOnErr"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["SwitchLangOnErr"] := value
+    }
+
     ;########################
     ;## Profile Hotkeys
+
+    Suspend_Hotkeys_Hotkey {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Suspend_Hotkeys_Hotkey"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Suspend_Hotkeys_Hotkey"] := value
+    }
+    
+    Global_Hotkeys {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Global_Hotkeys"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Global_Hotkeys"] := value
+    }
+    
+    Login_Screen_Cycle_Hotkey {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Login_Screen_Cycle_Hotkey"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Login_Screen_Cycle_Hotkey"] := value
+    }
+
+    LoginScreenCycleDirection[*] {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["LoginScreenCycleDirection"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["LoginScreenCycleDirection"] := Value
+    }
+
+    PreserveHotkeysOnLogout {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
+    }
+
+    Close_Active_EVE_Win_Hotkey {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"] := value
+    }
+
+    Close_All_EVE_Win_Hotkey {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_All_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_All_EVE_Win_Hotkey"] := value
+    }
+
+    Reload_Program_Hotkey {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Reload_Program_Hotkey"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Reload_Program_Hotkey"] := value
+    }
+
     Hotkey_Groups[key?] {
         get {
             if (IsSet(key)) {
@@ -530,17 +531,17 @@ class Propertys extends TrayMenu {
     _Hotkeys[key?] {
         get {
             if (IsSet(Key)) {
-                loop This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"].Length {
-                    if (This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"][A_Index].Has(key)) {
-                        return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"][A_Index][key]
+                loop This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"].Length {
+                    if (This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"][A_Index].Has(key)) {
+                        return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"][A_Index][key]
                     }
                 }
                 return 0
             }
             if !(IsSet(Key))
-                return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]
+                return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"]
         }
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"] := Value
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"] := Value
     }
 
     _Hotkey_Delete(*) {

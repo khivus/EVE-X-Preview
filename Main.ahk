@@ -3,6 +3,7 @@
 #Include <DefaultJSON> ; The Default Settings Values
 #Include <JSON>
 #Include <LiveThumb>
+; #Include <ScrollBar>
 #Include <../src/Main_Class>
 #Include <../src/ThumbWindow>
 #Include <../src/TrayMenu>
@@ -26,7 +27,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.5.0.0
+;@Ahk2Exe-Let U_version = 1.5.0.1
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -79,14 +80,13 @@ Load_JSON() {
                 UJSON := MigrateSettings(UJSON, uver, dver)
                 ; ensure we set new version so merge will not re-trigger
                 UJSON["settings_version"] := dver
+                ; Create a timestamped backup of the existing file before merge
+                FileMove(userPath, backupPath, true)
             }
         }
 
         ; Merge: default -> user, but don't overwrite user's explicit values
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
-
-        ; Create a timestamped backup of the existing file before changing it
-        ; FileMove(userPath, backupPath, true)  ; Used only for debug purposes
 
         ; Atomic write: write to tmp file then move/rename to target
         if FileExist(tmpPath)
@@ -226,9 +226,112 @@ JsonMergeNoOverwrite(objDefault, objUser) {
 ; - uver may be "", meaning user has no version key (old file).
 ; - Return the modified userObj.
 MigrateSettings(userObj, uver, dver) {
-    ; Will be used later
-    ; Add more conditionals for each version step as needed.
-    ; By default do nothing and return userObj
+
+    if !IsObject(userObj)
+        return userObj
+
+    if (uver == "1" || uver == "") && dver == "2" {
+
+        userObj["new_anime"] := "What the"
+
+        if !userObj.Has("global_Settings")
+            throw Error("Missing global_Settings!")
+
+        ; Global -> out
+        g := userObj["global_Settings"]
+        if g.Has("LastUsedProfile")
+            userObj["LastUsedProfile"] := g["LastUsedProfile"]
+        if g.Has("First_Start_After_Update")
+            userObj["First_Start_After_Update"] := g["First_Start_After_Update"]
+        if g.Has("ThisThat")
+            userObj["ThisThat"] := g["ThisThat"]
+
+        if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
+            throw Error("No profiles found!")
+
+        for prof_name, prof_settings in userObj["_Profiles"] {
+
+            if !IsObject(prof_settings) {
+                ; if it's not an object, skip (unexpected)
+                continue
+            }
+
+            ; Hotkeys -> Hotkeys : CharacterHotkeys
+            if prof_settings.Has("Hotkeys") {
+                tempHot := DeepClone(prof_settings["Hotkeys"]) ; Write hotkeys to temp location
+                prof_settings["Hotkeys"] := Map() ; new object (fresh)
+                prof_settings.Set("Hotkeys", Map("CharacterHotkeys", tempHot))
+            } else {
+                prof_settings["Hotkeys"] := Map()
+                prof_settings["Hotkeys"]["CharacterHotkeys"] := []
+            }
+
+            ; Global -> Other
+            prof_settings["Other"] := {}
+            if g.Has("SwitchLangOnErr")
+                prof_settings.Set("Other", Map("SwitchLangOnErr", g["SwitchLangOnErr"]))
+            if g.Has("Check_Updates")
+                prof_settings.Set("Other", Map("Check_Updates", g["Check_Updates"]))
+
+            ; Global -> Client Settings
+            if g.Has("Minimize_Delay")
+                prof_settings.Set("Client Settings", Map("Minimize_Delay", g["Minimize_Delay"]))
+
+            ; Global -> Thumbnail Settings
+            ts := prof_settings["Thumbnail Settings"]
+            if g.Has("ThumbnailStartLocation")
+                ts["ThumbnailStartLocation"] := DeepClone(g["ThumbnailStartLocation"])
+            if g.Has("ThumbnailBackgroundColor")
+                ts["ThumbnailBackgroundColor"] := g["ThumbnailBackgroundColor"]
+            if g.Has("ThumbnailSnap")
+                ts["ThumbnailSnap"] := g["ThumbnailSnap"]
+            if g.Has("ThumbnailSnap_Distance")
+                ts["ThumbnailSnap_Distance"] := g["ThumbnailSnap_Distance"]
+            if g.Has("ThumbnailMinimumSize")
+                ts["ThumbnailMinimumSize"] := DeepClone(g["ThumbnailMinimumSize"])
+            if g.Has("HideThumbForActiveWin")
+                ts["HideThumbForActiveWin"] := g["HideThumbForActiveWin"]
+            if g.Has("ShiftThumbsForLoginScreen")
+                ts["ShiftThumbsForLoginScreen"] := g["ShiftThumbsForLoginScreen"]
+            if g.Has("ShiftThumbsCollisionCheck")
+                ts["ShiftThumbsCollisionCheck"] := g["ShiftThumbsCollisionCheck"]
+            if g.Has("ShiftThumbsDirection")
+                ts["ShiftThumbsDirection"] := g["ShiftThumbsDirection"]
+            if g.Has("ShiftThumbHorizontalStep")
+                ts["ShiftThumbHorizontalStep"] := g["ShiftThumbHorizontalStep"]
+            if g.Has("ShiftThumbVerticalStep")
+                ts["ShiftThumbVerticalStep"] := g["ShiftThumbVerticalStep"]
+            if g.Has("PreserveThumbPosOnLogout")
+                ts["PreserveThumbPosOnLogout"] := g["PreserveThumbPosOnLogout"]
+            if g.Has("PreserveCharNameOnLogout")
+                ts["PreserveCharNameOnLogout"] := g["PreserveCharNameOnLogout"]
+
+            ; Global -> Hotkeys
+            hs := prof_settings["Hotkeys"]
+            if g.Has("Suspend_Hotkeys_Hotkey")
+                hs["Suspend_Hotkeys_Hotkey"] := g["Suspend_Hotkeys_Hotkey"]
+            if g.Has("Global_Hotkeys")
+                hs["Global_Hotkeys"] := g["Global_Hotkeys"]
+            if g.Has("Login_Screen_Cycle_Hotkey")
+                hs["Login_Screen_Cycle_Hotkey"] := g["Login_Screen_Cycle_Hotkey"]
+            if g.Has("LoginScreenCycleDirection")
+                hs["LoginScreenCycleDirection"] := g["LoginScreenCycleDirection"]
+            if g.Has("PreserveHotkeysOnLogout")
+                hs["PreserveHotkeysOnLogout"] := g["PreserveHotkeysOnLogout"]
+            if g.Has("Close_Active_EVE_Win_Hotkey")
+                hs["Close_Active_EVE_Win_Hotkey"] := g["Close_Active_EVE_Win_Hotkey"]
+            if g.Has("Close_All_EVE_Win_Hotkey")
+                hs["Close_All_EVE_Win_Hotkey"] := g["Close_All_EVE_Win_Hotkey"]
+            if g.Has("Reload_Program_Hotkey")
+                hs["Reload_Program_Hotkey"] := g["Reload_Program_Hotkey"]
+        }
+
+        try
+            userObj.Delete("global_Settings")
+        catch
+            throw Error("Error deleting global_Settings!")
+    }
+
     return userObj
 }
 
@@ -267,7 +370,7 @@ Error_Handler(Thrown, Mode) {
         Reload
     }
 
-    MsgBox("Error: " Thrown.Message "`n" Thrown.Extra)
+    MsgBox("Error: " Thrown.Message "`nIn file: " Thrown.File " at line: " Thrown.Line "`n" Thrown.Extra)
     
     return -1
 }
