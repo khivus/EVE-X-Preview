@@ -86,7 +86,10 @@ Class TrayMenu extends Settings_Gui {
             }
             Else If (ItemName = "Suspend Hotkeys") {
                 Suspend(-1)
-                TrayMenu.ToggleCheck("Suspend Hotkeys")
+                if A_IsSuspended
+                    TrayMenu.check("Suspend Hotkeys")
+                else
+                    TrayMenu.Uncheck("Suspend Hotkeys")
             }
 
         }

@@ -18,37 +18,17 @@
                 ],
                 "Minimize_Delay": 100
             },
-            "Thumbnail Settings": {
-                "ShowThumbnailTextOverlay": true,
-                "ThumbnailTextColor":"#FAC57A",
-                "ThumbnailTextSize": 12,
-                "ThumbnailTextFont": "Gill Sans MT",
-                "ThumbnailTextMargins": {
-                    "x": 15,
-                    "y": 5
-                },
-                "ShowClientHighlightBorder": true,
-                "ClientHighligtColor": "#E36A0D",
-                "ClientHighligtBorderthickness": 4,
-                "HideThumbnailsOnLostFocus": false,
-                "ThumbnailOpacity": 80,
-                "ShowThumbnailsAlwaysOnTop": true,
-                "ShowAllColoredBorders":0,
-                "InactiveClientBorderthickness": 2,
-                "InactiveClientBorderColor": "#8A8A8A",
+            "Thumbnails Behavior": {
+                "HideThumbnailsOnLostFocus": 0,
+                "ShowThumbnailsAlwaysOnTop": 1,
                 "ThumbnailStartLocation": {
                     "x": 20,
                     "y": 20,
                     "width": 250,
                     "height": 140
                 },
-                "ThumbnailBackgroundColor":"#57504E",
                 "ThumbnailSnap": true,
                 "ThumbnailSnap_Distance": 20,
-                "ThumbnailMinimumSize": {
-                    "width": 50,
-                    "height": 50
-                },
                 "HideThumbForActiveWin": 0,
                 "ShiftThumbsForLoginScreen": 1,
                 "ShiftThumbsCollisionCheck": 1,
@@ -57,6 +37,28 @@
                 "ShiftThumbVerticalStep": 0,
                 "PreserveThumbPosOnLogout": 1,
                 "PreserveCharNameOnLogout": 0
+            },
+            "Thumbnails Visuals": {
+                "ShowThumbnailTextOverlay": 1,
+                "ThumbnailTextColor":"#FAC57A",
+                "ThumbnailTextSize": 12,
+                "ThumbnailTextFont": "Gill Sans MT",
+                "ThumbnailTextMargins": {
+                    "x": 15,
+                    "y": 5
+                },
+                "ShowClientHighlightBorder": 1,
+                "ClientHighligtColor": "#E36A0D",
+                "ClientHighligtBorderthickness": 4,
+                "ThumbnailOpacity": 80,
+                "ShowAllColoredBorders": 0,
+                "InactiveClientBorderthickness": 2,
+                "InactiveClientBorderColor": "#8A8A8A",
+                "ThumbnailBackgroundColor":"#57504E",
+                "ThumbnailMinimumSize": {
+                    "width": 50,
+                    "height": 50
+                }
             },
             "Hotkeys": {
                 "Suspend_Hotkeys_Hotkey": "",
@@ -97,7 +99,17 @@
             },
             "Other": {
                 "SwitchLangOnErr": 0,
-                "Check_Updates": 1
+                "Check_Updates": 1,
+                "Global_Groups": {
+                    "Client Settings": 0,
+                    "Thumbnails Behavior": 0,
+                    "Thumbnails Visuals": 0,
+                    "Hotkeys": 0,
+                    "Thumbnail Visibility": 0,
+                    "Custom Colors": 0,
+                    "Exclude from Closing": 0,
+                    "Other": 0
+                }
             }
         }
     }

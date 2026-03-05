@@ -49,77 +49,93 @@ class Propertys extends TrayMenu {
         set => This._JSON["LastUsedProfile"] := value
     }
 
+    Global_Groups {
+        get => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"]
+        set => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"] := value
+    }
+
+    ProfileOverride() {
+        This.ProfileHotkeys := This.Global_Groups["Hotkeys"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsBehavior := This.Global_Groups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsVisuals := This.Global_Groups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailVisibility := This.Global_Groups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
+        This.ProfileClientSettings := This.Global_Groups["Client Settings"] ? "Default" : This.LastUsedProfile
+        This.ProfileExcludeFromClosing := This.Global_Groups["Exclude from Closing"] ? "Default" : This.LastUsedProfile
+        This.ProfileCustomColors := This.Global_Groups["Custom Colors"] ? "Default" : This.LastUsedProfile
+        This.ProfileOther := This.Global_Groups["Other"] ? "Default" : This.LastUsedProfile
+    }
+
     ;########################
     ;## Profile ThumbnailSettings
 
     ThumbnailStartLocation[key] {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailStartLocation"][key]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailStartLocation"][key] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key] := value
     }
 
     ThumbnailBackgroundColor {
-        get => convertToHex(This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailBackgroundColor"])
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailBackgroundColor"] := convertToHex(value)
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailBackgroundColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailBackgroundColor"] := convertToHex(value)
     }
 
     ThumbnailSnap[*] {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap"] := Value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailSnap"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailSnap"] := Value
     }
 
     ThumbnailSnap_Distance {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap_Distance"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailSnap_Distance"] := (value ? value : "20")
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailSnap_Distance"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailSnap_Distance"] := (value ? value : "20")
     }
 
     ThumbnailMinimumSize[key] {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailMinimumSize"][key]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailMinimumSize"][key] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailMinimumSize"][key]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailMinimumSize"][key] := value
     }
 
     PreserveThumbPosOnLogout {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveThumbPosOnLogout"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveThumbPosOnLogout"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["PreserveThumbPosOnLogout"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["PreserveThumbPosOnLogout"] := value
     }
 
     PreserveCharNameOnLogout {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveCharNameOnLogout"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["PreserveCharNameOnLogout"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["PreserveCharNameOnLogout"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["PreserveCharNameOnLogout"] := value
     }
 
     HideThumbForActiveWin {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbForActiveWin"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbForActiveWin"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbForActiveWin"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbForActiveWin"] := value
     }
 
     ShiftThumbsForLoginScreen {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsForLoginScreen"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsForLoginScreen"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsForLoginScreen"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsForLoginScreen"] := value
     }
 
     ShiftThumbsCollisionCheck {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsCollisionCheck"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsCollisionCheck"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsCollisionCheck"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsCollisionCheck"] := value
     }
 
     ShiftThumbsDirection {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsDirection"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbsDirection"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsDirection"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbsDirection"] := value
     }
 
     ShiftThumbHorizontalStep {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbHorizontalStep"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbHorizontalStep"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbHorizontalStep"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbHorizontalStep"] := value
     }
 
     ShiftThumbVerticalStep {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbVerticalStep"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShiftThumbVerticalStep"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbVerticalStep"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbVerticalStep"] := value
     }
 
     ShowAllColoredBorders {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowAllColoredBorders"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowAllColoredBorders"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowAllColoredBorders"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowAllColoredBorders"] := value
     }
 
     _ProfileProps {
@@ -130,13 +146,33 @@ class Propertys extends TrayMenu {
                     continue
                 Arr.Push(k)
             }
-            return Arr
+
+            profilesOrder := Map(
+                "Hotkey Groups", 1,
+                "Hotkeys", 2,
+                "Thumbnails Behavior", 3,
+                "Thumbnails Visuals", 4,
+                "Thumbnail Visibility", 5,
+                "Client Settings", 6,
+                "Exclude from Closing", 7,
+                "Custom Colors", 8,
+                "Other", 9
+            )
+
+            ; Sorting by set order so settings looks more organized
+            delimited := ""
+            for index, value in arr
+                delimited .= (delimited ? "|" : "") . value
+            sorted_delimited := Sort(delimited, "D|", (item1,item2,*)=>(obj:=profilesOrder, pos1:=obj.Get(item1,999), pos2:=obj.Get(item2,999), pos1>pos2?1:pos1<pos2?-1:0))
+            sorted_arr := StrSplit(sorted_delimited, "|")
+
+            return sorted_arr
         }
     }
 
     Thumbnail_visibility[key?] {
         get {
-            return This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Visibility"]
+            return This._JSON["_Profiles"][This.ProfileThumbnailVisibility]["Thumbnail Visibility"]
 
             ; if IsSet(Key) {
             ;     Arr := Array()
@@ -149,7 +185,7 @@ class Propertys extends TrayMenu {
         }
         set {
             if (IsObject(value)) {
-                This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Visibility"] := value
+                This._JSON["_Profiles"][This.ProfileThumbnailVisibility]["Thumbnail Visibility"] := value
                 ;     for k, v in Value {
                 ;         This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail_visibility"][k] := v
                 ;     }
@@ -161,74 +197,74 @@ class Propertys extends TrayMenu {
 
 
     HideThumbnailsOnLostFocus {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbnailsOnLostFocus"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["HideThumbnailsOnLostFocus"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"] := value
     }
     ShowThumbnailsAlwaysOnTop {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowThumbnailsAlwaysOnTop"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowThumbnailsAlwaysOnTop"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"] := value
     }
 
     ThumbnailOpacity {
         get {
-            percentage := This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailOpacity"]
+            percentage := This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailOpacity"]
             return Round((percentage < 0 ? 0 : percentage > 100 ? 100 : percentage) * 2.55)
         }
         set {
-            This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailOpacity"] := Value
+            This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailOpacity"] := Value
         }
     }
 
     ClientHighligtBorderthickness {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ClientHighligtBorderthickness"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ClientHighligtBorderthickness"] := (Trim(value, "`n ") <= 0 ? 1 : Trim(value, "`n "))
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ClientHighligtBorderthickness"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ClientHighligtBorderthickness"] := (Trim(value, "`n ") <= 0 ? 1 : Trim(value, "`n "))
     }
 
     ClientHighligtColor {
-        get => convertToHex(This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ClientHighligtColor"])
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ClientHighligtColor"] := convertToHex(Trim(value, "`n "))
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ClientHighligtColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ClientHighligtColor"] := convertToHex(Trim(value, "`n "))
     }
     ShowClientHighlightBorder {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowClientHighlightBorder"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowClientHighlightBorder"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowClientHighlightBorder"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowClientHighlightBorder"] := value
     }
     ThumbnailTextFont {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextFont"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextFont"] := Trim(value, "`n ")
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"] := Trim(value, "`n ")
     }
     ThumbnailTextSize {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextSize"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextSize"] := Trim(value, "`n ")
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"] := Trim(value, "`n ")
     }
 
     ThumbnailTextColor {
-        get => convertToHex(This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextColor"])
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextColor"] := convertToHex(Trim(value, "`n "))
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextColor"] := convertToHex(Trim(value, "`n "))
     }
     ShowThumbnailTextOverlay {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowThumbnailTextOverlay"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ShowThumbnailTextOverlay"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowThumbnailTextOverlay"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowThumbnailTextOverlay"] := value
     }
     ThumbnailTextMargins[var] {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextMargins"][var]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["ThumbnailTextMargins"][var] := Trim(value, "`n ")
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextMargins"][var]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextMargins"][var] := Trim(value, "`n ")
     }
     InactiveClientBorderthickness {
         get {
-            if ( !This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"].Has("InactiveClientBorderthickness") ) 
-                This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderthickness"] := "2"
-            return This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderthickness"]
+            if ( !This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"].Has("InactiveClientBorderthickness") ) 
+                This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderthickness"] := "2"
+            return This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderthickness"]
         } 
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderthickness"] := (Trim(value, "`n ") <= 0 ? 1 : Trim(value, "`n "))
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderthickness"] := (Trim(value, "`n ") <= 0 ? 1 : Trim(value, "`n "))
     }
     InactiveClientBorderColor {
         get {
-            if ( !This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"].Has("InactiveClientBorderColor") )
-                This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderColor"] := "#8A8A8A"
+            if ( !This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"].Has("InactiveClientBorderColor") )
+                This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderColor"] := "#8A8A8A"
 
-             return convertToHex(This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderColor"])
+             return convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderColor"])
         }
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail Settings"]["InactiveClientBorderColor"] := convertToHex(Trim(value, "`n "))
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["InactiveClientBorderColor"] := convertToHex(Trim(value, "`n "))
     }
 
 
@@ -236,18 +272,18 @@ class Propertys extends TrayMenu {
     ;## Profile Exclude from Closing
 
     ExcludeOnLoginScreen {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["ExcludeOnLoginScreen"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["ExcludeOnLoginScreen"] := value
+        get => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["ExcludeOnLoginScreen"]
+        set => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["ExcludeOnLoginScreen"] := value
     }
     DontCloseClients {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"]
+        get => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"]
         set {
-            This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"] := []
+            This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"] := []
 
             For index, Client in StrSplit(Value, ["`n", ","]) {
                 if (Client = "")
                     continue
-                This._JSON["_Profiles"][This.LastUsedProfile]["Exclude from Closing"]["DontCloseClients"].Push(Trim(Client, "`n "))
+                This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"].Push(Trim(Client, "`n "))
             }
         }
     }
@@ -260,7 +296,7 @@ class Propertys extends TrayMenu {
     CustomColorsGet[CName?] {
         get {
             name := "", nameIndex := 0, ctext := "", cBorder := "", cIABorder := ""
-            for index, names in This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["CharNames"] {
+            for index, names in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"] {
                 if (names = CName) {
                     nameIndex := index
                     name := names
@@ -271,29 +307,29 @@ class Propertys extends TrayMenu {
 
             }
             if (nameIndex) {
-                if (This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"].Length >= nameIndex) {
-                    cBorder := This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"][nameIndex]
+                if (This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"].Length >= nameIndex) {
+                    cBorder := This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"][nameIndex]
                 }
-                if (This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"].Length >= nameIndex)
-                    ctext := This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"][nameIndex]
-                if (This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"].Length >= nameIndex)
-                    cIABorder := This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"][nameIndex]
+                if (This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"].Length >= nameIndex)
+                    ctext := This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"][nameIndex]
+                if (This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"].Length >= nameIndex)
+                    cIABorder := This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"][nameIndex]
             }
             return Map("Char", name, "Border", cBorder, "Text", ctext, "IABorder", cIABorder)
         }
     }
 
 
-    IndexcChars => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["CharNames"].Length
-    IndexcBorder => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"].Length
-    IndexcText => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"].Length
-    IndexcIABorders => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"].Length
+    IndexcChars => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"].Length
+    IndexcBorder => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"].Length
+    IndexcText => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"].Length
+    IndexcIABorders => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"].Length
 
     CustomColors_AllCharNames {
         get {
             names := ""
-            for k, v in This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["CharNames"] {
-                if (A_Index < This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["CharNames"].Length)
+            for k, v in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"] {
+                if (A_Index < This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"].Length)
                     names .= k ": " v "`n"
                 else
                     names .= k ": " v
@@ -307,14 +343,14 @@ class Propertys extends TrayMenu {
                 chars := RegExReplace(This.CleanTitle(Trim(v, "`n ")), ".*:\s*", "")
                 tempvar.Push(chars)
             }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["CharNames"] := tempvar
+            This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"] := tempvar
         }
     }
     CustomColors_AllBColors {
         get {
             names := ""
-            for k, v in This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"] {
-                if (A_Index < This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"].Length)
+            for k, v in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"] {
+                if (A_Index < This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"].Length)
                     names .= k ": " v "`n"
                 else
                     names .= k ": " v
@@ -328,14 +364,14 @@ class Propertys extends TrayMenu {
                 chars := RegExReplace(Trim(v, "`n "), ".*:\s*", "")
                 tempvar.Push(convertToHex(chars))
             }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["Bordercolor"] := tempvar
+            This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["Bordercolor"] := tempvar
         }
     }
     CustomColors_AllTColors {
         get {
             names := ""
-            for k, v in This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"] {
-                if (A_Index < This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"].Length)
+            for k, v in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"] {
+                if (A_Index < This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"].Length)
                     names .= k ": " v "`n"
                 else
                     names .= k ": " v
@@ -349,19 +385,19 @@ class Propertys extends TrayMenu {
                 chars := RegExReplace(Trim(v, "`n "), ".*:\s*", "")
                 tempvar.Push(convertToHex(chars))
             }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["TextColor"] := tempvar
+            This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["TextColor"] := tempvar
         }
     }
 
     CustomColors_IABorder_Colors {
         get {
             names := ""
-            if (!This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"].Has("IABordercolor")) {
-                This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"] := ["FFFFFF"]
+            if (!This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"].Has("IABordercolor")) {
+                This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"] := ["FFFFFF"]
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
-            for k, v in This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"] {
-                if (A_Index < This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"].Length)
+            for k, v in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"] {
+                if (A_Index < This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"].Length)
                     names .= k ": " v "`n"
                 else
                     names .= k ": " v
@@ -375,41 +411,41 @@ class Propertys extends TrayMenu {
                 chars := RegExReplace(Trim(v, "`n "), ".*:\s*", "")
                 tempvar.Push(convertToHex(chars))
             }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColors"]["IABordercolor"] := tempvar
+            This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["IABordercolor"] := tempvar
         }
     }
 
 
     CustomColorsActive {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColorActive"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Custom Colors"]["cColorActive"] := Value
+        get => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColorActive"]
+        set => This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColorActive"] := Value
     }
 
     Minimizeclients_Delay {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Minimize_Delay"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Minimize_Delay"] := (value < 50 ? "50" : value)
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Minimize_Delay"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Minimize_Delay"] := (value < 50 ? "50" : value)
     }
     MinimizeInactiveClients {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["MinimizeInactiveClients"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["MinimizeInactiveClients"] := value
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["MinimizeInactiveClients"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["MinimizeInactiveClients"] := value
     }
     AlwaysMaximize {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["AlwaysMaximize"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["AlwaysMaximize"] := value
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["AlwaysMaximize"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["AlwaysMaximize"] := value
     }
     TrackClientPossitions {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["TrackClientPossitions"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["TrackClientPossitions"] := value
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["TrackClientPossitions"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["TrackClientPossitions"] := value
     }
     Dont_Minimize_Clients {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Dont_Minimize_Clients"]
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Dont_Minimize_Clients"]
         set {
-            This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Dont_Minimize_Clients"] := []
+            This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Dont_Minimize_Clients"] := []
 
             For index, Client in StrSplit(Value, ["`n", ","]) {
                 if (Client = "")
                     continue
-                This._JSON["_Profiles"][This.LastUsedProfile]["Client Settings"]["Dont_Minimize_Clients"].Push(Trim(Client, "`n "))
+                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Dont_Minimize_Clients"].Push(Trim(Client, "`n "))
             }
         }
     }
@@ -455,55 +491,55 @@ class Propertys extends TrayMenu {
     ;#########
     ; Other
     Check_Updates {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Check_Updates"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Check_Updates"] := value
+        get => This._JSON["_Profiles"][This.ProfileOther]["Other"]["Check_Updates"]
+        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["Check_Updates"] := value
     }
     SwitchLangOnErr {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["SwitchLangOnErr"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["SwitchLangOnErr"] := value
+        get => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SwitchLangOnErr"]
+        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SwitchLangOnErr"] := value
     }
 
     ;########################
     ;## Profile Hotkeys
 
     Suspend_Hotkeys_Hotkey {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Suspend_Hotkeys_Hotkey"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Suspend_Hotkeys_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Suspend_Hotkeys_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Suspend_Hotkeys_Hotkey"] := value
     }
     
     Global_Hotkeys {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Global_Hotkeys"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Global_Hotkeys"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Global_Hotkeys"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Global_Hotkeys"] := value
     }
     
     Login_Screen_Cycle_Hotkey {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Login_Screen_Cycle_Hotkey"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Login_Screen_Cycle_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Login_Screen_Cycle_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Login_Screen_Cycle_Hotkey"] := value
     }
 
     LoginScreenCycleDirection[*] {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["LoginScreenCycleDirection"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["LoginScreenCycleDirection"] := Value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["LoginScreenCycleDirection"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["LoginScreenCycleDirection"] := Value
     }
 
     PreserveHotkeysOnLogout {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
     }
 
     Close_Active_EVE_Win_Hotkey {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"] := value
     }
 
     Close_All_EVE_Win_Hotkey {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_All_EVE_Win_Hotkey"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Close_All_EVE_Win_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_All_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_All_EVE_Win_Hotkey"] := value
     }
 
     Reload_Program_Hotkey {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Reload_Program_Hotkey"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["Reload_Program_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Reload_Program_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Reload_Program_Hotkey"] := value
     }
 
     Hotkey_Groups[key?] {
@@ -531,17 +567,17 @@ class Propertys extends TrayMenu {
     _Hotkeys[key?] {
         get {
             if (IsSet(Key)) {
-                loop This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"].Length {
-                    if (This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"][A_Index].Has(key)) {
-                        return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"][A_Index][key]
+                loop This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"].Length {
+                    if (This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"][A_Index].Has(key)) {
+                        return This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"][A_Index][key]
                     }
                 }
                 return 0
             }
             if !(IsSet(Key))
-                return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"]
+                return This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"]
         }
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["CharacterHotkeys"] := Value
+        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"] := Value
     }
 
     _Hotkey_Delete(*) {
@@ -725,9 +761,9 @@ class Propertys extends TrayMenu {
 ;########################
 ;## Functions
 
-Add_New_Profile() {
-    return
-}
+; Add_New_Profile() {
+;     return
+; }
 
 convertToHex(rgbString) {
     ; Check if the string corresponds to the decimal value format (e.g. "255, 255, 255" or "rgb(255, 255, 255)")

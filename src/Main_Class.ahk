@@ -44,7 +44,8 @@
         This._JSON := Load_JSON()
         This.default_JSON := JSON.Load(default_JSON)
        
-        This.TrayMenu()   
+        This.ProfileOverride()
+        This.TrayMenu()
         This.MinimizeDelay := This.Minimizeclients_Delay    
         
         ;Hotkey to trigger by the script to get permissions t bring a Window in foreground

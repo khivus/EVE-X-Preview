@@ -4,7 +4,3 @@
 # Files
 *.exe
 *.json
-
-# Temp
-ScrollBar.ahk
-ScrollInfo.ahk

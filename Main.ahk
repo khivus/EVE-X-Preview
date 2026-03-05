@@ -3,7 +3,6 @@
 #Include <DefaultJSON> ; The Default Settings Values
 #Include <JSON>
 #Include <LiveThumb>
-; #Include <ScrollBar>
 #Include <../src/Main_Class>
 #Include <../src/ThumbWindow>
 #Include <../src/TrayMenu>
@@ -27,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.5.0.1
+;@Ahk2Exe-Let U_version = 1.5.0.2
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -153,7 +152,7 @@ IsArrayLike(obj) {
 }
 
 ; Profile aware JsonMergeNoOverwrite
-; Merge defaults (objDefault) into user's object (objUser) without overwriting user's explicit values.
+; Merge defaultb (objDefault) into user's object (objUser) without overwriting user's explicit values.
 JsonMergeNoOverwrite(objDefault, objUser) {
     ; If objUser is NOT an object, replace it entirely
     if !IsObject(objUser) {
@@ -192,7 +191,7 @@ JsonMergeNoOverwrite(objDefault, objUser) {
                 }
             }
 
-            ; add any default-only profiles (copy whole profile objects)
+            ; add any default-only profiles (copy whole profile objectb)
             for defProfName, defProfObj in defVal {
                 if !userVal.Has(defProfName) {
                     userVal[defProfName] := DeepClone(defProfObj)
@@ -277,34 +276,72 @@ MigrateSettings(userObj, uver, dver) {
             if g.Has("Minimize_Delay")
                 prof_settings.Set("Client Settings", Map("Minimize_Delay", g["Minimize_Delay"]))
 
-            ; Global -> Thumbnail Settings
-            ts := prof_settings["Thumbnail Settings"]
+            ; Global -> Thumbnails Behavior
+            prof_settings["Thumbnails Behavior"] := Map()
+            tb := prof_settings["Thumbnails Behavior"]
             if g.Has("ThumbnailStartLocation")
-                ts["ThumbnailStartLocation"] := DeepClone(g["ThumbnailStartLocation"])
-            if g.Has("ThumbnailBackgroundColor")
-                ts["ThumbnailBackgroundColor"] := g["ThumbnailBackgroundColor"]
+                tb["ThumbnailStartLocation"] := DeepClone(g["ThumbnailStartLocation"])
             if g.Has("ThumbnailSnap")
-                ts["ThumbnailSnap"] := g["ThumbnailSnap"]
+                tb["ThumbnailSnap"] := g["ThumbnailSnap"]
             if g.Has("ThumbnailSnap_Distance")
-                ts["ThumbnailSnap_Distance"] := g["ThumbnailSnap_Distance"]
-            if g.Has("ThumbnailMinimumSize")
-                ts["ThumbnailMinimumSize"] := DeepClone(g["ThumbnailMinimumSize"])
+                tb["ThumbnailSnap_Distance"] := g["ThumbnailSnap_Distance"]
             if g.Has("HideThumbForActiveWin")
-                ts["HideThumbForActiveWin"] := g["HideThumbForActiveWin"]
+                tb["HideThumbForActiveWin"] := g["HideThumbForActiveWin"]
             if g.Has("ShiftThumbsForLoginScreen")
-                ts["ShiftThumbsForLoginScreen"] := g["ShiftThumbsForLoginScreen"]
+                tb["ShiftThumbsForLoginScreen"] := g["ShiftThumbsForLoginScreen"]
             if g.Has("ShiftThumbsCollisionCheck")
-                ts["ShiftThumbsCollisionCheck"] := g["ShiftThumbsCollisionCheck"]
+                tb["ShiftThumbsCollisionCheck"] := g["ShiftThumbsCollisionCheck"]
             if g.Has("ShiftThumbsDirection")
-                ts["ShiftThumbsDirection"] := g["ShiftThumbsDirection"]
+                tb["ShiftThumbsDirection"] := g["ShiftThumbsDirection"]
             if g.Has("ShiftThumbHorizontalStep")
-                ts["ShiftThumbHorizontalStep"] := g["ShiftThumbHorizontalStep"]
+                tb["ShiftThumbHorizontalStep"] := g["ShiftThumbHorizontalStep"]
             if g.Has("ShiftThumbVerticalStep")
-                ts["ShiftThumbVerticalStep"] := g["ShiftThumbVerticalStep"]
+                tb["ShiftThumbVerticalStep"] := g["ShiftThumbVerticalStep"]
             if g.Has("PreserveThumbPosOnLogout")
-                ts["PreserveThumbPosOnLogout"] := g["PreserveThumbPosOnLogout"]
+                tb["PreserveThumbPosOnLogout"] := g["PreserveThumbPosOnLogout"]
             if g.Has("PreserveCharNameOnLogout")
-                ts["PreserveCharNameOnLogout"] := g["PreserveCharNameOnLogout"]
+                tb["PreserveCharNameOnLogout"] := g["PreserveCharNameOnLogout"]
+
+            ; Global -> Thumbnails Visuals
+            prof_settings["Thumbnails Visuals"] := Map()
+            tv := prof_settings["Thumbnails Visuals"]
+            if g.Has("ThumbnailBackgroundColor")
+                tv["ThumbnailBackgroundColor"] := g["ThumbnailBackgroundColor"]
+            if g.Has("ThumbnailMinimumSize")
+                tv["ThumbnailMinimumSize"] := DeepClone(g["ThumbnailMinimumSize"])
+
+            ; Thumbnail Settings -> Thumbnails Behavior
+            ts := prof_settings["Thumbnail Settings"]
+            if ts.Has("HideThumbnailsOnLostFocus")
+                tb["HideThumbnailsOnLostFocus"] := ts["HideThumbnailsOnLostFocus"]
+            if ts.Has("ShowThumbnailsAlwaysOnTop")
+                tb["ShowThumbnailsAlwaysOnTop"] := ts["ShowThumbnailsAlwaysOnTop"]
+
+            ; Thumbnail Settings -> Thumbnails Visuals
+            if ts.Has("ShowThumbnailTextOverlay")
+                tv["ShowThumbnailTextOverlay"] := ts["ShowThumbnailTextOverlay"]
+            if ts.Has("ThumbnailTextColor")
+                tv["ThumbnailTextColor"] := ts["ThumbnailTextColor"]
+            if ts.Has("ThumbnailTextSize")
+                tv["ThumbnailTextSize"] := ts["ThumbnailTextSize"]
+            if ts.Has("ThumbnailTextFont")
+                tv["ThumbnailTextFont"] := ts["ThumbnailTextFont"]
+            if ts.Has("ThumbnailTextMargins")
+                tv["ThumbnailTextMargins"] := DeepClone(ts["ThumbnailTextMargins"])
+            if ts.Has("ShowClientHighlightBorder")
+                tv["ShowClientHighlightBorder"] := ts["ShowClientHighlightBorder"]
+            if ts.Has("ClientHighligtColor")
+                tv["ClientHighligtColor"] := ts["ClientHighligtColor"]
+            if ts.Has("ClientHighligtBorderthickness")
+                tv["ClientHighligtBorderthickness"] := ts["ClientHighligtBorderthickness"]
+            if ts.Has("ThumbnailOpacity")
+                tv["ThumbnailOpacity"] := ts["ThumbnailOpacity"]
+            if ts.Has("ShowAllColoredBorders")
+                tv["ShowAllColoredBorders"] := ts["ShowAllColoredBorders"]
+            if ts.Has("InactiveClientBorderthickness")
+                tv["InactiveClientBorderthickness"] := ts["InactiveClientBorderthickness"]
+            if ts.Has("InactiveClientBorderColor")
+                tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
 
             ; Global -> Hotkeys
             hs := prof_settings["Hotkeys"]
@@ -324,6 +361,11 @@ MigrateSettings(userObj, uver, dver) {
                 hs["Close_All_EVE_Win_Hotkey"] := g["Close_All_EVE_Win_Hotkey"]
             if g.Has("Reload_Program_Hotkey")
                 hs["Reload_Program_Hotkey"] := g["Reload_Program_Hotkey"]
+
+            try
+                prof_settings.Delete("Thumbnail Settings")
+            catch
+                throw Error("Error deleting Thumbnail Settings in " prof_name "!")
         }
 
         try
