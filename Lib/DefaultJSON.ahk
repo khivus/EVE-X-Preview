@@ -73,6 +73,7 @@
                 "Login_Screen_Cycle_Hotkey": "",
                 "LoginScreenCycleDirection": 1,
                 "PreserveHotkeysOnLogout": 0,
+                "KeepGroupsPositions": 0,
                 "Close_Active_EVE_Win_Hotkey": "",
                 "Close_All_EVE_Win_Hotkey": "",
                 "Reload_Program_Hotkey": "",

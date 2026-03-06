@@ -471,14 +471,14 @@
                 HotIf (*) => WinExist(This.EVEExe) && WinExist("EVE - " title ) && !WinActive("EVE-X-Preview - Settings")
                 if !This.SwitchLangOnErr {
                     try {
-                        Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title), "P1"
+                        Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
                     }
                     catch ValueError as e {
                         MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " Hotkeys" )
                     }
                 }
                 else {
-                    Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title), "P1"
+                    Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
                 }
             }
             ;if the user has selected (Win Active) the hotkeys will only trigger if at least 1 EVE Window is Active and in Focus
@@ -487,14 +487,14 @@
                 HotIf (*) => WinExist("EVE - " title ) && WinActive(This.EVEExe)
                 if !This.SwitchLangOnErr {
                     try {
-                        Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title),"P1"
+                        Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1),"P1"
                     }
                     catch ValueError as e {
                         MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " Hotkeys" )
                     }
                 }
                 else {
-                    Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title),"P1"
+                    Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1),"P1"
                 }
             }
         }
@@ -502,175 +502,135 @@
 
     ;Register the Hotkeys for cycle Groups if any set
     Register_Hotkey_Groups() {
-        static Fkey := "", BKey := "", Arr := []
+        keys := Map()
+        This.HotkGroups := []
+        This.HotkGroupsInds := []
+        index := 1
+
         if (IsObject(This.Hotkey_Groups) && This.Hotkey_Groups.Count != 0) {
             for k, v in This.Hotkey_Groups {
-                ;If any EVE Window Exist and at least 1 character matches the the list from the group windows
-                if(This.Global_Hotkeys) {
-                    if( v["ForwardsHotkey"] != "" ) {                        
-                        Fkey := v["ForwardsHotkey"], Arr := v["Characters"]
-                        HotIf ObjBindMethod(This, "OnWinExist", Arr)
-                        if !This.SwitchLangOnErr {
-                            try {
-                                Hotkey( v["ForwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"ForwardsHotkey"), "P1")
-                            }
-                            catch ValueError as e {
-                                MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " - Hotkey Groups - " k "  - Forwards Hotkey" )
-                            }
+                This.HotkGroups.Push(v["Characters"])
+                This.HotkGroupsInds.Push(0)
+
+                if This.Global_Hotkeys
+                    method := "OnWinExist"
+                else
+                    method := "OnWinActive"
+
+                if v["ForwardsHotkey"] != ""
+                    keys["ForwardsHotkey"] := v["ForwardsHotkey"]
+                if v["BackwardsHotkey"] != ""
+                    keys["BackwardsHotkey"] := v["BackwardsHotkey"]
+
+                HotIf ObjBindMethod(This, method, This.HotkGroups[index])
+                for direction, key in keys
+                    if !This.SwitchLangOnErr {
+                        try {
+                            Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
                         }
-                        else {
-                            Hotkey( v["ForwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"ForwardsHotkey"), "P1")
-                        }
-                    }
-                    if( v["BackwardsHotkey"] != "" ) {
-                        Fkey := v["BackwardsHotkey"], Arr := v["Characters"]
-                        HotIf ObjBindMethod(This, "OnWinExist", Arr)
-                        if !This.SwitchLangOnErr {
-                            try {
-                                Hotkey( v["BackwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"BackwardsHotkey"), "P1")   
-                            }
-                            catch ValueError as e {
-                                MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " Hotkey Groups - " k " - Backwards Hotkey" )
-                            }
-                        }
-                        else {
-                            Hotkey( v["BackwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"BackwardsHotkey"), "P1")   
-                        }
-                    }  
-                }  
-                ;If any EVE Window is Active
-                else {
-                    if( v["ForwardsHotkey"] != "" ) {
-                        Fkey := v["ForwardsHotkey"], Arr := v["Characters"]
-                        HotIf ObjBindMethod(This, "OnWinActive", Arr)
-                        if !This.SwitchLangOnErr {
-                            try {
-                                Hotkey( v["ForwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"ForwardsHotkey"), "P1")
-                            }
-                            catch ValueError as e {
-                                MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " - Hotkey Groups - " k "  - Forwards Hotkey" )
-                            }
-                        }
-                        else {
-                            Hotkey( v["ForwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"ForwardsHotkey"), "P1")
+                        catch ValueError as e {
+                            MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " - Hotkey Groups - " k "  - " direction)
                         }
                     }
-                    if( v["BackwardsHotkey"] != "" ) {
-                        Fkey := v["BackwardsHotkey"], Arr := v["Characters"]
-                        HotIf ObjBindMethod(This, "OnWinActive", Arr)
-                        if !This.SwitchLangOnErr {
-                            try {
-                                Hotkey( v["BackwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"BackwardsHotkey"), "P1")   
-                            }
-                            catch ValueError as e {
-                                MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " Hotkey Groups - " k " - Backwards Hotkey" )
-                            } 
-                        }
-                        else {
-                            Hotkey( v["BackwardsHotkey"], ObjBindMethod(This, "Cycle_Hotkey_Groups",Arr,"BackwardsHotkey"), "P1")   
-                        }
-                    }  
-                }             
+                    else {
+                        Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
+                    }
+                
+                index += 1
             }
         }
     }
 
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
-     Cycle_Hotkey_Groups(Arr, direction,*) {
-        static Index := 0
+    Cycle_Hotkey_Groups(ArrInd, direction, *) {
+        static tick, prevTick := 0
+        tick := A_TickCount
+        if tick - prevTick < 100
+            return
+        prevTick := tick
+
         HWND := 0
         activateByHWND := 0
-        length := Arr.Length
+        arr := This.HotkGroups[ArrInd]
+        index := This.HotkGroupsInds[ArrInd]
+        length := arr.Length
 
-        if (direction == "ForwardsHotkey") {
+        if !This.KeepGroupsPositions {
             try {
-                if !This.PreserveHotkeysOnLogout
-                    Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n+1 : 1
-
-                else {
-                    AHWND := WinExist("A")
-                    if WinGetProcessName(AHWND) == "exefile.exe"
-                        Index := (n := IsActiveWinInGroup(This.ThumbWindows.%AHWND%["Window"].OldTitle, Arr)) ? n+1 : 1
-                    else
-                        Index := 1
-                }
-            }
-        
-            if (Index > length)
-                Index := 1
-
-            if (This.OnWinExist(Arr)) {
-                try {
-                    if !(WinExist("EVE - " Arr[Index])) {
-                        while (!(WinExist("EVE - " Arr[Index]))) {
-                            if HWND := This.hasMathcingOldTitle(Arr[Index]) {
-                                activateByHWND := 1
-                                break
-                            }
-                            index += 1
-                            if (Index > length)
-                                Index := 1
-                        }
-                    }
-
-                    if !activateByHWND
-                        This.ActivateEVEWindow(,,Arr[Index])
-
-                    else
-                        This.ActivateEVEWindow(HWND,,)
-                }
+                title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : This.CleanTitle(WinGetTitle("A"))
+                index := IsActiveWinInGroup(title, arr)
             }
         }
 
-        else if (direction == "BackwardsHotkey") {
-            try {
-                if !This.PreserveHotkeysOnLogout
-                    Index := (n := IsActiveWinInGroup(This.CleanTitle(WinGetTitle("A")), Arr)) ? n-1 : length
+        index := DirectionHandler(direction, index, length)
+    
+        if !This.OnWinExist(arr)
+            return
 
-                else {
-                    AHWND := WinExist("A")
-                    if WinGetProcessName(AHWND) == "exefile.exe"
-                        Index := (n := IsActiveWinInGroup(This.ThumbWindows.%AHWND%["Window"].OldTitle, Arr)) ? n-1 : length
-                    else 
-                        Index := length
-                }
+        while !WinExist("EVE - " arr[index]) {
+            if HWND := This.hasMathcingOldTitle(arr[index]) {
+                activateByHWND := 1
+                break
             }
-            
-            if (Index <= 0)
-                Index := length
-
-            if (This.OnWinExist(Arr)) {
-                try {
-                    if !(WinExist("EVE - " Arr[Index])) {
-                        while (!(WinExist("EVE - " Arr[Index]))) {
-                            if HWND := This.hasMathcingOldTitle(Arr[Index]) {
-                                activateByHWND := 1
-                                break
-                            }
-                            Index -= 1
-                            if (Index <= 0)
-                                Index := length
-                        }
-                    }
-                    if !activateByHWND
-                        This.ActivateEVEWindow(,,Arr[Index])
-
-                    else
-                        This.ActivateEVEWindow(HWND,,)
-                }
-            }
+            index := DirectionHandler(direction, index, length)
         }
+
+        try {
+            if !activateByHWND
+                This.ActivateEVEWindow(,,arr[index])
+            else
+                This.ActivateEVEWindow(HWND,,)
+        }
+
+        This.HotkGroupsInds[ArrInd] := index
 
         This.hitThis()
 
-        IsActiveWinInGroup(Title, Arr) {
-            for index, names in Arr {
-                if names = Title
-                    return index
+        ; Get index by specified direction
+        DirectionHandler(direction, index, length) {
+            if (direction == "ForwardsHotkey") {
+                index += 1
+                if index > length
+                    index := 1
+            }
+            else if (direction == "BackwardsHotkey") {
+                index -= 1
+                if (index <= 0)
+                    index := length
+            }
+            return index
+        }
+
+        IsActiveWinInGroup(title, arr) {
+            for ind, names in arr {
+                if names = title
+                    return ind
             }
             return false
         }
     }
+
+
+    SetHotkGroupInd(hwnd) {
+        ; if IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd) {
+        if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
+            hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
+            title := This.CleanTitle(WinGetTitle("Ahk_id " Hwnd))
+        }
+        else
+            return
+        
+        for groupId, arr in This.HotkGroups {
+            for i, charName in arr {
+                if charName != title
+                    continue
+
+                This.HotkGroupsInds[groupId] := i
+                break
+            }
+        }
+    }
+
 
 
     hitThis() {
@@ -716,6 +676,12 @@
 
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
+        static tick, prevTick := 0
+        tick := A_TickCount
+        if tick - prevTick < 100
+            return
+        prevTick := tick
+
         LoginWins := []
         currentHWND := WinExist("A")
         loginHWNDs := WinGetList("EVE")
@@ -874,6 +840,7 @@
                 if (wparam = 1) {
                     try { ; Probably fix for bug
                         if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
+                            This.SetHotkGroupInd(hwnd)
                             This.ActivateEVEWindow(hwnd)
                     }
                 }
@@ -1062,7 +1029,7 @@
         This.DestroyThumbnailsToggle := 1
     }
     
-    ActivateEVEWindow(hwnd?,ThisHotkey?, title?) {   
+    ActivateEVEWindow(hwnd?,ThisHotkey?, title?, direct?) {   
         ; If the user clicks the Thumbnail then hwnd stores the Thumbnail Hwnd. Here the Hwnd gets changed to the contiguous EVE window hwnd
         if (IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd)) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
@@ -1092,6 +1059,9 @@
             This.ActivateHwnd := hwnd
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
+
+        if IsSet(direct) && direct
+            This.SetHotkGroupInd(hwnd)
 
         ;Sets the timer to minimize client if the user enable this.
         if (This.MinimizeInactiveClients) {

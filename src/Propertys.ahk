@@ -521,8 +521,13 @@ class Propertys extends TrayMenu {
     }
 
     PreserveHotkeysOnLogout {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["PreserveHotkeysOnLogout"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
+    }
+
+    KeepGroupsPositions {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["KeepGroupsPositions"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["KeepGroupsPositions"] := value
     }
 
     Close_Active_EVE_Win_Hotkey {
@@ -794,8 +799,9 @@ class Propertys extends TrayMenu {
     }
 
     ImportNamesFromThumbs(EditField) {
+        text := EditField.Value
+        EditField.Value := ""
         charList := ""
-        index := 1
         for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
             for k, v in ThumbObj {
                 if k = "Window" {
@@ -805,7 +811,9 @@ class Propertys extends TrayMenu {
                 }
             }
         }
-        EditField.Value .= charList
+        sorted := Sort(charList)
+        text .= sorted
+        ControlSendText(text, , EditField.Hwnd)
     }
 }
 

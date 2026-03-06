@@ -331,7 +331,13 @@
         This.MainFrame.SetFont("s11 w400")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Add/Delete Groups:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Preserve Hotkeys on Logout:")
+        Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vPreserveHotkeysOnLogout Checked" This.PreserveHotkeysOnLogout, "On/Off")
+
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Keep Groups Positions:")
+        Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vKeepGroupsPositions Checked" This.KeepGroupsPositions, "On/Off")
+
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Add/Delete Groups:")
         addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX, 5, btnW, btnEditH), "Add")
         DeleteButton := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
 
@@ -357,6 +363,8 @@
         Hotkey_Groups.Push EditBox
         Hotkey_Groups.Push ImportBtn
 
+        This.MainFrame["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["KeepGroupsPositions"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards, ImportBtn))
         addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox))
         DeleteButton.OnEvent("Click", (*) => Delete_Group(ddl, HKForwards, HKBackwards, EditBox))
@@ -368,6 +376,18 @@
         This.MainFrame.Group["Hotkey Groups"] := Hotkey_Groups
         for k, v in This.MainFrame.Group["Hotkey Groups"]
             v.Visible := 0
+
+        EventHandler(obj) {
+            if (obj.name = "PreserveHotkeysOnLogout") {
+                This.PreserveHotkeysOnLogout := obj.value
+                This.NeedRestart := 1
+            }
+            else if (obj.name = "KeepGroupsPositions") {
+                This.KeepGroupsPositions := obj.value
+                This.NeedRestart := 1
+            }
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
 
         CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj) {
             ArrayIndex := 0
@@ -476,9 +496,6 @@
         Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
         Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Preserve Hotkeys on Logout:")
-        Hotkeys.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vPreserveHotkeysOnLogout Checked" This.PreserveHotkeysOnLogout, "On/Off")
-
         Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
         HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyCharList", Charlist)
         Hotkeys.Push HKCharList
@@ -497,7 +514,6 @@
         This.MainFrame["Close_Active_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
-        This.MainFrame["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => cHotkeys_EventHandler(obj))
         HKCharList.OnEvent("Change", (obj, *) => EventHandler(obj))
         Hotkeys.Push ImpBtn
         ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(HKCharList))
@@ -527,10 +543,6 @@
             }
             else if (obj.name = "LoginScreenCycleDirectionBackwards") {
                 This.LoginScreenCycleDirection := 0
-                This.NeedRestart := 1
-            }
-            else if (obj.name = "PreserveHotkeysOnLogout") {
-                This.PreserveHotkeysOnLogout := obj.value
                 This.NeedRestart := 1
             }
             else if (obj.name = "Close_Active_EVE_Win_Hotkey") {
@@ -1091,6 +1103,8 @@
         This.MainFrame["IABorderColor"].value := This.CustomColors_IABorder_Colors
 
         ;Hotkey Groups
+        This.MainFrame["PreserveHotkeysOnLogout"].value := This.PreserveHotkeysOnLogout
+        This.MainFrame["KeepGroupsPositions"].value := This.KeepGroupsPositions
         This.MainFrame["HotkeyGroupDDL"].Delete()
         This.MainFrame["HotkeyGroupDDL"].Add(This.GetGroupList())
         This.MainFrame["ForwardsKey"].value := "", This.MainFrame["ForwardsKey"].Enabled := 0
@@ -1103,7 +1117,6 @@
         This.MainFrame["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
         This.MainFrame["LoginScreenCycleDirectionForwards"].value := This.LoginScreenCycleDirection
         This.MainFrame["LoginScreenCycleDirectionBackwards"].value := (This.LoginScreenCycleDirection ? 0 : 1)
-        This.MainFrame["PreserveHotkeysOnLogout"].value := This.PreserveHotkeysOnLogout
         This.MainFrame["Close_Active_EVE_Win_Hotkey"].value := This.Close_Active_EVE_Win_Hotkey
         This.MainFrame["Close_All_EVE_Win_Hotkey"].value := This.Close_All_EVE_Win_Hotkey
         This.MainFrame["Reload_Program_Hotkey"].value := This.Reload_Program_Hotkey
