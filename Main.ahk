@@ -26,7 +26,7 @@ A_MaxHotKeysPerInterval := 10000
 TODO #########################
 */
 
-;@Ahk2Exe-Let U_version = 1.5.0.3
+;@Ahk2Exe-Let U_version = 1.5.0.4
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -231,8 +231,6 @@ MigrateSettings(userObj, uver, dver) {
 
     if (uver == "1" || uver == "") && dver == "2" {
 
-        userObj["new_anime"] := "What the"
-
         if !userObj.Has("global_Settings")
             throw Error("Missing global_Settings!")
 
@@ -373,6 +371,34 @@ MigrateSettings(userObj, uver, dver) {
         catch
             throw Error("Error deleting global_Settings!")
     }
+
+    if (uver == "1" || uver == "" || uver == "2") && dver == "2.1" {
+
+            if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
+                throw Error("No profiles found!")
+    
+            for prof_name, prof_settings in userObj["_Profiles"] {
+    
+                if !IsObject(prof_settings) {
+                    ; if it's not an object, skip (unexpected)
+                    continue
+                }
+
+                ; Exclude from Closing -> Client settings
+                if prof_settings.has("Exclude from Closing") {
+                    efc := prof_settings["Exclude from Closing"]
+                    if efc.Has("ExcludeOnLoginScreen")
+                        prof_settings["Client Settings"]["DontCloseOnLoginScreen"] := efc["ExcludeOnLoginScreen"] ; +Renamed
+                    if efc.Has("DontCloseClients")
+                        prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(efc["DontCloseClients"])
+
+                    try
+                        prof_settings.Delete("Exclude from Closing")
+                    catch
+                        throw Error("Error deleting Exclude from Closing in " prof_name "!")
+                }
+            }
+        }
 
     return userObj
 }

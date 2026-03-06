@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "2",
+    "settings_version": "2.1",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -17,7 +17,13 @@
                     "Example Name2",
                     "Example Name3"
                 ],
-                "Minimize_Delay": 100
+                "Minimize_Delay": 100,
+                "DontCloseOnLoginScreen": 0,
+                "DontCloseClients" : [
+                    "Example Name1",
+                    "Example Name2",
+                    "Example Name3"
+                ]
             },
             "Thumbnails Behavior": {
                 "HideThumbnailsOnLostFocus": 0,
@@ -90,14 +96,6 @@
                     "IABordercolor":["FFFFFF"]                    
                 }
             },
-            "Exclude from Closing": {
-                "ExcludeOnLoginScreen": 0,
-                "DontCloseClients" : [
-                    "Example Name1",
-                    "Example Name2",
-                    "Example Name3"
-                ]
-            },
             "Other": {
                 "SwitchLangOnErr": 0,
                 "Check_Updates": 1,
@@ -108,7 +106,6 @@
                     "Hotkeys": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
-                    "Exclude from Closing": 0,
                     "Other": 0
                 }
             }

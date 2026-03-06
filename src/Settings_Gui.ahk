@@ -21,7 +21,6 @@
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
-        This.ExcludeFromClosing_Ctrl()
         This.Other_Ctrl()
 
         This._Button_Load()
@@ -184,17 +183,27 @@
         ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "EVE Window Minimize Delay (ms):")
         ClientSettings.Push This.MainFrame.Add("Edit", Format("xs+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vMinimizeclients_Delay", This.Minimizeclients_Delay)
 
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Dont Minimize Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs+{} yp-{} w{} h{}", This.offsetX, This.editOffset, This.editW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Clients on Login Screen:")
+        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseOnLoginScreen Checked" This.DontCloseOnLoginScreen, "On/Off")
 
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Minimize Clients:")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
+        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Don't Close Clients:")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
+        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
 
         This.MainFrame["MinimizeInactiveClients"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["AlwaysMaximize"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["Minimizeclients_Delay"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["Dont_Minimize_Clients"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
-        ClientSettings.Push ImpBtn
-        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["Dont_Minimize_Clients"]))
+        ClientSettings.Push ImpBtn1
+        ImpBtn1.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["Dont_Minimize_Clients"]))
+        This.MainFrame["DontCloseOnLoginScreen"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
+        This.MainFrame["DontCloseClients"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
+        ClientSettings.Push ImpBtn2
+        ImpBtn2.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["DontCloseClients"]))
 
         ;Pulls the GUI Object into the Map
         This.MainFrame.Group["Client Settings"] := ClientSettings
@@ -217,6 +226,12 @@
             }
             else if (obj.name = "Minimizeclients_Delay") {
                 This.Minimizeclients_Delay := obj.value
+            }
+            if (obj.name = "DontCloseOnLoginScreen") {
+                This.DontCloseOnLoginScreen := obj.value
+            }
+            else if (obj.name = "DontCloseClients") {
+                This.DontCloseClients := obj.value
             }
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
@@ -885,42 +900,6 @@
             v.Visible := 0
     }
 
-    ExcludeFromClosing_Ctrl() {
-        This.MainFrame.Group["Exclude from Closing"] := [], ExcludeFromClosing := []
-
-        This.MainFrame.SetFont("s12 w700 q5")
-        ExcludeFromClosing.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Exclude from Closing")
-        This.MainFrame.SetFont("s11 w400")
-        ExcludeFromClosing.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
-
-        ExcludeFromClosing.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Exclude on Login Screen:")
-        ExcludeFromClosing.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vExcludeOnLoginScreen Checked" This.ExcludeOnLoginScreen, "On/Off")
-        
-        ExcludeFromClosing.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Clients:")
-        ExcludeFromClosing.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
-
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
-
-        This.MainFrame["ExcludeOnLoginScreen"].OnEvent("Click", (obj, *) => cExcludeFromClosing_EventHandler(obj))
-        This.MainFrame["DontCloseClients"].OnEvent("Change", (obj, *) => cExcludeFromClosing_EventHandler(obj))
-        ExcludeFromClosing.Push ImpBtn
-        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["DontCloseClients"]))
-
-        cExcludeFromClosing_EventHandler(obj) {
-            if (obj.name = "ExcludeOnLoginScreen") {
-                This.ExcludeOnLoginScreen := obj.value
-            }
-            else if (obj.name = "DontCloseClients") {
-                This.DontCloseClients := obj.value
-            }
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        }
-
-        This.MainFrame.Group["Exclude from Closing"] := ExcludeFromClosing
-        for k, v in This.MainFrame.Group["Exclude from Closing"]
-            v.Visible := 0
-    }
-
     Other_Ctrl() {
         This.MainFrame.Group["Other"] := [], Other := []
 
@@ -952,9 +931,6 @@
         
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Settings:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalClientSettings Checked" This.Global_Groups["Client Settings"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Exclude from Closing:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalExcludeFromClosing Checked" This.Global_Groups["Exclude from Closing"], "On/Off")
         
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Custom Colors:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalCustomColors Checked" This.Global_Groups["Custom Colors"], "On/Off")
@@ -1001,10 +977,6 @@
                 }
                 if This.Global_Groups["Client Settings"] != This.MainFrame["GlobalClientSettings"].value {
                     This.Global_Groups["Client Settings"] := This.MainFrame["GlobalClientSettings"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Exclude from Closing"] != This.MainFrame["GlobalExcludeFromClosing"].value {
-                    This.Global_Groups["Exclude from Closing"] := This.MainFrame["GlobalExcludeFromClosing"].value
                     need_reload := 1
                 }
                 if This.Global_Groups["Custom Colors"] != This.MainFrame["GlobalCustomColors"].value {
@@ -1108,6 +1080,8 @@
         This.MainFrame["AlwaysMaximize"].value := This.AlwaysMaximize
         This.MainFrame["Dont_Minimize_Clients"].value := This.Dont_Minimize_List()
         This.MainFrame["Minimizeclients_Delay"].value := This.Minimizeclients_Delay
+        This.MainFrame["DontCloseOnLoginScreen"].value := This.DontCloseOnLoginScreen
+        This.MainFrame["DontCloseClients"].value := This.DontCloseList()
 
         ;Custom Colors
         This.MainFrame["Ccoloractive"].value := This.CustomColorsActive
@@ -1191,10 +1165,6 @@
             }
         }
 
-        ;Exclude from Closing
-        This.MainFrame["ExcludeOnLoginScreen"].value := This.ExcludeOnLoginScreen
-        This.MainFrame["DontCloseClients"].value := This.DontCloseList()
-
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
         This.MainFrame["Check_Updates"].value := This.Check_Updates
@@ -1204,7 +1174,6 @@
         This.MainFrame["GlobalThumbnailsVisuals"].value := This.Global_Groups["Thumbnails Visuals"]
         This.MainFrame["GlobalThumbnailVisibility"].value := This.Global_Groups["Thumbnail Visibility"]
         This.MainFrame["GlobalClientSettings"].value := This.Global_Groups["Client Settings"]
-        This.MainFrame["GlobalExcludeFromClosing"].value := This.Global_Groups["Exclude from Closing"]
         This.MainFrame["GlobalCustomColors"].value := This.Global_Groups["Custom Colors"]
         This.MainFrame["GlobalOther"].value := This.Global_Groups["Other"]
 
@@ -1225,7 +1194,6 @@
         This.MainFrame["GlobalThumbnailsVisuals"].Enabled := 0
         This.MainFrame["GlobalThumbnailVisibility"].Enabled := 0
         This.MainFrame["GlobalClientSettings"].Enabled := 0
-        This.MainFrame["GlobalExcludeFromClosing"].Enabled := 0
         This.MainFrame["GlobalCustomColors"].Enabled := 0
         This.MainFrame["GlobalOther"].Enabled := 0
     }

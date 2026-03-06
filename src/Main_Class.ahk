@@ -1369,7 +1369,7 @@
                     return 1
             }
         }
-        else if (WinTitle = "" && This.ExcludeOnLoginScreen) {
+        else if (WinTitle = "" && This.DontCloseOnLoginScreen) {
             return 1
         }
     return 0

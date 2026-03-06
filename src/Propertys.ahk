@@ -65,7 +65,6 @@ class Propertys extends TrayMenu {
         This.ProfileThumbnailsVisuals := This.Global_Groups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailVisibility := This.Global_Groups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.Global_Groups["Client Settings"] ? "Default" : This.LastUsedProfile
-        This.ProfileExcludeFromClosing := This.Global_Groups["Exclude from Closing"] ? "Default" : This.LastUsedProfile
         This.ProfileCustomColors := This.Global_Groups["Custom Colors"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.Global_Groups["Other"] ? "Default" : This.LastUsedProfile
     }
@@ -159,9 +158,8 @@ class Propertys extends TrayMenu {
                 "Thumbnails Visuals", 4,
                 "Thumbnail Visibility", 5,
                 "Client Settings", 6,
-                "Exclude from Closing", 7,
-                "Custom Colors", 8,
-                "Other", 9
+                "Custom Colors", 7,
+                "Other", 8
             )
 
             ; Sorting by set order so settings looks more organized
@@ -274,29 +272,24 @@ class Propertys extends TrayMenu {
 
 
     ;########################
-    ;## Profile Exclude from Closing
+    ;## Profile ClientSettings
 
-    ExcludeOnLoginScreen {
-        get => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["ExcludeOnLoginScreen"]
-        set => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["ExcludeOnLoginScreen"] := value
+    DontCloseOnLoginScreen {
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseOnLoginScreen"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseOnLoginScreen"] := value
     }
     DontCloseClients {
-        get => This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"]
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"]
         set {
-            This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"] := []
+            This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"] := []
 
             For index, Client in StrSplit(Value, ["`n", ","]) {
                 if (Client = "")
                     continue
-                This._JSON["_Profiles"][This.ProfileExcludeFromClosing]["Exclude from Closing"]["DontCloseClients"].Push(Trim(Client, "`n "))
+                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"].Push(Trim(Client, "`n "))
             }
         }
     }
-
-
-    ;########################
-    ;## Profile ClientSettings
-
 
     CustomColorsGet[CName?] {
         get {
