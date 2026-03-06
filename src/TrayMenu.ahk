@@ -32,9 +32,7 @@ Class TrayMenu extends Settings_Gui {
             TrayMenu.Uncheck("Hide Thumbnails On Lost Focus")
 
         TrayMenu.Add()
-        TrayMenu.Add()
         TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
-        TrayMenu.Add()
         TrayMenu.Add()
         TrayMenu.Add("Restore Client Positions", MenuHandler)
         if (This.TrackClientPossitions)
@@ -44,8 +42,13 @@ Class TrayMenu extends Settings_Gui {
 
         TrayMenu.Add("Save Client Positions", (*) => This.Client_Possitions())
         TrayMenu.Add()
-        TrayMenu.Add()
+        TrayMenu.Add("Auto Save Thumbnail Positions", MenuHandler)
+        if (This.AutoSaveThumbnailPositions)
+            TrayMenu.check("Auto Save Thumbnail Positions")
+        else
+            TrayMenu.Uncheck("Auto Save Thumbnail Positions")
         TrayMenu.Add("Save Thumbnail Positions", MenuHandler)
+        TrayMenu.Add()
         TrayMenu.Add("Reload", (*) => Reload())
         TrayMenu.Add()
         TrayMenu.Add("Exit", (*) => ExitApp())
@@ -54,6 +57,11 @@ Class TrayMenu extends Settings_Gui {
         MenuHandler(ItemName, ItemPos, MyMenu) {
             If (ItemName = "Exit")
                 ExitApp
+            Else if (ItemName = "Auto Save Thumbnail Positions") {
+                This.AutoSaveThumbnailPositions := !This.AutoSaveThumbnailPositions
+                TrayMenu.ToggleCheck("Auto Save Thumbnail Positions")
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+            }
             Else if (ItemName = "Save Thumbnail Positions") {
                 ; Saved Thumbnail Positions only if the Saved button is used on the Traymenu
                 This.Save_ThumbnailPossitions

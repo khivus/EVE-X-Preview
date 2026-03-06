@@ -847,19 +847,22 @@
     ;#### Handels Window Border, Resize, Activation 
     _OnMessage(wparam, lparam, msg, hwnd) {            
         If (This.ThumbHwnd_EvEHwnd.Has(hwnd)  ) {            
-
             ; Move the Window with right mouse button 
             If (msg == Main_Class.WM_RBUTTONDOWN) {
-                    while (GetKeyState("RButton")) {
-                        
-                        if !(GetKeyState("LButton")) {
-                            ;sleep 1
-                            This.Mouse_DragMove(wparam, lparam, msg, hwnd)
-                            This.Window_Snap(hwnd, This.ThumbWindows)
-                        }
-                        else
-                            This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
-                    }                    
+                while (GetKeyState("RButton")) {
+                    
+                    if !(GetKeyState("LButton")) {
+                        ;sleep 1
+                        This.Mouse_DragMove(wparam, lparam, msg, hwnd)
+                        This.Window_Snap(hwnd, This.ThumbWindows)
+                    }
+                    else
+                        This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
+                }
+
+                if This.AutoSaveThumbnailPositions ; Positions autosave
+                    This.Save_ThumbnailPossitions
+                
                 return 0
             }
 

@@ -49,6 +49,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["LastUsedProfile"] := value
     }
 
+    AutoSaveThumbnailPositions {
+        get => This._JSON["AutoSaveThumbnailPositions"]
+        set => This._JSON["AutoSaveThumbnailPositions"] := value
+    }
+
     Global_Groups {
         get => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"]
         set => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"] := value
@@ -681,6 +686,7 @@ class Propertys extends TrayMenu {
         if (This.LastUsedProfile = "" || !This.Profiles.Has(This.LastUsedProfile))
             This.LastUsedProfile := "Default"
 
+        This.ProfileOverride()
         ; FileDelete("EVE-X-Preview.json")
         ; FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json")
         SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -689,15 +695,12 @@ class Propertys extends TrayMenu {
         This.SelectProfile_DDL.Delete(This.SelectProfile_DDL.Value)
         This.SelectProfile_DDL.Redraw()
 
-        for k, v in This.S_Gui.Controls.Profile_Settings.PsDDL {
-            for _, ob in v {
-                ob.Enabled := 0
-            }
+        for k, v in This.MainFrame {
+            v.Enabled := 0
         }
 
         ;This.S_Gui.Show("AutoSize")
     }
-
 
     Create_Profile(*) {
         Obj := InputBox("Enter a Profile Name", "Create New Profile", "w200 h90")
@@ -728,6 +731,33 @@ class Propertys extends TrayMenu {
         This.LastUsedProfile := Obj.value
         Return
     }
+
+    Rename_Profile(*) {
+        if This.LastUsedProfile == "Default" {
+            MsgBox("Can't rename Default profile")
+            return
+        }
+
+        Obj := InputBox("Enter a Profile Name", "Rename Profile", "w200 h90", This.LastUsedProfile)
+
+        if (Obj.Result != "OK" || Obj.Result = "")
+            return
+        if (This.Profiles.Has(Obj.value)) {
+            MsgBox("A profile with this name already exists")
+            return
+        }
+
+        This._JSON["_Profiles"][Obj.value] := JSON.Load(FileRead("EVE-X-Preview.json"))["_Profiles"][This.LastUsedProfile]
+        This._JSON["_Profiles"].Delete(This.LastUsedProfile)
+
+        This.SelectProfile_DDL.Delete()
+        This.SelectProfile_DDL.Add(This.Profiles_to_Array())
+        This.LastUsedProfile := Obj.value
+        This.ProfileOverride()
+        ControlChooseString(Obj.value, This.SelectProfile_DDL, "EVE-X-Preview - Settings")
+        Return
+    }
+
     Save_ThumbnailPossitions() {
         for EvEHwnd, GuiObj in This.ThumbWindows.OwnProps() {
             for Names, Obj in GuiObj {
@@ -754,6 +784,35 @@ class Propertys extends TrayMenu {
             }
         }
         SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    Update_All_Thumbnails() {
+        thumbW := This.ThumbnailStartLocation["width"]
+        thumbH := This.ThumbnailStartLocation["height"]
+
+        for pName, pValue in This._JSON["_Profiles"] {
+            for charName, v in pValue["Thumbnail Positions"] {
+                v["width"] := thumbW
+                v["height"] := thumbH
+            }
+        }
+
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    ImportNamesFromThumbs(EditField) {
+        charList := ""
+        index := 1
+        for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
+            for k, v in ThumbObj {
+                if k = "Window" {
+                    if v.Title == "" || v.Title == "Char Screen"
+                        continue
+                    charList .= v.Title . "`n"
+                }
+            }
+        }
+        EditField.Value .= charList
     }
 }
 
