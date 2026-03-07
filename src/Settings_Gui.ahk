@@ -17,7 +17,7 @@
         This.ClientSettings_Ctrl()
         This.CustomColors_Ctrl()
         This.HotkeyGroups_Ctrl()
-        This.Hotkeys_Ctrl()
+        This.HotkeysSettings_Ctrl()
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
@@ -458,8 +458,8 @@
         }
     }
 
-    Hotkeys_Ctrl() {
-        This.MainFrame.Group["Hotkeys"] := [], Hotkeys := []
+    HotkeysSettings_Ctrl() {
+        This.MainFrame.Group["Hotkeys Settings"] := [], HotkeysSettings := []
 
         Charlist := "", Hklist := ""
         for index, value in This._Hotkeys {
@@ -470,41 +470,41 @@
         }
 
         This.MainFrame.SetFont("s12 w700 q5")
-        Hotkeys.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Hotkeys")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Hotkeys Settings")
         This.MainFrame.SetFont("s11 w400")
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
-        Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkey Activation Scope:")
-        Hotkeys.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkey Activation Scope:")
+        HotkeysSettings.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Cycle Login Screens - Hotkey:")
-        Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Cycle Login Screens - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Login Screen Cycle Direction:")
-        Hotkeys.Push This.MainFrame.Add("Radio", Format("xp+{} yp", This.offsetX + 1) " vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Old->New")
-        Hotkeys.Push This.MainFrame.Add("Radio", Format("xp+{} yp", 83) " vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "New->Old")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Login Screen Cycle Direction:")
+        HotkeysSettings.Push This.MainFrame.Add("Radio", Format("xp+{} yp", This.offsetX + 1) " vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Old->New")
+        HotkeysSettings.Push This.MainFrame.Add("Radio", Format("xp+{} yp", 83) " vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "New->Old")
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close Active EVE Window - Hotkey:")
-        Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close Active EVE Window - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close All EVE Windows - Hotkey:")
-        Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close All EVE Windows - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
-        Hotkeys.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
         HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyCharList", Charlist)
-        Hotkeys.Push HKCharList
+        HotkeysSettings.Push HKCharList
 
         ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editW), "Import from Launched")
 
-        Hotkeys.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Hotkeys:")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Hotkeys:")
         HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyList", Hklist)
-        Hotkeys.Push HKKeylist
+        HotkeysSettings.Push HKKeylist
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Hotkey_Scoope"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -515,12 +515,12 @@
         This.MainFrame["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         HKCharList.OnEvent("Change", (obj, *) => EventHandler(obj))
-        Hotkeys.Push ImpBtn
+        HotkeysSettings.Push ImpBtn
         ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(HKCharList))
         HKKeylist.OnEvent("Change", (obj, *) => EventHandler(obj))
 
-        This.MainFrame.Group["Hotkeys"] := Hotkeys
-        for k, v in This.MainFrame.Group["Hotkeys"]
+        This.MainFrame.Group["Hotkeys Settings"] := HotkeysSettings
+        for k, v in This.MainFrame.Group["Hotkeys Settings"]
             v.Visible := 0
 
         cHotkeys_EventHandler(obj) {
@@ -930,7 +930,7 @@
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Selected Groups Override Defaults, Skipping Per-Profile Setup.")
         
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkeys:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalHotkeys Checked" This.Global_Groups["Hotkeys"], "On/Off")
+        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalHotkeys Checked" This.Global_Groups["Hotkeys Settings"], "On/Off")
         
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnails Behavior:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailsBehavior Checked" This.Global_Groups["Thumbnails Behavior"], "On/Off")
@@ -971,8 +971,8 @@
                 This.Check_Updates := obj.value
             }
             else if (obj.name = "UpdateGlobals") {
-                if This.Global_Groups["Hotkeys"] != This.MainFrame["GlobalHotkeys"].value {
-                    This.Global_Groups["Hotkeys"] := This.MainFrame["GlobalHotkeys"].value
+                if This.Global_Groups["Hotkeys Settings"] != This.MainFrame["GlobalHotkeys"].value {
+                    This.Global_Groups["Hotkeys Settings"] := This.MainFrame["GlobalHotkeys"].value
                     need_reload := 1
                 } 
                 if This.Global_Groups["Thumbnails Behavior"] != This.MainFrame["GlobalThumbnailsBehavior"].value {
@@ -1182,7 +1182,7 @@
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
         This.MainFrame["Check_Updates"].value := This.Check_Updates
 
-        This.MainFrame["GlobalHotkeys"].value := This.Global_Groups["Hotkeys"]
+        This.MainFrame["GlobalHotkeys"].value := This.Global_Groups["Hotkeys Settings"]
         This.MainFrame["GlobalThumbnailsBehavior"].value := This.Global_Groups["Thumbnails Behavior"]
         This.MainFrame["GlobalThumbnailsVisuals"].value := This.Global_Groups["Thumbnails Visuals"]
         This.MainFrame["GlobalThumbnailVisibility"].value := This.Global_Groups["Thumbnail Visibility"]

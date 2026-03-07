@@ -60,7 +60,7 @@ class Propertys extends TrayMenu {
     }
 
     ProfileOverride() {
-        This.ProfileHotkeys := This.Global_Groups["Hotkeys"] ? "Default" : This.LastUsedProfile
+        This.ProfileHotkeysSettings := This.Global_Groups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsBehavior := This.Global_Groups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsVisuals := This.Global_Groups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailVisibility := This.Global_Groups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
@@ -145,15 +145,9 @@ class Propertys extends TrayMenu {
     _ProfileProps {
         get {
             Arr := []
-            for k in This._JSON["_Profiles"][This.LastUsedProfile] {
-                If (k = "Thumbnail Positions" || k = "Client Possitions")
-                    continue
-                Arr.Push(k)
-            }
-
             profilesOrder := Map(
                 "Hotkey Groups", 1,
-                "Hotkeys", 2,
+                "Hotkeys Settings", 2,
                 "Thumbnails Behavior", 3,
                 "Thumbnails Visuals", 4,
                 "Thumbnail Visibility", 5,
@@ -161,10 +155,19 @@ class Propertys extends TrayMenu {
                 "Custom Colors", 7,
                 "Other", 8
             )
+            
+            for k in This._JSON["_Profiles"][This.LastUsedProfile] {
+                for prof, v in profilesOrder {
+                    if prof == k {
+                        Arr.Push(k)
+                        break
+                    }
+                }
+            }
 
             ; Sorting by set order so settings looks more organized
             delimited := ""
-            for index, value in arr
+            for index, value in Arr
                 delimited .= (delimited ? "|" : "") . value
             sorted_delimited := Sort(delimited, "D|", (item1,item2,*)=>(obj:=profilesOrder, pos1:=obj.Get(item1,999), pos2:=obj.Get(item2,999), pos1>pos2?1:pos1<pos2?-1:0))
             sorted_arr := StrSplit(sorted_delimited, "|")
@@ -501,48 +504,48 @@ class Propertys extends TrayMenu {
     ;## Profile Hotkeys
 
     Suspend_Hotkeys_Hotkey {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Suspend_Hotkeys_Hotkey"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Suspend_Hotkeys_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Suspend_Hotkeys_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Suspend_Hotkeys_Hotkey"] := value
     }
     
     Global_Hotkeys {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Global_Hotkeys"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Global_Hotkeys"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"] := value
     }
     
     Login_Screen_Cycle_Hotkey {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Login_Screen_Cycle_Hotkey"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Login_Screen_Cycle_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Login_Screen_Cycle_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Login_Screen_Cycle_Hotkey"] := value
     }
 
     LoginScreenCycleDirection[*] {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["LoginScreenCycleDirection"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["LoginScreenCycleDirection"] := Value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["LoginScreenCycleDirection"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["LoginScreenCycleDirection"] := Value
     }
 
     PreserveHotkeysOnLogout {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["PreserveHotkeysOnLogout"] := value
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["PreserveHotkeysOnLogout"] := value
     }
 
     KeepGroupsPositions {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["KeepGroupsPositions"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys"]["KeepGroupsPositions"] := value
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["KeepGroupsPositions"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["KeepGroupsPositions"] := value
     }
 
     Close_Active_EVE_Win_Hotkey {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_Active_EVE_Win_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"] := value
     }
 
     Close_All_EVE_Win_Hotkey {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_All_EVE_Win_Hotkey"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Close_All_EVE_Win_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_All_EVE_Win_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_All_EVE_Win_Hotkey"] := value
     }
 
     Reload_Program_Hotkey {
-        get => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Reload_Program_Hotkey"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["Reload_Program_Hotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"] := value
     }
 
     Hotkey_Groups[key?] {
@@ -570,17 +573,17 @@ class Propertys extends TrayMenu {
     _Hotkeys[key?] {
         get {
             if (IsSet(Key)) {
-                loop This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"].Length {
-                    if (This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"][A_Index].Has(key)) {
-                        return This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"][A_Index][key]
+                loop This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"].Length {
+                    if (This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"][A_Index].Has(key)) {
+                        return This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"][A_Index][key]
                     }
                 }
                 return 0
             }
             if !(IsSet(Key))
-                return This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"]
+                return This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"]
         }
-        set => This._JSON["_Profiles"][This.ProfileHotkeys]["Hotkeys"]["CharacterHotkeys"] := Value
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"] := Value
     }
 
     _Hotkey_Delete(*) {

@@ -505,6 +505,7 @@
         keys := Map()
         This.HotkGroups := []
         This.HotkGroupsInds := []
+        This.LastHotkGroupInd := 1
         index := 1
 
         if (IsObject(This.Hotkey_Groups) && This.Hotkey_Groups.Count != 0) {
@@ -545,7 +546,7 @@
     Cycle_Hotkey_Groups(ArrInd, direction, *) {
         static tick, prevTick := 0
         tick := A_TickCount
-        if tick - prevTick < 100
+        if tick - prevTick < 90
             return
         prevTick := tick
 
@@ -555,10 +556,14 @@
         index := This.HotkGroupsInds[ArrInd]
         length := arr.Length
 
-        if !This.KeepGroupsPositions {
-            try {
-                title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : This.CleanTitle(WinGetTitle("A"))
-                index := IsActiveWinInGroup(title, arr)
+        if !This.KeepGroupsPositions && This.LastHotkGroupInd != ArrInd {
+            if This.LastHotkGroupInd != -1
+                index := 0
+            else {
+                try {
+                    title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : This.CleanTitle(WinGetTitle("A"))
+                    index := IsActiveWinInGroup(title, arr)
+                }
             }
         }
 
@@ -582,6 +587,7 @@
                 This.ActivateEVEWindow(HWND,,)
         }
 
+        This.LastHotkGroupInd := ArrInd
         This.HotkGroupsInds[ArrInd] := index
 
         This.hitThis()
@@ -612,7 +618,6 @@
 
 
     SetHotkGroupInd(hwnd) {
-        ; if IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd) {
         if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
             title := This.CleanTitle(WinGetTitle("Ahk_id " Hwnd))
@@ -702,6 +707,8 @@
 
         if !LoginWins.Length
             return
+
+        This.LastHotkGroupInd := -1
 
         if LoginWins.Length == 1 {
             This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
@@ -841,6 +848,7 @@
                     try { ; Probably fix for bug
                         if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
                             This.SetHotkGroupInd(hwnd)
+                            This.LastHotkGroupInd := -1
                             This.ActivateEVEWindow(hwnd)
                     }
                 }
@@ -1060,8 +1068,10 @@
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
-        if IsSet(direct) && direct
+        if IsSet(direct) && direct {
             This.SetHotkGroupInd(hwnd)
+            This.LastHotkGroupInd := -1
+        }
 
         ;Sets the timer to minimize client if the user enable this.
         if (This.MinimizeInactiveClients) {

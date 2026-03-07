@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "2.1",
+    "settings_version": "1",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -67,7 +67,7 @@
                     "height": 50
                 }
             },
-            "Hotkeys": {
+            "Hotkeys Settings": {
                 "Suspend_Hotkeys_Hotkey": "",
                 "Global_Hotkeys": 1,
                 "Login_Screen_Cycle_Hotkey": "",
@@ -104,7 +104,7 @@
                     "Client Settings": 0,
                     "Thumbnails Behavior": 0,
                     "Thumbnails Visuals": 0,
-                    "Hotkeys": 0,
+                    "Hotkeys Settings": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
                     "Other": 0

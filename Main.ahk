@@ -16,17 +16,13 @@ KeyHistory 0
 
 ; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
 SetWinDelay -1
-FileEncoding("UTF-8") ; Encoding for JSSON file
+FileEncoding("UTF-8") ; Encoding for JSON file
 
 SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-/*
-TODO #########################
-*/
-
-;@Ahk2Exe-Let U_version = 1.5.0.4
+;@Ahk2Exe-Let U_version = 1.5.0.5
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -75,12 +71,12 @@ Load_JSON() {
             dver := DJSON["settings_version"]
             uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
             if (uver != dver) {
+                ; Create a timestamped backup of the existing file before merge
+                FileMove(userPath, backupPath, true)
                 ; Migrate in-place (implement logic inside MigrateSettings)
                 UJSON := MigrateSettings(UJSON, uver, dver)
                 ; ensure we set new version so merge will not re-trigger
                 UJSON["settings_version"] := dver
-                ; Create a timestamped backup of the existing file before merge
-                FileMove(userPath, backupPath, true)
             }
         }
 
@@ -229,7 +225,7 @@ MigrateSettings(userObj, uver, dver) {
     if !IsObject(userObj)
         return userObj
 
-    if (uver == "1" || uver == "") && dver == "2" {
+    if uver == "" && Integer(dver) >= 1 {
 
         if !userObj.Has("global_Settings")
             throw Error("Missing global_Settings!")
@@ -253,18 +249,8 @@ MigrateSettings(userObj, uver, dver) {
                 continue
             }
 
-            ; Hotkeys -> Hotkeys : CharacterHotkeys
-            if prof_settings.Has("Hotkeys") {
-                tempHot := DeepClone(prof_settings["Hotkeys"]) ; Write hotkeys to temp location
-                prof_settings["Hotkeys"] := Map() ; new object (fresh)
-                prof_settings.Set("Hotkeys", Map("CharacterHotkeys", tempHot))
-            } else {
-                prof_settings["Hotkeys"] := Map()
-                prof_settings["Hotkeys"]["CharacterHotkeys"] := []
-            }
-
             ; Global -> Other
-            prof_settings["Other"] := {}
+            prof_settings["Other"] := Map()
             if g.Has("SwitchLangOnErr")
                 prof_settings.Set("Other", Map("SwitchLangOnErr", g["SwitchLangOnErr"]))
             if g.Has("Check_Updates")
@@ -341,8 +327,14 @@ MigrateSettings(userObj, uver, dver) {
             if ts.Has("InactiveClientBorderColor")
                 tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
 
-            ; Global -> Hotkeys
-            hs := prof_settings["Hotkeys"]
+            ; Hotkeys -> Hotkeys Settings
+            prof_settings["Hotkeys Settings"] := Map()
+            hs := prof_settings["Hotkeys Settings"]
+
+            if prof_settings.Has("Hotkeys")
+                hs["CharacterHotkeys"] := DeepClone(prof_settings["Hotkeys"])
+
+            ; Global -> Hotkeys Settings
             if g.Has("Suspend_Hotkeys_Hotkey")
                 hs["Suspend_Hotkeys_Hotkey"] := g["Suspend_Hotkeys_Hotkey"]
             if g.Has("Global_Hotkeys")
@@ -360,45 +352,26 @@ MigrateSettings(userObj, uver, dver) {
             if g.Has("Reload_Program_Hotkey")
                 hs["Reload_Program_Hotkey"] := g["Reload_Program_Hotkey"]
 
-            try
-                prof_settings.Delete("Thumbnail Settings")
-            catch
-                throw Error("Error deleting Thumbnail Settings in " prof_name "!")
+            ; Exclude from Closing -> Client settings
+            if prof_settings.has("Exclude from Closing") {
+                efc := prof_settings["Exclude from Closing"]
+                if efc.Has("ExcludeOnLoginScreen")
+                    prof_settings["Client Settings"]["DontCloseOnLoginScreen"] := efc["ExcludeOnLoginScreen"] ; +Renamed
+                if efc.Has("DontCloseClients")
+                    prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(efc["DontCloseClients"])
+            }
+
+            for group in ["Hotkeys", "Exclude from Closing", "Thumbnail Settings"]
+                try
+                    prof_settings.Delete(group)
         }
 
         try
             userObj.Delete("global_Settings")
-        catch
-            throw Error("Error deleting global_Settings!")
     }
 
-    if (uver == "1" || uver == "" || uver == "2") && dver == "2.1" {
-
-            if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
-                throw Error("No profiles found!")
-    
-            for prof_name, prof_settings in userObj["_Profiles"] {
-    
-                if !IsObject(prof_settings) {
-                    ; if it's not an object, skip (unexpected)
-                    continue
-                }
-
-                ; Exclude from Closing -> Client settings
-                if prof_settings.has("Exclude from Closing") {
-                    efc := prof_settings["Exclude from Closing"]
-                    if efc.Has("ExcludeOnLoginScreen")
-                        prof_settings["Client Settings"]["DontCloseOnLoginScreen"] := efc["ExcludeOnLoginScreen"] ; +Renamed
-                    if efc.Has("DontCloseClients")
-                        prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(efc["DontCloseClients"])
-
-                    try
-                        prof_settings.Delete("Exclude from Closing")
-                    catch
-                        throw Error("Error deleting Exclude from Closing in " prof_name "!")
-                }
-            }
-        }
+    ; Next will be:
+    ; if (uver == "" || Integer(uver) == 1) && Integer(dver) >= 2
 
     return userObj
 }
