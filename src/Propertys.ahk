@@ -49,11 +49,6 @@ class Propertys extends TrayMenu {
         set => This._JSON["LastUsedProfile"] := value
     }
 
-    AutoSaveThumbnailPositions {
-        get => This._JSON["AutoSaveThumbnailPositions"]
-        set => This._JSON["AutoSaveThumbnailPositions"] := value
-    }
-
     Global_Groups {
         get => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"]
         set => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"] := value
@@ -75,6 +70,11 @@ class Propertys extends TrayMenu {
     ThumbnailStartLocation[key] {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key] := value
+    }
+
+    AutoSaveThumbnailPositions {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["AutoSaveThumbnailPositions"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["AutoSaveThumbnailPositions"] := value
     }
 
     ThumbnailBackgroundColor {
@@ -135,6 +135,11 @@ class Propertys extends TrayMenu {
     ShiftThumbVerticalStep {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbVerticalStep"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShiftThumbVerticalStep"] := value
+    }
+
+    HideThumbnails {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnails"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnails"] := value
     }
 
     ShowAllColoredBorders {
@@ -546,6 +551,16 @@ class Propertys extends TrayMenu {
     Reload_Program_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"] := value
+    }
+
+    GroupsHoldDelay {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["GroupsHoldDelay"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["GroupsHoldDelay"] := value
+    }
+
+    HideThumbnailsHotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["HideThumbnailsHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["HideThumbnailsHotkey"] := value
     }
 
     Hotkey_Groups[key?] {

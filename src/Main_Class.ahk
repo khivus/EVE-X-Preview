@@ -81,6 +81,21 @@
             }
         }
 
+        ; Register Hotkey for Hide Thumbnails if the user has is Set
+        if (This.HideThumbnailsHotkey != "") {
+            if !This.SwitchLangOnErr {
+                try {
+                    Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
+                }
+                catch ValueError as e {
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Hide Thumbnails Hotkey" )
+                }
+            }
+            else {
+                Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
+            }
+        }
+
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
             if !This.SwitchLangOnErr {
@@ -130,14 +145,14 @@
         if (This.Reload_Program_Hotkey != "") {
             if !This.SwitchLangOnErr {
                 try {
-                    Hotkey(This.Reload_Program_Hotkey, ObjBindMethod(This, "ReloadProgram"),"P1" )
+                    Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
                 }
                 catch ValueError as e {
                     MsgBox(e.Message ": --> " e.Extra " <-- in Reload EVE-X-Preview Hotkey")
                 }
             }
             else {
-                Hotkey(This.Reload_Program_Hotkey, ObjBindMethod(This, "ReloadProgram"),"P1" )
+                    Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
             }
         }
 
@@ -546,7 +561,7 @@
     Cycle_Hotkey_Groups(ArrInd, direction, *) {
         static tick, prevTick := 0
         tick := A_TickCount
-        if tick - prevTick < 90
+        if tick - prevTick < This.GroupsHoldDelay
             return
         prevTick := tick
 
@@ -646,8 +661,9 @@
         static hit_score := 0
         static last_tick := A_TickCount
         tick := A_TickCount
+        delay := 5 * This.GroupsHoldDelay
 
-        if tick - last_tick > 1000
+        if tick - last_tick > delay
             hit_score := 0
 
         hit_score++
@@ -658,7 +674,7 @@
 
         CoordMode "ToolTip", "Screen"
         ToolTip("Combo " hit_score "`nTotal " counter, x, y)
-        SetTimer(() => ToolTip(), -1000)
+        SetTimer(() => ToolTip(), -(delay))
 
         last_tick := tick
     }
@@ -683,7 +699,7 @@
     Cycle_Login_Windows(*) {
         static tick, prevTick := 0
         tick := A_TickCount
-        if tick - prevTick < 100
+        if tick - prevTick < This.GroupsHoldDelay
             return
         prevTick := tick
 
@@ -741,11 +757,6 @@
     CloseActiveEVEWin(*) {
         if WinActive("ahk_exe exefile.exe")
 		    WinClose("A")
-    }
-
-    ; Reload program
-    ReloadProgram(*) {
-        Reload
     }
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys

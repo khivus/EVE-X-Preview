@@ -25,11 +25,11 @@ Class TrayMenu extends Settings_Gui {
         TrayMenu.Add() ; Seperator
         TrayMenu.Add("Suspend Hotkeys", MenuHandler)
 
-        TrayMenu.Add("Hide Thumbnails On Lost Focus", MenuHandler)
-        if (This.HideThumbnailsOnLostFocus)
-            TrayMenu.check("Hide Thumbnails On Lost Focus")
+        TrayMenu.Add("Hide Thumbnails", MenuHandler)
+        if This.HideThumbnails
+            TrayMenu.check("Hide Thumbnails")
         else
-            TrayMenu.Uncheck("Hide Thumbnails On Lost Focus")
+            TrayMenu.Uncheck("Hide Thumbnails")
 
         TrayMenu.Add()
         TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
@@ -61,6 +61,8 @@ Class TrayMenu extends Settings_Gui {
                 This.AutoSaveThumbnailPositions := !This.AutoSaveThumbnailPositions
                 TrayMenu.ToggleCheck("Auto Save Thumbnail Positions")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
+                Sleep(300)
+                Reload()
             }
             Else if (ItemName = "Save Thumbnail Positions") {
                 ; Saved Thumbnail Positions only if the Saved button is used on the Traymenu
@@ -71,12 +73,12 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.ToggleCheck("Restore Client Positions")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
-            Else if (ItemName = "Hide Thumbnails On Lost Focus") {
-                This.HideThumbnailsOnLostFocus := !This.HideThumbnailsOnLostFocus
-                TrayMenu.ToggleCheck("Hide Thumbnails On Lost Focus")
-                SetTimer(This.Save_Settings_Delay_Timer, -200)
-                Sleep(300)
-                Reload()
+            Else if (ItemName = "Hide Thumbnails") {
+                This.ShowHideThumbnails()
+                if This.HideThumbnails
+                    TrayMenu.check("Hide Thumbnails")
+                else
+                    TrayMenu.Uncheck("Hide Thumbnails")
             }
             Else if (This.Profiles.Has(ItemName)) {
                 ; Change the lastUsedProfile to the Profile name, save it to Json file and reload the script with the new Settings
@@ -99,8 +101,16 @@ Class TrayMenu extends Settings_Gui {
                 else
                     TrayMenu.Uncheck("Suspend Hotkeys")
             }
-
         }
+    }
+
+    ShowHideThumbnails() {
+        This.HideThumbnails := !This.HideThumbnails
+        if This.HideThumbnails
+            This.ShowHideAllThumbnails("Hide")
+        else
+            This.ShowHideAllThumbnails("Show")
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
     }
 
     CloseAllEVEWindows(*) {

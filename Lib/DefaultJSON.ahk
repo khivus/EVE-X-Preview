@@ -5,7 +5,6 @@
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
-    "AutoSaveThumbnailPositions": 0,
     "_Profiles": {
         "Default": {
             "Client Settings": {
@@ -43,7 +42,9 @@
                 "ShiftThumbHorizontalStep": 0,
                 "ShiftThumbVerticalStep": 0,
                 "PreserveThumbPosOnLogout": 1,
-                "PreserveCharNameOnLogout": 0
+                "PreserveCharNameOnLogout": 0,
+                "AutoSaveThumbnailPositions": 0,
+                "HideThumbnails": 0
             },
             "Thumbnails Visuals": {
                 "ShowThumbnailTextOverlay": 1,
@@ -83,6 +84,8 @@
                     {"Example Name3":"Xbutton1 & 1"},
                     {"Example Name4":"^XButton1 & 1"}
                 ],
+                "GroupsHoldDelay": 100,
+                "HideThumbnailsHotkey": ""
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
