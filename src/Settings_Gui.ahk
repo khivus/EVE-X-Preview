@@ -64,6 +64,8 @@
         This.offsetX := 250
         This.editExH := 300
         This.sepW := This.contentW - This.contentGap * 2 + 2
+        This.cPreviewSize := 24
+        This.editC := This.editW - This.cPreviewSize - This.baseGrid
 
         This.directions := Map(
             1, "left -> right, top -> bottom",
@@ -765,7 +767,8 @@
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowThumbnailTextOverlay Checked" This.ShowThumbnailTextOverlay, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Text Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailTextColor -Wrap", This.ThumbnailTextColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vThumbnailTextColor -Wrap", This.ThumbnailTextColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ThumbnailTextColor) " vPreviewThumbnailTextColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Text Size:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailTextSize -Wrap", This.ThumbnailTextSize)
@@ -780,7 +783,8 @@
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 44, This.editOffset, smallEditW) " vThumbnailTextMarginsy -Wrap", This.ThumbnailTextMargins["y"])
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Highligt Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClientHighligtColor -Wrap", This.ClientHighligtColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vClientHighligtColor -Wrap", This.ClientHighligtColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ClientHighligtColor) " vPreviewClientHighligtColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Highligt Border Thickness (px):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClientHighligtBorderthickness -Wrap", This.ClientHighligtBorderthickness)
@@ -798,10 +802,12 @@
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vInactiveClientBorderthickness -Wrap", This.InactiveClientBorderthickness)
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Inactive Client Border Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vInactiveClientBorderColor -Wrap", This.InactiveClientBorderColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vInactiveClientBorderColor -Wrap", This.InactiveClientBorderColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.InactiveClientBorderColor) " vPreviewInactiveClientBorderColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Background Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ThumbnailBackgroundColor) " vPreviewThumbnailBackgroundColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Minimum Thumbnail Size (px):")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", This.offsetX), "width:")
@@ -837,6 +843,7 @@
             }
             else if (obj.name = "ThumbnailTextColor") {
                 This.ThumbnailTextColor := obj.value
+                RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailTextSize") {
                 This.ThumbnailTextSize := obj.value
@@ -852,6 +859,7 @@
             }
             else if (obj.name = "ClientHighligtColor") {
                 This.ClientHighligtColor := obj.value
+                RedrawColorPreview(obj)
             }
             else if (obj.name = "ClientHighligtBorderthickness") {
                 This.ClientHighligtBorderthickness := obj.value
@@ -869,12 +877,14 @@
             }
             else if (obj.Name = "InactiveClientBorderColor") {
                 This.InactiveClientBorderColor := obj.value
+                RedrawColorPreview(obj)
             }
             else if (obj.Name = "InactiveClientBorderthickness") {
                 This.InactiveClientBorderthickness := obj.value
             }
             else if (obj.name = "ThumbnailBackgroundColor") {
                 This.ThumbnailBackgroundColor := obj.value
+                RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailMinimumSizewidth") {
                 This.ThumbnailMinimumSize["width"] := obj.value
@@ -884,6 +894,12 @@
             }
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        RedrawColorPreview(obj) {
+            try
+                This.MainFrame["Preview" obj.name].Opt("Background" obj.value)
+            This.MainFrame["Preview" obj.name].Redraw()
         }
     }
 

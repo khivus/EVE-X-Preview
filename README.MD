@@ -212,5 +212,6 @@ There are several ways to specify hotkeys <br> For a detailed description you ca
 
 
 ## About
-EVE-X-Preview is Created and Maintained by [g0nzo83](https://github.com/g0nzo83) also known as "*John Xer*" in EVE Online
-Forked and updated by [khivus](https://github.com/khivus) same name in EVE Online: [Khivus](https://evewho.com/character/2121577034)
+EVE-X-Preview is Created and Maintained by [g0nzo83](https://github.com/g0nzo83) also known as "*John Xer*" in EVE Online.
+
+Forked and updated by [khivus](https://github.com/khivus) same name in EVE Online: [Khivus](https://evewho.com/character/2121577034).
