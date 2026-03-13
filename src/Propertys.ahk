@@ -61,6 +61,7 @@ class Propertys extends TrayMenu {
         This.ProfileThumbnailVisibility := This.Global_Groups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.Global_Groups["Client Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileCustomColors := This.Global_Groups["Custom Colors"] ? "Default" : This.LastUsedProfile
+        This.ProfileTrayMenuSettings := This.Global_Groups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.Global_Groups["Other"] ? "Default" : This.LastUsedProfile
     }
 
@@ -158,7 +159,8 @@ class Propertys extends TrayMenu {
                 "Thumbnail Visibility", 5,
                 "Client Settings", 6,
                 "Custom Colors", 7,
-                "Other", 8
+                "Tray Menu Settings", 8,
+                "Other", 9
             )
             
             for k in This._JSON["_Profiles"][This.LastUsedProfile] {
@@ -599,6 +601,13 @@ class Propertys extends TrayMenu {
                 return This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"]
         }
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"] := Value
+    }
+
+    ; Tray Menu Settings ##############################
+
+    TrayMenuShortcuts {
+        get => This._JSON["_Profiles"][This.ProfileTrayMenuSettings]["Tray Menu Settings"]["TrayMenuShortcuts"]
+        set => This._JSON["_Profiles"][This.ProfileTrayMenuSettings]["Tray Menu Settings"]["TrayMenuShortcuts"] := value
     }
 
     _Hotkey_Delete(*) {

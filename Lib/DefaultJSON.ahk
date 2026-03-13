@@ -110,7 +110,20 @@
                     "Hotkeys Settings": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
+                    "Tray Menu Settings": 1,
                     "Other": 0
+                }
+            }
+            "Tray Menu Settings": {
+                "TrayMenuShortcuts": {
+                    "Suspend Hotkeys": 1,
+                    "Hide Thumbnails": 1,
+                    "Minimize Inactive Clients": 1,
+                    "Close all EVE Clients": 1,
+                    "Restore Client Positions": 1,
+                    "Save Client Positions": 1,
+                    "Auto Save Thumbnail Positions": 1,
+                    "Save Thumbnail Positions": 1
                 }
             }
         }

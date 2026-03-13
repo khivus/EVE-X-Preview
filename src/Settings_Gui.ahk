@@ -2,7 +2,7 @@
 
     MainGui() {
         ;if settings got chnaged which require a restart to apply
-        This.NeedRestart := 1
+        This.NeedRestart := 0
 
         SetControlDelay(-1)
         ; This.S_Gui := Gui("+OwnDialogs +MinimizeBox -Resize -MaximizeBox SysMenu +MinSize500x250")
@@ -21,6 +21,7 @@
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
+        This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
 
         This._Button_Load()
@@ -233,6 +234,7 @@
             else if (obj.name = "DontCloseClients") {
                 This.DontCloseClients := obj.value
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -286,7 +288,6 @@
                     obj.value := This.CustomColors_AllCharNames
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }
             else if (obj.Name = "CBorderColor") {
                 indexOld := This.IndexcBorder
@@ -295,7 +296,6 @@
                     obj.value := This.CustomColors_AllBColors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }
             else if (obj.Name = "CTextColor") {
                 indexOld := This.IndexcText
@@ -304,7 +304,6 @@
                     obj.value := This.CustomColors_AllTColors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }            
             else if (obj.Name = "IABorderColor") {
                 indexOld := This.IndexcText
@@ -313,8 +312,8 @@
                     obj.value := This.CustomColors_IABorder_Colors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }            
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -385,11 +384,9 @@
         EventHandler(obj) {
             if (obj.name = "PreserveHotkeysOnLogout") {
                 This.PreserveHotkeysOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "KeepGroupsPositions") {
                 This.KeepGroupsPositions := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "GroupsHoldDelay") {
                 delay := Integer(obj.value)
@@ -398,8 +395,8 @@
                 }
                 else
                     This.GroupsHoldDelay := delay
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
@@ -544,41 +541,32 @@
         cHotkeys_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "Hotkey_Scoope") {
                 This.Global_Hotkeys := (obj.value = 1 ? 1 : 0)
-                This.NeedRestart := 1
             }
-            
             else if (obj.name = "Login_Screen_Cycle_Hotkey") {
                 This.Login_Screen_Cycle_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "LoginScreenCycleDirectionForwards") {
                 This.LoginScreenCycleDirection := 1
-                This.NeedRestart := 1
             }
             else if (obj.name = "LoginScreenCycleDirectionBackwards") {
                 This.LoginScreenCycleDirection := 0
-                This.NeedRestart := 1
             }
             else if (obj.name = "Close_Active_EVE_Win_Hotkey") {
                 This.Close_Active_EVE_Win_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "Close_All_EVE_Win_Hotkey") {
                 This.Close_All_EVE_Win_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "Reload_Program_Hotkey") {
                 This.Reload_Program_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
@@ -714,7 +702,6 @@
             }
             else if (obj.name = "ShowThumbnailsAlwaysOnTop") {
                 This.ShowThumbnailsAlwaysOnTop := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailStartLocationx") {
                 This.ThumbnailStartLocation["x"] := obj.value
@@ -736,36 +723,29 @@
             }
             else if (obj.name = "PreserveThumbPosOnLogout") {
                 This.PreserveThumbPosOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "PreserveCharNameOnLogout") {
                 This.PreserveCharNameOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "HideThumbForActiveWin") {
                 This.HideThumbForActiveWin := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsForLoginScreen") {
                 This.ShiftThumbsForLoginScreen := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsCollisionCheck") {
                 This.ShiftThumbsCollisionCheck := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsDirection") {
                 This.ShiftThumbsDirection := obj.Value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbHorizontalStep") {
                 This.ShiftThumbHorizontalStep := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbVerticalStep") {
                 This.ShiftThumbVerticalStep := obj.value
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -854,60 +834,47 @@
         EventHandler(obj) {
             if (obj.name = "ShowThumbnailTextOverlay") {
                 This.ShowThumbnailTextOverlay := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextColor") {
                 This.ThumbnailTextColor := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextSize") {
                 This.ThumbnailTextSize := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextFont") {
                 This.ThumbnailTextFont := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextMarginsx") {
                 This.ThumbnailTextMargins["x"] := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextMarginsy") {
                 This.ThumbnailTextMargins["y"] := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ClientHighligtColor") {
                 This.ClientHighligtColor := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ClientHighligtBorderthickness") {
                 This.ClientHighligtBorderthickness := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShowClientHighlightBorder") {
                 This.ShowClientHighlightBorder := obj.value
             }
             else if (obj.name = "ThumbnailOpacity") {
                 This.ThumbnailOpacity := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.Name = "ShowAllBorders") {
                 This.ShowAllColoredBorders := obj.value
                 This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
                 This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders
-                This.NeedRestart := 1
             }
             else if (obj.Name = "InactiveClientBorderColor") {
                 This.InactiveClientBorderColor := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.Name = "InactiveClientBorderthickness") {
                 This.InactiveClientBorderthickness := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailBackgroundColor") {
                 This.ThumbnailBackgroundColor := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailMinimumSizewidth") {
                 This.ThumbnailMinimumSize["width"] := obj.value
@@ -915,6 +882,7 @@
             else if (obj.name = "ThumbnailMinimumSizeheight") {
                 This.ThumbnailMinimumSize["height"] := obj.value
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -951,6 +919,17 @@
     Other_Ctrl() {
         This.MainFrame.Group["Other"] := [], Other := []
 
+        This.GlobalGroupsOrder := [
+            "Hotkeys Settings",
+            "Thumbnails Behavior",
+            "Thumbnails Visuals",
+            "Thumbnail Visibility",
+            "Client Settings",
+            "Custom Colors",
+            "Tray Menu Settings",
+            "Other"
+        ]
+
         This.MainFrame.SetFont("s12 w700 q5")
         Other.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Other")
         This.MainFrame.SetFont("s11 w400")
@@ -965,26 +944,11 @@
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Selected Groups Override Defaults, Skipping Per-Profile Setup.")
         
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkeys:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalHotkeys Checked" This.Global_Groups["Hotkeys Settings"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnails Behavior:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailsBehavior Checked" This.Global_Groups["Thumbnails Behavior"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnails Visuals:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailsVisuals Checked" This.Global_Groups["Thumbnails Visuals"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Visibility:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailVisibility Checked" This.Global_Groups["Thumbnail Visibility"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Settings:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalClientSettings Checked" This.Global_Groups["Client Settings"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Custom Colors:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalCustomColors Checked" This.Global_Groups["Custom Colors"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Other:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalOther Checked" This.Global_Groups["Other"], "On/Off")
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), group ":")
+            Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobal" group_ " Checked" This.Global_Groups[group], "On/Off")
+        }
 
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGlobals", "Update")
 
@@ -1007,40 +971,19 @@
                 This.Check_Updates := obj.value
             }
             else if (obj.name = "UpdateGlobals") {
-                if This.Global_Groups["Hotkeys Settings"] != This.MainFrame["GlobalHotkeys"].value {
-                    This.Global_Groups["Hotkeys Settings"] := This.MainFrame["GlobalHotkeys"].value
-                    need_reload := 1
-                } 
-                if This.Global_Groups["Thumbnails Behavior"] != This.MainFrame["GlobalThumbnailsBehavior"].value {
-                    This.Global_Groups["Thumbnails Behavior"] := This.MainFrame["GlobalThumbnailsBehavior"].value
-                    need_reload := 1
+                for group in This.GlobalGroupsOrder {
+                    group_ := StrReplace(group, A_Space, "_")
+                    if This.Global_Groups[group] != This.MainFrame["Global" group_].value {
+                        This.Global_Groups[group] := This.MainFrame["Global" group_].value
+                        need_reload := 1
+                    }
                 }
-                if This.Global_Groups["Thumbnails Visuals"] != This.MainFrame["GlobalThumbnailsVisuals"].value {
-                    This.Global_Groups["Thumbnails Visuals"] := This.MainFrame["GlobalThumbnailsVisuals"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Thumbnail Visibility"] != This.MainFrame["GlobalThumbnailVisibility"].value {
-                    This.Global_Groups["Thumbnail Visibility"] := This.MainFrame["GlobalThumbnailVisibility"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Client Settings"] != This.MainFrame["GlobalClientSettings"].value {
-                    This.Global_Groups["Client Settings"] := This.MainFrame["GlobalClientSettings"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Custom Colors"] != This.MainFrame["GlobalCustomColors"].value {
-                    This.Global_Groups["Custom Colors"] := This.MainFrame["GlobalCustomColors"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Other"] != This.MainFrame["GlobalOther"].value {
-                    This.Global_Groups["Other"] := This.MainFrame["GlobalOther"].value
-                    need_reload := 1
-                }
-
             }
             else if (obj.name = "UpdateThumbnails") {
                 This.Update_All_Thumbnails()
                 need_reload := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             if need_reload {
                 Sleep(250)
@@ -1050,6 +993,47 @@
 
         This.MainFrame.Group["Other"] := Other
         for k, v in This.MainFrame.Group["Other"]
+            v.Visible := 0
+    }
+
+    TrayMenuSettings_Ctrl() {
+        arr := []
+
+        This.TrayMenuShortcutsOrder := [
+            "Suspend Hotkeys",
+            "Hide Thumbnails",
+            "Minimize Inactive Clients",
+            "Close all EVE Clients",
+            "Restore Client Positions",
+            "Save Client Positions",
+            "Auto Save Thumbnail Positions",
+            "Save Thumbnail Positions"
+        ]
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Tray Menu Settings")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Show/Hide Tray Menu Items:")
+
+        for TMI in This.TrayMenuShortcutsOrder {
+            TMI_ := StrReplace(TMI, A_Space, "_")
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), TMI ":")
+            arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vTM" TMI_ " Checked" This.TrayMenuShortcuts[TMI], "On/Off")
+            This.MainFrame["TM" TMI_].OnEvent("Click", (obj, *) => EventHandler(obj))
+        }
+
+        EventHandler(obj) {
+            temp := StrReplace(obj.name, "TM")
+            TMI := StrReplace(temp, "_", A_Space)
+            This.TrayMenuShortcuts[TMI] := obj.value
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Tray Menu Settings"] := arr
+        for k, v in This.MainFrame.Group["Tray Menu Settings"]
             v.Visible := 0
     }
 
@@ -1222,13 +1206,16 @@
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
         This.MainFrame["Check_Updates"].value := This.Check_Updates
 
-        This.MainFrame["GlobalHotkeys"].value := This.Global_Groups["Hotkeys Settings"]
-        This.MainFrame["GlobalThumbnailsBehavior"].value := This.Global_Groups["Thumbnails Behavior"]
-        This.MainFrame["GlobalThumbnailsVisuals"].value := This.Global_Groups["Thumbnails Visuals"]
-        This.MainFrame["GlobalThumbnailVisibility"].value := This.Global_Groups["Thumbnail Visibility"]
-        This.MainFrame["GlobalClientSettings"].value := This.Global_Groups["Client Settings"]
-        This.MainFrame["GlobalCustomColors"].value := This.Global_Groups["Custom Colors"]
-        This.MainFrame["GlobalOther"].value := This.Global_Groups["Other"]
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            This.MainFrame["Global" group_].Value := This.Global_Groups[group]
+        }
+
+        ; Tray Menu Settings
+        for TMI in This.TrayMenuShortcutsOrder {
+            TMI_ := StrReplace(TMI, A_Space, "_")
+            This.MainFrame["TM" TMI_].Value := This.TrayMenuShortcuts[TMI]
+        }
 
         for k, v in This.MainFrame.Group {
             for _, ob in v {
@@ -1242,13 +1229,10 @@
         This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders
 
-        This.MainFrame["GlobalHotkeys"].Enabled := 0
-        This.MainFrame["GlobalThumbnailsBehavior"].Enabled := 0
-        This.MainFrame["GlobalThumbnailsVisuals"].Enabled := 0
-        This.MainFrame["GlobalThumbnailVisibility"].Enabled := 0
-        This.MainFrame["GlobalClientSettings"].Enabled := 0
-        This.MainFrame["GlobalCustomColors"].Enabled := 0
-        This.MainFrame["GlobalOther"].Enabled := 0
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            This.MainFrame["Global" group_].Enabled := 0
+        }
     }
 
 
