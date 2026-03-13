@@ -49,21 +49,42 @@ class Propertys extends TrayMenu {
         set => This._JSON["LastUsedProfile"] := value
     }
 
+    AntiGlobalGroups {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Global_Groups"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Other"]["Global_Groups"] := value
+    }
+
     Global_Groups {
         get => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"]
         set => This._JSON["_Profiles"]["Default"]["Other"]["Global_Groups"] := value
     }
 
     ProfileOverride() {
-        This.ProfileHotkeysSettings := This.Global_Groups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
-        This.ProfileThumbnailsBehavior := This.Global_Groups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
-        This.ProfileThumbnailsVisuals := This.Global_Groups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
-        This.ProfileThumbnailVisibility := This.Global_Groups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
-        This.ProfileClientSettings := This.Global_Groups["Client Settings"] ? "Default" : This.LastUsedProfile
-        This.ProfileCustomColors := This.Global_Groups["Custom Colors"] ? "Default" : This.LastUsedProfile
-        This.ProfileTrayMenuSettings := This.Global_Groups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
-        This.ProfileOther := This.Global_Groups["Other"] ? "Default" : This.LastUsedProfile
+        This.ComboGroups := Map()
+        for ag, av in This.AntiGlobalGroups {
+            for g, v in This.Global_Groups {
+                if g == ag {
+                    if v
+                        This.ComboGroups[g] := av ? 0 : 1
+                    else
+                        This.ComboGroups[g] := 0
+
+                    break
+                }
+            }
+        }
+
+        This.ProfileHotkeysSettings := This.ComboGroups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsBehavior := This.ComboGroups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsVisuals := This.ComboGroups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailVisibility := This.ComboGroups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
+        This.ProfileClientSettings := This.ComboGroups["Client Settings"] ? "Default" : This.LastUsedProfile
+        This.ProfileCustomColors := This.ComboGroups["Custom Colors"] ? "Default" : This.LastUsedProfile
+        This.ProfileTrayMenuSettings := This.ComboGroups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
+        This.ProfileOther := This.ComboGroups["Other"] ? "Default" : This.LastUsedProfile
     }
+
+
 
     ;########################
     ;## Profile ThumbnailSettings

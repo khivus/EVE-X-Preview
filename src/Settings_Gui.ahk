@@ -958,7 +958,7 @@
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vCheck_Updates Checked" This.Check_Updates, "On/Off")
 
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
-        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Selected Groups Override Defaults, Skipping Per-Profile Setup.")
+        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap) " vOvrLabel", "PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPlaceholder") ; If too short message will be displaying only part of text
         
         for group in This.GlobalGroupsOrder {
             group_ := StrReplace(group, A_Space, "_")
@@ -966,7 +966,7 @@
             Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobal" group_ " Checked" This.Global_Groups[group], "On/Off")
         }
 
-        Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGlobals", "Update")
+        Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGls", "Update")
 
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap + This.objH, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Update All Thumbnails Size to Default Size.")
@@ -974,7 +974,7 @@
 
         This.MainFrame["SwitchLangOnErr"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["Check_Updates"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
-        This.MainFrame["UpdateGlobals"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
+        This.MainFrame["UpdateGls"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateThumbnails"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
 
         cOther_EventHandler(obj) {
@@ -986,11 +986,11 @@
             else if (obj.name = "Check_Updates") {
                 This.Check_Updates := obj.value
             }
-            else if (obj.name = "UpdateGlobals") {
+            else if (obj.name = "UpdateGls") {
                 for group in This.GlobalGroupsOrder {
                     group_ := StrReplace(group, A_Space, "_")
-                    if This.Global_Groups[group] != This.MainFrame["Global" group_].value {
-                        This.Global_Groups[group] := This.MainFrame["Global" group_].value
+                    if This.AntiGlobalGroups[group] != This.MainFrame["Global" group_].value {
+                        This.AntiGlobalGroups[group] := This.MainFrame["Global" group_].value
                         need_reload := 1
                     }
                 }
@@ -1092,6 +1092,15 @@
         return list
     }
 
+    UpdateOvrText() {
+        if This.LastUsedProfile == "Default"
+            ovr_explanation_text := "Selected Groups Override Settings Groups from Default Profile"
+        else
+            ovr_explanation_text := "Selected Groups Disables Override from Default Profile"
+
+        This.MainFrame["OvrLabel"].Text := ovr_explanation_text
+    }
+
     _Button_Load(obj?,*) {
         if (IsSet(obj))
             This.NeedRestart := 1
@@ -1099,6 +1108,7 @@
         This.LastUsedProfile := This.Sidebar["SelectedProfile"].Text
         This.Refresh_ControlValues()
         This.ProfileOverride()
+        This.UpdateOvrText()
 
         if (This.Sidebar["SelectedProfile"].Text = "Default") {
             for k, ob in This.MainFrame.Group["Other"] {
@@ -1108,12 +1118,26 @@
         }
         else {
             for k, v in This.MainFrame.Group {
-                for group, enab in This.Global_Groups {
+                for group, enab in This.ComboGroups {
                     if k != group || !enab
                         continue
-                    for _, ob in v {
-                        ob.Enabled := 0
+                    if group == "Other" {
+                        Loop 6
+                            v[A_Index].Enabled := 0
                     }
+                    else {
+                        for _, ob in v {
+                            ob.Enabled := 0
+                        }
+                    }
+                }
+            }
+            for k, ob in This.MainFrame.Group["Other"] {
+                if InStr(ob.name, "Global") {
+                    groupName_ := StrReplace(ob.name, "Global", "")
+                    groupName := StrReplace(groupName_, "_", A_Space)
+                    if This.ComboGroups[groupName] || This.AntiGlobalGroups[groupName]
+                        ob.Enabled := 1
                 }
             }
         }
@@ -1224,7 +1248,10 @@
 
         for group in This.GlobalGroupsOrder {
             group_ := StrReplace(group, A_Space, "_")
-            This.MainFrame["Global" group_].Value := This.Global_Groups[group]
+            if This.Global_Groups[group] && This.LastUsedProfile != "Default"
+                This.MainFrame["Global" group_].Value := This.AntiGlobalGroups[group]
+            else
+                This.MainFrame["Global" group_].Value := This.Global_Groups[group]
         }
 
         ; Tray Menu Settings

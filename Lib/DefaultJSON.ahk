@@ -110,7 +110,7 @@
                     "Hotkeys Settings": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
-                    "Tray Menu Settings": 1,
+                    "Tray Menu Settings": 0,
                     "Other": 0
                 }
             }
