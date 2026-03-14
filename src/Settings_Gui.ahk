@@ -20,6 +20,7 @@
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
+        This.NonEVEApps_Ctrl()
         This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
 
@@ -326,7 +327,6 @@
 
         btnW := (This.editW - This.baseGrid) / 2
         btnEditH := 26
-
 
         This.MainFrame.SetFont("s12 w700 q5")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Hotkey Groups")
@@ -947,6 +947,159 @@
             v.Visible := 0
     }
 
+    NonEVEApps_Ctrl() {
+        This.MainFrame.Group["Non-EVE Applications"] := [], arr := []
+
+        btnW := (This.editW - This.baseGrid) / 2
+        btnEditH := 26
+        editCustomW := 131
+        editCustomH := 180
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Non-EVE Applications")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Add/Delete Groups:")
+        addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX, 5, btnW, btnEditH), "Add")
+        delBtn := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Select Group:")
+        ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vNonEVEGroupsDDL", This.GetNonEVEGroupsList())
+
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
+        HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vNonEVEForwardsKey")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
+        HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vNonEVEBackwardsdKey")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Process Names (.exe):")
+        EditExe := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, editCustomH) " -Wrap Disabled vNonEVEProcessGroups")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", This.offsetX), "Titles (optional):")
+        EditTitle := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, editCustomH) " -Wrap Disabled vNonEVETitlesGroups")
+
+        ; arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.editH + This.contentGap), "For Individual Hotkeys:")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", editCustomH + This.lGap), "Process Names (.exe):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVEProcessHtks")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", editCustomW + This.baseGrid + 1), "Titles (optional):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVETitlesHtks")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", (editCustomW + This.baseGrid) * 2 + 1), "Hotkeys:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVEHotkeysHtks")
+
+        arr.Push ddl
+        arr.Push addBtn
+        arr.Push delBtn
+        arr.Push HKForwards
+        arr.Push HKBackwards
+        arr.Push EditExe
+        arr.Push EditTitle
+
+        This.MainFrame["NonEVEGroupsDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditExe, EditTitle, HKForwards, HKBackwards))
+        addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditExe, EditTitle))
+        delBtn.OnEvent("Click", (*) => Delete_Group(ddl, HKForwards, HKBackwards, EditExe, EditTitle))
+        This.MainFrame["NonEVEForwardsKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEBackwardsdKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEProcessGroups"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVETitlesGroups"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEProcessHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+        This.MainFrame["NonEVETitlesHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+        This.MainFrame["NonEVEHotkeysHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+
+        This.MainFrame.Group["Non-EVE Applications"] := arr
+        for k, v in This.MainFrame.Group["Non-EVE Applications"]
+            v.Visible := 0
+
+        CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj1, EditObj2) {
+            ArrayIndex := 0
+            Obj := InputBox("Enter a Groupname", "Create New Group", "w200 h90")
+            if (Obj.Result != "OK")
+                return
+
+            ddlObj.Delete()
+            This.NonEVEGroups[Obj.value] := {}
+            ddlObj.Add(This.GetNonEVEGroupsList())
+            for k in This.NonEVEGroups {
+                if k = Obj.value {
+                    ArrayIndex := A_Index
+                    break
+                }
+            }
+
+            EditObj1.value := "", EditObj2.value := "", ForwardHKObj.value := "", BackwardHKObj.value := ""
+            ForwardHKObj.Enabled := 1, BackwardHKObj.Enabled := 1, EditObj1.Enabled := 1, EditObj2.Enabled := 1
+
+            ddlObj.Choose(ArrayIndex)
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        Delete_Group(ddlObj, ForwardHKObj, BackwardHKObj, EditObj1, EditObj2) {
+            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text))
+                This.NonEVEGroups.Delete(ddlObj.Text)
+
+            ddlObj.Delete()
+            ddlObj.Add(This.GetNonEVEGroupsList())
+            ForwardHKObj.value := "", BackwardHKObj.value := "", EditObj1.value := "", EditObj2.value := ""
+            ForwardHKObj.Enabled := 0, BackwardHKObj.Enabled := 0, EditObj1.Enabled := 0, EditObj2.Enabled := 0
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        SetEditText(ddlObj, EditObj1, EditObj2, ForwardHKObj?, BackwardHKObj?) {
+            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text)) {
+                text1 := ""
+                for Names in This.NonEVEGroups[ddlObj.Text].exe {
+                    text1 .= Names "`n"
+                }
+                text2 := ""
+                for Names in This.NonEVEGroups[ddlObj.Text].title {
+                    text2 .= Names "`n"
+                }
+                EditObj1.value := text1, EditObj1.Enabled := 1, EditObj2.value := text2, EditObj2.Enabled := 1
+                ForwardHKObj.value := This.NonEVEGroups[ddlObj.Text].fkey, ForwardHKObj.Enabled := 1
+                BackwardHKObj.value := This.NonEVEGroups[ddlObj.Text].bkey, BackwardHKObj.Enabled := 1
+            }
+        }
+
+        SaveHKGroupList(obj) {
+            if (obj.Name = "NonEVEProcessGroups" && ddl.Text != "") {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    execs := Trim(v, "`n ")
+                    if (execs = "")
+                        continue
+                    Arr.Push(execs)
+                }
+                This.NonEVEGroups[ddl.Text].exe := Arr
+            }
+            else if (obj.Name = "NonEVETitlesGroups" && ddl.Text != "") {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    titles := Trim(v, "`n ")
+                    Arr.Push(titles)
+                }
+                This.NonEVEGroups[ddl.Text].title := Arr
+            }
+            else if (obj.Name = "NonEVEForwardsKey" && ddl.Text != "") {
+                This.NonEVEGroups[ddl.Text].fkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.Name = "NonEVEBackwardsdKey" && ddl.Text != "") {
+                This.NonEVEGroups[ddl.Text].bkey := Trim(obj.value, "`n ")
+            }
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        SaveHKList(obj) {
+            This.NeedRestart := 1
+        }
+    }
+
     Other_Ctrl() {
         This.MainFrame.Group["Other"] := [], Other := []
 
@@ -1264,6 +1417,24 @@
             }
         }
 
+        ; Non-EVE Applications
+        This.MainFrame["NonEVEGroupsDDL"].Delete()
+        This.MainFrame["NonEVEGroupsDDL"].Add(This.GetNonEVEGroupsList())
+        This.MainFrame["NonEVEForwardsKey"].value := ""
+        This.MainFrame["NonEVEBackwardsdKey"].value := ""
+        This.MainFrame["NonEVEProcessGroups"].value := ""
+        This.MainFrame["NonEVETitlesGroups"].value := ""
+
+        t1 := "", t2 := "", t3 := ""
+        for v in This.NonEVEHotkeys {
+            t1 .= v.exe "`n"
+            t2 .= v.title "`n"
+            t3 .= v.hotkey "`n"
+        }
+        This.MainFrame["NonEVEProcessHtks"].value := t1
+        This.MainFrame["NonEVETitlesHtks"].value := t2
+        This.MainFrame["NonEVEHotkeysHtks"].value := t3
+
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
         This.MainFrame["Check_Updates"].value := This.Check_Updates
@@ -1290,6 +1461,10 @@
             This.MainFrame["ForwardsKey"].Enabled := 0
             This.MainFrame["BackwardsdKey"].Enabled := 0
             This.MainFrame["ImpNamesBtn"].Enabled := 0
+            This.MainFrame["NonEVEForwardsKey"].Enabled := 0
+            This.MainFrame["NonEVEBackwardsdKey"].Enabled := 0
+            This.MainFrame["NonEVEProcessGroups"].Enabled := 0
+            This.MainFrame["NonEVETitlesGroups"].Enabled := 0
         }
         This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders

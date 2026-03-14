@@ -115,7 +115,7 @@
                     "Tray Menu Settings": 0,
                     "Other": 0
                 }
-            }
+            },
             "Tray Menu Settings": {
                 "TrayMenuShortcuts": {
                     "Suspend Hotkeys": 1,
@@ -128,6 +128,15 @@
                     "Save Thumbnail Positions": 1,
                     "Click Through Thumbnails": 1
                 }
+            },
+            "Non-EVE Applications": {
+                "NonEVEGroups": {
+                "Example": {"exe": ["ExampleApp1.exe", "ExampleApp2.exe"], "title": ["Titel", ""], "fkey": "Xbutton1 & 2", "bkey": ""}
+                },
+                "NonEVEHotkeys": [
+                {"exe": "ExampleApp1.exe", "title": "Example App 1 Title", "hotkey": "Xbutton1 & 1"},
+                {"exe": "ExampleApp2.exe", "title": "", "hotkey": "^XButton1 & 1"}
+                ]
             }
         }
     }

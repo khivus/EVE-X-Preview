@@ -208,6 +208,9 @@
         This.Register_Hotkey_Groups()
         This.BorderActive := 0
 
+        This.RegisterNonEVEHotkeys()
+        This.RegisterNonEVEGroups()
+
         return This
     }
 
@@ -492,7 +495,6 @@
 
     ;Register set Hotkeys by the user in settings
     RegisterHotkeys(title, EvE_hwnd) {  
-        static registerGroups := 0
         ;if the user has set Hotkeys in Options 
         if (This._Hotkeys[title]) {  
             ;if the user has selected Global Hotkey. This means the Hotkey will alsways trigger as long at least 1 EVE Window exist.
@@ -566,8 +568,9 @@
                     else {
                         Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
                     }
-                
+
                 index += 1
+                keys := Map()
             }
         }
     }
@@ -618,6 +621,7 @@
         }
 
         This.LastHotkGroupInd := ArrInd
+        This.LastNonEVEGroupInd := -1
         This.HotkGroupsInds[ArrInd] := index
 
         This.hitThis()
@@ -740,6 +744,7 @@
             return
 
         This.LastHotkGroupInd := -1
+        This.LastNonEVEGroupInd := -1
 
         if LoginWins.Length == 1 {
             This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
@@ -909,6 +914,7 @@
                         if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
                             This.SetHotkGroupInd(hwnd)
                             This.LastHotkGroupInd := -1
+                            This.LastNonEVEGroupInd := -1
                             This.ActivateEVEWindow(hwnd)
                     }
                 }
@@ -1097,7 +1103,7 @@
         This.DestroyThumbnailsToggle := 1
     }
     
-    ActivateEVEWindow(hwnd?,ThisHotkey?, title?, direct?) {   
+    ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
         ; If the user clicks the Thumbnail then hwnd stores the Thumbnail Hwnd. Here the Hwnd gets changed to the contiguous EVE window hwnd
         if (IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd)) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
@@ -1131,6 +1137,7 @@
         if IsSet(direct) && direct {
             This.SetHotkGroupInd(hwnd)
             This.LastHotkGroupInd := -1
+            This.LastNonEVEGroupInd := -1
         }
 
         ;Sets the timer to minimize client if the user enable this.
@@ -1268,8 +1275,158 @@
         }
     }
 
+    RegisterNonEVEGroups() {
+        ; This.NonEVEGroups := {
+        ;     1: {exe: ["eve-online.exe", "Discord.exe", "Code.exe"], title: ["EVE Launcher", "", ""], fkey: "F3", bkey: ""},
+        ;     2: {exe: ["pyfa.exe"], title: [""], fkey: "F4", bkey: ""}
+        ; }
+        This.NonEVEGroupsL := []
+        This.NonEVEGroupsInds := []
+        This.LastNonEVEGroupInd := -1
+        directions := Map()
+        index := 1
 
+        for _, group in This.NonEVEGroups {
+            gr := group
+            This.NonEVEGroupsL.Push(gr)
+            This.NonEVEGroupsInds.Push(0)
 
+            if gr.fkey != ""
+                directions["Forward"] := gr.fkey
+            if gr.bkey != ""
+                directions["Backward"] := gr.bkey
+
+            for direction in directions {
+                HotIf ObjBindMethod(This, "AtLeastOneWinExist_", gr)
+                Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
+            }
+            index += 1
+            directions := Map()
+        }
+    }
+
+    AtLeastOneWinExist_(group, *) {
+        for i, exec in group.exe {
+            if !WinExist("ahk_exe " exec) || WinActive("EVE-X-Preview - Settings")
+                continue
+            if group.title[i] != ""
+                return WinExist(group.title[i])
+        
+            return true
+        }
+        return false
+    }
+
+    CycleNonEVEGroups(groupIndex, direction, *) {
+        static tick, prevTick := 0
+        tick := A_TickCount
+        if tick - prevTick < This.GroupsHoldDelay
+            return
+        prevTick := tick
+
+        group := This.NonEVEGroupsL[groupIndex]
+        index := This.NonEVEGroupsInds[groupIndex]
+        length := group.exe.Length
+
+        if !This.KeepGroupsPositions && This.LastNonEVEGroupInd != groupIndex {
+            if This.LastNonEVEGroupInd != -1
+                index := 0
+            else {
+                try {
+                    exec := WinGetProcessName("A")
+                    title := WinGetTitle("A")
+                    index := IsActiveWinInGroup(exec, title, group)
+                }
+            }
+        }
+
+        index := DirectionHandler(direction, index, length)
+    
+        if !This.AtLeastOneWinExist_(group)
+            return
+
+        while !This.OnWinExist_(group.exe[index], group.title[index]) {
+            index := DirectionHandler(direction, index, length)
+        }
+
+        try
+            This.ActivateNonEVE(group.exe[index], group.title[index])
+
+        This.LastNonEVEGroupInd := groupIndex
+        This.NonEVEGroupsInds[groupIndex] := index
+
+        This.hitThis()
+
+        ; Get new index by specified direction
+        DirectionHandler(direction, index, length) {
+            if (direction == "Forward") {
+                index += 1
+                if index > length
+                    index := 1
+            }
+            else if (direction == "Backward") {
+                index -= 1
+                if (index <= 0)
+                    index := length
+            }
+            return index
+        }
+
+        IsActiveWinInGroup(exe, title, group) {
+            for i, exec in group.exe {
+                if exec == exe
+                    if (title != "" && title == group.title[i]) || title == ""
+                        return i
+            }
+            return 0
+        }
+    }
+
+    RegisterNonEVEHotkeys() {
+        ; NonEVEHotkeys := [
+        ;     {exe: "pyfa.exe", title: "", hotkey: "F1"},
+        ;     {exe: "eve-online.exe", title: "EVE Launcher", hotkey: "F2"}
+        ; ]
+
+        for app in This.NonEVEHotkeys {
+            a := app
+            HotIf ObjBindMethod(This, "OnWinExist_", a.exe, a.title)
+            Hotkey(a.hotkey, ObjBindMethod(This, "ActivateNonEVE", a.exe, a.title, 1), "P1")
+        }
+    }
+
+    OnWinExist_(exe, title, *) {
+        if !WinExist("ahk_exe " exe) || WinActive("EVE-X-Preview - Settings")
+            return false
+    
+        if title != ""
+            return WinExist(title)
+    
+        return true
+    }
+
+    ActivateNonEVE(exe, title, direct?, *) {
+        criteria := "ahk_exe " exe
+        if title != ""
+            criteria := title . " " . criteria
+    
+        hwnd := WinExist(criteria)
+        if !hwnd || WinActive("Ahk_id " hwnd)
+            return
+
+        This.LastHotkGroupInd := -1
+        if IsSet(direct) && direct
+            This.LastNonEVEGroupInd := -1
+
+        if (DllCall("IsIconic", "UInt", hwnd)) {
+            This.ShowWindowAsync(hwnd) ; Restore
+        }
+        else { ; Use the virtual key to trigger the internal Hotkey.
+            This.ActivateHwnd := hwnd
+            SendEvent("{Blind}{" Main_Class.virtualKey "}")
+        }
+    }
+    
     ;*WinApi Functions
     ;Gets the normal possition from the Windows. Not to use for Maximized Windows 
     GetWindowPlacement(hwnd) {
