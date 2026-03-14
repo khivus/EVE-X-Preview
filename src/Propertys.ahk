@@ -163,6 +163,11 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnails"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnails"] := value
     }
+    
+    ClickThroughActive {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ClickThroughActive"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ClickThroughActive"] := value
+    }
 
     ShowAllColoredBorders {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowAllColoredBorders"]
@@ -584,6 +589,11 @@ class Propertys extends TrayMenu {
     HideThumbnailsHotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["HideThumbnailsHotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["HideThumbnailsHotkey"] := value
+    }
+
+    ClickThroughHotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ClickThroughHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ClickThroughHotkey"] := value
     }
 
     Hotkey_Groups[key?] {

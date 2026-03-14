@@ -44,7 +44,8 @@
                 "PreserveThumbPosOnLogout": 1,
                 "PreserveCharNameOnLogout": 0,
                 "AutoSaveThumbnailPositions": 0,
-                "HideThumbnails": 0
+                "HideThumbnails": 0,
+                "ClickThroughActive": 0
             },
             "Thumbnails Visuals": {
                 "ShowThumbnailTextOverlay": 1,
@@ -85,7 +86,8 @@
                     {"Example Name4":"^XButton1 & 1"}
                 ],
                 "GroupsHoldDelay": 100,
-                "HideThumbnailsHotkey": ""
+                "HideThumbnailsHotkey": "",
+                "ClickThroughHotkey": ""
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -123,7 +125,8 @@
                     "Restore Client Positions": 1,
                     "Save Client Positions": 1,
                     "Auto Save Thumbnail Positions": 1,
-                    "Save Thumbnail Positions": 1
+                    "Save Thumbnail Positions": 1,
+                    "Click Through Thumbnails": 1
                 }
             }
         }

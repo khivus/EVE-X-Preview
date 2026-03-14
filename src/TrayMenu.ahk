@@ -35,6 +35,14 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Uncheck("Hide Thumbnails")
         }
 
+        if This.TrayMenuShortcuts["Click Through Thumbnails"] {
+            TrayMenu.Add("Click Through Thumbnails", MenuHandler)
+            if This.ClickThroughActive
+                TrayMenu.check("Click Through Thumbnails")
+            else
+                TrayMenu.Uncheck("Click Through Thumbnails")
+        }
+
         if This.TrayMenuShortcuts["Minimize Inactive Clients"] {
             TrayMenu.Add("Minimize Inactive Clients", MenuHandler)
             if This.MinimizeInactiveClients
@@ -43,7 +51,7 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Uncheck("Minimize Inactive Clients")
         }
 
-        if This.TrayMenuShortcuts["Suspend Hotkeys"] || This.TrayMenuShortcuts["Hide Thumbnails"] || This.TrayMenuShortcuts["Minimize Inactive Clients"]
+        if This.TrayMenuShortcuts["Suspend Hotkeys"] || This.TrayMenuShortcuts["Hide Thumbnails"] || This.TrayMenuShortcuts["Minimize Inactive Clients"] || This.TrayMenuShortcuts["Click Through Thumbnails"]
             TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Close all EVE Clients"] {
@@ -108,6 +116,13 @@ Class TrayMenu extends Settings_Gui {
                     TrayMenu.check("Hide Thumbnails")
                 else
                     TrayMenu.Uncheck("Hide Thumbnails")
+            }
+            Else if (ItemName = "Click Through Thumbnails") {
+                This.Toggle_ClickThrough()
+                if This.ClickThroughActive
+                    TrayMenu.check("Click Through Thumbnails")
+                else
+                    TrayMenu.Uncheck("Click Through Thumbnails")
             }
             Else if (ItemName = "Minimize Inactive Clients") {
                 This.MinimizeInactiveClients := !This.MinimizeInactiveClients

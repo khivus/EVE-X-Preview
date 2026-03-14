@@ -493,6 +493,9 @@
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails Hotkey - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
 
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClickThroughHotkey", This.ClickThroughHotkey)
+
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkey Activation Scope:")
         HotkeysSettings.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
 
@@ -524,6 +527,7 @@
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["ClickThroughHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Hotkey_Scoope"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["LoginScreenCycleDirectionForwards"].OnEvent("Click", (obj, *) => cHotkeys_EventHandler(obj))
@@ -546,6 +550,9 @@
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.name = "ClickThroughHotkey") {
+                This.ClickThroughHotkey := Trim(obj.value, "`n ")
             }
             else if (obj.name = "Hotkey_Scoope") {
                 This.Global_Hotkeys := (obj.value = 1 ? 1 : 0)
@@ -624,6 +631,9 @@
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Thumbnails Always on Top:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowThumbnailsAlwaysOnTop Checked" This.ShowThumbnailsAlwaysOnTop, "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vClickThroughActive Checked" This.ClickThroughActive, "On/Off")
+
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Default Thumbnail Position (px):")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", This.offsetX), "x:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 16, This.editOffset, mediumEditW) " vThumbnailStartLocationx", This.ThumbnailStartLocation["x"])
@@ -672,6 +682,7 @@
         This.MainFrame["HideThumbnails"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["HideThumbnailsOnLostFocus"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["ClickThroughActive"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationx"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationy"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationwidth"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -704,6 +715,9 @@
             }
             else if (obj.name = "ShowThumbnailsAlwaysOnTop") {
                 This.ShowThumbnailsAlwaysOnTop := obj.value
+            }
+            else if (obj.name = "ClickThroughActive") {
+                This.ClickThroughActive := obj.value
             }
             else if (obj.name = "ThumbnailStartLocationx") {
                 This.ThumbnailStartLocation["x"] := obj.value
@@ -843,7 +857,7 @@
             }
             else if (obj.name = "ThumbnailTextColor") {
                 This.ThumbnailTextColor := obj.value
-                RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailTextSize") {
                 This.ThumbnailTextSize := obj.value
@@ -859,7 +873,7 @@
             }
             else if (obj.name = "ClientHighligtColor") {
                 This.ClientHighligtColor := obj.value
-                RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ClientHighligtBorderthickness") {
                 This.ClientHighligtBorderthickness := obj.value
@@ -877,14 +891,14 @@
             }
             else if (obj.Name = "InactiveClientBorderColor") {
                 This.InactiveClientBorderColor := obj.value
-                RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj)
             }
             else if (obj.Name = "InactiveClientBorderthickness") {
                 This.InactiveClientBorderthickness := obj.value
             }
             else if (obj.name = "ThumbnailBackgroundColor") {
                 This.ThumbnailBackgroundColor := obj.value
-                RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailMinimumSizewidth") {
                 This.ThumbnailMinimumSize["width"] := obj.value
@@ -895,12 +909,12 @@
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
+    }
 
-        RedrawColorPreview(obj) {
-            try
-                This.MainFrame["Preview" obj.name].Opt("Background" obj.value)
-            This.MainFrame["Preview" obj.name].Redraw()
-        }
+    RedrawColorPreview(obj) {
+        try
+            This.MainFrame["Preview" obj.name].Opt("Background" obj.value)
+        This.MainFrame["Preview" obj.name].Redraw()
     }
 
     ThumbnailVisibility_Ctrl() {
@@ -1018,6 +1032,7 @@
         This.TrayMenuShortcutsOrder := [
             "Suspend Hotkeys",
             "Hide Thumbnails",
+            "Click Through Thumbnails",
             "Minimize Inactive Clients",
             "Close all EVE Clients",
             "Restore Client Positions",
@@ -1106,11 +1121,11 @@
             This.NeedRestart := 1
         
         This.LastUsedProfile := This.Sidebar["SelectedProfile"].Text
-        This.Refresh_ControlValues()
         This.ProfileOverride()
+        This.Refresh_ControlValues()
         This.UpdateOvrText()
 
-        if (This.Sidebar["SelectedProfile"].Text = "Default") {
+        if This.LastUsedProfile = "Default" {
             for k, ob in This.MainFrame.Group["Other"] {
                 if InStr(ob.name, "Global")
                     ob.Enabled := 1
@@ -1175,6 +1190,7 @@
         ;Hotkeys
         This.MainFrame["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
         This.MainFrame["HideThumbnailsHotkey"].value := This.HideThumbnailsHotkey
+        This.MainFrame["ClickThroughHotkey"].value := This.ClickThroughHotkey
         This.MainFrame["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
         This.MainFrame["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
         This.MainFrame["LoginScreenCycleDirectionForwards"].value := This.LoginScreenCycleDirection
@@ -1197,11 +1213,13 @@
         ;Thumbnail Settings
         This.MainFrame["ShowThumbnailTextOverlay"].value := This.ShowThumbnailTextOverlay
         This.MainFrame["ThumbnailTextColor"].value := This.ThumbnailTextColor
+        This.RedrawColorPreview(This.MainFrame["ThumbnailTextColor"])
         This.MainFrame["ThumbnailTextSize"].value := This.ThumbnailTextSize
         This.MainFrame["ThumbnailTextFont"].value := This.ThumbnailTextFont
         This.MainFrame["ThumbnailTextMarginsx"].value := This.ThumbnailTextMargins["x"]
         This.MainFrame["ThumbnailTextMarginsy"].value := This.ThumbnailTextMargins["y"]
         This.MainFrame["ClientHighligtColor"].value := This.ClientHighligtColor
+        This.RedrawColorPreview(This.MainFrame["ClientHighligtColor"])
         This.MainFrame["ClientHighligtBorderthickness"].value := This.ClientHighligtBorderthickness
         This.MainFrame["ShowClientHighlightBorder"].value := This.ShowClientHighlightBorder
         This.MainFrame["AutoSaveThumbnailPositions"].value := This.AutoSaveThumbnailPositions
@@ -1209,10 +1227,13 @@
         This.MainFrame["HideThumbnailsOnLostFocus"].value := This.HideThumbnailsOnLostFocus
         This.MainFrame["ThumbnailOpacity"].value := IntegerToPercentage(This.ThumbnailOpacity)
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].value := This.ShowThumbnailsAlwaysOnTop
+        This.MainFrame["ClickThroughActive"].value := This.ClickThroughActive
         This.MainFrame["ShowAllBorders"].value := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderthickness"].value := This.InactiveClientBorderthickness
         This.MainFrame["InactiveClientBorderColor"].value := This.InactiveClientBorderColor
+        This.RedrawColorPreview(This.MainFrame["InactiveClientBorderColor"])
         This.MainFrame["ThumbnailBackgroundColor"].value := This.ThumbnailBackgroundColor
+        This.RedrawColorPreview(This.MainFrame["ThumbnailBackgroundColor"])
         This.MainFrame["ThumbnailStartLocationx"].value := This.ThumbnailStartLocation["x"]
         This.MainFrame["ThumbnailStartLocationy"].value := This.ThumbnailStartLocation["y"]
         This.MainFrame["ThumbnailStartLocationwidth"].value := This.ThumbnailStartLocation["width"]

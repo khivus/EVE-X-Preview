@@ -96,6 +96,21 @@
             }
         }
 
+        ; Register Hotkey for Click Through if the user has is Set
+        if (This.ClickThroughHotkey != "") {
+            if !This.SwitchLangOnErr {
+                try {
+                    Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
+                }
+                catch ValueError as e {
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Click Through Thumbnails Hotkey" )
+                }
+            }
+            else {
+                Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
+            }
+        }
+
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
             if !This.SwitchLangOnErr {
@@ -827,9 +842,43 @@
         }
     }
 
+    ; Toggle click through mode on all thumbnail windows
+    Toggle_ClickThrough(*) {
+        This.ClickThroughActive := !This.ClickThroughActive
+
+        for hwnd, thumbObj in This.ThumbWindows.OwnProps() {
+            This.ThumbClickThrough(thumbObj, 1)
+        }
+
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+
+        ; Show a brief tooltip indicating the state
+        ToolTip(This.ClickThroughActive ? "Click Through Thumbnails - ON" : "Click Through Thumbnails - OFF")
+        SetTimer () => ToolTip(), -1500
+    }
+
+    ThumbClickThrough(thumbObj, forced?) { ; Thanks to @CJKondur
+        if !This.ClickThroughActive && !IsSet(forced) && !forced
+            return
+
+        WS_EX_TRANSPARENT := 0x20
+        WS_EX_LAYERED := 0x80000
+        GWL_EXSTYLE := -20
+        try {
+            thumbHwnd := thumbObj["Window"].Hwnd
+            exStyle := DllCall("GetWindowLongPtr", "Ptr", thumbHwnd, "Int", GWL_EXSTYLE, "Ptr")
+            if (This.ClickThroughActive) {
+                exStyle := exStyle | WS_EX_TRANSPARENT | WS_EX_LAYERED
+            } else {
+                exStyle := exStyle & ~WS_EX_TRANSPARENT
+            }
+            DllCall("SetWindowLongPtr", "Ptr", thumbHwnd, "Int", GWL_EXSTYLE, "Ptr", exStyle)
+        }
+    }
+
     ;#### Gets Called after receiveing a mesage from the Listeners
     ;#### Handels Window Border, Resize, Activation 
-    _OnMessage(wparam, lparam, msg, hwnd) {            
+    _OnMessage(wparam, lparam, msg, hwnd) {
         If (This.ThumbHwnd_EvEHwnd.Has(hwnd)  ) {            
             ; Move the Window with right mouse button 
             If (msg == Main_Class.WM_RBUTTONDOWN) {
@@ -885,13 +934,13 @@
             This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
             This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := ""
 
-            ;if the User is in character selection screen show the window always 
+            try
+                This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails 
+
+            ;if the User is in character selection screen
             if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "") {
                 This.SetThumbnailText[Win_Hwnd] := Win_Title
                 This.ShiftThumbs(Win_Hwnd)
-                ;if the Title is just "EVE" that means it is in the Charakter selection screen
-                ;in this case show always the Thumbnail 
-                ; This.ShowThumb(Win_Hwnd, "Show")
                 return
             }  
 
