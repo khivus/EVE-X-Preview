@@ -5,7 +5,6 @@
         This.NeedRestart := 0
 
         SetControlDelay(-1)
-        ; This.S_Gui := Gui("+OwnDialogs +MinimizeBox -Resize -MaximizeBox SysMenu +MinSize500x250")
         This.S_Gui := Gui("+OwnDialogs -MinimizeBox -Resize -MaximizeBox SysMenu")
         This.S_Gui.Title := "EVE-X-Preview - Settings"
 
@@ -138,8 +137,10 @@
     }
 
     About_Button_Handler() {
-        Version := FileGetVersion(A_ScriptName)
-        static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n"
+        Version := "?"
+        if A_IsCompiled
+            Version := FileGetVersion(A_ScriptName)
+        static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n`nCredits to: mrmjstc, CJKondur`n"
         funny := "`nF`nu`nn`nn`ny"
         text_len := StrLen(text)
         funny_len := StrLen(funny)

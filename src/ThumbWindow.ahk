@@ -416,60 +416,64 @@ Class ThumbWindow extends Propertys {
     }
 
     ShowActiveBorder(EVEHwnd?, ThumbHwnd?) {
-        if This.HideThumbnails
+        if This.HideThumbnails || !IsSet(EVEHwnd) || !This.ThumbWindows.HasProp(EVEHwnd)
             return
 
-        If (IsSet(EVEHwnd) && This.ThumbWindows.HasProp(EVEHwnd)) {
-            Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
+        static LastActiveThumbHwnd := EVEHwnd
 
+        Win_Title := This.ThumbWindows.%EVEHwnd%["Window"].Title
+        ; Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
+
+        if !This.CustomColorsActive && !This.ShowAllColoredBorders { ; This should somehow improve performance if custom colors and show all colored borders disabled
+            This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Show("Hide")
+        }
+        else {
             for EW_Hwnd, Objs in This.ThumbWindows.OwnProps() {
-                for names, GuiObj in Objs {
-                    if (names = "Border") {
-                        if ((!This.ShowAllColoredBorders && !This.ShowClientHighlightBorder) || (!This.ShowAllColoredBorders && This.ShowClientHighlightBorder)) {
-                            GuiObj.Show("Hide")
+                if !This.ShowAllColoredBorders && Objs.Has("Border")
+                    Objs["Border"].Show("Hide")
+    
+                else {
+                    if (This.ThumbWindows.%EW_Hwnd%["Window"].Name = Win_Title)
+                        continue
+                    else if (!This.CustomColorsActive && This.ShowAllColoredBorders) {
+                        try
+                            This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.InactiveClientBorderColor
+                        catch
+                            This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
+                        This.BorderSize(This.ThumbWindows.%EW_Hwnd%["Window"].Hwnd, This.ThumbWindows.%EW_Hwnd%["Border"].Hwnd, This.InactiveClientBorderthickness)
+                    }
+                    else if (This.CustomColorsActive && This.ShowAllColoredBorders) {
+                        title := This.ThumbWindows.%EW_Hwnd%["Window"].Title
+                        ; title := This.CleanTitle(WinGetTitle("Ahk_Id " EW_Hwnd))
+                        if (This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["IABorder"] != "") {
+                            try
+                                This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.CustomColorsGet[title]["IABorder"]
+                            catch
+                                This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
                         }
                         else {
-                            if (This.ThumbWindows.%EW_Hwnd%["Window"].Name = Win_Title)
-                                continue
-                            else if (!This.CustomColorsActive && This.ShowAllColoredBorders) {
-                                try
-                                    This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.InactiveClientBorderColor
-                                catch
-                                    This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
-                                This.BorderSize(This.ThumbWindows.%EW_Hwnd%["Window"].Hwnd, This.ThumbWindows.%EW_Hwnd%["Border"].Hwnd, This.InactiveClientBorderthickness)
-                            }
-                            else if (This.CustomColorsActive && This.ShowAllColoredBorders) {
-                                title := This.CleanTitle(WinGetTitle("Ahk_Id " EW_Hwnd))
-                                if (This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["IABorder"] != "") {
-                                    try
-                                        This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.CustomColorsGet[title]["IABorder"]
-                                    catch
-                                        This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
-                                }
-                                else {
-                                    try
-                                        This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.InactiveClientBorderColor
-                                    catch
-                                        This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
-                                }
-                                This.BorderSize(This.ThumbWindows.%EW_Hwnd%["Window"].Hwnd, This.ThumbWindows.%EW_Hwnd%["Border"].Hwnd, This.InactiveClientBorderthickness)
-                            }
+                            try
+                                This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := This.InactiveClientBorderColor
+                            catch
+                                This.ThumbWindows.%EW_Hwnd%["Border"].BackColor := "8A8A8A"
                         }
+                        This.BorderSize(This.ThumbWindows.%EW_Hwnd%["Window"].Hwnd, This.ThumbWindows.%EW_Hwnd%["Border"].Hwnd, This.InactiveClientBorderthickness)
                     }
                 }
             }
-            if (!This.Thumbnail_visibility.Has(Win_Title) && This.ShowClientHighlightBorder) {
-                if (This.CustomColorsActive && This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Border"] != "") {
-                    This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.CustomColorsGet[Win_Title]["Border"]
-                    This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
-                }
-                else {
-                    This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.ClientHighligtColor
-                    This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
-                }
-                This.ThumbWindows.%EVEHwnd%["Border"].Show("NoActivate")
-            }
         }
+        if (!This.Thumbnail_visibility.Has(Win_Title) && This.ShowClientHighlightBorder) {
+            if (This.CustomColorsActive && This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Border"] != "") {
+                This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.CustomColorsGet[Win_Title]["Border"]
+                This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+            }
+            else {
+                This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.ClientHighligtColor
+                This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+            }
+            This.ThumbWindows.%EVEHwnd%["Border"].Show("NoActivate")
+        }
+        LastActiveThumbHwnd := EVEHwnd
     }
 }
 
