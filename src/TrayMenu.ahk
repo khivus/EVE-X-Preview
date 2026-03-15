@@ -129,6 +129,8 @@ Class TrayMenu extends Settings_Gui {
                 This.ShowThumbnailsAlwaysOnTop := !This.ShowThumbnailsAlwaysOnTop
                 TrayMenu.ToggleCheck("Show Thumbnails Always on Top")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
+                Sleep(300)
+                Reload()
             }
             Else if (ItemName = "Click Through Thumbnails") {
                 This.Toggle_ClickThrough()

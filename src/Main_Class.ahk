@@ -212,6 +212,8 @@
         This.RegisterNonEVEGroups()
         This.BorderActive := 0
 
+        This.OpenGamelogFile()
+
         return This
     }
 
@@ -1624,6 +1626,128 @@
             return 1
         }
     return 0
+    }
+
+    getFilesList() {
+        gameLogsDir := "C:\Users\" A_UserName "\Documents\EVE\logs\Gamelogs"
+
+        if !DirExist(gameLogsDir) {
+            MsgBox "Documents folder not found!"
+            gameLogsDir := DirSelect() ; Select directory
+            if gameLogsDir = "" ; Cancelled
+                return
+        }
+
+        ; Collect files with mod time (YYYYMMDDHH24MISS format)
+        fileList := ""
+        Loop Files, gameLogsDir "\*.*"  ; Adjust pattern like "*.txt" if needed
+            fileList .= A_LoopFileTimeModified "`t" A_LoopFileName "`n"
+
+        ; Sort by time descending (newest first)
+        Sort(fileList, "R")  ; R for reverse
+
+        ; Parse sorted list into array of FULL paths
+        filesListSorted := []
+        Loop Parse, fileList, "`n"
+        {
+            if (A_LoopField == "")
+                continue
+            parts := StrSplit(A_LoopField, "`t")
+            fullPath := gameLogsDir "\" parts[2]  ; Full path, not just name
+            filesListSorted.Push(fullPath)
+        }
+        return filesListSorted
+    }
+
+    OpenGamelogFile() { ; rename later
+        ; filename has structure
+        ; YYYYMMDD_XXXXXX_CCCCCCCCCC.txt where
+        ; First is date like: YYYYMMDD
+        ; Second is some session? ID contains 6 digits: XXXXXX
+        ; Third is character ID 10 digits: CCCCCCCCCC
+        ; If character didn't logged in there is structure like:
+        ; YYYYMMDD_XXXXXX.txt with same first 2 line explained before
+
+        filesListSorted := This.getFilesList()
+        This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
+        charsToMonitor := [] ; Must be active/logged in and in list of monitored
+
+        for fileName in filesListSorted { ; Finding char names in headers
+            if charsToMonitor = [] ; if empty
+                break
+
+            ; TODO redo later so we save every char id and do faster check
+            fileNameData := StrSplit(fileName, "_")
+            if !fileNameData.Has(3) ; in character selection screen
+                continue
+            charId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
+
+            fileInfo := This.checkHeader(fileName)
+            for i, charName in charsToMonitor {
+                if fileInfo[1] = charName {
+                    This.monitoredChars[charName] := Map("id", charId, "fileName", fileName, "file", "", "size", fileInfo[2], "monitorTimer", "")
+                    charsToMonitor.RemoveAt(i)
+                    break
+                }
+            }
+        }
+    }
+
+    checkHeader(fileName) {
+        file := FileOpen(fileName, "r", "UTF-8")
+        size := file.Length
+        Loop 3 {
+            line := file.ReadLine()
+            if A_Index = 3
+                charName := Trim(StrReplace(line, "Listener: "))
+        }
+        file.Close()
+        return [charName, size]
+    }
+
+    addCharToMonitor(charName) {
+        filesListSorted := This.getFilesList()
+        for fileName in filesListSorted { ; Finding char names in headers
+            fileNameData := StrSplit(fileName, "_")
+            if !fileNameData.Has(3) ; in character selection screen
+                continue
+            charId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
+
+            fileInfo := This.checkHeader(fileName)
+            if fileInfo[1] = charName {
+                This.monitoredChars[charName] := Map("id", charId, "fileName", fileName, "file", "", "size", fileInfo[2], "monitorTimer", "")
+                return
+            }
+        }
+    }
+
+    startLogMonitoring(charName) {
+        file := FileOpen(This.monitoredChars[charName]["fileName"], "r", "UTF-8")
+        file.Seek(-1, 2)
+        This.monitoredChars[charName]["file"] := file
+        This.monitoredChars[charName]["monitorTimer"] := ObjBindMethod(This, "monitorChanges", charName)
+        SetTimer(This.monitoredChars[charName]["monitorTimer"], 1000) ; Poll every specified by user time
+    }
+
+    stopLogMonitoring(charName) {
+        SetTimer(This.monitoredChars[charName]["monitorTimer"], 0) ; Stopping monitoring
+        This.monitoredChars[charName]["file"].Close() ; Closing file
+        This.monitoredChars.Delete(charName)
+    }
+
+    monitorChanges(charName) {
+        static last_len := 0
+        len := file.Length
+        if len != last_len {
+            last_len := len
+            line := file.ReadLine()
+            if line != "" {
+                normalized := RegExReplace(line, "<[^>]*>", "")
+                if InStr(normalized, "combat") && InStr(normalized, "from") && InStr(normalized, "to you!")
+                    ToolTip(normalized)
+                SetTimer(() => ToolTip(), -(3000))
+            }
+        }
     }
 }
 
