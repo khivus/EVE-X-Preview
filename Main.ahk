@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.6
+;@Ahk2Exe-Let U_version = 1.5.1.7
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -370,10 +370,72 @@ MigrateSettings(userObj, uver, dver) {
             userObj.Delete("global_Settings")
     }
 
-    ; Next will be:
-    ; if (uver == "" || Integer(uver) == 1) && Integer(dver) >= 2
+    if (uver = "" || Integer(uver) = 1) && Integer(dver) >= 2 {
+        if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
+            throw Error("No profiles found!")
+
+        for prof_name, prof_settings in userObj["_Profiles"] {
+            if !IsObject(prof_settings) ; if it's not an object, skip (unexpected)
+                continue
+
+            ; Updating all characters names with prefix "EVE - "
+            if prof_settings.Has("Hotkey Groups") {
+                for k, v in prof_settings["Hotkey Groups"] {
+                    temp := []
+                    for i, c in v["Characters"]
+                        temp.Push(AddEVE(c))
+                    prof_settings["Hotkey Groups"][k]["Characters"] := DeepClone(temp)
+                }
+            }
+            if prof_settings.Has("Hotkeys Settings") {
+                temp := []
+                for c, v in prof_settings["Hotkeys Settings"]["CharacterHotkeys"]
+                    for c, h in v
+                        temp.Push(Map(AddEVE(c), h))
+                prof_settings["Hotkeys Settings"]["CharacterHotkeys"] := DeepClone(temp)
+            }
+            if prof_settings.Has("Thumbnail Visibility") {
+                temp := Map()
+                for c, v in prof_settings["Thumbnail Visibility"]
+                    temp[AddEVE(c)] := v
+                prof_settings["Thumbnail Visibility"] := DeepClone(temp)
+            }
+            if prof_settings.Has("Client Settings") {
+                temp := []
+                for i, c in prof_settings["Client Settings"]["DontCloseClients"]
+                    temp.Push(AddEVE(c))
+                prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(temp)
+                temp := []
+                for i, c in prof_settings["Client Settings"]["Dont_Minimize_Clients"]
+                    temp.Push(AddEVE(c))
+                prof_settings["Client Settings"]["Dont_Minimize_Clients"] := DeepClone(temp)
+            }
+            if prof_settings.Has("Custom Colors") {
+                temp := []
+                for i, c in prof_settings["Custom Colors"]["cColors"]["CharNames"]
+                    temp.Push(AddEVE(c))
+                prof_settings["Custom Colors"]["cColors"]["CharNames"] := DeepClone(temp)
+            }
+            if prof_settings.Has("Client Possitions") {
+                temp := Map()
+                for c, v in prof_settings["Client Possitions"]
+                    temp[AddEVE(c)] := DeepClone(v)
+                prof_settings["Client Possitions"] := DeepClone(temp)
+            }
+            if prof_settings.Has("Thumbnail Positions") {
+                temp := Map()
+                for c, v in prof_settings["Thumbnail Positions"]
+                    temp[AddEVE(c)] := DeepClone(v)
+                prof_settings["Thumbnail Positions"] := DeepClone(temp)
+            }
+        }
+    }
 
     return userObj
+
+    AddEVE(name) {
+        return "EVE - " . name
+    }
 }
 
 ; Hanles unmanaged Errors

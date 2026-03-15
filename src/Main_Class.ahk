@@ -183,6 +183,9 @@
         ; Skips collision check and thumb move if thumb "touch" screen edge
         This.skipShiftThumbs := false
 
+        ; List for NonEVE Apps to manage thumbnails
+        This.CreateNonEVEAppsList()
+
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
         
@@ -206,13 +209,8 @@
         
         ;Register the Hotkeys for cycle groups 
         This.Register_Hotkey_Groups()
-        This.BorderActive := 0
-
-        ; List for NonEVE Apps to manage thumbnails
-        This.CreateNonEVEAppsList()
-
-        This.RegisterNonEVEHotkeys()
         This.RegisterNonEVEGroups()
+        This.BorderActive := 0
 
         return This
     }
@@ -252,10 +250,11 @@
 
     HandleMainTimer() {
         ; if This.ProfActive ; Profiling
-        static __lt := 0
+        static __t1 := 0
         __t0 := A_TickCount
-        if __t0 - __tl := 5000 ; Check every ~5 seconds
+        if __t0 - __t1 := 5000 ; Slow check
             This.UpdateActiveNonEVEApps()
+        __t1 := __t0
 
         static HideShowToggle := 0, LastActiveHWND := 0, WinList := []
 
@@ -270,7 +269,7 @@
             try { ; Another++ attempt to fix error on thumbnail destruction
                 ;Check if a window exist without Thumbnail and if the user is in Character selection screen or not
                 for index, hwnd in WinList {
-                    WinList.%hwnd% := { Title: This.CleanTitle(WinGetTitle(hwnd)) }
+                    WinList.%hwnd% := { Title: WinGetTitle(hwnd) }
 
                     if !This.ThumbWindows.HasProp(hwnd) {
                         This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
@@ -281,12 +280,12 @@
                     }
                     else { ; This change improved performance by ~15-17%
                         ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
-                        if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
+                        if This.PreserveHotkeysOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "EVE" && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" {
                             This.ThumbWindows.%hwnd%["Window"].OldTitle := This.ThumbWindows.%hwnd%["Window"].Title
                         }
 
                         ; If PreserveThumbPosOnLogout is false we move thumbnail after logout to default position
-                        if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "" {
+                        if !This.PreserveThumbPosOnLogout && This.ThumbWindows.%hwnd%["Window"].Title != "Char Screen" && This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title == "EVE" {
                             if This.ShiftThumbsForLoginScreen
                                 This.ShiftThumbs(hwnd)
                             else
@@ -298,9 +297,9 @@
                         }
                     
                         ; if in Character selection screen 
-                        if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "" && This.PreserveCharNameOnLogout) {
+                        if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "EVE" && This.PreserveCharNameOnLogout) {
                             This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
-                            if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "") {
+                            if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "EVE") {
                                 This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                             }
                         }
@@ -309,21 +308,20 @@
                         }
                     }
                 }
-                ; for i, app in This.ActiveNonEVEApps {
-
-                ; }
             }
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-                ActiveProcessName := WinGetProcessName("A")
-                CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
+                ; ActiveProcessName := WinGetProcessName("A")
+                ; CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
 
-                if ((CallResponse || ActiveProcessName != "exefile.exe") && !HideShowToggle && This.HideThumbnailsOnLostFocus) {
+                ; if ((CallResponse || ActiveProcessName != "exefile.exe") && !HideShowToggle && This.HideThumbnailsOnLostFocus) {
+                if (!HideShowToggle && This.HideThumbnailsOnLostFocus) {
                     SetTimer(This.CheckforActiveWindow, -500)
                     HideShowToggle := 1
                 }
-                else if ( ActiveProcessName == "exefile.exe" && !CallResponse) {
+                ; else if ( ActiveProcessName == "exefile.exe" && !CallResponse) {
+                else {
                     Ahwnd := WinExist("A")
                     if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
@@ -370,7 +368,7 @@
                     This.allLoginClosed := true
                 else {
                     for EVEHWND in This.ThumbWindows.OwnProps() {
-                        if This.ThumbWindows.%EVEHWND%["Window"].Title == "" {
+                        if This.ThumbWindows.%EVEHWND%["Window"].Title == "EVE" {
                             This.allLoginClosed := false
                             break
                         }
@@ -393,7 +391,7 @@
     
 
     Updates_Checker() {
-        if !This.Check_Updates
+        if !This.Check_Updates || !A_IsCompiled
             return
 
         ; Getting .exe version
@@ -510,7 +508,7 @@
             ;if the user has selected Global Hotkey. This means the Hotkey will alsways trigger as long at least 1 EVE Window exist.
             ;if a Window does not Exist which was assigned to the hotkey the hotkey will be dissabled until the Window exist again
             if(This.Global_Hotkeys) {
-                HotIf (*) => WinExist(This.EVEExe) && WinExist("EVE - " title ) && !WinActive("EVE-X-Preview - Settings")
+                HotIf (*) => WinExist(This.EVEExe) && WinExist(title) && !WinActive("EVE-X-Preview - Settings")
                 if !This.SwitchLangOnErr {
                     try {
                         Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
@@ -526,7 +524,7 @@
             ;if the user has selected (Win Active) the hotkeys will only trigger if at least 1 EVE Window is Active and in Focus
             ;This makes it possible to still use all keys outside from EVE 
             else {
-                HotIf (*) => WinExist("EVE - " title ) && WinActive(This.EVEExe)
+                HotIf (*) => WinExist(title) && WinActive(This.EVEExe)
                 if !This.SwitchLangOnErr {
                     try {
                         Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1),"P1"
@@ -550,38 +548,36 @@
         This.LastHotkGroupInd := 1
         index := 1
 
-        if (IsObject(This.Hotkey_Groups) && This.Hotkey_Groups.Count != 0) {
-            for k, v in This.Hotkey_Groups {
-                This.HotkGroups.Push(v["Characters"])
-                This.HotkGroupsInds.Push(0)
+        if !IsObject(This.Hotkey_Groups) || This.Hotkey_Groups.Count = 0
+            return
 
-                if This.Global_Hotkeys
-                    method := "OnWinExist"
-                else
-                    method := "OnWinActive"
+        for k, v in This.Hotkey_Groups {
+            This.HotkGroups.Push(v["Characters"])
+            This.HotkGroupsInds.Push(0)
 
-                if v["ForwardsHotkey"] != ""
-                    keys["ForwardsHotkey"] := v["ForwardsHotkey"]
-                if v["BackwardsHotkey"] != ""
-                    keys["BackwardsHotkey"] := v["BackwardsHotkey"]
+            if This.Global_Hotkeys
+                method := "OnWinExist"
+            else
+                method := "OnWinActive"
 
-                HotIf ObjBindMethod(This, method, This.HotkGroups[index])
-                for direction, key in keys
-                    if !This.SwitchLangOnErr {
-                        try {
-                            Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
-                        }
-                        catch ValueError as e {
-                            MsgBox(e.Message ": --> " e.Extra " <-- in Profile Settings - " This.LastUsedProfile " - Hotkey Groups - " k "  - " direction)
-                        }
-                    }
-                    else {
+            if v["ForwardsHotkey"] != ""
+                keys["ForwardsHotkey"] := v["ForwardsHotkey"]
+            if v["BackwardsHotkey"] != ""
+                keys["BackwardsHotkey"] := v["BackwardsHotkey"]
+
+            HotIf ObjBindMethod(This, method, This.HotkGroups[index])
+            for direction, key in keys
+                if !This.SwitchLangOnErr {
+                    try
                         Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
-                    }
+                    catch ValueError as e
+                        MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - " k "  - " direction)
+                }
+                else
+                    Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
 
-                index += 1
-                keys := Map()
-            }
+            index += 1
+            keys := Map()
         }
     }
 
@@ -604,7 +600,7 @@
                 index := 0
             else {
                 try {
-                    title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : This.CleanTitle(WinGetTitle("A"))
+                    title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : WinGetTitle("A")
                     index := IsActiveWinInGroup(title, arr)
                 }
             }
@@ -615,7 +611,7 @@
         if !This.OnWinExist(arr)
             return
 
-        while !WinExist("EVE - " arr[index]) {
+        while !WinExist(arr[index]) {
             if HWND := This.hasMathcingOldTitle(arr[index]) {
                 activateByHWND := 1
                 break
@@ -664,7 +660,7 @@
     SetHotkGroupInd(hwnd) {
         if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
-            title := This.CleanTitle(WinGetTitle("Ahk_id " Hwnd))
+            title := WinGetTitle("Ahk_id " Hwnd)
         }
         else
             return
@@ -709,16 +705,16 @@
     }
 
 
-    ; Checks for OldTitle == CleanTitle in all login screen windows
+    ; Checks for OldTitle == title in all login screen windows
     ; return HWND if found
-    hasMathcingOldTitle(CleanTitle) {
+    hasMathcingOldTitle(title) {
         if !This.PreserveHotkeysOnLogout
             return
 
-        loginHWNDs := WinGetList("EVE")
+        loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
         for hwnd in loginHWNDs {
-            if This.ThumbWindows.%hwnd%["Window"].OldTitle == CleanTitle
+            if This.ThumbWindows.%hwnd%["Window"].OldTitle == title
                 return hwnd
         }
         return
@@ -734,10 +730,10 @@
 
         LoginWins := []
         currentHWND := WinExist("A")
-        loginHWNDs := WinGetList("EVE")
+        loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
         for hwnd in loginHWNDs {
-            if This.ThumbWindows.%hwnd%["Window"].OldTitle && This.PreserveHotkeysOnLogout
+            if This.ThumbWindows.%hwnd%["Window"].OldTitle != "EVE" && This.PreserveHotkeysOnLogout
                 continue
 
             PID := WinGetPID(hwnd)
@@ -793,7 +789,7 @@
     OnWinExist(Arr, *) {
         for index, Name in Arr {
             ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") && !This.PreserveHotkeysOnLogout) {
-            If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") ) {
+            If ( WinExist(Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") ) {
                 return true
             }
             else if This.PreserveHotkeysOnLogout && This.hasMathcingOldTitle(Name) && !WinActive("EVE-X-Preview - Settings") {
@@ -948,13 +944,13 @@
         If !(This.ThumbWindows.HasProp(Win_Hwnd)) {       
             This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
             This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
-            This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := ""
+            This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
 
             try
                 This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails 
 
             ;if the User is in character selection screen
-            if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "") {
+            if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "EVE") {
                 This.SetThumbnailText[Win_Hwnd] := Win_Title
                 This.ShiftThumbs(Win_Hwnd)
                 return
@@ -977,6 +973,7 @@
                         This.ShowThumb(k, "Show")
                 }
             }
+            This.RegisterNonEVEHotkeys()
             This.RegisterHotkeys(Win_Title, Win_Hwnd)
         }
     }
@@ -1117,11 +1114,10 @@
         ; If the user clicks the Thumbnail then hwnd stores the Thumbnail Hwnd. Here the Hwnd gets changed to the contiguous EVE window hwnd
         if (IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd)) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
-            title := This.CleanTitle(WinGetTitle("Ahk_id " Hwnd))
+            title := WinGetTitle("Ahk_id " Hwnd)
         }
         ;if the user presses the Hotkey 
         Else if (IsSet(title)) {
-            title := "EVE - " title
             hwnd := WinExist(title " Ahk_exe exefile.exe")
         }
         ;return when the user tries to bring a window to foreground which is already in foreground 
@@ -1129,7 +1125,7 @@
             Return
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
-            if (This.AlwaysMaximize)  || ( This.TrackClientPossitions && This.ClientPossitions[This.CleanTitle(title)]["IsMaximized"] ) {
+            if (This.AlwaysMaximize)  || ( This.TrackClientPossitions && This.ClientPossitions[title]["IsMaximized"] ) {
                 ; ; Maximize
                 This.ShowWindowAsync(hwnd, 3)
             }
@@ -1166,7 +1162,7 @@
             }
 
                 ;If the user has selected to always maximize. this prevents wrong sized windows on heavy load.
-            if (This.AlwaysMaximize && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0) || ( This.TrackClientPossitions && This.ClientPossitions[This.CleanTitle(WinGetTitle("Ahk_id " This.ActivateHwnd))]["IsMaximized"] && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0 )
+            if (This.AlwaysMaximize && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0) || ( This.TrackClientPossitions && This.ClientPossitions[WinGetTitle("Ahk_id " This.ActivateHwnd)]["IsMaximized"] && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0 )
                 This.ShowWindowAsync(This.ActivateHwnd, 3)
         }       
         Return 
@@ -1194,10 +1190,10 @@
         }
         ;to check which names are in the list that should not be minimized
         Dont_Minimze_Enum(hwnd, EVEwinTitle) {
-            WinTitle := This.CleanTitle(EVEwinTitle)
-            if !(WinTitle = "") {
+            WinTitle := EVEwinTitle
+            if !(WinTitle = "EVE") {
                 for k in This.Dont_Minimize_Clients {
-                    value := This.CleanTitle(k)
+                    value := k
                     if value == WinTitle
                         return 1
                 }
@@ -1219,8 +1215,8 @@
     Client_Possitions() {
         IDs := WinGetList("Ahk_Exe " This.EVEExe)
         for k, v in IDs {
-            Title := This.CleanTitle(WinGetTitle("Ahk_id " v))
-            if !(Title = "") {
+            Title := WinGetTitle("Ahk_id " v)
+            if !(Title = "EVE") {
                 ;If Minimzed then restore before saving the coords
                 if (DllCall("IsIconic", "UInt", v)) {
                     This.ShowWindowAsync(v)
@@ -1287,13 +1283,14 @@
 
     CreateNonEVEAppsList() {
         This.NonEVEAppsList := []
-        for app in This.NonEVEHotkeys
-            if !AppIsIsArray(app["exe"], app["title"])
-                This.NonEVEAppsList.Push(Map("exe", app["exe"], "title", app["title"]))
+        apps := This.NonEVEHotkeys
+        for i, _ in apps["exe"]
+            if !AppIsInArray(apps["exe"][i], apps["title"][i])
+                This.NonEVEAppsList.Push(Map("exe", apps["exe"][i], "title", apps["title"][i]))
         
         for _, group in This.NonEVEGroups
             for i, exe in group["exe"]
-                if !AppIsIsArray(exe, group["title"][i])
+                if !AppIsInArray(exe, group["title"][i])
                     This.NonEVEAppsList.Push(Map("exe", exe, "title", group["title"][i]))
 
         AppIsInArray(exe, title) {
@@ -1310,10 +1307,8 @@
             criteria := "ahk_exe " . app["exe"]
             if app["title"] != ""
                 criteria := app["title"] . " " . criteria
-            if hwnd := WinExist(criteria) {
-                ; app["hwnd"] := hwnd
-                ; if app["title"] != ""
-                ;     app["title"] := WinGetTitle("ahk_id " hwnd)
+            if WinExist(criteria) {
+                hwnd := WinGetID(criteria)
                 This.ActiveNonEVEApps.Push(hwnd)
             }
         }
@@ -1430,17 +1425,19 @@
     }
 
     RegisterNonEVEHotkeys() {
-        for app in This.NonEVEHotkeys {
-            a := app
-            HotIf ObjBindMethod(This, "OnWinExist_", a["exe"], a["title"])
+        apps := This.NonEVEHotkeys
+        for i, _ in apps["exe"] {
+            if apps["hotkey"][i] = ""
+                continue
+            HotIf ObjBindMethod(This, "OnWinExist_", apps["exe"][i], apps["title"][i])
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey(a["hotkey"], ObjBindMethod(This, "ActivateNonEVE", a["exe"], a["title"], 1), "P1")
+                    Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
                 catch ValueError as e
-                    MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " Non-EVE Hotkeys")
+                    MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " - Non-EVE Hotkeys")
             }
             else
-                Hotkey(a["hotkey"], ObjBindMethod(This, "ActivateNonEVE", a["exe"], a["title"], 1), "P1")
+                Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
         }
     }
 
@@ -1542,15 +1539,18 @@
         len := StrLen(title)
         if len >= 6 && SubStr(title, 1, 6) == "EVE - "
             return SubStr(title, 7)
-        if len == 3 && title == "EVE"
+        if title == "EVE"
             return ""
         return title
     }
 
     ; adds "EVE" to the titel
     AntiCleanTitle(title) {
-        if title = ""
+        if title = "" || title = "EVE"
             return "EVE"
+        len := StrLen(title)
+        if len >= 6 && SubStr(title, 1, 6) == "EVE - "
+            return title
         return "EVE - " title
     }
 
@@ -1613,14 +1613,14 @@
     }
 
     DontCloseWIn(WinTitle) {
-        if !(WinTitle = "") {
+        if !(WinTitle = "EVE") {
             for k in This.DontCloseClients {
-                value := This.CleanTitle(k)
+                value := k
                 if value == WinTitle
                     return 1
             }
         }
-        else if (WinTitle = "" && This.DontCloseOnLoginScreen) {
+        else if (WinTitle = "EVE" && This.DontCloseOnLoginScreen) {
             return 1
         }
     return 0

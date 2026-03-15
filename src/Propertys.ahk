@@ -17,7 +17,7 @@ class Propertys extends TrayMenu {
                         continue
                     if (k = "TextOverlay") {
                         for chwnd, cobj in v {
-                            cobj.Value := newtext
+                            cobj.Value := This.CleanTitle(newtext)
                             ;ControlSetText "New Text Here", cobj
                         }
                     }
@@ -323,7 +323,7 @@ class Propertys extends TrayMenu {
             For index, Client in StrSplit(Value, ["`n", ","]) {
                 if (Client = "")
                     continue
-                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"].Push(Trim(Client, "`n "))
+                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"].Push(This.AntiCleanTitle(Trim(Client, "`n ")))
             }
         }
     }
@@ -365,9 +365,9 @@ class Propertys extends TrayMenu {
             names := ""
             for k, v in This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"] {
                 if (A_Index < This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"].Length)
-                    names .= k ": " v "`n"
+                    names .= k ": " This.CleanTitle(v) "`n"
                 else
-                    names .= k ": " v
+                    names .= k ": " This.CleanTitle(v)
             }
             return names
         }
@@ -375,7 +375,7 @@ class Propertys extends TrayMenu {
             tempvar := []
             ListChars := StrSplit(value, "`n")
             for k, v in ListChars {
-                chars := RegExReplace(This.CleanTitle(Trim(v, "`n ")), ".*:\s*", "")
+                chars := This.AntiCleanTitle(RegExReplace(Trim(v, "`n "), ".*:\s*", ""))
                 tempvar.Push(chars)
             }
             This._JSON["_Profiles"][This.ProfileCustomColors]["Custom Colors"]["cColors"]["CharNames"] := tempvar
@@ -480,7 +480,7 @@ class Propertys extends TrayMenu {
             For index, Client in StrSplit(Value, ["`n", ","]) {
                 if (Client = "")
                     continue
-                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Dont_Minimize_Clients"].Push(Trim(Client, "`n "))
+                This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["Dont_Minimize_Clients"].Push(This.AntiCleanTitle(Trim(Client, "`n ")))
             }
         }
     }
@@ -658,7 +658,6 @@ class Propertys extends TrayMenu {
             }
             return res
         }
-        ; get => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"] := value
     }
 
@@ -672,16 +671,17 @@ class Propertys extends TrayMenu {
 
     NonEVEHotkeys {
         get {
-            temp := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
-            res := []
-            for htk in temp {
-                if htk["exe"] = "" htk["hotkey"] = ""
-                    continue
-                res.Push(htk)
+            data := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
+            if data["exe"] = [] || data["exe"] = [""]
+                return Map("exe", [], "title", [], "hotkey", [])
+            for i, _ in data["exe"] {
+                if !data["title"].Has(i)
+                    data["title"].Push("") ; filling in array with empty titles
+                if !data["hotkey"].Has(i)
+                    data["hotkey"].Push("") ; filling in array with empty hotkeys
             }
-            return res
+            return data
         }
-        ; get => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"] := value
     }
 
@@ -907,9 +907,9 @@ class Propertys extends TrayMenu {
         for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
             for k, v in ThumbObj {
                 if k = "Window" {
-                    if v.Title == "" || v.Title == "Char Screen"
+                    if v.Title == "EVE" || v.Title == "Char Screen"
                         continue
-                    charList .= v.Title . "`n"
+                    charList .= This.CleanTitle(v.Title) . "`n"
                 }
             }
         }

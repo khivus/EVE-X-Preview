@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "1",
+    "settings_version": "2",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -43,7 +43,7 @@
                 "ShiftThumbVerticalStep": 0,
                 "PreserveThumbPosOnLogout": 1,
                 "PreserveCharNameOnLogout": 0,
-                "AutoSaveThumbnailPositions": 0,
+                "AutoSaveThumbnailPositions": 1,
                 "HideThumbnails": 0,
                 "ClickThroughActive": 0
             },
@@ -53,7 +53,7 @@
                 "ThumbnailTextSize": 12,
                 "ThumbnailTextFont": "Gill Sans MT",
                 "ThumbnailTextMargins": {
-                    "x": 15,
+                    "x": 10,
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,
@@ -120,23 +120,23 @@
                 "TrayMenuShortcuts": {
                     "Suspend Hotkeys": 1,
                     "Hide Thumbnails": 1,
-                    "Minimize Inactive Clients": 1,
+                    "Minimize Inactive Clients": 0,
                     "Close all EVE Clients": 1,
                     "Restore Client Positions": 1,
                     "Save Client Positions": 1,
                     "Auto Save Thumbnail Positions": 1,
                     "Save Thumbnail Positions": 1,
-                    "Click Through Thumbnails": 1
+                    "Click Through Thumbnails": 0,
+                    "Show Thumbnails Always on Top": 0
                 }
             },
             "Non-EVE Applications": {
-                "NonEVEGroups": {
-                "Example": {"exe": ["ExampleApp1.exe", "ExampleApp2.exe"], "title": ["Titel", ""], "fkey": "Xbutton1 & 2", "bkey": ""}
-                },
-                "NonEVEHotkeys": [
-                {"exe": "ExampleApp1.exe", "title": "Example App 1 Title", "hotkey": "Xbutton1 & 1"},
-                {"exe": "ExampleApp2.exe", "title": "", "hotkey": "^XButton1 & 1"}
-                ]
+                "NonEVEGroups": {},
+                "NonEVEHotkeys": {
+                "exe": ["App1.exe"], 
+                "title": ["Titel"], 
+                "hotkey": ["*^!Tab"]
+                }
             }
         }
     }

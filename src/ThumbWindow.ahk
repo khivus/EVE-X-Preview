@@ -353,7 +353,7 @@ Class ThumbWindow extends Propertys {
             title := WinGetTitle("Ahk_Id " EVEWindowHwnd)
         catch
             title := 0
-        if (!This.Thumbnail_visibility.Has(This.CleanTitle(title))) {
+        if (!This.Thumbnail_visibility.Has(title)) {
             if HideOrShow = "Show" && !This.HideThumbnails {
                 for k, v in This.ThumbWindows.%EVEWindowHwnd% {
                     if (k = "Thumbnail")

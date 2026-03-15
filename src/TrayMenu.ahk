@@ -35,6 +35,14 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Uncheck("Hide Thumbnails")
         }
 
+        if This.TrayMenuShortcuts["Show Thumbnails Always on Top"] {
+            TrayMenu.Add("Show Thumbnails Always on Top", MenuHandler)
+            if This.ShowThumbnailsAlwaysOnTop
+                TrayMenu.check("Show Thumbnails Always on Top")
+            else
+                TrayMenu.Uncheck("Show Thumbnails Always on Top")
+        }
+
         if This.TrayMenuShortcuts["Click Through Thumbnails"] {
             TrayMenu.Add("Click Through Thumbnails", MenuHandler)
             if This.ClickThroughActive
@@ -96,10 +104,10 @@ Class TrayMenu extends Settings_Gui {
                 ExitApp
             Else if (ItemName = "Auto Save Thumbnail Positions") {
                 This.AutoSaveThumbnailPositions := !This.AutoSaveThumbnailPositions
+                if This.AutoSaveThumbnailPositions ; if turned on save thumbnails
+                    This.Save_ThumbnailPossitions
                 TrayMenu.ToggleCheck("Auto Save Thumbnail Positions")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
-                Sleep(300)
-                Reload()
             }
             Else if (ItemName = "Save Thumbnail Positions") {
                 ; Saved Thumbnail Positions only if the Saved button is used on the Traymenu
@@ -117,6 +125,11 @@ Class TrayMenu extends Settings_Gui {
                 else
                     TrayMenu.Uncheck("Hide Thumbnails")
             }
+            Else if (ItemName = "Show Thumbnails Always on Top") {
+                This.ShowThumbnailsAlwaysOnTop := !This.ShowThumbnailsAlwaysOnTop
+                TrayMenu.ToggleCheck("Show Thumbnails Always on Top")
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+            }
             Else if (ItemName = "Click Through Thumbnails") {
                 This.Toggle_ClickThrough()
                 if This.ClickThroughActive
@@ -126,10 +139,8 @@ Class TrayMenu extends Settings_Gui {
             }
             Else if (ItemName = "Minimize Inactive Clients") {
                 This.MinimizeInactiveClients := !This.MinimizeInactiveClients
-                if This.MinimizeInactiveClients
-                    TrayMenu.check("Minimize Inactive Clients")
-                else
-                    TrayMenu.Uncheck("Minimize Inactive Clients")
+                TrayMenu.ToggleCheck("Minimize Inactive Clients")
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (This.Profiles.Has(ItemName)) {
                 ; Change the lastUsedProfile to the Profile name, save it to Json file and reload the script with the new Settings
@@ -169,7 +180,7 @@ Class TrayMenu extends Settings_Gui {
             list := WinGetList("Ahk_Exe exefile.exe")
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
             for k in list {
-                WinTitle := This.CleanTitle(WinGetTitle(k))
+                WinTitle := WinGetTitle(k)
 
                 if This.DontCloseWIn(WinTitle)
                     continue

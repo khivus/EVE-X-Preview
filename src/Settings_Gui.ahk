@@ -374,7 +374,7 @@
         This.MainFrame["KeepGroupsPositions"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["GroupsHoldDelay"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards, ImportBtn))
-        addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox))
+        addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox, ImportBtn))
         DeleteButton.OnEvent("Click", (*) => Delete_Group(ddl, HKForwards, HKBackwards, EditBox))
         This.MainFrame["ForwardsKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
         This.MainFrame["BackwardsdKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
@@ -404,7 +404,7 @@
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
-        CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj) {
+        CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj, ImpBtn) {
             ArrayIndex := 0
             Obj := InputBox("Enter a Groupname", "Create New Group", "w200 h90")
             if (Obj.Result != "OK")
@@ -419,7 +419,7 @@
                 }
             }
             EditObj.value := "", ForwardHKObj.value := "", BackwardHKObj.value := ""
-            ForwardHKObj.Enabled := 1, BackwardHKObj.Enabled := 1, EditObj.Enabled := 1
+            ForwardHKObj.Enabled := 1, BackwardHKObj.Enabled := 1, EditObj.Enabled := 1, ImpBtn.Enabled := 1
             ddlObj.Choose(ArrayIndex)
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -442,7 +442,7 @@
             text := ""
             if (ddlObj.Text != "" && This.Hotkey_Groups.Has(ddlObj.Text)) {
                 for index, Names in This.Hotkey_Groups[ddlObj.Text]["Characters"] {
-                    text .= Names "`n"
+                    text .= This.CleanTitle(Names) "`n"
                 }
                 EditObj.value := text, EditObj.Enabled := 1
                 ForwardHKObj.value := This.Hotkey_Groups[ddlObj.Text]["ForwardsHotkey"], ForwardHKObj.Enabled := 1
@@ -455,10 +455,10 @@
             if (obj.Name = "HKCharlist" && ddl.Text != "") {
                 Arr := []
                 for k, v in StrSplit(obj.value, "`n") {
-                    Chars := Trim(v, "`n ")
-                    if (Chars = "")
+                    char := Trim(v, "`n ")
+                    if char = ""
                         continue
-                    Arr.Push(Chars)
+                    Arr.Push(This.AntiCleanTitle(char))
                 }
                 This.Hotkey_Groups[ddl.Text]["Characters"] := Arr
             }
@@ -479,7 +479,7 @@
         Charlist := "", Hklist := ""
         for index, value in This._Hotkeys {
             for name, hotkey in value {
-                Charlist .= name "`n"
+                Charlist .= This.CleanTitle(name) "`n"
                 Hklist .= hotkey "`n"
             }
         }
@@ -585,7 +585,7 @@
         EventHandler(obj) {
             tempvar := []
             ListChars := StrSplit(This.MainFrame["HotkeyCharList"].value, "`n"), ListHotkeys := StrSplit(This.MainFrame["HotkeyList"].value, "`n")
-            for k, v in ListChars {
+            for _, v in ListChars {
                 chars := "", keys := ""
                 if (A_Index <= ListChars.Length) {
                     chars := Trim(ListChars[A_Index], "`n ")
@@ -598,7 +598,7 @@
                 }
                 if (chars = "")
                     continue
-                tempvar.Push Map(chars, keys)
+                tempvar.Push Map(This.AntiCleanTitle(chars), keys)
             }
             this._Hotkeys := tempvar
             This.NeedRestart := 1
@@ -940,7 +940,7 @@
             }
         }
 
-        This.Tv_LV.ModifyCol(1, 150), This.Tv_LV.ModifyCol(2, 115)
+        This.Tv_LV.ModifyCol(1, This.editExW) ; , This.Tv_LV.ModifyCol(2, 115)
         This.Tv_LV.OnEvent("ItemCheck", ObjBindMethod(This, "_Tv_LVSelectedRow"))
 
         This.MainFrame.Group["Thumbnail Visibility"] := Thumbnail_visibility
@@ -1020,8 +1020,11 @@
             if (Obj.Result != "OK")
                 return
 
+            temp := This.NonEVEGroups
+            temp[Obj.value] := Map("exe", [], "title", [], "fkey", "", "bkey", "")
+            This.NonEVEGroups := temp
+
             ddlObj.Delete()
-            This.NonEVEGroups[Obj.value] := Map("exe", [], "title", [], "fkey", "", "bkey", "")
             ddlObj.Add(This.GetNonEVEGroupsList())
             for k in This.NonEVEGroups {
                 if k = Obj.value {
@@ -1039,8 +1042,11 @@
         }
 
         Delete_Group(ddlObj, ForwardHKObj, BackwardHKObj, EditObj1, EditObj2) {
-            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text))
-                This.NonEVEGroups.Delete(ddlObj.Text)
+            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text)) {
+                temp := This.NonEVEGroups
+                temp.Delete(ddlObj.Text) ; Properly deletes obj
+                This.NonEVEGroups := temp
+            }
 
             ddlObj.Delete()
             ddlObj.Add(This.GetNonEVEGroupsList())
@@ -1110,19 +1116,16 @@
                 what := "hotkey"
             }
 
-            arr := This.NonEVEHotkeys
-
+            arr := []
             for i, v in StrSplit(obj.value, "`n") {
                 data := Trim(v, "`n ")
                 if data = "" && what != "title"
                     continue
 
-                if i > arr.Length
-                    arr.Push(Map("exe", "", "title", "", "hotkey", ""))
-                arr[i][what] := data
+                arr.Push(data)
             }
 
-            This.NonEVEHotkeys := arr
+            This.NonEVEHotkeys[what] := arr
 
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -1215,6 +1218,7 @@
         This.TrayMenuShortcutsOrder := [
             "Suspend Hotkeys",
             "Hide Thumbnails",
+            "Show Thumbnails Always on Top",
             "Click Through Thumbnails",
             "Minimize Inactive Clients",
             "Close all EVE Clients",
@@ -1277,7 +1281,7 @@
     Dont_Minimize_List() {
         list := ""
         for k in This.Dont_Minimize_Clients {
-            list .= k "`n"
+            list .= This.CleanTitle(k) "`n"
         }
         return list
     }
@@ -1285,7 +1289,7 @@
     DontCloseList() {
         list := ""
         for k in This.DontCloseClients {
-            list .= k "`n"
+            list .= This.CleanTitle(k) "`n"
         }
         return list
     }
@@ -1455,11 +1459,13 @@
         This.MainFrame["NonEVETitlesGroups"].value := ""
 
         t1 := "", t2 := "", t3 := ""
-        for v in This.NonEVEHotkeys {
-            t1 .= v["exe"] "`n"
-            t2 .= v["title"] "`n"
-            t3 .= v["hotkey"] "`n"
-        }
+        for i, v in This.NonEVEHotkeys["exe"]
+            t1 .= v "`n"
+        for i, v in This.NonEVEHotkeys["title"]
+            t2 .= v "`n"
+        for i, v in This.NonEVEHotkeys["hotkey"]
+            t3 .= v "`n"
+
         This.MainFrame["NonEVEProcessHtks"].value := t1
         This.MainFrame["NonEVETitlesHtks"].value := t2
         This.MainFrame["NonEVEHotkeysHtks"].value := t3
@@ -1509,10 +1515,10 @@
         EvENameList := []
         for EveHwnd in This.ThumbWindows.OwnProps() {
             try {
-                if title := This.CleanTitle(WinGetTitle("Ahk_Id " EveHwnd) = "") {
+                if title := WinGetTitle("Ahk_Id " EveHwnd) = "EVE" {
                     continue
                 }
-                EvENameList.Push This.CleanTitle(WinGetTitle("Ahk_Id " EveHwnd))
+                EvENameList.Push WinGetTitle("Ahk_Id " EveHwnd)
             }
         }
         return EvENameList
