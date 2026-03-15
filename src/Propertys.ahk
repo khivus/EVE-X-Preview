@@ -646,28 +646,20 @@ class Propertys extends TrayMenu {
     
     NonEVEGroups {
         get {
-            res := Map()
             temp := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"]
+            res := Map()
             for n, group in temp {
-                res[n] := {
-                    exe: group["exe"],
-                    title: group["title"],
-                    fkey: group["fkey"],
-                    bkey: group["bkey"]
-                }
+                if group["exe"] = []
+                    continue
+                for i, _ in group["exe"]
+                    if !group["title"].Has(i)
+                        group["title"].Push("") ; filling in array with empty titles
+                res[n] := group
             }
             return res
         }
-        set {
-            temp := Map()
-            for n, group in Value {
-                temp["exe"] := group.exe
-                temp["title"] := group.title
-                temp["fkey"] := group.fkey
-                temp["bkey"] := group.bkey
-            }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"] := temp
-        }
+        ; get => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"] := value
     }
 
     GetNonEVEGroupsList() {
@@ -680,28 +672,17 @@ class Propertys extends TrayMenu {
 
     NonEVEHotkeys {
         get {
-            res := []
             temp := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
+            res := []
             for htk in temp {
-                res.Push({
-                    exe: htk["exe"],
-                    title: htk["title"],
-                    hotkey: htk["hotkey"]
-                })
+                if htk["exe"] = "" htk["hotkey"] = ""
+                    continue
+                res.Push(htk)
             }
             return res
         }
-        set {
-            temp := []
-            for htk in Value {
-                temp.Push(Map(
-                    "exe", htk.exe,
-                    "title", htk.title,
-                    "hotkey", htk.hotkey
-                ))
-            }
-            This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"] := temp
-        }
+        ; get => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"] := value
     }
 
     _Hotkey_Delete(*) {

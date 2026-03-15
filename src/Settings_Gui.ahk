@@ -59,6 +59,7 @@
         This.lGap := 24
         This.xlGap := 32
         This.editW := 160
+        This.editExW := 197
         This.editH := 200
         This.editOffset := 3
         This.offsetX := 250
@@ -192,12 +193,12 @@
         ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseOnLoginScreen Checked" This.DontCloseOnLoginScreen, "On/Off")
 
         ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Minimize Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
-        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
+        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
 
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Don't Close Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
-        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Don't Close Clients:")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
+        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
 
         This.MainFrame["MinimizeInactiveClients"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["AlwaysMaximize"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
@@ -256,18 +257,18 @@
         CustomColors.Push This.MainFrame.Add("CheckBox", Format("xs+{} yp", This.offsetX) " vCcoloractive Checked" This.CustomColorsActive, "On/Off")
 
         CustomColors.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Character Name:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCchars", This.CustomColors_AllCharNames)
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCchars", This.CustomColors_AllCharNames)
 
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editW), "Import from Launched")
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editExW), "Import from Launched")
 
-        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Active Border Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCBorderColor", This.CustomColors_AllBColors)
+        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Active Border Color:")
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCBorderColor", This.CustomColors_AllBColors)
 
         CustomColors.Push This.MainFrame.Add("Text", Format("x{} ys+{} Section", This.contentGap, This.editH + This.xlGap + This.btnH), "Text Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCTextColor", This.CustomColors_AllTColors)
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCTextColor", This.CustomColors_AllTColors)
 
-        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Inactive Border Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vIABorderColor", This.CustomColors_IABorder_Colors)
+        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Inactive Border Color:")
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vIABorderColor", This.CustomColors_IABorder_Colors)
 
         This.MainFrame["Ccoloractive"].OnEvent("Click", (obj, *) => Cclors_Eventhandler(obj))
         This.MainFrame["Cchars"].OnEvent("Change", (obj, *) => Cclors_Eventhandler(obj))
@@ -517,13 +518,13 @@
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
-        HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyCharList", Charlist)
+        HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyCharList", Charlist)
         HotkeysSettings.Push HKCharList
 
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editW), "Import from Launched")
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editExW), "Import from Launched")
 
-        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Hotkeys:")
-        HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyList", Hklist)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Hotkeys:")
+        HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyList", Hklist)
         HotkeysSettings.Push HKKeylist
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -927,7 +928,7 @@
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Select Any Client to Hide The Thumbnail:")
-        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editW) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
+        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editExW) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
         Thumbnail_visibility.Push This.Tv_LV
 
         for k, v in This.compare_openclients_with_list() {
@@ -974,14 +975,14 @@
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vNonEVEBackwardsdKey")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Process Names (.exe):")
-        EditExe := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, editCustomH) " -Wrap Disabled vNonEVEProcessGroups")
+        EditExe := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, editCustomH) " -Wrap Disabled vNonEVEProcessGroups")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", This.offsetX), "Titles (optional):")
-        EditTitle := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, editCustomH) " -Wrap Disabled vNonEVETitlesGroups")
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", This.editExW + This.contentGap), "Titles (optional):")
+        EditTitle := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, editCustomH) " -Wrap Disabled vNonEVETitlesGroups")
 
-        ; arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.editH + This.contentGap), "For Individual Hotkeys:")
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} w{} h2 +0x10", editCustomH + This.contentGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", editCustomH + This.lGap), "Process Names (.exe):")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Process Names (.exe):")
         arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVEProcessHtks")
 
         arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", editCustomW + This.baseGrid + 1), "Titles (optional):")
@@ -1020,7 +1021,7 @@
                 return
 
             ddlObj.Delete()
-            This.NonEVEGroups[Obj.value] := {}
+            This.NonEVEGroups[Obj.value] := Map("exe", [], "title", [], "fkey", "", "bkey", "")
             ddlObj.Add(This.GetNonEVEGroupsList())
             for k in This.NonEVEGroups {
                 if k = Obj.value {
@@ -1053,21 +1054,24 @@
         SetEditText(ddlObj, EditObj1, EditObj2, ForwardHKObj?, BackwardHKObj?) {
             if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text)) {
                 text1 := ""
-                for Names in This.NonEVEGroups[ddlObj.Text].exe {
+                for Names in This.NonEVEGroups[ddlObj.Text]["exe"] {
                     text1 .= Names "`n"
                 }
                 text2 := ""
-                for Names in This.NonEVEGroups[ddlObj.Text].title {
+                for Names in This.NonEVEGroups[ddlObj.Text]["title"] {
                     text2 .= Names "`n"
                 }
                 EditObj1.value := text1, EditObj1.Enabled := 1, EditObj2.value := text2, EditObj2.Enabled := 1
-                ForwardHKObj.value := This.NonEVEGroups[ddlObj.Text].fkey, ForwardHKObj.Enabled := 1
-                BackwardHKObj.value := This.NonEVEGroups[ddlObj.Text].bkey, BackwardHKObj.Enabled := 1
+                ForwardHKObj.value := This.NonEVEGroups[ddlObj.Text]["fkey"], ForwardHKObj.Enabled := 1
+                BackwardHKObj.value := This.NonEVEGroups[ddlObj.Text]["bkey"], BackwardHKObj.Enabled := 1
             }
         }
 
         SaveHKGroupList(obj) {
-            if (obj.Name = "NonEVEProcessGroups" && ddl.Text != "") {
+            if ddl.Text == ""
+                return
+
+            if obj.Name = "NonEVEProcessGroups" {
                 Arr := []
                 for k, v in StrSplit(obj.value, "`n") {
                     execs := Trim(v, "`n ")
@@ -1075,28 +1079,53 @@
                         continue
                     Arr.Push(execs)
                 }
-                This.NonEVEGroups[ddl.Text].exe := Arr
+                This.NonEVEGroups[ddl.Text]["exe"] := Arr
             }
-            else if (obj.Name = "NonEVETitlesGroups" && ddl.Text != "") {
+            else if obj.Name = "NonEVETitlesGroups" {
                 Arr := []
                 for k, v in StrSplit(obj.value, "`n") {
                     titles := Trim(v, "`n ")
                     Arr.Push(titles)
                 }
-                This.NonEVEGroups[ddl.Text].title := Arr
+                This.NonEVEGroups[ddl.Text]["title"] := Arr
             }
-            else if (obj.Name = "NonEVEForwardsKey" && ddl.Text != "") {
-                This.NonEVEGroups[ddl.Text].fkey := Trim(obj.value, "`n ")
+            else if obj.Name = "NonEVEForwardsKey" {
+                This.NonEVEGroups[ddl.Text]["fkey"] := Trim(obj.value, "`n ")
             }
-            else if (obj.Name = "NonEVEBackwardsdKey" && ddl.Text != "") {
-                This.NonEVEGroups[ddl.Text].bkey := Trim(obj.value, "`n ")
+            else if obj.Name = "NonEVEBackwardsdKey" {
+                This.NonEVEGroups[ddl.Text]["bkey"] := Trim(obj.value, "`n ")
             }
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
         SaveHKList(obj) {
+            if obj.Name = "NonEVEProcessHtks" {
+                what := "exe"
+            }
+            else if obj.Name = "NonEVETitlesHtks" {
+                what := "title"
+            }
+            else if obj.Name = "NonEVEHotkeysHtks" {
+                what := "hotkey"
+            }
+
+            arr := This.NonEVEHotkeys
+
+            for i, v in StrSplit(obj.value, "`n") {
+                data := Trim(v, "`n ")
+                if data = "" && what != "title"
+                    continue
+
+                if i > arr.Length
+                    arr.Push(Map("exe", "", "title", "", "hotkey", ""))
+                arr[i][what] := data
+            }
+
+            This.NonEVEHotkeys := arr
+
             This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
 
@@ -1427,9 +1456,9 @@
 
         t1 := "", t2 := "", t3 := ""
         for v in This.NonEVEHotkeys {
-            t1 .= v.exe "`n"
-            t2 .= v.title "`n"
-            t3 .= v.hotkey "`n"
+            t1 .= v["exe"] "`n"
+            t2 .= v["title"] "`n"
+            t3 .= v["hotkey"] "`n"
         }
         This.MainFrame["NonEVEProcessHtks"].value := t1
         This.MainFrame["NonEVETitlesHtks"].value := t2

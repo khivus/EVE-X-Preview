@@ -208,6 +208,9 @@
         This.Register_Hotkey_Groups()
         This.BorderActive := 0
 
+        ; List for NonEVE Apps to manage thumbnails
+        This.CreateNonEVEAppsList()
+
         This.RegisterNonEVEHotkeys()
         This.RegisterNonEVEGroups()
 
@@ -248,8 +251,11 @@
 
 
     HandleMainTimer() {
-        if This.ProfActive ; Profiling
-            __t0 := A_TickCount
+        ; if This.ProfActive ; Profiling
+        static __lt := 0
+        __t0 := A_TickCount
+        if __t0 - __tl := 5000 ; Check every ~5 seconds
+            This.UpdateActiveNonEVEApps()
 
         static HideShowToggle := 0, LastActiveHWND := 0, WinList := []
 
@@ -258,6 +264,7 @@
         Catch 
             return
 
+        WinList.Push(This.ActiveNonEVEApps*)
         ; If any EVE Window exist
         if WinList.Length {
             try { ; Another++ attempt to fix error on thumbnail destruction
@@ -302,6 +309,9 @@
                         }
                     }
                 }
+                ; for i, app in This.ActiveNonEVEApps {
+
+                ; }
             }
 
             try {
@@ -1275,11 +1285,41 @@
         }
     }
 
+    CreateNonEVEAppsList() {
+        This.NonEVEAppsList := []
+        for app in This.NonEVEHotkeys
+            if !AppIsIsArray(app["exe"], app["title"])
+                This.NonEVEAppsList.Push(Map("exe", app["exe"], "title", app["title"]))
+        
+        for _, group in This.NonEVEGroups
+            for i, exe in group["exe"]
+                if !AppIsIsArray(exe, group["title"][i])
+                    This.NonEVEAppsList.Push(Map("exe", exe, "title", group["title"][i]))
+
+        AppIsInArray(exe, title) {
+            for app in This.NonEVEAppsList
+                if app["exe"] == exe && app["title"] == title
+                    return true
+            return false
+        }
+    }
+
+    UpdateActiveNonEVEApps() {
+        This.ActiveNonEVEApps := [] ; List of hwnds
+        for app in This.NonEVEAppsList {
+            criteria := "ahk_exe " . app["exe"]
+            if app["title"] != ""
+                criteria := app["title"] . " " . criteria
+            if hwnd := WinExist(criteria) {
+                ; app["hwnd"] := hwnd
+                ; if app["title"] != ""
+                ;     app["title"] := WinGetTitle("ahk_id " hwnd)
+                This.ActiveNonEVEApps.Push(hwnd)
+            }
+        }
+    }
+
     RegisterNonEVEGroups() {
-        ; This.NonEVEGroups := {
-        ;     1: {exe: ["eve-online.exe", "Discord.exe", "Code.exe"], title: ["EVE Launcher", "", ""], fkey: "F3", bkey: ""},
-        ;     2: {exe: ["pyfa.exe"], title: [""], fkey: "F4", bkey: ""}
-        ; }
         This.NonEVEGroupsL := []
         This.NonEVEGroupsInds := []
         This.LastNonEVEGroupInd := -1
@@ -1291,14 +1331,21 @@
             This.NonEVEGroupsL.Push(gr)
             This.NonEVEGroupsInds.Push(0)
 
-            if gr.fkey != ""
-                directions["Forward"] := gr.fkey
-            if gr.bkey != ""
-                directions["Backward"] := gr.bkey
+            if gr.has("fkey") && gr["fkey"] != ""
+                directions["Forward"] := gr["fkey"]
+            if gr.has("bkey") && gr["bkey"] != ""
+                directions["Backward"] := gr["bkey"]
 
             for direction in directions {
                 HotIf ObjBindMethod(This, "AtLeastOneWinExist_", gr)
-                Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
+                if !This.SwitchLangOnErr {
+                    try
+                        Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
+                    catch ValueError as e
+                        MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " Non-EVE Hotkey Groups")
+                }
+                else
+                    Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
             }
             index += 1
             directions := Map()
@@ -1306,11 +1353,11 @@
     }
 
     AtLeastOneWinExist_(group, *) {
-        for i, exec in group.exe {
+        for i, exec in group["exe"] {
             if !WinExist("ahk_exe " exec) || WinActive("EVE-X-Preview - Settings")
                 continue
-            if group.title[i] != ""
-                return WinExist(group.title[i])
+            if group["title"][i] != ""
+                return WinExist(group["title"][i])
         
             return true
         }
@@ -1326,7 +1373,7 @@
 
         group := This.NonEVEGroupsL[groupIndex]
         index := This.NonEVEGroupsInds[groupIndex]
-        length := group.exe.Length
+        length := group["exe"].Length
 
         if !This.KeepGroupsPositions && This.LastNonEVEGroupInd != groupIndex {
             if This.LastNonEVEGroupInd != -1
@@ -1345,12 +1392,12 @@
         if !This.AtLeastOneWinExist_(group)
             return
 
-        while !This.OnWinExist_(group.exe[index], group.title[index]) {
+        while !This.OnWinExist_(group["exe"][index], group["title"][index]) {
             index := DirectionHandler(direction, index, length)
         }
 
         try
-            This.ActivateNonEVE(group.exe[index], group.title[index])
+            This.ActivateNonEVE(group["exe"][index], group["title"][index])
 
         This.LastNonEVEGroupInd := groupIndex
         This.NonEVEGroupsInds[groupIndex] := index
@@ -1373,9 +1420,9 @@
         }
 
         IsActiveWinInGroup(exe, title, group) {
-            for i, exec in group.exe {
+            for i, exec in group["exe"] {
                 if exec == exe
-                    if (title != "" && title == group.title[i]) || title == ""
+                    if (title != "" && title == group["title"][i]) || title == ""
                         return i
             }
             return 0
@@ -1383,15 +1430,17 @@
     }
 
     RegisterNonEVEHotkeys() {
-        ; NonEVEHotkeys := [
-        ;     {exe: "pyfa.exe", title: "", hotkey: "F1"},
-        ;     {exe: "eve-online.exe", title: "EVE Launcher", hotkey: "F2"}
-        ; ]
-
         for app in This.NonEVEHotkeys {
             a := app
-            HotIf ObjBindMethod(This, "OnWinExist_", a.exe, a.title)
-            Hotkey(a.hotkey, ObjBindMethod(This, "ActivateNonEVE", a.exe, a.title, 1), "P1")
+            HotIf ObjBindMethod(This, "OnWinExist_", a["exe"], a["title"])
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey(a["hotkey"], ObjBindMethod(This, "ActivateNonEVE", a["exe"], a["title"], 1), "P1")
+                catch ValueError as e
+                    MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " Non-EVE Hotkeys")
+            }
+            else
+                Hotkey(a["hotkey"], ObjBindMethod(This, "ActivateNonEVE", a["exe"], a["title"], 1), "P1")
         }
     }
 
@@ -1496,8 +1545,13 @@
         if len == 3 && title == "EVE"
             return ""
         return title
-        ; Return RegExReplace(title, "^(?i)eve(?:\s*-\s*)?\b", "")
-        ; RegExReplace(title, "(?i)eve\s*-\s*", "")
+    }
+
+    ; adds "EVE" to the titel
+    AntiCleanTitle(title) {
+        if title = ""
+            return "EVE"
+        return "EVE - " title
     }
 
     SaveJsonToFile() {
