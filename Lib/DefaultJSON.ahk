@@ -137,6 +137,35 @@
                 "title": ["Titel"], 
                 "hotkey": ["*^!Tab"]
                 }
+            },
+            "Game Logs Monitoring": {
+                "gameLogsMonitoringEnabled": 0,
+                "monitoringInterval": 1000,
+                "gameLogsDirectory": "",
+                "charsIds": {},
+                "monitorOnlySelectedChars": 0,
+                "charsToMonitor": [],
+                "supressForFocused": 0,
+                "showEventText": 0,
+                "flashBorder": 1,
+                "flashBorderUntilClicked": 0,
+                "flashBorderDuration": 3000,
+                "monitoredEvents": {
+                    "underAttackByPlayer": {"enabled": 0, "color": ""},
+                    "underAttackByNPC": {"enabled": 0, "color": ""},
+                    "warpDisrupted": {"enabled": 0, "color": ""},
+                    "fleetInvited": {"enabled": 0, "color": ""},
+                    "fleetWarped": {"enabled": 0, "color": ""},
+                    "fleetRegrouped": {"enabled": 0, "color": ""},
+                    "decloaked": {"enabled": 0, "color": ""},
+                    "convoRequest": {"enabled": 0, "color": ""},
+                    "conduited": {"enabled": 0, "color": ""},
+                    "gateJumped": {"enabled": 0, "color": ""},
+                    "crystalBroke": {"enabled": 0, "color": ""},
+                    "miningStopped": {"enabled": 0, "color": ""},
+                    "miningBayIsFull": {"enabled": 0, "color": ""},
+                    "stoppedShooting": {"enabled": 0, "color": ""}
+                }
             }
         }
     }

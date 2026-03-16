@@ -685,6 +685,68 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"] := value
     }
 
+    ; Game Logs Monitoring ##############################################
+
+    gameLogsMonitoringEnabled {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
+    }
+
+    monitoringInterval {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoringInterval"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoringInterval"] := value
+    }
+
+    gameLogsDirectory {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsDirectory"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsDirectory"] := value
+    }
+
+    charsIds {
+        get => This._JSON["_Profiles"]["Default"]["Game Logs Monitoring"]["charsIds"]
+        set => This._JSON["_Profiles"]["Default"]["Game Logs Monitoring"]["charsIds"] := value
+    }
+
+    monitorOnlySelectedChars {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitorOnlySelectedChars"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitorOnlySelectedChars"] := value
+    }
+
+    charsToMonitor {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["charsToMonitor"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["charsToMonitor"] := value
+    }
+
+    supressForFocused {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"] := value
+    }
+
+    showEventText {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["showEventText"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["showEventText"] := value
+    }
+
+    flashBorder {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorder"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorder"] := value
+    }
+
+    flashBorderUntilClicked {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilClicked"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilClicked"] := value
+    }
+
+    flashBorderDuration {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"] := value
+    }
+
+    monitoredEvents {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoredEvents"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoredEvents"] := value
+    }
+
     _Hotkey_Delete(*) {
         if (This.LV_Item) {
             try {

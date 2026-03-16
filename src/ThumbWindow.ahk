@@ -474,7 +474,29 @@ Class ThumbWindow extends Propertys {
             This.ThumbWindows.%EVEHwnd%["Border"].Show("NoActivate")
         }
         LastActiveThumbHwnd := EVEHwnd
+        This.LastActiveThumbHwnd := LastActiveThumbHwnd
+    }
+
+    flashBorder(title, end) {
+        static isOn := false
+        hwnd := WinGetID(title " ahk_exe exefile.exe")
+        This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"
+        This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+        
+        if A_TickCount > end {
+            SetTimer(This.flashMethod[title], 0) ; Stop timer
+            This.flashMethod.Delete(title)
+            This.ThumbWindows.%hwnd%["Border"].Show("Hide")
+            This.ShowActiveBorder(This.LastActiveThumbHwnd)
+            isOn := false
+            return
+        }
+        
+        isOn := !isOn
+        if isOn
+            This.ThumbWindows.%hwnd%["Border"].Show("NoActivate")
+        else
+            This.ThumbWindows.%hwnd%["Border"].Show("Hide")
     }
 }
 
-    
