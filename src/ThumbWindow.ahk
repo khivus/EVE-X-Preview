@@ -83,7 +83,7 @@ Class ThumbWindow extends Propertys {
             }
         }
 
-        ThumbTitle := ThumbObj["TextOverlay"].Add("Text", "vOverlayText w" This.ThumbnailStartLocation["width"], Win_Title)
+        ThumbTitle := ThumbObj["TextOverlay"].Add("Text", "vOverlayText w" This.ThumbnailStartLocation["width"], This.CleanTitle(Win_Title))
         ;Sets a Color for the Text Control to make it also invisible, same as background color
         ThumbTitle.Opt("+Background040101")
 
@@ -423,6 +423,10 @@ Class ThumbWindow extends Propertys {
 
         Win_Title := This.ThumbWindows.%EVEHwnd%["Window"].Title
         ; Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
+        if This.flashBorderUntilSwitched && This.flashMethod.Has(Win_Title) {
+            SetTimer(This.flashMethod[Win_Title]["method"], 0) ; Stop timer
+            This.flashMethod.Delete(Win_Title)
+        }
 
         if !This.CustomColorsActive && !This.ShowAllColoredBorders { ; This should somehow improve performance if custom colors and show all colored borders disabled
             This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Show("Hide")
@@ -477,23 +481,24 @@ Class ThumbWindow extends Propertys {
         This.LastActiveThumbHwnd := LastActiveThumbHwnd
     }
 
-    flashBorder(title, end) {
-        static isOn := false
+    flashBorder(title, event) {
+        if !This.flashMethod.Has(title)
+            return
+
         hwnd := WinGetID(title " ahk_exe exefile.exe")
-        This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"
+        This.ThumbWindows.%hwnd%["Border"].BackColor := "0x" This.monitoredEvents[event]["color"]
         This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
         
-        if A_TickCount > end {
-            SetTimer(This.flashMethod[title], 0) ; Stop timer
+        if A_TickCount > This.flashMethod[title]["end"] {
+            SetTimer(This.flashMethod[title]["method"], 0) ; Stop timer
             This.flashMethod.Delete(title)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
             This.ShowActiveBorder(This.LastActiveThumbHwnd)
-            isOn := false
             return
         }
         
-        isOn := !isOn
-        if isOn
+        This.flashMethod[title]["isOn"] := !This.flashMethod[title]["isOn"]
+        if This.flashMethod[title]["isOn"]
             This.ThumbWindows.%hwnd%["Border"].Show("NoActivate")
         else
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")

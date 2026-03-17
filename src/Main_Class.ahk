@@ -1678,15 +1678,12 @@
         else if (WinTitle = "EVE" && This.DontCloseOnLoginScreen) {
             return 1
         }
-    return 0
+        return 0
     }
 
     getFilesList() {
-        ; if This.gameLogsDirectory := ""
-        This.gameLogsDirectory := "C:\Users\Khivus\Documents\EVE\logs\Gamelogs"
-
-        if !DirExist(This.gameLogsDirectory) { ; := StrReplace(This.gameLogsDirectory, '\\$', '')) {
-            MsgBox "Documents folder not found!"
+        if !DirExist(This.gameLogsDirectory) {
+            MsgBox "Game logs folder not found!`nUsually it's in USERNAME\Documents\EVE\logs\Gamelogs."
             This.gameLogsDirectory := DirSelect() ; Select directory
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             if This.gameLogsDirectory = "" ; Cancelled
@@ -1708,7 +1705,6 @@
 
         ; in-place quicksort
         This.QuickSort(files, comp)
-
         
         ; build newline string or process in order
         fileList := []
@@ -1716,15 +1712,6 @@
             fileList.Push(This.gameLogsDirectory "\" file.name)
         }
 
-        ; ; Parse sorted list into array of FULL paths
-        ; filesListSorted := []
-        ; Loop Parse, fileList, "`n" {
-        ;     if A_LoopField == ""
-        ;         continue
-        ;     fullPath := This.gameLogsDirectory "\" A_LoopField  ; Full path, not just name
-        ;     filesListSorted.Push(fullPath)
-        ;     MsgBox A_LoopField
-        ; }
         return fileList
     }
 
@@ -1736,12 +1723,24 @@
         ; Third is character ID 10 digits: CCCCCCCCCC
         ; If character didn't logged in there is structure like:
         ; YYYYMMDD_XXXXXX.txt with same first 2 line explained before
+
+        if This.gameLogsDirectory = "" {
+            This.gameLogsDirectory := "C:\Users\" A_UserName "\Documents\EVE\logs\Gamelogs"
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
         if !This.gameLogsMonitoringEnabled
             return
+
+        This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
+        This.flashMethod := Map()
 
         eventPatterns := Map(
             "underAttackByPlayer", Map("pattern", "<color=0xffcc0000><b>\d+</b> <color=0x77ffffff><font size=\d+>from</font>", "needRegex", 1),
             "underAttackByNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
+            "engagedWithFactionBSNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
+            "engagedWithOfficerNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
+            "engagedWithCapitalNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
             "warpDisrupted", Map("pattern", "you!", "needRegex", 0),
             "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0),
             "fleetWarped", Map("pattern", "Following", "needRegex", 0),
@@ -1759,23 +1758,25 @@
         This.enabledMonitoredEvents := Map() ; To check only enabled events
         for event, v in This.monitoredEvents {
             if v["enabled"] {
-                v["pattern"] := eventPatterns[event]["pattern"]
-                v["needRegex"] := eventPatterns[event]["needRegex"]
-                This.enabledMonitoredEvents[event] := v
+                This.enabledMonitoredEvents[event] := This.monitoredEvents[event].Clone()
+                This.enabledMonitoredEvents[event]["pattern"] := eventPatterns[event]["pattern"]
+                This.enabledMonitoredEvents[event]["needRegex"] := eventPatterns[event]["needRegex"]
             }
         }
+        if !This.enabledMonitoredEvents.Count ; If dont enabled
+            return
 
-        charsToMonitor := Map() ; Must be active/logged in and in list of monitored
+        activeCharsToMonitor := Map() ; Must be active/logged in and in list of monitored
         if This.monitorOnlySelectedChars {
             for char in This.charsToMonitor {
                 if WinExist(char) {
                     for charName, id in This.charsIds {
                         if char = charName {
-                            charsToMonitor[char] := id
+                            activeCharsToMonitor[char] := id
                             break
                         }
                     }
-                    charsToMonitor[char] := 0
+                    activeCharsToMonitor[char] := 0
                 }
             }
         }
@@ -1790,23 +1791,20 @@
     
             for index, hwnd in WinList {
                 title := WinGetTitle(hwnd)
-                if title = "EVE"
+                if title = "EVE" ; In character selection screen
                     continue
 
                 for charName, id in This.charsIds {
                     if title = charName {
-                        charsToMonitor[title] := id
+                        activeCharsToMonitor[title] := id
                         break
                     }
                 }
-                charsToMonitor[title] := 0
+                activeCharsToMonitor[title] := 0
             }
         }
 
-        This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
-        This.flashMethod := Map()
-
-        for charName, charId in charsToMonitor {
+        for charName, charId in activeCharsToMonitor {
             This.startLogMonitoring(charName, charId)
         }
 
@@ -1866,16 +1864,16 @@
         file.ReadLine()
 
         SetTimer(This.monitoredChars[charName]["monitorTimer"], This.monitoringInterval) ; Poll every specified by user time
-        ToolTip "Started for " charName
-        SetTimer(() => ToolTip(), -(1000))
+        ; ToolTip "Started for " charName
+        ; SetTimer(() => ToolTip(), -(1000))
     }
 
     stopLogMonitoring(charName) {
         SetTimer(This.monitoredChars[charName]["monitorTimer"], 0) ; Stopping monitoring
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
-        ToolTip "Stopped for " charName
-        SetTimer(() => ToolTip(), -(1000))
+        ; ToolTip "Stopped for " charName
+        ; SetTimer(() => ToolTip(), -(1000))
     }
 
     monitorChanges(charName) {
@@ -1888,38 +1886,50 @@
             return
         char["size"] := size
 
-        while !char["file"].AtEOF { ; Skipping lines to get onlu last one (TODO better approach)
+        if This.supressForFocused && WinActive(charName " ahk_exe exefile.exe") {
+            char["file"].Seek(-1, 2)
+            char["file"].ReadLine()
+            return
+        }
+
+        while !char["file"].AtEOF {
             line := char["file"].ReadLine()
-        }
-
-        if line = ""
-            return
-
-        event := ""
-        for e, v in This.enabledMonitoredEvents {
-            if !v["needRegex"] && InStr(line, v["pattern"]) {
-                event := e
-                break
-            }
-            else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
-                event := e
-                break
-            }
-            else if e = "stoppedShooting" {
-                ; TODO shooting logic
-            }
-        }
-
-        if event = ""
-            return
-
-        start := A_TickCount
-        end := start + This.flashBorderDuration
-        This.flashMethod[charName] := ObjBindMethod(this, "flashBorder", charName, end) ; TODO Add info that event display is running
-        SetTimer(This.flashMethod[charName], 500)
         
-        ToolTip(charName ": " event)
-        SetTimer(() => ToolTip(), -(3000))
+            if line = ""
+                return
+
+            event := ""
+            for e, v in This.enabledMonitoredEvents {
+                if !v["needRegex"] && InStr(line, v["pattern"]) {
+                    event := e
+                    break
+                }
+                else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
+                    event := e
+                    break
+                }
+                else if e = "stoppedShooting" {
+                    ; TODO shooting logic
+                }
+            }
+
+            if event = ""
+                return
+
+            if This.flashBorder { ; Flashing border if enabled
+                start := A_TickCount
+                end := start + This.flashBorderDuration
+                This.flashMethod[charName] := Map()
+                This.flashMethod[charName]["end"] := end
+                This.flashMethod[charName]["isOn"] := false
+                This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event) ; TODO Add info that event display is running
+                SetTimer(This.flashMethod[charName]["method"], This.flashBorderInterval)
+            }
+            if This.showEventText { ; TODO Showing text when enabled
+                ToolTip(charName ": " event) ; Placeholder for now
+                SetTimer(() => ToolTip(), -(3000))
+            }
+        }
     }
 }
 

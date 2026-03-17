@@ -20,6 +20,8 @@
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
+        This.GameLogsMonitoring_Ctrl()
+        This.MonitoredEvents_Ctrl()
         This.NonEVEApps_Ctrl()
         This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
@@ -45,7 +47,7 @@
         This.contentGap := 16
 
         This.guiWidth := 700
-        This.guiHeight := 630
+        This.guiHeight := 695
 
         This.btnH := 32
         This.objH := 20
@@ -67,20 +69,24 @@
         This.sepW := This.contentW - This.contentGap * 2 + 2
         This.cPreviewSize := 24
         This.editC := This.editW - This.cPreviewSize - This.baseGrid
-
-        This.directions := Map(
-            1, "left -> right, top -> bottom",
-            2, "left -> right, bottom -> top",
-            3, "right -> left, top -> bottom",
-            4, "right -> left, bottom -> top",
-            5, "top -> bottom, left -> right",
-            6, "top -> bottom, right -> left",
-            7, "bottom -> top, left -> right",
-            8, "bottom -> top, right -> left"
-        )
     }
 
     CreateSidebar() {
+        profilesGroups := [
+            "Hotkey Groups",
+            "Hotkeys Settings",
+            "Thumbnails Behavior",
+            "Thumbnails Visuals",
+            "Thumbnail Visibility",
+            "Client Settings",
+            "Custom Colors",
+            "Game Logs Monitoring",
+            "Monitored Events",
+            "Non-EVE Applications",
+            "Tray Menu Settings",
+            "Other"
+        ]
+
         This.Sidebar := Gui("+Parent" This.S_Gui.Hwnd " -Caption -Border")
         This.Sidebar.BackColor := "0xf0f0f0"
         This.Sidebar.SetFont("s11 w400")
@@ -95,7 +101,7 @@
 
         This.Sidebar.Add("Text", Format("xs yp+{}", This.btnH + This.contentGap), "Select a settings group")
 
-        for index, btn_text in This._ProfileProps {
+        for index, btn_text in profilesGroups {
             if index == 1 {
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.contentGap, This.sidebarInnerW, This.btnH), btn_text)
                 This.firstBtn := btn
@@ -609,10 +615,22 @@
     ThumbnailsBehavior_Ctrl() {
         This.MainFrame.Group["Thumbnails Behavior"] := [], arr := []
 
+        This.directions := Map(
+            1, "left -> right, top -> bottom",
+            2, "left -> right, bottom -> top",
+            3, "right -> left, top -> bottom",
+            4, "right -> left, bottom -> top",
+            5, "top -> bottom, left -> right",
+            6, "top -> bottom, right -> left",
+            7, "bottom -> top, left -> right",
+            8, "bottom -> top, right -> left"
+        )
+
         ddl_options := []
         for key, value in This.directions {
             ddl_options.Push(value)
         }
+
         smallEditW := 35
         mediumEditW := 50
 
@@ -948,20 +966,208 @@
             v.Visible := 0
     }
 
+    GameLogsMonitoring_Ctrl() {
+        arr := []
+
+        monitoredChars := ""
+        for char in This.charsToMonitor {
+            monitoredChars .= char "`n"
+        }
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Game Logs Monitoring")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "This feature does not violate the EULA or ToS, but it is neither endorsed")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "nor supported by CCP. Use at your own risk. Performance impact")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "increases with the number of characters tracked simultaneously.")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Directory:")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 60 - This.baseGrid, 5, 60, 26) " vselectGameLogsDirectory", "Select")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp+{} w{}", 60 + This.baseGrid, 1, This.editW) " vgameLogsDirectory")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Monitoring Interval (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vmonitoringInterval")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Supress for Focused Window:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vsupressForFocused", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Event Text:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vshowEventText", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorder", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border Until Switched to:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorderUntilSwitched", "On/Off")
+        
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border Duration (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vflashBorderDuration")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border Interval (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vflashBorderInterval")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Monitor Only Selected Characters:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vmonitorOnlySelectedChars", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters to Monitor:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX, This.editOffset, This.editW, This.editH) " -Wrap vcharsToMonitor", monitoredChars)
+
+        This.MainFrame["gameLogsMonitoringEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["selectGameLogsDirectory"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["gameLogsDirectory"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["monitoringInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["supressForFocused"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["showEventText"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorder"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderUntilSwitched"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderDuration"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["monitorOnlySelectedChars"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["charsToMonitor"].OnEvent("Change", (obj, *) => EventHandler(obj))
+
+        EventHandler(obj) {
+            if obj.name = "gameLogsMonitoringEnabled"
+                This.gameLogsMonitoringEnabled := obj.value
+            else if obj.name = "gameLogsDirectory"
+                This.gameLogsDirectory := obj.value
+            else if obj.name = "selectGameLogsDirectory" {
+                dir := DirSelect(,, "Select Gamelogs folder.") ; Select directory
+                if dir = "" ; Cancelled
+                    return
+                This.gameLogsDirectory := dir
+                This.MainFrame["gameLogsDirectory"].Value := dir
+            }
+            else if obj.name = "monitoringInterval"
+                This.monitoringInterval := obj.value
+            else if obj.name = "supressForFocused"
+                This.supressForFocused := obj.value
+            else if obj.name = "showEventText"
+                This.showEventText := obj.value
+            else if obj.name = "flashBorder"
+                This.flashBorder := obj.value
+            else if obj.name = "flashBorderUntilSwitched"
+                This.flashBorderUntilSwitched := obj.value
+            else if obj.name = "flashBorderDuration"
+                This.flashBorderDuration := obj.value
+            else if obj.name = "flashBorderInterval"
+                This.flashBorderInterval := obj.value
+            else if obj.name = "monitorOnlySelectedChars"
+                This.monitorOnlySelectedChars := obj.value
+            else if obj.name = "charsToMonitor"
+                This.charsToMonitor := obj.value
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Game Logs Monitoring"] := arr
+        for k, v in This.MainFrame.Group["Game Logs Monitoring"]
+            v.Visible := 0
+    }
+
+    MonitoredEvents_Ctrl() {
+        arr := []
+
+        monitoredEventsOrder := [ ; This added because Map() for some reason sorts itself
+            "stoppedShooting",
+            "underAttackByPlayer",
+            "underAttackByNPC",
+            "engagedWithFactionBSNPC",
+            "underAttackByOfficerNPC",
+            "damagedCapitalNPC",
+            "warpDisrupted",
+            "decloaked",
+            "gateJumped",
+            "convoRequest",
+            "fleetInvited",
+            "fleetWarped",
+            "fleetRegrouped",
+            "conduited",
+            "crystalBroke",
+            "miningStopped",
+            "miningBayIsFull"
+        ]
+
+        monitoredEventsTexts := Map(
+            "stoppedShooting", "Stopped Shooting:",
+            "underAttackByPlayer", "Under Attack By Player:",
+            "underAttackByNPC", "Under Attack By NPC:",
+            "engagedWithFactionBSNPC", "Engaged With Faction BS NPC:",
+            "underAttackByOfficerNPC", "Under Attack By Officer NPC:",
+            "damagedCapitalNPC", "Damaged Capital NPC:",
+            "warpDisrupted", "Warp Disrupted:",
+            "decloaked", "Decloaked:",
+            "gateJumped", "Gate Jumped:",
+            "convoRequest", "Convo Request:",
+            "fleetInvited", "Fleet Invited:",
+            "fleetWarped", "Fleet Warped:",
+            "fleetRegrouped", "Fleet Regrouped:",
+            "conduited", "Conduited:",
+            "crystalBroke", "Crystal Broke:",
+            "miningStopped", "Mining Stopped:",
+            "miningBayIsFull", "Mining Bay Is Full:"
+        )
+
+        editCW := 60
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Monitored Events")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enabling more options decreases performance. The effect increases")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
+
+        for event in monitoredEventsOrder {
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), monitoredEventsTexts[event])
+            arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vE" event, "On/Off")
+            arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 60 + This.baseGrid, This.editOffset, editCW) " vC" event)
+            arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", editCW + This.baseGrid, This.cPreviewSize, This.cPreviewSize,) " vPreviewC" event " Border")
+            
+            This.MainFrame["E" event].OnEvent("Click", (obj, *) => EventHandler(obj))
+            This.MainFrame["C" event].OnEvent("Change", (obj, *) => EventHandler(obj))
+        }
+
+        EventHandler(obj) {
+            object := SubStr(obj.name, 1, 1)
+            event := SubStr(obj.name, 2)
+            if object = "E"
+                This.monitoredEvents[event]["enabled"] := obj.value
+            else if object = "C" {
+                This.monitoredEvents[event]["color"] := obj.value
+                This.RedrawColorPreview(obj)
+            }
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Monitored Events"] := arr
+        for k, v in This.MainFrame.Group["Monitored Events"]
+            v.Visible := 0
+    }
+
     NonEVEApps_Ctrl() {
         This.MainFrame.Group["Non-EVE Applications"] := [], arr := []
 
         btnW := (This.editW - This.baseGrid) / 2
         btnEditH := 26
         editCustomW := 131
-        editCustomH := 180
+        editCustomH := 190
 
         This.MainFrame.SetFont("s12 w700 q5")
         arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Non-EVE Applications")
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Add/Delete Groups:")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enter exact .exe name (optional: window title for better matching).`nThumbnail will appear, and assigned hotkey can activate the app.")
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap * 2), "Add/Delete Groups:")
         addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX, 5, btnW, btnEditH), "Add")
         delBtn := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
 
@@ -1448,6 +1654,25 @@
                 else
                     This.Tv_LV.Add("", v,)
             }
+        }
+
+        ; Game Logs Monitoring
+        This.MainFrame["gameLogsMonitoringEnabled"].value := This.gameLogsMonitoringEnabled
+        This.MainFrame["monitoringInterval"].value := This.monitoringInterval
+        This.MainFrame["gameLogsDirectory"].value := This.gameLogsDirectory
+        This.MainFrame["monitorOnlySelectedChars"].value := This.monitorOnlySelectedChars
+        This.MainFrame["supressForFocused"].value := This.supressForFocused
+        This.MainFrame["showEventText"].value := This.showEventText
+        This.MainFrame["flashBorder"].value := This.flashBorder
+        This.MainFrame["flashBorderUntilSwitched"].value := This.flashBorderUntilSwitched
+        This.MainFrame["flashBorderDuration"].value := This.flashBorderDuration
+        This.MainFrame["flashBorderInterval"].value := This.flashBorderInterval
+
+        ; Monitored Events
+        for event, v in This.MonitoredEvents {
+            This.MainFrame["E" event].value := This.MonitoredEvents[event]["enabled"]
+            This.MainFrame["C" event].value := This.MonitoredEvents[event]["color"]
+            This.RedrawColorPreview(This.MainFrame["C" event])
         }
 
         ; Non-EVE Applications

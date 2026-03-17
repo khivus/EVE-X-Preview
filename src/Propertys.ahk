@@ -174,41 +174,41 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowAllColoredBorders"] := value
     }
 
-    _ProfileProps {
-        get {
-            Arr := []
-            profilesOrder := Map(
-                "Hotkey Groups", 1,
-                "Hotkeys Settings", 2,
-                "Thumbnails Behavior", 3,
-                "Thumbnails Visuals", 4,
-                "Thumbnail Visibility", 5,
-                "Client Settings", 6,
-                "Custom Colors", 7,
-                "Non-EVE Applications", 8,
-                "Tray Menu Settings", 9,
-                "Other", 10
-            )
+    ; _ProfileProps {
+    ;     get {
+    ;         Arr := []
+    ;         profilesOrder := Map(
+    ;             "Hotkey Groups", 1,
+    ;             "Hotkeys Settings", 2,
+    ;             "Thumbnails Behavior", 3,
+    ;             "Thumbnails Visuals", 4,
+    ;             "Thumbnail Visibility", 5,
+    ;             "Client Settings", 6,
+    ;             "Custom Colors", 7,
+    ;             "Non-EVE Applications", 8,
+    ;             "Tray Menu Settings", 9,
+    ;             "Other", 10
+    ;         )
             
-            for k in This._JSON["_Profiles"][This.LastUsedProfile] {
-                for prof, v in profilesOrder {
-                    if prof == k {
-                        Arr.Push(k)
-                        break
-                    }
-                }
-            }
+    ;         for k in This._JSON["_Profiles"][This.LastUsedProfile] {
+    ;             for prof, v in profilesOrder {
+    ;                 if prof == k {
+    ;                     Arr.Push(k)
+    ;                     break
+    ;                 }
+    ;             }
+    ;         }
 
-            ; Sorting by set order so settings looks more organized
-            delimited := ""
-            for index, value in Arr
-                delimited .= (delimited ? "|" : "") . value
-            sorted_delimited := Sort(delimited, "D|", (item1,item2,*)=>(obj:=profilesOrder, pos1:=obj.Get(item1,999), pos2:=obj.Get(item2,999), pos1>pos2?1:pos1<pos2?-1:0))
-            sorted_arr := StrSplit(sorted_delimited, "|")
+    ;         ; Sorting by set order so settings looks more organized
+    ;         delimited := ""
+    ;         for index, value in Arr
+    ;             delimited .= (delimited ? "|" : "") . value
+    ;         sorted_delimited := Sort(delimited, "D|", (item1,item2,*)=>(obj:=profilesOrder, pos1:=obj.Get(item1,999), pos2:=obj.Get(item2,999), pos1>pos2?1:pos1<pos2?-1:0))
+    ;         sorted_arr := StrSplit(sorted_delimited, "|")
 
-            return sorted_arr
-        }
-    }
+    ;         return sorted_arr
+    ;     }
+    ; }
 
     Thumbnail_visibility[key?] {
         get {
@@ -732,14 +732,19 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorder"] := value
     }
 
-    flashBorderUntilClicked {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilClicked"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilClicked"] := value
+    flashBorderUntilSwitched {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilSwitched"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilSwitched"] := value
     }
 
     flashBorderDuration {
         get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"] := value
+    }
+
+    flashBorderInterval {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderInterval"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderInterval"] := value
     }
 
     monitoredEvents {
