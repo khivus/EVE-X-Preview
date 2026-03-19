@@ -145,6 +145,7 @@
                 "charsIds": {},
                 "monitorOnlySelectedChars": 0,
                 "charsToMonitor": [],
+                "lastEventPriority": 1,
                 "supressForFocused": 1,
                 "showEventText": 0,
                 "flashBorder": 1,

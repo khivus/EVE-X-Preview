@@ -717,6 +717,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["charsToMonitor"] := value
     }
 
+    lastEventPriority {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["lastEventPriority"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["lastEventPriority"] := value
+    }
+
     supressForFocused {
         get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"]
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"] := value

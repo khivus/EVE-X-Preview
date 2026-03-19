@@ -43,36 +43,7 @@
     }
 
     SetState() {
-        This.baseGrid := 8
-        This.contentGap := 16
-
-        This.guiWidth := 700
-        This.guiHeight := 695
-
-        This.btnH := 32
-        This.objH := 20
-
-        This.sidebarW := 240
-        This.sidebarInnerW := This.sidebarW - This.contentGap * 2
-        This.sidebar3BtnW := (This.sidebarInnerW - This.contentGap) / 3
-
-        This.contentW := This.guiWidth - This.sidebarW
-
-        This.lGap := 24
-        This.xlGap := 32
-        This.editW := 160
-        This.editExW := 197
-        This.editH := 200
-        This.editOffset := 3
-        This.offsetX := 250
-        This.editExH := 300
-        This.sepW := This.contentW - This.contentGap * 2 + 2
-        This.cPreviewSize := 24
-        This.editC := This.editW - This.cPreviewSize - This.baseGrid
-    }
-
-    CreateSidebar() {
-        profilesGroups := [
+        This.profilesGroups := [
             "Hotkey Groups",
             "Hotkeys Settings",
             "Thumbnails Behavior",
@@ -87,6 +58,36 @@
             "Other"
         ]
 
+        This.baseGrid := 8
+        This.contentGap := 16
+
+        This.guiWidth := 700
+        This.guiHeight := 191 + (This.profilesGroups.Length * 42) ; Dynamic height size! Depends on buttons count
+
+        This.btnH := 32
+        This.objH := 20
+
+        This.sidebarW := 240
+        This.sidebarInnerW := This.sidebarW - This.contentGap * 2
+        This.sidebar3BtnW := (This.sidebarInnerW - This.contentGap) / 3
+
+        This.contentW := This.guiWidth - This.sidebarW
+
+        This.lGap := 24
+        This.xlGap := 32
+        This.editW := 160
+        This.editExW := 197
+        This.editEx2W := 250
+        This.editH := 200
+        This.editOffset := 3
+        This.offsetX := 250
+        This.editExH := 300
+        This.sepW := This.contentW - This.contentGap * 2 + 2
+        This.cPreviewSize := 24
+        This.editC := This.editW - This.cPreviewSize - This.baseGrid
+    }
+
+    CreateSidebar() {
         This.Sidebar := Gui("+Parent" This.S_Gui.Hwnd " -Caption -Border")
         This.Sidebar.BackColor := "0xf0f0f0"
         This.Sidebar.SetFont("s11 w400")
@@ -101,7 +102,7 @@
 
         This.Sidebar.Add("Text", Format("xs yp+{}", This.btnH + This.contentGap), "Select a settings group")
 
-        for index, btn_text in profilesGroups {
+        for index, btn_text in This.profilesGroups {
             if index == 1 {
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.contentGap, This.sidebarInnerW, This.btnH), btn_text)
                 This.firstBtn := btn
@@ -364,9 +365,9 @@
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vBackwardsdKey")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters List:")
-        EditBox := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX, This.editOffset, This.editW, This.editExH) " -Wrap Disabled vHKCharlist")
+        EditBox := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editExH) " -Wrap Disabled vHKCharlist")
 
-        ImportBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW) " Disabled vImpNamesBtn", "Import from Launched")
+        ImportBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editEx2W) " Disabled vImpNamesBtn", "Import from Launched")
 
         Hotkey_Groups.Push ddl
         Hotkey_Groups.Push addBtn
@@ -946,7 +947,7 @@
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Select Any Client to Hide The Thumbnail:")
-        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editExW) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
+        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editEx2W) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
         Thumbnail_visibility.Push This.Tv_LV
 
         for k, v in This.compare_openclients_with_list() {
@@ -958,7 +959,7 @@
             }
         }
 
-        This.Tv_LV.ModifyCol(1, This.editExW) ; , This.Tv_LV.ModifyCol(2, 115)
+        This.Tv_LV.ModifyCol(1, This.editEx2W) ; , This.Tv_LV.ModifyCol(2, 115)
         This.Tv_LV.OnEvent("ItemCheck", ObjBindMethod(This, "_Tv_LVSelectedRow"))
 
         This.MainFrame.Group["Thumbnail Visibility"] := Thumbnail_visibility
@@ -993,6 +994,9 @@
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Monitoring Interval (ms):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vmonitoringInterval")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event Priority if Several Incoming:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vlastEventPriority", "Last/First")
+
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Supress for Focused Window:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vsupressForFocused", "On/Off")
 
@@ -1015,12 +1019,16 @@
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vmonitorOnlySelectedChars", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters to Monitor:")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX, This.editOffset, This.editW, This.editH) " -Wrap vcharsToMonitor", monitoredChars)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editH - 40) " -Wrap vcharsToMonitor", monitoredChars)
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH - 40 + This.baseGrid, This.editEx2W), "Import from Launched")
+        
+        arr.Push ImpBtn
 
         This.MainFrame["gameLogsMonitoringEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["selectGameLogsDirectory"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["gameLogsDirectory"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["monitoringInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["lastEventPriority"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["supressForFocused"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["showEventText"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["flashBorder"].OnEvent("Click", (obj, *) => EventHandler(obj))
@@ -1029,6 +1037,7 @@
         This.MainFrame["flashBorderInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["monitorOnlySelectedChars"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["charsToMonitor"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["charsToMonitor"]))
 
         EventHandler(obj) {
             if obj.name = "gameLogsMonitoringEnabled"
@@ -1044,6 +1053,8 @@
             }
             else if obj.name = "monitoringInterval"
                 This.monitoringInterval := obj.value
+            else if obj.name = "lastEventPriority"
+                This.lastEventPriority := obj.value
             else if obj.name = "supressForFocused"
                 This.supressForFocused := obj.value
             else if obj.name = "showEventText"
@@ -1661,6 +1672,7 @@
         This.MainFrame["monitoringInterval"].value := This.monitoringInterval
         This.MainFrame["gameLogsDirectory"].value := This.gameLogsDirectory
         This.MainFrame["monitorOnlySelectedChars"].value := This.monitorOnlySelectedChars
+        This.MainFrame["lastEventPriority"].value := This.lastEventPriority
         This.MainFrame["supressForFocused"].value := This.supressForFocused
         This.MainFrame["showEventText"].value := This.showEventText
         This.MainFrame["flashBorder"].value := This.flashBorder

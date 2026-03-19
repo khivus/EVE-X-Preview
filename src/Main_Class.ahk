@@ -1735,32 +1735,239 @@
         This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
         This.flashMethod := Map()
 
+        ; Thanks to @CJKondur to having this list
+        ; Comprehensive list of all EVE Online NPC naming prefixes.
+        ; Used by PVE mode to filter NPC damage from attack alerts.
+        ; CCP blocks players from using faction names in character creation.
+        This.generalNPCPatterns := [
+            ; --- Pirate Factions ---
+            "Guristas",
+            "Sansha", "Sansha's",
+            "Blood Raider",
+            "Angel Cartel",
+            "Serpentis",
+            "Mordu's Legion", "Mordu's",
+            ; --- Pirate Named Variants (Faction-specific hull prefixes) ---
+            ; Angel Cartel
+            "Gistii", "Gistum", "Gistior", "Gistatis", "Gist",
+            ; Blood Raiders
+            "Corpii", "Corpum", "Corpior", "Corpatis", "Corpus",
+            ; Guristas
+            "Pithi", "Pithum", "Pithior", "Pithatis", "Pith",
+            ; Sansha's Nation
+            "Centii", "Centum", "Centior", "Centatis", "Centus",
+            ; Serpentis
+            "Coreli", "Corelum", "Corelior", "Corelatis", "Core ",
+            ; --- Empire Factions ---
+            "Amarr Navy", "Amarr ",
+            "Caldari Navy", "Caldari ",
+            "Gallente Navy", "Gallente ",
+            "Minmatar Fleet", "Minmatar ",
+            "Imperial Navy",
+            "State ",
+            "Federation Navy", "Federation ",
+            "Republic Fleet", "Republic ",
+            "CONCORD",
+            ; --- Rogue Drones ---
+            "Rogue ",
+            ; Drone hull suffixes used as prefixes in some contexts
+            "Infester", "Render", "Raider", "Strain ",
+            "Decimator", "Sunder", "Nuker",
+            "Predator", "Hunter", "Destructor",
+            ; Drone name suffixes (these appear as full names)
+            ; Handled by _IsNPC suffix check: Alvi, Alvus, Alvatis, Alvior
+            ; --- Sleepers ---
+            "Sleepless", "Awakened", "Emergent",
+            ; --- Triglavian ---
+            "Starving", "Renewing", "Blinding",
+            "Harrowing", "Ghosting", "Tangling",
+            "Raznaborg", "Vedmak", "Vila ",
+            "Zorya ",
+            ; --- Drifter ---
+            "Artemis", "Apollo", "Hikanta", "Drifter",
+            "Tyrannos",
+            ; --- EDENCOM ---
+            "EDENCOM",
+            ; --- Triglavian Invasion NPCs ---
+            "Anchoring", "Liminal",
+            ; --- Sentry Guns & Structures ---
+            "Sentry ", "Sentry Gun",
+            "Territorial",
+            ; --- FOB / Diamond NPCs ---
+            "Forward Operating",
+            ; --- Mercenary NPCs ---
+            "Mercenary",
+            ; --- Thukker ---
+            "Thukker",
+            ; --- Sisters of EVE ---
+            "Sisters of",
+            ; --- ORE ---
+            "ORE ",
+            ; --- Faction Warfare NPCs ---
+            "Navy "
+        ]
+
+        factionNPCs := [ ; NPCs to trigger engagedWithFactionBSNPC event
+            "Domination Cherubim",
+            "Domination Commander",
+            "Domination General",
+            "Domination Malakim",
+            "Domination Nephilim",
+            "Domination Saint",
+            "Domination Seraphim",
+            "Domination Throne",
+            "Domination War General",
+            "Domination Warlord",
+            "Dark Blood Apostle",
+            "Dark Blood Archbishop",
+            "Dark Blood Archon",
+            "Dark Blood Cardinal",
+            "Dark Blood Harbinger",
+            "Dark Blood Monsignor",
+            "Dark Blood Oracle",
+            "Dark Blood Patriarch",
+            "Dark Blood Pope",
+            "Dark Blood Prophet",
+            "Dread Guristas Conquistador",
+            "Dread Guristas Destroyer",
+            "Dread Guristas Dismantler",
+            "Dread Guristas Eliminator",
+            "Dread Guristas Eradicator",
+            "Dread Guristas Exterminator",
+            "Dread Guristas Extinguisher",
+            "Dread Guristas Massacrer",
+            "Dread Guristas Obliterator",
+            "Dread Guristas Usurper",
+            "Sentient Alvus Controller",
+            "Sentient Alvus Creator",
+            "Sentient Alvus Queen",
+            "Sentient Alvus Ruler",
+            "Sentient Domination Alvus",
+            "Sentient Matriarch Alvus",
+            "Sentient Patriarch Alvus",
+            "Sentient Spearhead Alvus",
+            "Sentient Supreme Alvus Parasite",
+            "Sentient Swarm Preserver Alvus",
+            "True Sansha's Beast Lord",
+            "True Sansha's Dark Lord",
+            "True Sansha's Dread Lord",
+            "True Sansha's Lord",
+            "True Sansha's Mutant Lord",
+            "True Sansha's Overlord",
+            "True Sansha's Plague Lord",
+            "True Sansha's Savage Lord",
+            "True Sansha's Slave Lord",
+            "True Sansha's Tyrant",
+            "Shadow Serpentis Admiral",
+            "Shadow Serpentis Baron",
+            "Shadow Serpentis Commodore",
+            "Shadow Serpentis Flotilla Admiral",
+            "Shadow Serpentis Grand Admiral",
+            "Shadow Serpentis High Admiral",
+            "Shadow Serpentis Lord Admiral",
+            "Shadow Serpentis Port Admiral",
+            "Shadow Serpentis Rear Admiral",
+            "Shadow Serpentis Vice Admiral"
+        ]
+        This.factionNPCs := Map()
+        for npc in factionNPCs
+            This.factionNPCs[npc] := true
+
+        officerNPCs := [ ; NPCs to trigger underAttackByOfficerNPC event
+            "Gotan Kreiss",
+            "Hakim Stormare",
+            "Mizuro Cybon",
+            "Tobias Kruzhor",
+            "Ahremen Arkah",
+            "Draclira Merlonne",
+            "Raysere Giant",
+            "Tairei Namazoth",
+            "Estamel Tharchon",
+            "Kaikka Peunato",
+            "Thon Eney",
+            "Vepas Minimala",
+            "Unit D-34343",
+            "Unit F-435454",
+            "Unit P-343554",
+            "Unit W-634",
+            "Brokara Ryver",
+            "Chelm Soran",
+            "Selynne Mardakar",
+            "Vizan Ankonin",
+            "Brynn Jerdola",
+            "Cormack Vaaja",
+            "Setele Schellan",
+            "Tuvan Orth"
+        ]
+        This.officerNPCs := Map()
+        for npc in officerNPCs
+            This.officerNPCs[npc] := true
+
+        capitalNPCs := [ ; NPCs to trigger damagedCapitalNPC event
+            "Domination Titan",
+            "Dark Blood Titan",
+            "Shadow Serpentis Titan",
+            "Angel Dreadnought",
+            "Domination Dreadnought",
+            "Blood Dreadnought",
+            "Dark Blood Dreadnought",
+            "Dread Guristas Dreadnought",
+            "Guristas Dreadnought",
+            "Sansha's Dreadnought",
+            "True Sansha's Dreadnought",
+            "Serpentis Dreadnought",
+            "Shadow Serpentis Dreadnought",
+            "Infested Carrier",
+            "Sentient Infested Carrier",
+            "Sentient Infested Supercarrier",
+            "True Sansha's Supercarrier",
+            "Dread Guristas Titan"
+        ]
+        This.capitalNPCs := Map()
+        for npc in capitalNPCs
+            This.capitalNPCs[npc] := true
+
         eventPatterns := Map(
-            "underAttackByPlayer", Map("pattern", "<color=0xffcc0000><b>\d+</b> <color=0x77ffffff><font size=\d+>from</font>", "needRegex", 1),
-            "underAttackByNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
-            "engagedWithFactionBSNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
-            "engagedWithOfficerNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
-            "engagedWithCapitalNPC", Map("pattern", "123456789", "needRegex", 1), ; TODO
-            "warpDisrupted", Map("pattern", "you!", "needRegex", 0),
-            "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0),
-            "fleetWarped", Map("pattern", "Following", "needRegex", 0),
-            "fleetRegrouped", Map("pattern", "Regrouping", "needRegex", 0),
-            "decloaked", Map("pattern", "cloak deactivates", "needRegex", 0),
-            "convoRequest", Map("pattern", "is inviting you to a conversation", "needRegex", 0),
-            "conduited", Map("pattern", "A Conduit Field activated by", "needRegex", 0),
-            "gateJumped", Map("pattern", "(Jumping from|jumping to)", "needRegex", 1),
-            "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0),
-            "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0),
-            "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0),
-            "stoppedShooting", Map("pattern", "123456789", "needRegex", 0) ; TODO
+            "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
+            "underAttackByNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "engagedWithFactionBSNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "underAttackByOfficerNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "damagedCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "warpDisrupted", Map("pattern", "you!", "needRegex", 0, "checkNPC", 0),
+            "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0, "checkNPC", 0),
+            "fleetWarped", Map("pattern", "Following", "needRegex", 0, "checkNPC", 0),
+            "fleetRegrouped", Map("pattern", "Regrouping", "needRegex", 0, "checkNPC", 0),
+            "decloaked", Map("pattern", "cloak deactivates", "needRegex", 0, "checkNPC", 0),
+            "convoRequest", Map("pattern", "is inviting you to a conversation", "needRegex", 0, "checkNPC", 0),
+            "conduited", Map("pattern", "A Conduit Field activated by", "needRegex", 0, "checkNPC", 0),
+            "gateJumped", Map("pattern", "(Jumping from|jumping to)", "needRegex", 1, "checkNPC", 0),
+            "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0, "checkNPC", 0),
+            "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0, "checkNPC", 0),
+            "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0, "checkNPC", 0),
+            "stoppedShooting", Map("pattern", "123456789", "needRegex", 1, "checkNPC", 0)
         )
 
+        This.checkFactionNPCs := false
+        This.checkOfficerNPCs := false
+        This.checkCapitalNPCs := false
+        This.checkGeneralNPCs := false
+
+        This.checkedNPCs := Map()
         This.enabledMonitoredEvents := Map() ; To check only enabled events
         for event, v in This.monitoredEvents {
             if v["enabled"] {
                 This.enabledMonitoredEvents[event] := This.monitoredEvents[event].Clone()
                 This.enabledMonitoredEvents[event]["pattern"] := eventPatterns[event]["pattern"]
                 This.enabledMonitoredEvents[event]["needRegex"] := eventPatterns[event]["needRegex"]
+                This.enabledMonitoredEvents[event]["checkNPC"] := eventPatterns[event]["checkNPC"]
+                if event = "engagedWithFactionBSNPC"
+                    This.checkFactionNPCs := true
+                else if event = "underAttackByOfficerNPC"
+                    This.checkOfficerNPCs := true
+                else if event = "damagedCapitalNPC"
+                    This.checkCapitalNPCs := true
+                else if event = "underAttackByNPC"
+                    This.checkGeneralNPCs := true
             }
         }
         if !This.enabledMonitoredEvents.Count ; If dont enabled
@@ -1900,16 +2107,54 @@
 
             event := ""
             for e, v in This.enabledMonitoredEvents {
-                if !v["needRegex"] && InStr(line, v["pattern"]) {
-                    event := e
-                    break
+                if !v["checkNPC"] {
+                    if !v["needRegex"] && InStr(line, v["pattern"]) {
+                        event := e
+                        break
+                    }
+                    else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
+                        event := e
+                        break
+                    }
+                    else if e = "stoppedShooting" {
+                        return
+                        ; TODO shooting logic
+                    }
                 }
-                else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
+                else { ; Advanced NPC checking logic
+                    if !RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) ; Getting from or to damage is dealt and target
+                        return
+
+                    fromOrTo := m[1]
+                    target := m[2]
+                    kind := ClassifyTarget(target)
+
+                    switch e {
+                    case "underAttackByPlayer":
+                        if fromOrTo != "from" || kind != "player"
+                            return
+
+                    case "underAttackByNPC":
+                        if fromOrTo != "from" || kind != "npc"
+                            return
+
+                    case "engagedWithFactionBSNPC":
+                        if kind != "faction"
+                            return
+
+                    case "underAttackByOfficerNPC":
+                        if fromOrTo != "from" || kind != "officer"
+                            return
+
+                    case "damagedCapitalNPC":
+                        if fromOrTo != "to" || kind != "capital"
+                            return
+
+                    default:
+                        return
+                    }
+
                     event := e
-                    break
-                }
-                else if e = "stoppedShooting" {
-                    ; TODO shooting logic
                 }
             }
 
@@ -1917,18 +2162,58 @@
                 return
 
             if This.flashBorder { ; Flashing border if enabled
+                exists := This.flashMethod.Has(charName)
+                if !This.lastEventPriority && exists 
+                    return
+                else if This.lastEventPriority && exists { ; Clearing last event 
+                    SetTimer(This.flashMethod[charName]["method"], 0) ; Stop timer
+                    This.flashMethod.Delete(charName)
+                }
+
                 start := A_TickCount
                 end := start + This.flashBorderDuration
                 This.flashMethod[charName] := Map()
                 This.flashMethod[charName]["end"] := end
                 This.flashMethod[charName]["isOn"] := false
-                This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event) ; TODO Add info that event display is running
+                This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event)
                 SetTimer(This.flashMethod[charName]["method"], This.flashBorderInterval)
             }
             if This.showEventText { ; TODO Showing text when enabled
                 ToolTip(charName ": " event) ; Placeholder for now
                 SetTimer(() => ToolTip(), -(3000))
             }
+        }
+
+        isExact(set, target) {
+            return set.Has(target)
+        }
+    
+        isGeneralNPC(target) {
+            for pat in This.generalNPCPatterns {
+                if InStr(target, pat)
+                    return true
+            }
+            return false
+        }
+        
+        ClassifyTarget(target) {
+            ; Early player catch. All players not in NPC have alli and/or corp tag
+            if InStr(target, "[")
+                return "player"
+
+            if This.checkFactionNPCs && This.isExact(This.factionNPCs, target)
+                return "faction"
+        
+            if This.checkOfficerNPCs && This.isExact(This.officerNPCs, target)
+                return "officer"
+        
+            if This.checkCapitalNPCs && This.isExact(This.capitalNPCs, target)
+                return "capital"
+        
+            if This.checkGeneralNPCs && This.isGeneralNPC(target)
+                return "npc"
+    
+            return "player"
         }
     }
 }

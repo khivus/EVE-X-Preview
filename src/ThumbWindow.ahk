@@ -423,7 +423,7 @@ Class ThumbWindow extends Propertys {
 
         Win_Title := This.ThumbWindows.%EVEHwnd%["Window"].Title
         ; Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
-        if This.flashBorderUntilSwitched && This.flashMethod.Has(Win_Title) {
+        if This.gameLogsMonitoringEnabled && This.flashBorderUntilSwitched && This.flashMethod.Has(Win_Title) {
             SetTimer(This.flashMethod[Win_Title]["method"], 0) ; Stop timer
             This.flashMethod.Delete(Win_Title)
         }
