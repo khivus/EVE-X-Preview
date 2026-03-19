@@ -1690,9 +1690,23 @@
                 return
         }
 
+        ; Optimized files count check
+        static filesCount := 0
+        static oldFilesList := []
+        newFilesCount := 0
+
+        Loop Files, This.gameLogsDirectory "\*.*" {
+            newFilesCount++
+        }
+
+        if newFilesCount = filesCount
+            return oldFilesList
+        else
+            filesCount := newFilesCount
+
+        ; If new file in folder rescan and sort again
         files := []
-        Loop Files, This.gameLogsDirectory "\*.*"
-        {
+        Loop Files, This.gameLogsDirectory "\*.*" {
             files.Push({
                 name: A_LoopFileName,
                 time: A_LoopFileTimeModified  ; format: YYYYMMDDHH24MISS
@@ -1711,7 +1725,7 @@
         for file in files {
             fileList.Push(This.gameLogsDirectory "\" file.name)
         }
-
+        oldFilesList := fileList
         return fileList
     }
 
@@ -1966,7 +1980,7 @@
                     This.checkOfficerNPCs := true
                 else if event = "damagedCapitalNPC"
                     This.checkCapitalNPCs := true
-                else if event = "underAttackByNPC"
+                else if event = "underAttackByNPC" || event = "underAttackByPlayer" ; Both will triger check for general npcs
                     This.checkGeneralNPCs := true
             }
         }
@@ -2101,24 +2115,31 @@
 
         while !char["file"].AtEOF {
             line := char["file"].ReadLine()
-        
+
             if line = ""
-                return
+                continue
 
             event := ""
             for e, v in This.enabledMonitoredEvents {
                 if !v["checkNPC"] {
-                    if !v["needRegex"] && InStr(line, v["pattern"]) {
+                    if e = "stoppedShooting" && RegExMatch(line, "<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>") {
+                        static timer := unset
+                        This.shootingTimer := A_TickCount
+
+                        if IsSet(timer) ; Clear timer before creating new one
+                            SetTimer(timer, 0)
+
+                        timer := ObjBindMethod(This, "handleEventActivation", charName, e)
+                        SetTimer(timer, -This.shootingInterval)
+                        return
+                    }
+                    else if !v["needRegex"] && InStr(line, v["pattern"]) {
                         event := e
                         break
                     }
                     else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
                         event := e
                         break
-                    }
-                    else if e = "stoppedShooting" {
-                        return
-                        ; TODO shooting logic
                     }
                 }
                 else { ; Advanced NPC checking logic
@@ -2127,7 +2148,7 @@
 
                     fromOrTo := m[1]
                     target := m[2]
-                    kind := ClassifyTarget(target)
+                    kind := This.ClassifyTarget(target)
 
                     switch e {
                     case "underAttackByPlayer":
@@ -2158,63 +2179,67 @@
                 }
             }
 
-            if event = ""
+            This.handleEventActivation(charName, event)
+        }
+    }
+
+    handleEventActivation(charName, event) {
+        if event = ""
+            return
+
+        if This.flashBorder { ; Flashing border if enabled
+            exists := This.flashMethod.Has(charName)
+            if !This.lastEventPriority && exists 
                 return
-
-            if This.flashBorder { ; Flashing border if enabled
-                exists := This.flashMethod.Has(charName)
-                if !This.lastEventPriority && exists 
-                    return
-                else if This.lastEventPriority && exists { ; Clearing last event 
-                    SetTimer(This.flashMethod[charName]["method"], 0) ; Stop timer
-                    This.flashMethod.Delete(charName)
-                }
-
-                start := A_TickCount
-                end := start + This.flashBorderDuration
-                This.flashMethod[charName] := Map()
-                This.flashMethod[charName]["end"] := end
-                This.flashMethod[charName]["isOn"] := false
-                This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event)
-                SetTimer(This.flashMethod[charName]["method"], This.flashBorderInterval)
+            else if This.lastEventPriority && exists { ; Clearing last event 
+                SetTimer(This.flashMethod[charName]["method"], 0) ; Stop timer
+                This.flashMethod.Delete(charName)
             }
-            if This.showEventText { ; TODO Showing text when enabled
-                ToolTip(charName ": " event) ; Placeholder for now
-                SetTimer(() => ToolTip(), -(3000))
-            }
-        }
 
-        isExact(set, target) {
-            return set.Has(target)
+            start := A_TickCount
+            end := start + This.flashBorderDuration
+            This.flashMethod[charName] := Map()
+            This.flashMethod[charName]["end"] := end
+            This.flashMethod[charName]["isOn"] := false
+            This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event)
+            SetTimer(This.flashMethod[charName]["method"], This.flashBorderInterval)
         }
+        if This.showEventText { ; TODO Showing text when enabled
+            ToolTip(charName ": " event) ; Placeholder for now
+            SetTimer(() => ToolTip(), -(3000))
+        }
+    }
+
+    isExact(set, target) {
+        return set.Has(target)
+    }
+
+    isGeneralNPC(target) {
+        for pat in This.generalNPCPatterns {
+            if InStr(target, pat)
+                return true
+        }
+        return false
+    }
     
-        isGeneralNPC(target) {
-            for pat in This.generalNPCPatterns {
-                if InStr(target, pat)
-                    return true
-            }
-            return false
-        }
-        
-        ClassifyTarget(target) {
-            ; Early player catch. All players not in NPC have alli and/or corp tag
-            if InStr(target, "[")
-                return "player"
-
-            if This.checkFactionNPCs && This.isExact(This.factionNPCs, target)
-                return "faction"
-        
-            if This.checkOfficerNPCs && This.isExact(This.officerNPCs, target)
-                return "officer"
-        
-            if This.checkCapitalNPCs && This.isExact(This.capitalNPCs, target)
-                return "capital"
-        
-            if This.checkGeneralNPCs && This.isGeneralNPC(target)
-                return "npc"
-    
+    ClassifyTarget(target) {
+        ; Early player catch. All players not in NPC have alli and/or corp tag
+        if InStr(target, "[")
             return "player"
-        }
+
+        if This.checkFactionNPCs && This.isExact(This.factionNPCs, target)
+            return "faction"
+    
+        if This.checkOfficerNPCs && This.isExact(This.officerNPCs, target)
+            return "officer"
+    
+        if This.checkCapitalNPCs && This.isExact(This.capitalNPCs, target)
+            return "capital"
+    
+        if This.checkGeneralNPCs && This.isGeneralNPC(target)
+            return "npc"
+
+        return "player"
     }
 }
 

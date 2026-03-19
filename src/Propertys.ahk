@@ -80,6 +80,8 @@ class Propertys extends TrayMenu {
         This.ProfileThumbnailVisibility := This.ComboGroups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.ComboGroups["Client Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileCustomColors := This.ComboGroups["Custom Colors"] ? "Default" : This.LastUsedProfile
+        This.ProfileGameLogsMonitoring := This.ComboGroups["Game Logs Monitoring"] ? "Default" : This.LastUsedProfile
+        This.ProfileMonitoredEvents := This.ComboGroups["Monitored Events"] ? "Default" : This.LastUsedProfile
         This.ProfileTrayMenuSettings := This.ComboGroups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.ComboGroups["Other"] ? "Default" : This.LastUsedProfile
     }
@@ -688,73 +690,78 @@ class Propertys extends TrayMenu {
     ; Game Logs Monitoring ##############################################
 
     gameLogsMonitoringEnabled {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
     }
 
     monitoringInterval {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoringInterval"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoringInterval"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["monitoringInterval"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["monitoringInterval"] := value
     }
 
     gameLogsDirectory {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsDirectory"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["gameLogsDirectory"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsDirectory"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsDirectory"] := value
     }
 
-    charsIds {
+    charsIds { ; This is only for default profile because we want to save as much char ids as possible
         get => This._JSON["_Profiles"]["Default"]["Game Logs Monitoring"]["charsIds"]
         set => This._JSON["_Profiles"]["Default"]["Game Logs Monitoring"]["charsIds"] := value
     }
 
     monitorOnlySelectedChars {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitorOnlySelectedChars"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitorOnlySelectedChars"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["monitorOnlySelectedChars"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["monitorOnlySelectedChars"] := value
     }
 
     charsToMonitor {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["charsToMonitor"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["charsToMonitor"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["charsToMonitor"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["charsToMonitor"] := value
     }
 
     lastEventPriority {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["lastEventPriority"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["lastEventPriority"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["lastEventPriority"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["lastEventPriority"] := value
     }
 
     supressForFocused {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["supressForFocused"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["supressForFocused"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["supressForFocused"] := value
     }
 
     showEventText {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["showEventText"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["showEventText"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["showEventText"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["showEventText"] := value
     }
 
     flashBorder {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorder"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorder"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorder"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorder"] := value
     }
 
     flashBorderUntilSwitched {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilSwitched"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderUntilSwitched"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderUntilSwitched"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderUntilSwitched"] := value
     }
 
     flashBorderDuration {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderDuration"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderDuration"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderDuration"] := value
     }
 
     flashBorderInterval {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderInterval"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["flashBorderInterval"] := value
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderInterval"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderInterval"] := value
     }
 
     monitoredEvents {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoredEvents"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Game Logs Monitoring"]["monitoredEvents"] := value
+        get => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["monitoredEvents"]
+        set => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["monitoredEvents"] := value
+    }
+
+    shootingInterval {
+        get => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"]
+        set => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"] := value
     }
 
     _Hotkey_Delete(*) {

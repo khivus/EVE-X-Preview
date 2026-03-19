@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.11
+;@Ahk2Exe-Let U_version = 1.5.1.12
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -51,7 +51,10 @@ Load_JSON() {
     defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
     userPath    := "EVE-X-Preview.json"
     tmpPath     := "EVE-X-Preview.tmp.json"
-    backupPath  := "EVE-X-Preview." . A_Now . ".bak.json"
+    if A_IsCompiled
+        backupPath  := "EVE-X-Preview.PreV" FileGetVersion(A_ScriptName) "." A_Now ".backup.json"
+    else 
+        backupPath  := "EVE-X-Preview." A_Now ".backup.json"
 
     ; Load default JSON (throws on failure)
     DJSON := JSON.Load(defaultPath)
@@ -67,17 +70,22 @@ Load_JSON() {
         UJSON := JSON.Load(FileRead(userPath))  ; may throw if corrupted
 
         ; If you keep a version key in JSON, run migrations before merging
-        if (DJSON.Has("settings_version")) {
-            dver := DJSON["settings_version"]
-            uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
-            if (uver != dver) {
-                ; Create a timestamped backup of the existing file before merge
-                FileMove(userPath, backupPath, true)
-                ; Migrate in-place (implement logic inside MigrateSettings)
-                UJSON := MigrateSettings(UJSON, uver, dver)
-                ; ensure we set new version so merge will not re-trigger
-                UJSON["settings_version"] := dver
-            }
+        if !DJSON.Has("settings_version")
+            throw Error("Default config missing critical parameter!")
+
+        dver := DJSON["settings_version"]
+        uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
+
+        if A_IsCompiled && uver != ""
+            backupPath  := "EVE-X-Preview." uver ".PreV" FileGetVersion(A_ScriptName) "." A_Now ".backup.json"
+
+        if (uver != dver) {
+            ; Create a timestamped backup of the existing file before merge
+            FileMove(userPath, backupPath, true)
+            ; Migrate in-place (implement logic inside MigrateSettings)
+            UJSON := MigrateSettings(UJSON, uver, dver)
+            ; ensure we set new version so merge will not re-trigger
+            UJSON["settings_version"] := dver
         }
 
         ; Merge: default -> user, but don't overwrite user's explicit values

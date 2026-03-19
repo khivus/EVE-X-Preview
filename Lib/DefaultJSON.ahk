@@ -112,6 +112,8 @@
                     "Hotkeys Settings": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
+                    "Game Logs Monitoring": 0,
+                    "Monitored Events": 0,
                     "Tray Menu Settings": 0,
                     "Other": 0
                 }
@@ -152,6 +154,7 @@
                 "flashBorderUntilSwitched": 1,
                 "flashBorderDuration": 2000,
                 "flashBorderInterval": 300,
+                "shootingInterval": 10000,
                 "monitoredEvents": {
                     "underAttackByPlayer": {"enabled": 0, "color": "ff0000"},
                     "underAttackByNPC": {"enabled": 0, "color": "ffeb3b"},

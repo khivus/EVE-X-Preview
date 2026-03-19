@@ -972,7 +972,7 @@
 
         monitoredChars := ""
         for char in This.charsToMonitor {
-            monitoredChars .= char "`n"
+            monitoredChars .= This.CleanTitle(char) "`n"
         }
 
         This.MainFrame.SetFont("s12 w700 q5")
@@ -1069,8 +1069,16 @@
                 This.flashBorderInterval := obj.value
             else if obj.name = "monitorOnlySelectedChars"
                 This.monitorOnlySelectedChars := obj.value
-            else if obj.name = "charsToMonitor"
-                This.charsToMonitor := obj.value
+            else if obj.name = "charsToMonitor" {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    char := Trim(v, "`n ")
+                    if char = ""
+                        continue
+                    Arr.Push(This.AntiCleanTitle(char))
+                }
+                This.charsToMonitor := Arr
+            }
 
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -1105,7 +1113,7 @@
         ]
 
         monitoredEventsTexts := Map(
-            "stoppedShooting", "Stopped Shooting:",
+            "stoppedShooting", "Stopped Shooting (Interval ms):",
             "underAttackByPlayer", "Under Attack By Player:",
             "underAttackByNPC", "Under Attack By NPC:",
             "engagedWithFactionBSNPC", "Engaged With Faction BS NPC:",
@@ -1136,7 +1144,13 @@
 
         for event in monitoredEventsOrder {
             arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), monitoredEventsTexts[event])
-            arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vE" event, "On/Off")
+
+            if event = "stoppedShooting" {
+                arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX - 50 - This.baseGrid, This.editOffset, 50) " vshootingInterval")
+                This.MainFrame["shootingInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+            }
+
+            arr.Push This.MainFrame.Add("CheckBox", Format("xs+{} ys", This.offsetX) " vE" event, "On/Off")
             arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 60 + This.baseGrid, This.editOffset, editCW) " vC" event)
             arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", editCW + This.baseGrid, This.cPreviewSize, This.cPreviewSize,) " vPreviewC" event " Border")
             
@@ -1152,6 +1166,9 @@
             else if object = "C" {
                 This.monitoredEvents[event]["color"] := obj.value
                 This.RedrawColorPreview(obj)
+            }
+            else if obj.name = "shootingInterval" {
+                This.shootingInterval := obj.value
             }
 
             This.NeedRestart := 1
@@ -1359,6 +1376,8 @@
             "Thumbnail Visibility",
             "Client Settings",
             "Custom Colors",
+            "Game Logs Monitoring",
+            "Monitored Events",
             "Tray Menu Settings",
             "Other"
         ]
@@ -1686,6 +1705,7 @@
             This.MainFrame["C" event].value := This.MonitoredEvents[event]["color"]
             This.RedrawColorPreview(This.MainFrame["C" event])
         }
+        This.MainFrame["shootingInterval"].value := This.shootingInterval
 
         ; Non-EVE Applications
         This.MainFrame["NonEVEGroupsDDL"].Delete()
