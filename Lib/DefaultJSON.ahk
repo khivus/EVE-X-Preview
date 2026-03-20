@@ -18,6 +18,7 @@
                 ],
                 "Minimize_Delay": 100,
                 "DontCloseOnLoginScreen": 0,
+                "dontCloseActiveClient": 0,
                 "DontCloseClients" : [
                     "Example Name1",
                     "Example Name2",
@@ -152,7 +153,7 @@
                 "showEventText": 0,
                 "flashBorder": 1,
                 "flashBorderUntilSwitched": 1,
-                "flashBorderDuration": 2000,
+                "eventDisplayDuration": 2000,
                 "flashBorderInterval": 300,
                 "shootingInterval": 10000,
                 "monitoredEvents": {

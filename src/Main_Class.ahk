@@ -27,7 +27,7 @@
     ]
 
 
-    EVEExe := "Ahk_Exe exefile.exe"
+    EVEExe := "ahk_Exe exefile.exe"
     
     ; Values for WM_NCHITTEST
     ; Size from the invisible edge for resizing    
@@ -304,7 +304,7 @@
                     
                         ; if in Character selection screen 
                         if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "EVE" && This.PreserveCharNameOnLogout) {
-                            if This.monitoredChars.Has(This.ThumbWindows.%hwnd%["Window"].Title)
+                            if This.monitoringInitialized && This.monitoredChars.Has(This.ThumbWindows.%hwnd%["Window"].Title)
                                 This.stopLogMonitoring(This.ThumbWindows.%hwnd%["Window"].Title)
                             This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
                             if (This.ThumbWindows.%hwnd%["Window"].Title == "Char Screen" && WinList.%hwnd%.Title != "EVE") {
@@ -312,7 +312,7 @@
                             }
                         }
                         else if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title) {
-                            if This.monitoredChars.Has(This.ThumbWindows.%hwnd%["Window"].Title)
+                            if This.monitoringInitialized && This.monitoredChars.Has(This.ThumbWindows.%hwnd%["Window"].Title)
                                 This.stopLogMonitoring(This.ThumbWindows.%hwnd%["Window"].Title)
                             This.EVENameChange(hwnd, WinList.%hwnd%.Title)
                         }
@@ -621,7 +621,7 @@
         if !This.OnWinExist(arr)
             return
 
-        while !WinExist(arr[index]) {
+        while !WinExist(arr[index] " ahk_exe exefile.exe") {
             if HWND := This.hasMathcingOldTitle(arr[index]) {
                 activateByHWND := 1
                 break
@@ -930,11 +930,12 @@
                 ;Activates the EVE Window by clicking on the Thumbnail 
                 if (wparam = 1) {
                     try { ; Probably fix for bug
-                        if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd]))
+                        if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd])) {
                             This.SetHotkGroupInd(hwnd)
                             This.LastHotkGroupInd := -1
                             This.LastNonEVEGroupInd := -1
                             This.ActivateEVEWindow(hwnd)
+                        }
                     }
                 }
                 ; Ctrl+Lbutton, Minimizes the Window on whose thumbnail the user clicks
@@ -1110,7 +1111,7 @@
                 ;This.ThumbWindows.%Win_Hwnd%.Delete()
             }
             This.ThumbWindows.DeleteProp(hwnd)
-            if IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
+            if This.monitoringInitialized && IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
                 This.stopLogMonitoring(WinTitle)
             Return
         }
@@ -1124,7 +1125,7 @@
                     v.Destroy()
                 }
                 This.ThumbWindows.DeleteProp(Win_Hwnd)
-                if This.monitoredChars.Has(title)
+                if This.monitoringInitialized && This.monitoredChars.Has(title)
                     This.stopLogMonitoring(title)
             }
         }
@@ -1748,6 +1749,7 @@
 
         This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
         This.flashMethod := Map()
+        This.textMethod := Map()
 
         ; Thanks to @CJKondur to having this list
         ; Comprehensive list of all EVE Online NPC naming prefixes.
@@ -1949,7 +1951,7 @@
             "damagedCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
             "warpDisrupted", Map("pattern", "you!", "needRegex", 0, "checkNPC", 0),
             "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0, "checkNPC", 0),
-            "fleetWarped", Map("pattern", "Following", "needRegex", 0, "checkNPC", 0),
+            "fleetWarped", Map("pattern", "Following .+? in warp", "needRegex", 1, "checkNPC", 0), ; Just following don't works because "following reasons"
             "fleetRegrouped", Map("pattern", "Regrouping", "needRegex", 0, "checkNPC", 0),
             "decloaked", Map("pattern", "cloak deactivates", "needRegex", 0, "checkNPC", 0),
             "convoRequest", Map("pattern", "is inviting you to a conversation", "needRegex", 0, "checkNPC", 0),
@@ -2030,6 +2032,8 @@
         }
 
         This.monitoringInitialized := 1
+        This.monitorMethod := ObjBindMethod(This, "monitorAllChars")
+        SetTimer(This.monitorMethod, This.monitoringInterval) ; Poll every specified by user time
     }
 
     getCharNameFromFile(fileName) {
@@ -2078,27 +2082,39 @@
             return
 
         file := FileOpen(foundFile, "r", "UTF-8")
-
-        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", file.Length, "monitorTimer", ObjBindMethod(This, "monitorChanges", charName))
-
+        size := file.Length
         file.Seek(-1, 2)
         file.ReadLine()
 
-        SetTimer(This.monitoredChars[charName]["monitorTimer"], This.monitoringInterval) ; Poll every specified by user time
+        if This.monitoringInitialized && !This.monitoredChars.Count
+            SetTimer(This.monitorMethod, This.monitoringInterval) ; Start monitoring after stopped
+
+        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size)
+        ; This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "monitorTimer", ObjBindMethod(This, "monitorChanges", charName))
+
+        ; SetTimer(This.monitoredChars[charName]["monitorTimer"], This.monitoringInterval) ; Poll every specified by user time
         ; ToolTip "Started for " charName
         ; SetTimer(() => ToolTip(), -(1000))
     }
 
     stopLogMonitoring(charName) {
-        SetTimer(This.monitoredChars[charName]["monitorTimer"], 0) ; Stopping monitoring
+        ; SetTimer(This.monitoredChars[charName]["monitorTimer"], 0) ; Stopping monitoring
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
+        if !This.monitoredChars.Count
+            SetTimer(This.monitorMethod, 0) ; Stopping monitoring
+        
         ; ToolTip "Stopped for " charName
         ; SetTimer(() => ToolTip(), -(1000))
     }
 
+    monitorAllChars() {
+        for charName in This.monitoredChars
+            This.monitorChanges(charName)
+    }
+
     monitorChanges(charName) {
-        if !This.monitoredChars.Has(charName) || !This.monitoredChars[charName]["file"] = ""
+        if !This.monitoredChars.Has(charName) || !This.monitoredChars[charName]["file"]
             return
 
         char := This.monitoredChars[charName]
@@ -2108,8 +2124,8 @@
         char["size"] := size
 
         if This.supressForFocused && WinActive(charName " ahk_exe exefile.exe") {
-            char["file"].Seek(-1, 2)
-            char["file"].ReadLine()
+            while !char["file"].AtEOF
+                char["file"].ReadLine()
             return
         }
 
@@ -2131,7 +2147,7 @@
 
                         timer := ObjBindMethod(This, "handleEventActivation", charName, e)
                         SetTimer(timer, -This.shootingInterval)
-                        return
+                        continue
                     }
                     else if !v["needRegex"] && InStr(line, v["pattern"]) {
                         event := e
@@ -2143,36 +2159,44 @@
                     }
                 }
                 else { ; Advanced NPC checking logic
-                    if !RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) ; Getting from or to damage is dealt and target
-                        return
+                    match := RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) ; Getting from or to damage is dealt and target
+                    if !match {
+                        match := RegExMatch(line, "(combat) (.+?) misses you completely", &m)
+                        if !match
+                            continue
+                        fromOrTo := "from"
+                        target := m[1]
+                    }
+                    else {
+                        fromOrTo := m[1]
+                        target := m[2]
+                    }
 
-                    fromOrTo := m[1]
-                    target := m[2]
                     kind := This.ClassifyTarget(target)
 
                     switch e {
                     case "underAttackByPlayer":
                         if fromOrTo != "from" || kind != "player"
-                            return
+                            continue
 
                     case "underAttackByNPC":
                         if fromOrTo != "from" || kind != "npc"
-                            return
+                            continue
 
                     case "engagedWithFactionBSNPC":
                         if kind != "faction"
-                            return
+                            continue
 
                     case "underAttackByOfficerNPC":
                         if fromOrTo != "from" || kind != "officer"
-                            return
+                            continue
 
                     case "damagedCapitalNPC":
                         if fromOrTo != "to" || kind != "capital"
-                            return
+                            continue
 
                     default:
-                        return
+                        continue
                     }
 
                     event := e
@@ -2192,22 +2216,43 @@
             if !This.lastEventPriority && exists 
                 return
             else if This.lastEventPriority && exists { ; Clearing last event 
-                SetTimer(This.flashMethod[charName]["method"], 0) ; Stop timer
+                SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
                 This.flashMethod.Delete(charName)
             }
 
-            start := A_TickCount
-            end := start + This.flashBorderDuration
             This.flashMethod[charName] := Map()
-            This.flashMethod[charName]["end"] := end
             This.flashMethod[charName]["isOn"] := false
-            This.flashMethod[charName]["method"] := ObjBindMethod(this, "flashBorder", charName, event)
-            SetTimer(This.flashMethod[charName]["method"], This.flashBorderInterval)
+            This.flashMethod[charName]["flashMethod"] := ObjBindMethod(This, "flashBorder", charName, event)
+            This.flashBorder(charName, event)
+            SetTimer(This.flashMethod[charName]["flashMethod"], This.flashBorderInterval)
+            This.flashMethod[charName]["endMethod"] := ObjBindMethod(This, "endThumbnailFlashing", charName, event)
+            SetTimer(This.flashMethod[charName]["endMethod"], -This.eventDisplayDuration)
         }
-        if This.showEventText { ; TODO Showing text when enabled
-            ToolTip(charName ": " event) ; Placeholder for now
-            SetTimer(() => ToolTip(), -(3000))
+        if This.showEventText {
+            exists := This.textMethod.Has(charName)
+            if !This.lastEventPriority && exists 
+                return
+            else if This.lastEventPriority && exists { ; Clearing last event
+                SetTimer(This.textMethod[charName], 0) ; Stop timer
+                This.textMethod.Delete(charName)
+            }
+
+            hwnd := WinGetID(charName " ahk_exe exefile.exe")
+            This.setThumbnailText(hwnd, charName . "`n" This.monitoredEventsTexts[event])
+            This.textMethod[charName] := ObjBindMethod(This, "setThumbnailText", charName, hwnd)
+            SetTimer(This.textMethod[charName], -This.eventDisplayDuration)
         }
+    }
+
+    endThumbnailFlashing(title, hwnd) {
+        SetTimer(This.flashMethod[title]["flashMethod"], 0) ; Stop timer
+        This.flashMethod.Delete(title)
+        This.ThumbWindows.%hwnd%["Border"].Show("Hide")
+        This.ShowActiveBorder(This.LastActiveThumbHwnd)
+    }
+
+    setThumbnailText(title, hwnd) {
+        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(title)
     }
 
     isExact(set, target) {

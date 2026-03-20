@@ -11,19 +11,21 @@ class Propertys extends TrayMenu {
             if (This.ThumbWindows.HasProp(hwnd)) {
                 ;RegExReplace(Value, "(EVE)(?: - )?", "")
                 newtext := Value
+                This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(newtext)
+                This.ThumbWindows.%hwnd%["TextOverlay"].Title := newtext
 
-                for k, v in This.ThumbWindows.%hwnd% {
-                    if (k = "Thumbnail" || k = "Border")
-                        continue
-                    if (k = "TextOverlay") {
-                        for chwnd, cobj in v {
-                            cobj.Value := This.CleanTitle(newtext)
-                            ;ControlSetText "New Text Here", cobj
-                        }
-                    }
-                    if (k = "Window")
-                        v.Title := newtext
-                }
+                ; for k, v in This.ThumbWindows.%hwnd% {
+                ;     if (k = "Thumbnail" || k = "Border")
+                ;         continue
+                ;     if (k = "TextOverlay") {
+                ;         for chwnd, cobj in v {
+                ;             cobj.Value := This.CleanTitle(newtext)
+                ;             ;ControlSetText "New Text Here", cobj
+                ;         }
+                ;     }
+                ;     if (k = "Window")
+                ;         v.Title := newtext
+                ; }
             }
         }
     }
@@ -317,6 +319,12 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseOnLoginScreen"]
         set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseOnLoginScreen"] := value
     }
+
+    dontCloseActiveClient {
+        get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["dontCloseActiveClient"]
+        set => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["dontCloseActiveClient"] := value
+    }
+
     DontCloseClients {
         get => This._JSON["_Profiles"][This.ProfileClientSettings]["Client Settings"]["DontCloseClients"]
         set {
@@ -689,6 +697,26 @@ class Propertys extends TrayMenu {
 
     ; Game Logs Monitoring ##############################################
 
+    monitoredEventsTexts := Map(
+        "stoppedShooting", "Stopped Shooting (Interval ms)",
+        "underAttackByPlayer", "Under Attack By Player",
+        "underAttackByNPC", "Under Attack By NPC",
+        "engagedWithFactionBSNPC", "Engaged With Faction BS NPC",
+        "underAttackByOfficerNPC", "Under Attack By Officer NPC",
+        "damagedCapitalNPC", "Damaged Capital NPC",
+        "warpDisrupted", "Warp Disrupted",
+        "decloaked", "Decloaked",
+        "gateJumped", "Gate Jumped",
+        "convoRequest", "Convo Request",
+        "fleetInvited", "Fleet Invited",
+        "fleetWarped", "Fleet Warped",
+        "fleetRegrouped", "Fleet Regrouped",
+        "conduited", "Conduited",
+        "crystalBroke", "Crystal Broke",
+        "miningStopped", "Mining Stopped",
+        "miningBayIsFull", "Mining Bay Is Full"
+    )
+
     gameLogsMonitoringEnabled {
         get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
@@ -744,9 +772,9 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderUntilSwitched"] := value
     }
 
-    flashBorderDuration {
-        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderDuration"]
-        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderDuration"] := value
+    eventDisplayDuration {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["eventDisplayDuration"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["eventDisplayDuration"] := value
     }
 
     flashBorderInterval {
