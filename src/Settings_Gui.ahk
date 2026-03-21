@@ -361,6 +361,9 @@
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Keep Groups Positions:")
         Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vKeepGroupsPositions Checked" This.KeepGroupsPositions, "On/Off")
 
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Disable Char in Group (Shift+Click):")
+        Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vdynamicGroupsEnabled", "On/Off")
+
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Groups Hold Delay (ms):")
         Hotkey_Groups.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, 50) " vGroupsHoldDelay")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp+{} yp+{}", 50 + This.baseGrid, This.editOffset), "Minimum = 75")
@@ -394,6 +397,7 @@
 
         This.MainFrame["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["KeepGroupsPositions"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["dynamicGroupsEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["GroupsHoldDelay"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards,))
         addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox))
@@ -415,6 +419,9 @@
             }
             else if (obj.name = "KeepGroupsPositions") {
                 This.KeepGroupsPositions := obj.value
+            }
+            else if (obj.name = "dynamicGroupsEnabled") {
+                This.dynamicGroupsEnabled := obj.value
             }
             else if (obj.name = "GroupsHoldDelay") {
                 delay := Integer(obj.value)
@@ -1051,10 +1058,10 @@
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vshowEventText", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border:")
-        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorder", "On/Off")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorderEnabled", "On/Off")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border Until Switched to:")
-        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorderUntilSwitched", "On/Off")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Stop Displaying Event on Switch:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vstopDisplayingOnSwitch", "On/Off")
         
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event Display Duration (ms):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " veventDisplayDuration")
@@ -1078,8 +1085,8 @@
         This.MainFrame["lastEventPriority"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["supressForFocused"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["showEventText"].OnEvent("Click", (obj, *) => EventHandler(obj))
-        This.MainFrame["flashBorder"].OnEvent("Click", (obj, *) => EventHandler(obj))
-        This.MainFrame["flashBorderUntilSwitched"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["stopDisplayingOnSwitch"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["eventDisplayDuration"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["flashBorderInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["monitorOnlySelectedChars"].OnEvent("Click", (obj, *) => EventHandler(obj))
@@ -1106,10 +1113,10 @@
                 This.supressForFocused := obj.value
             else if obj.name = "showEventText"
                 This.showEventText := obj.value
-            else if obj.name = "flashBorder"
-                This.flashBorder := obj.value
-            else if obj.name = "flashBorderUntilSwitched"
-                This.flashBorderUntilSwitched := obj.value
+            else if obj.name = "flashBorderEnabled"
+                This.flashBorderEnabled := obj.value
+            else if obj.name = "stopDisplayingOnSwitch"
+                This.stopDisplayingOnSwitch := obj.value
             else if obj.name = "eventDisplayDuration"
                 This.eventDisplayDuration := obj.value
             else if obj.name = "flashBorderInterval"
@@ -1144,8 +1151,8 @@
             "underAttackByPlayer",
             "underAttackByNPC",
             "engagedWithFactionBSNPC",
-            "underAttackByOfficerNPC",
-            "damagedCapitalNPC",
+            "engagedWithOfficerNPC",
+            "engagedWithCapitalNPC",
             "warpDisrupted",
             "decloaked",
             "gateJumped",
@@ -1170,7 +1177,7 @@
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
 
         for event in monitoredEventsOrder {
-            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), This.monitoredEventsTexts[event] ":")
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), This.monitoredEventsTexts[event] . (event = "stoppedShooting" ? " (Interval ms):" : ":"))
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX - 50 - This.baseGrid, This.editOffset, 50) " vshootingInterval")
@@ -1727,6 +1734,7 @@
         ;Hotkey Groups
         This.MainFrame["PreserveHotkeysOnLogout"].value := This.PreserveHotkeysOnLogout
         This.MainFrame["KeepGroupsPositions"].value := This.KeepGroupsPositions
+        This.MainFrame["dynamicGroupsEnabled"].value := This.dynamicGroupsEnabled
         This.MainFrame["GroupsHoldDelay"].value := This.GroupsHoldDelay
         This.MainFrame["HotkeyGroupDDL"].Delete()
         This.MainFrame["HotkeyGroupDDL"].Add(This.GetGroupList())
@@ -1818,15 +1826,15 @@
         This.MainFrame["lastEventPriority"].value := This.lastEventPriority
         This.MainFrame["supressForFocused"].value := This.supressForFocused
         This.MainFrame["showEventText"].value := This.showEventText
-        This.MainFrame["flashBorder"].value := This.flashBorder
-        This.MainFrame["flashBorderUntilSwitched"].value := This.flashBorderUntilSwitched
+        This.MainFrame["flashBorderEnabled"].value := This.flashBorderEnabled
+        This.MainFrame["stopDisplayingOnSwitch"].value := This.stopDisplayingOnSwitch
         This.MainFrame["eventDisplayDuration"].value := This.eventDisplayDuration
         This.MainFrame["flashBorderInterval"].value := This.flashBorderInterval
 
         ; Monitored Events
-        for event, v in This.MonitoredEvents {
-            This.MainFrame["E" event].value := This.MonitoredEvents[event]["enabled"]
-            This.MainFrame["C" event].value := This.MonitoredEvents[event]["color"]
+        for event, v in This.monitoredEvents {
+            This.MainFrame["E" event].value := This.monitoredEvents[event]["enabled"]
+            This.MainFrame["C" event].value := This.monitoredEvents[event]["color"]
             This.RedrawColorPreview(This.MainFrame["C" event])
         }
         This.MainFrame["shootingInterval"].value := This.shootingInterval

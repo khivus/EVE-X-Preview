@@ -8,24 +8,10 @@ class Propertys extends TrayMenu {
 
     SetThumbnailText[hwnd, *] {
         set {
-            if (This.ThumbWindows.HasProp(hwnd)) {
-                ;RegExReplace(Value, "(EVE)(?: - )?", "")
+            if This.ThumbWindows.HasProp(hwnd) {
                 newtext := Value
                 This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(newtext)
-                This.ThumbWindows.%hwnd%["TextOverlay"].Title := newtext
-
-                ; for k, v in This.ThumbWindows.%hwnd% {
-                ;     if (k = "Thumbnail" || k = "Border")
-                ;         continue
-                ;     if (k = "TextOverlay") {
-                ;         for chwnd, cobj in v {
-                ;             cobj.Value := This.CleanTitle(newtext)
-                ;             ;ControlSetText "New Text Here", cobj
-                ;         }
-                ;     }
-                ;     if (k = "Window")
-                ;         v.Title := newtext
-                ; }
+                This.ThumbWindows.%hwnd%["Window"].Title := newtext
             }
         }
     }
@@ -577,6 +563,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["KeepGroupsPositions"] := value
     }
 
+    dynamicGroupsEnabled {
+        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["dynamicGroupsEnabled"]
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["dynamicGroupsEnabled"] := value
+    }
+
     Close_Active_EVE_Win_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"] := value
@@ -698,12 +689,12 @@ class Propertys extends TrayMenu {
     ; Game Logs Monitoring ##############################################
 
     monitoredEventsTexts := Map(
-        "stoppedShooting", "Stopped Shooting (Interval ms)",
+        "stoppedShooting", "Stopped Shooting",
         "underAttackByPlayer", "Under Attack By Player",
         "underAttackByNPC", "Under Attack By NPC",
         "engagedWithFactionBSNPC", "Engaged With Faction BS NPC",
-        "underAttackByOfficerNPC", "Under Attack By Officer NPC",
-        "damagedCapitalNPC", "Damaged Capital NPC",
+        "engagedWithOfficerNPC", "Engaged With Officer NPC",
+        "engagedWithCapitalNPC", "Engaged With Capital NPC",
         "warpDisrupted", "Warp Disrupted",
         "decloaked", "Decloaked",
         "gateJumped", "Gate Jumped",
@@ -762,14 +753,14 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["showEventText"] := value
     }
 
-    flashBorder {
-        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorder"]
-        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorder"] := value
+    flashBorderEnabled {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderEnabled"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderEnabled"] := value
     }
 
-    flashBorderUntilSwitched {
-        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderUntilSwitched"]
-        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["flashBorderUntilSwitched"] := value
+    stopDisplayingOnSwitch {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["stopDisplayingOnSwitch"]
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["stopDisplayingOnSwitch"] := value
     }
 
     eventDisplayDuration {

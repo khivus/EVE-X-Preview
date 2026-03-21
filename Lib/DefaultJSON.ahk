@@ -88,7 +88,8 @@
                 ],
                 "GroupsHoldDelay": 100,
                 "HideThumbnailsHotkey": "",
-                "ClickThroughHotkey": ""
+                "ClickThroughHotkey": "",
+                "dynamicGroupsEnabled": 1
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -151,17 +152,17 @@
                 "lastEventPriority": 1,
                 "supressForFocused": 1,
                 "showEventText": 0,
-                "flashBorder": 1,
-                "flashBorderUntilSwitched": 1,
+                "flashBorderEnabled": 1,
+                "stopDisplayingOnSwitch": 1,
                 "eventDisplayDuration": 2000,
                 "flashBorderInterval": 300,
                 "shootingInterval": 10000,
                 "monitoredEvents": {
                     "underAttackByPlayer": {"enabled": 0, "color": "ff0000"},
-                    "underAttackByNPC": {"enabled": 0, "color": "ffeb3b"},
+                    "underAttackByNPC": {"enabled": 0, "color": "ff8800"},
                     "engagedWithFactionBSNPC": {"enabled": 0, "color": "11470d"},
-                    "underAttackByOfficerNPC": {"enabled": 0, "color": "340e73"},
-                    "damagedCapitalNPC": {"enabled": 0, "color": "ffd700"},
+                    "engagedWithOfficerNPC": {"enabled": 0, "color": "340e73"},
+                    "engagedWithCapitalNPC": {"enabled": 0, "color": "ffd700"},
                     "warpDisrupted": {"enabled": 0, "color": "ff0000"},
                     "fleetInvited": {"enabled": 0, "color": "2196f3"},
                     "fleetWarped": {"enabled": 0, "color": "ffeb3b"},
@@ -170,10 +171,10 @@
                     "convoRequest": {"enabled": 0, "color": "2196f3"},
                     "conduited": {"enabled": 0, "color": "ffeb3b"},
                     "gateJumped": {"enabled": 0, "color": "2196f3"},
-                    "crystalBroke": {"enabled": 0, "color": "ffeb3b"},
+                    "crystalBroke": {"enabled": 0, "color": "63f321"},
                     "miningStopped": {"enabled": 0, "color": "63f321"},
                     "miningBayIsFull": {"enabled": 0, "color": "63f321"},
-                    "stoppedShooting": {"enabled": 0, "color": "ffeb3b"}
+                    "stoppedShooting": {"enabled": 0, "color": "ff8800"}
                 }
             }
         }

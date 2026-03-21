@@ -177,6 +177,9 @@
         if ProfEnabled
             This.StartProfiling()
 
+        ; Map of ignored chars in hotkey groups
+        This.ignoredChars := Map()
+
         ; Inited monitoring check
         This.monitoringInitialized := 0
 
@@ -349,7 +352,6 @@
                             HideShowToggle := 0
                             This.BorderActive := 0
                         }
-                        
                         ; sets the Border to the active window thumbnail 
                         else if (Ahwnd != This.BorderActive) {
                             ;Shows the Thumbnail on top of other thumbnails
@@ -429,8 +431,8 @@
         if tag == Version
             return ; No update available
 
-        Message := "New version " tag " available!`n" . 
-            "Current version:" Version "`n`n" . 
+        Message := "New version: v" tag " available!`n" . 
+            "Current version: v" Version ".`n`n" . 
             "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
             "Do you want automatically download and install the update now?`n" . 
             "Please don`'t touch the application until the update is complete."
@@ -621,11 +623,14 @@
         if !This.OnWinExist(arr)
             return
 
-        while !WinExist(arr[index] " ahk_exe exefile.exe") {
+        Loop length * 2 { ; Using loop len*2 instead of while to avoid infinite while
             if HWND := This.hasMathcingOldTitle(arr[index]) {
                 activateByHWND := 1
                 break
             }
+            hwndEVE := WinExist(arr[index] " ahk_exe exefile.exe")
+            if hwndEVE && !This.ignoredChars.Has(hwndEVE)
+                break
             index := DirectionHandler(direction, index, length)
         }
 
@@ -651,7 +656,7 @@
             }
             else if (direction == "BackwardsHotkey") {
                 index -= 1
-                if (index <= 0)
+                if index <= 0
                     index := length
             }
             return index
@@ -784,6 +789,15 @@
         currentIndex += 1
         if currentIndex > LoginWins.Length
             currentIndex := 1
+
+        Loop LoginWins.Length {
+            if !This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"])
+                break
+
+            currentIndex += 1
+            if currentIndex > LoginWins.Length
+                currentIndex := 1
+        }
 
         This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
         This.hitThis()
@@ -943,6 +957,20 @@
                     ; Minimize
                     if (!GetKeyState("RButton"))
                         PostMessage 0x0112, 0xF020, , , This.ThumbHwnd_EvEHwnd[hwnd]
+                }
+                else if wparam = 5 && This.dynamicGroupsEnabled {
+                    hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
+                    title := This.ThumbWindows.%hwndEVE%["Window"].Title
+                    if !This.ignoredChars.Has(hwndEVE) {
+                        ; ToolTip title
+                        ; SetTimer(() => ToolTip(), -(1000))
+                        This.ignoredChars[hwndEVE] := true
+                        This.toggleColorBorder(hwndEVE, title)
+                    }
+                    else {
+                        This.toggleColorBorder(hwndEVE, title, false)
+                        This.ignoredChars.Delete(hwndEVE)
+                    }
                 }
                 return 0
             }   
@@ -1148,7 +1176,7 @@
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
             if (This.AlwaysMaximize)  || ( This.TrackClientPossitions && This.ClientPossitions[title]["IsMaximized"] ) {
-                ; ; Maximize
+                ; Maximize
                 This.ShowWindowAsync(hwnd, 3)
             }
             else {
@@ -1748,6 +1776,7 @@
             return
 
         This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
+        This.shootingChars := Map()
         This.flashMethod := Map()
         This.textMethod := Map()
 
@@ -1775,30 +1804,28 @@
             ; Serpentis
             "Coreli", "Corelum", "Corelior", "Corelatis", "Core ",
             ; --- Empire Factions ---
-            "Amarr Navy", "Amarr ",
-            "Caldari Navy", "Caldari ",
-            "Gallente Navy", "Gallente ",
-            "Minmatar Fleet", "Minmatar ",
+            "Amarr Navy", "Amarr",
+            "Caldari Navy", "Caldari",
+            "Gallente Navy", "Gallente",
+            "Minmatar Fleet", "Minmatar",
             "Imperial Navy",
-            "State ",
-            "Federation Navy", "Federation ",
-            "Republic Fleet", "Republic ",
+            "State",
+            "Federation Navy", "Federation",
+            "Republic Fleet", "Republic",
             "CONCORD",
             ; --- Rogue Drones ---
-            "Rogue ",
+            "Rogue",
             ; Drone hull suffixes used as prefixes in some contexts
-            "Infester", "Render", "Raider", "Strain ",
+            "Infester", "Render", "Raider", "Strain",
             "Decimator", "Sunder", "Nuker",
             "Predator", "Hunter", "Destructor",
-            ; Drone name suffixes (these appear as full names)
-            ; Handled by _IsNPC suffix check: Alvi, Alvus, Alvatis, Alvior
             ; --- Sleepers ---
             "Sleepless", "Awakened", "Emergent",
             ; --- Triglavian ---
             "Starving", "Renewing", "Blinding",
             "Harrowing", "Ghosting", "Tangling",
-            "Raznaborg", "Vedmak", "Vila ",
-            "Zorya ",
+            "Raznaborg", "Vedmak", "Vila",
+            "Zorya",
             ; --- Drifter ---
             "Artemis", "Apollo", "Hikanta", "Drifter",
             "Tyrannos",
@@ -1807,7 +1834,7 @@
             ; --- Triglavian Invasion NPCs ---
             "Anchoring", "Liminal",
             ; --- Sentry Guns & Structures ---
-            "Sentry ", "Sentry Gun",
+            "Sentry", "Sentry Gun",
             "Territorial",
             ; --- FOB / Diamond NPCs ---
             "Forward Operating",
@@ -1818,9 +1845,15 @@
             ; --- Sisters of EVE ---
             "Sisters of",
             ; --- ORE ---
-            "ORE ",
+            "ORE",
             ; --- Faction Warfare NPCs ---
-            "Navy "
+            "Navy",
+            ; NPC name suffixes (for rogue drones: "Infester Alvi", etc.)
+            ; Drone name suffixes (these appear as full names)
+            "Alvi", 
+            "Alvus", 
+            "Alvatis", 
+            "Alvior"
         ]
 
         factionNPCs := [ ; NPCs to trigger engagedWithFactionBSNPC event
@@ -1889,7 +1922,7 @@
         for npc in factionNPCs
             This.factionNPCs[npc] := true
 
-        officerNPCs := [ ; NPCs to trigger underAttackByOfficerNPC event
+        officerNPCs := [ ; NPCs to trigger engagedWithOfficerNPC event
             "Gotan Kreiss",
             "Hakim Stormare",
             "Mizuro Cybon",
@@ -1919,7 +1952,7 @@
         for npc in officerNPCs
             This.officerNPCs[npc] := true
 
-        capitalNPCs := [ ; NPCs to trigger damagedCapitalNPC event
+        capitalNPCs := [ ; NPCs to trigger engagedWithCapitalNPC event
             "Domination Titan",
             "Dark Blood Titan",
             "Shadow Serpentis Titan",
@@ -1947,8 +1980,8 @@
             "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
             "underAttackByNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
             "engagedWithFactionBSNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "underAttackByOfficerNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "damagedCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "engagedWithOfficerNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "engagedWithCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
             "warpDisrupted", Map("pattern", "you!", "needRegex", 0, "checkNPC", 0),
             "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0, "checkNPC", 0),
             "fleetWarped", Map("pattern", "Following .+? in warp", "needRegex", 1, "checkNPC", 0), ; Just following don't works because "following reasons"
@@ -1960,7 +1993,7 @@
             "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0, "checkNPC", 0),
             "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0, "checkNPC", 0),
             "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0, "checkNPC", 0),
-            "stoppedShooting", Map("pattern", "123456789", "needRegex", 1, "checkNPC", 0)
+            "stoppedShooting", Map("pattern", "123456789", "needRegex", 0, "checkNPC", 0)
         )
 
         This.checkFactionNPCs := false
@@ -1978,9 +2011,9 @@
                 This.enabledMonitoredEvents[event]["checkNPC"] := eventPatterns[event]["checkNPC"]
                 if event = "engagedWithFactionBSNPC"
                     This.checkFactionNPCs := true
-                else if event = "underAttackByOfficerNPC"
+                else if event = "engagedWithOfficerNPC"
                     This.checkOfficerNPCs := true
-                else if event = "damagedCapitalNPC"
+                else if event = "engagedWithCapitalNPC"
                     This.checkCapitalNPCs := true
                 else if event = "underAttackByNPC" || event = "underAttackByPlayer" ; Both will triger check for general npcs
                     This.checkGeneralNPCs := true
@@ -2138,15 +2171,14 @@
             event := ""
             for e, v in This.enabledMonitoredEvents {
                 if !v["checkNPC"] {
-                    if e = "stoppedShooting" && RegExMatch(line, "<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>") {
-                        static timer := unset
+                    if e = "stoppedShooting" && RegExMatch(line, "<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>") || RegExMatch(line, "Your .+? misses .+? completely") {
                         This.shootingTimer := A_TickCount
 
-                        if IsSet(timer) ; Clear timer before creating new one
-                            SetTimer(timer, 0)
+                        if This.shootingChars.Has(charName) ; Clear timer before creating new one
+                            SetTimer(This.shootingChars[charName], 0)
 
-                        timer := ObjBindMethod(This, "handleEventActivation", charName, e)
-                        SetTimer(timer, -This.shootingInterval)
+                        This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, e)
+                        SetTimer(This.shootingChars[charName], -This.shootingInterval)
                         continue
                     }
                     else if !v["needRegex"] && InStr(line, v["pattern"]) {
@@ -2159,18 +2191,18 @@
                     }
                 }
                 else { ; Advanced NPC checking logic
-                    match := RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) ; Getting from or to damage is dealt and target
-                    if !match {
-                        match := RegExMatch(line, "(combat) (.+?) misses you completely", &m)
-                        if !match
-                            continue
-                        fromOrTo := "from"
-                        target := m[1]
-                    }
-                    else {
+                    if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
                         fromOrTo := m[1]
                         target := m[2]
+                    } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
+                        fromOrTo := "from"
+                        target := m[1]
+                    } else if RegExMatch(line, "Your .+? misses (.+?) completely", &m) { ; You missed target
+                        fromOrTo := "to"
+                        target := m[1]
                     }
+                    else
+                        continue
 
                     kind := This.ClassifyTarget(target)
 
@@ -2187,12 +2219,12 @@
                         if kind != "faction"
                             continue
 
-                    case "underAttackByOfficerNPC":
-                        if fromOrTo != "from" || kind != "officer"
+                    case "engagedWithOfficerNPC":
+                        if kind != "officer"
                             continue
 
-                    case "damagedCapitalNPC":
-                        if fromOrTo != "to" || kind != "capital"
+                    case "engagedWithCapitalNPC":
+                        if kind != "capital"
                             continue
 
                     default:
@@ -2211,7 +2243,12 @@
         if event = ""
             return
 
-        if This.flashBorder { ; Flashing border if enabled
+        if This.shootingChars.Has(charName)
+            This.shootingChars.Delete(charName)
+
+        hwnd := WinGetID(charName " ahk_exe exefile.exe")
+
+        if This.flashBorderEnabled { ; Flashing border if enabled
             exists := This.flashMethod.Has(charName)
             if !This.lastEventPriority && exists 
                 return
@@ -2220,13 +2257,15 @@
                 This.flashMethod.Delete(charName)
             }
 
-            This.flashMethod[charName] := Map()
-            This.flashMethod[charName]["isOn"] := false
-            This.flashMethod[charName]["flashMethod"] := ObjBindMethod(This, "flashBorder", charName, event)
-            This.flashBorder(charName, event)
-            SetTimer(This.flashMethod[charName]["flashMethod"], This.flashBorderInterval)
-            This.flashMethod[charName]["endMethod"] := ObjBindMethod(This, "endThumbnailFlashing", charName, event)
-            SetTimer(This.flashMethod[charName]["endMethod"], -This.eventDisplayDuration)
+            try {
+                This.flashMethod[charName] := Map()
+                This.flashMethod[charName]["isOn"] := false
+                This.flashMethod[charName]["flashMethod"] := ObjBindMethod(This, "flashBorder", charName, event)
+                This.flashBorder(charName, event)
+                SetTimer(This.flashMethod[charName]["flashMethod"], This.flashBorderInterval)
+                This.flashMethod[charName]["endMethod"] := ObjBindMethod(This, "endThumbnailFlashing", charName, hwnd)
+                SetTimer(This.flashMethod[charName]["endMethod"], -This.eventDisplayDuration)
+            }
         }
         if This.showEventText {
             exists := This.textMethod.Has(charName)
@@ -2237,21 +2276,22 @@
                 This.textMethod.Delete(charName)
             }
 
-            hwnd := WinGetID(charName " ahk_exe exefile.exe")
-            This.setThumbnailText(hwnd, charName . "`n" This.monitoredEventsTexts[event])
-            This.textMethod[charName] := ObjBindMethod(This, "setThumbnailText", charName, hwnd)
+            This.updateThumbnailText(charName . "`n" This.monitoredEventsTexts[event], hwnd)
+            This.textMethod[charName] := ObjBindMethod(This, "updateThumbnailText", charName, hwnd)
             SetTimer(This.textMethod[charName], -This.eventDisplayDuration)
         }
     }
 
     endThumbnailFlashing(title, hwnd) {
-        SetTimer(This.flashMethod[title]["flashMethod"], 0) ; Stop timer
-        This.flashMethod.Delete(title)
-        This.ThumbWindows.%hwnd%["Border"].Show("Hide")
-        This.ShowActiveBorder(This.LastActiveThumbHwnd)
+        try {
+            SetTimer(This.flashMethod[title]["flashMethod"], 0) ; Stop timer
+            This.flashMethod.Delete(title)
+            This.ThumbWindows.%hwnd%["Border"].Show("Hide")
+            This.ShowActiveBorder(This.LastActiveThumbHwnd)
+        }
     }
 
-    setThumbnailText(title, hwnd) {
+    updateThumbnailText(title, hwnd) {
         This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(title)
     }
 
