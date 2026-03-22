@@ -62,10 +62,19 @@ Class TrayMenu extends Settings_Gui {
         if This.TrayMenuShortcuts["Suspend Hotkeys"] || This.TrayMenuShortcuts["Hide Thumbnails"] || This.TrayMenuShortcuts["Minimize Inactive Clients"] || This.TrayMenuShortcuts["Click Through Thumbnails"]
             TrayMenu.Add() ; Seperator
 
-        if This.TrayMenuShortcuts["Close all EVE Clients"] {
-            TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
-            TrayMenu.Add() ; Seperator
+        if This.TrayMenuShortcuts["Don't Close Active Client"] {
+            TrayMenu.Add("Don't Close Active Client", MenuHandler)
+            if This.dontCloseActiveClient
+                TrayMenu.check("Don't Close Active Client")
+            else
+                TrayMenu.Uncheck("Don't Close Active Client")
         }
+
+        if This.TrayMenuShortcuts["Close all EVE Clients"]
+            TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
+
+        if This.TrayMenuShortcuts["Close all EVE Clients"] || This.TrayMenuShortcuts["Don't Close Active Client"]
+            TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Restore Client Positions"] {
             TrayMenu.Add("Restore Client Positions", MenuHandler)
@@ -138,6 +147,11 @@ Class TrayMenu extends Settings_Gui {
                     TrayMenu.check("Click Through Thumbnails")
                 else
                     TrayMenu.Uncheck("Click Through Thumbnails")
+            }
+            Else if (ItemName = "Don't Close Active Client") {
+                This.dontCloseActiveClient := !This.dontCloseActiveClient
+                TrayMenu.ToggleCheck("Don't Close Active Client")
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (ItemName = "Minimize Inactive Clients") {
                 This.MinimizeInactiveClients := !This.MinimizeInactiveClients

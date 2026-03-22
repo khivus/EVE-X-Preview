@@ -353,15 +353,15 @@
                             This.BorderActive := 0
                         }
                         ; sets the Border to the active window thumbnail 
-                        else if (Ahwnd != This.BorderActive) {
-                            ;Shows the Thumbnail on top of other thumbnails
-                            if (This.ShowThumbnailsAlwaysOnTop)
-                                WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
+                        ; else if (Ahwnd != This.BorderActive) {
+                        ;     ;Shows the Thumbnail on top of other thumbnails
+                        ;     if (This.ShowThumbnailsAlwaysOnTop)
+                        ;         WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
                             
-                            This.ShowActiveBorder(Ahwnd)
-                            This.UpdateThumb_AfterActivation(, Ahwnd)
-                            This.BorderActive := Ahwnd
-                        }
+                        ;     This.ShowActiveBorder(Ahwnd)
+                        ;     This.UpdateThumb_AfterActivation(, Ahwnd)
+                        ;     This.BorderActive := Ahwnd
+                        ; }
                     }
                 }
             }
@@ -623,7 +623,7 @@
         if !This.OnWinExist(arr)
             return
 
-        Loop length * 2 { ; Using loop len*2 instead of while to avoid infinite while
+        Loop length { ; Using loop len instead of while to avoid infinite while
             if HWND := This.hasMathcingOldTitle(arr[index]) {
                 activateByHWND := 1
                 break
@@ -970,6 +970,9 @@
                     else {
                         This.toggleColorBorder(hwndEVE, title, false)
                         This.ignoredChars.Delete(hwndEVE)
+
+                        if WinActive(title " ahk_exe exefile.exe")
+                            This.ShowActiveBorder(This.LastActiveThumbHwnd)
                     }
                 }
                 return 0
@@ -1033,9 +1036,9 @@
         step_x := This.ShiftThumbHorizontalStep
         step_y := This.ShiftThumbVerticalStep
 
-        if step_x == 0
+        if step_x = 0 || !IsInteger(step_x)
             step_x := This.ThumbnailStartLocation["width"]
-        if step_y == 0
+        if step_y = 0 || !IsInteger(step_y)
             step_y := This.ThumbnailStartLocation["height"]
         
         switch This.ShiftThumbsDirection {
@@ -1158,6 +1161,8 @@
             }
         }
         This.DestroyThumbnailsToggle := 1
+        if hwnd := WinActive("ahk_exe exefile.exe")
+            This.ShowActiveBorder(hwnd)
     }
     
     ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
@@ -1201,6 +1206,12 @@
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
+
+        if (This.ShowThumbnailsAlwaysOnTop)
+            WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
+        
+        This.ShowActiveBorder(hwnd)
+        This.UpdateThumb_AfterActivation(, hwnd)
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1521,6 +1532,18 @@
             This.ActivateHwnd := hwnd
             SendEvent("{Blind}{" Main_Class.virtualKey "}")
         }
+
+        ;Sets the timer to minimize client if the user enable this.
+        if This.MinimizeInactiveClients {
+            This.wHwnd := hwnd
+            SetTimer(This.timer, -This.MinimizeDelay)
+        }
+
+        if (This.ShowThumbnailsAlwaysOnTop)
+            WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
+        
+        This.ShowActiveBorder(hwnd)
+        This.UpdateThumb_AfterActivation(, hwnd)
     }
     
     ;*WinApi Functions
@@ -1772,13 +1795,13 @@
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
-        if !This.gameLogsMonitoringEnabled
-            return
-
         This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
         This.shootingChars := Map()
         This.flashMethod := Map()
-        This.textMethod := Map()
+        This.eventMethods := Map()
+
+        if !This.gameLogsMonitoringEnabled
+            return
 
         ; Thanks to @CJKondur to having this list
         ; Comprehensive list of all EVE Online NPC naming prefixes.
@@ -2174,12 +2197,14 @@
                     if e = "stoppedShooting" && RegExMatch(line, "<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>") || RegExMatch(line, "Your .+? misses .+? completely") {
                         This.shootingTimer := A_TickCount
 
-                        if This.shootingChars.Has(charName) ; Clear timer before creating new one
+                        if This.shootingChars.Has(charName) {  ; Clear timer before creating new one
                             SetTimer(This.shootingChars[charName], 0)
+                            This.shootingChars.Delete(charName)
+                        }
 
                         This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, e)
                         SetTimer(This.shootingChars[charName], -This.shootingInterval)
-                        continue
+                        break
                     }
                     else if !v["needRegex"] && InStr(line, v["pattern"]) {
                         event := e
@@ -2232,6 +2257,7 @@
                     }
 
                     event := e
+                    break
                 }
             }
 
@@ -2248,46 +2274,44 @@
 
         hwnd := WinGetID(charName " ahk_exe exefile.exe")
 
-        if This.flashBorderEnabled { ; Flashing border if enabled
-            exists := This.flashMethod.Has(charName)
-            if !This.lastEventPriority && exists 
-                return
-            else if This.lastEventPriority && exists { ; Clearing last event 
-                SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
-                This.flashMethod.Delete(charName)
-            }
+        exists := This.eventMethods.Has(charName)
+        if !This.lastEventPriority && exists 
+            return
+        else if This.lastEventPriority && exists ; Clearing last event 
+            This.endEvent(charName, hwnd)
 
+        if This.flashBorderEnabled { ; Flashing border if enabled
             try {
                 This.flashMethod[charName] := Map()
                 This.flashMethod[charName]["isOn"] := false
-                This.flashMethod[charName]["flashMethod"] := ObjBindMethod(This, "flashBorder", charName, event)
-                This.flashBorder(charName, event)
+                This.flashMethod[charName]["event"] := event
+                This.flashMethod[charName]["flashMethod"] := ObjBindMethod(This, "flashBorder", charName)
+                This.flashBorder(charName)
                 SetTimer(This.flashMethod[charName]["flashMethod"], This.flashBorderInterval)
-                This.flashMethod[charName]["endMethod"] := ObjBindMethod(This, "endThumbnailFlashing", charName, hwnd)
-                SetTimer(This.flashMethod[charName]["endMethod"], -This.eventDisplayDuration)
             }
         }
         if This.showEventText {
-            exists := This.textMethod.Has(charName)
-            if !This.lastEventPriority && exists 
-                return
-            else if This.lastEventPriority && exists { ; Clearing last event
-                SetTimer(This.textMethod[charName], 0) ; Stop timer
-                This.textMethod.Delete(charName)
-            }
-
             This.updateThumbnailText(charName . "`n" This.monitoredEventsTexts[event], hwnd)
-            This.textMethod[charName] := ObjBindMethod(This, "updateThumbnailText", charName, hwnd)
-            SetTimer(This.textMethod[charName], -This.eventDisplayDuration)
         }
+        This.eventMethods[charName] := ObjBindMethod(This, "endEvent", charName, hwnd)
+        SetTimer(This.eventMethods[charName], -This.eventDisplayDuration)
     }
 
-    endThumbnailFlashing(title, hwnd) {
-        try {
-            SetTimer(This.flashMethod[title]["flashMethod"], 0) ; Stop timer
-            This.flashMethod.Delete(title)
+    endEvent(charName, hwnd) {
+        if !This.eventMethods.Has(charName)
+            return
+        SetTimer(This.eventMethods[charName], 0)
+        This.eventMethods.Delete(charName)
+
+        if This.flashBorderEnabled && This.flashMethod.Has(charName) {
+            SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
+            This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
-            This.ShowActiveBorder(This.LastActiveThumbHwnd)
+            if WinActive(charName " ahk_exe exefile.exe")
+                This.ShowActiveBorder(This.LastActiveThumbHwnd)
+        }
+        if This.showEventText {
+            This.updateThumbnailText(charName, hwnd)
         }
     }
 

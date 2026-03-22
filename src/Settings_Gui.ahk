@@ -364,40 +364,43 @@
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Disable Char in Group (Shift+Click):")
         Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vdynamicGroupsEnabled", "On/Off")
 
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Disabled Thumbnail Color (Hex/RGB):")
+        Hotkey_Groups.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vdynamicGroupsColor -Wrap")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize) " vPreviewdynamicGroupsColor Border")
+
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Groups Hold Delay (ms):")
         Hotkey_Groups.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, 50) " vGroupsHoldDelay")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp+{} yp+{}", 50 + This.baseGrid, This.editOffset), "Minimum = 75")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Add/Delete Groups:")
         addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 1, 5, btnW, btnEditH), "Add")
+        Hotkey_Groups.Push addBtn
         DeleteButton := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
+        Hotkey_Groups.Push DeleteButton
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Select Group:")
         ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
+        Hotkey_Groups.Push ddl
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
         HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vForwardsKey")
+        Hotkey_Groups.Push HKForwards
         Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn1", "Capture")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vBackwardsdKey")
+        Hotkey_Groups.Push HKBackwards
         Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn2", "Capture")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters List:")
         EditBox := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editExH) " -Wrap vHKCharlist")
-
-        Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editEx2W) " vImpNamesBtn", "Import from Launched")
-
-        Hotkey_Groups.Push ddl
-        Hotkey_Groups.Push addBtn
-        Hotkey_Groups.Push DeleteButton
-        Hotkey_Groups.Push HKForwards
-        Hotkey_Groups.Push HKBackwards
         Hotkey_Groups.Push EditBox
+        Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editEx2W) " vImpNamesBtn", "Import from Launched")
 
         This.MainFrame["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["KeepGroupsPositions"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["dynamicGroupsEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["dynamicGroupsColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["GroupsHoldDelay"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards,))
         addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox))
@@ -422,6 +425,10 @@
             }
             else if (obj.name = "dynamicGroupsEnabled") {
                 This.dynamicGroupsEnabled := obj.value
+            }
+            else if (obj.name = "dynamicGroupsColor") {
+                This.dynamicGroupsColor := obj.value
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "GroupsHoldDelay") {
                 delay := Integer(obj.value)
@@ -531,14 +538,17 @@
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
         captBtn1 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn1
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails Hotkey - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
         captBtn2 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn2
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClickThroughHotkey", This.ClickThroughHotkey)
         captBtn3 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn3
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkey Activation Scope:")
         HotkeysSettings.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
@@ -546,6 +556,7 @@
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Cycle Login Screens - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
         captBtn4 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn4
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Login Screen Cycle Direction:")
         HotkeysSettings.Push This.MainFrame.Add("Radio", Format("xp+{} yp", This.offsetX + 1) " vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Old->New")
@@ -554,33 +565,28 @@
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close Active EVE Window - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
         captBtn5 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn5
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close All EVE Windows - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
         captBtn6 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn6
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
         captBtn7 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn7
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
         HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyCharList", Charlist)
         HotkeysSettings.Push HKCharList
 
         ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editExW), "Import from Launched")
+        HotkeysSettings.Push ImpBtn
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Hotkeys:")
         HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyList", Hklist)
         HotkeysSettings.Push HKKeylist
-
-        HotkeysSettings.Push ImpBtn
-        HotkeysSettings.Push captBtn1
-        HotkeysSettings.Push captBtn2
-        HotkeysSettings.Push captBtn3
-        HotkeysSettings.Push captBtn4
-        HotkeysSettings.Push captBtn5
-        HotkeysSettings.Push captBtn6
-        HotkeysSettings.Push captBtn7
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -1418,6 +1424,7 @@
         This.MainFrame.Group["Other"] := [], Other := []
 
         This.GlobalGroupsOrder := [
+            "Hotkey Groups",
             "Hotkeys Settings",
             "Thumbnails Behavior",
             "Thumbnails Visuals",
@@ -1425,6 +1432,7 @@
             "Client Settings",
             "Custom Colors",
             "Game Logs Monitoring",
+            "Non-EVE Applications",
             "Monitored Events",
             "Tray Menu Settings",
             "Other"
@@ -1441,7 +1449,7 @@
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Check for Updates on Startup:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vCheck_Updates Checked" This.Check_Updates, "On/Off")
 
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.lGap, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap) " vOvrLabel", "PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPlaceholder") ; If too short message will be displaying only part of text
         
         for group in This.GlobalGroupsOrder {
@@ -1452,7 +1460,7 @@
 
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGls", "Update")
 
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap + This.objH, This.sepW))
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.lGap + This.objH, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Update All Thumbnails Size to Default Size.")
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateThumbnails", "Update All Thumbnails")
 
@@ -1505,6 +1513,7 @@
             "Show Thumbnails Always on Top",
             "Click Through Thumbnails",
             "Minimize Inactive Clients",
+            "Don't Close Active Client",
             "Close all EVE Clients",
             "Restore Client Positions",
             "Save Client Positions",
@@ -1689,8 +1698,16 @@
                 for group, enab in This.ComboGroups {
                     if k != group || !enab
                         continue
-                    if group == "Other" {
+                    if group = "Other" {
                         Loop 6
+                            v[A_Index].Enabled := 0
+                    }
+                    else if group = "Hotkeys Settings" {
+                        Loop 28
+                            v[A_Index].Enabled := 0
+                    }
+                    else if group = "Hotkey Groups" {
+                        Loop 14
                             v[A_Index].Enabled := 0
                     }
                     else {
@@ -1735,6 +1752,8 @@
         This.MainFrame["PreserveHotkeysOnLogout"].value := This.PreserveHotkeysOnLogout
         This.MainFrame["KeepGroupsPositions"].value := This.KeepGroupsPositions
         This.MainFrame["dynamicGroupsEnabled"].value := This.dynamicGroupsEnabled
+        This.MainFrame["dynamicGroupsColor"].value := This.dynamicGroupsColor
+        This.RedrawColorPreview(This.MainFrame["dynamicGroupsColor"])
         This.MainFrame["GroupsHoldDelay"].value := This.GroupsHoldDelay
         This.MainFrame["HotkeyGroupDDL"].Delete()
         This.MainFrame["HotkeyGroupDDL"].Add(This.GetGroupList())

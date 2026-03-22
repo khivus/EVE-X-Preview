@@ -50,7 +50,7 @@
             },
             "Thumbnails Visuals": {
                 "ShowThumbnailTextOverlay": 1,
-                "ThumbnailTextColor":"#FAC57A",
+                "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
                 "ThumbnailTextFont": "Gill Sans MT",
                 "ThumbnailTextMargins": {
@@ -58,13 +58,13 @@
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,
-                "ClientHighligtColor": "#E36A0D",
+                "ClientHighligtColor": "E36A0D",
                 "ClientHighligtBorderthickness": 4,
                 "ThumbnailOpacity": 80,
                 "ShowAllColoredBorders": 0,
                 "InactiveClientBorderthickness": 2,
-                "InactiveClientBorderColor": "#8A8A8A",
-                "ThumbnailBackgroundColor":"#57504E",
+                "InactiveClientBorderColor": "8A8A8A",
+                "ThumbnailBackgroundColor":"57504E",
                 "ThumbnailMinimumSize": {
                     "width": 50,
                     "height": 50
@@ -89,7 +89,8 @@
                 "GroupsHoldDelay": 100,
                 "HideThumbnailsHotkey": "",
                 "ClickThroughHotkey": "",
-                "dynamicGroupsEnabled": 1
+                "dynamicGroupsEnabled": 1,
+                "dynamicGroupsColor": "ff0000"
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -117,7 +118,9 @@
                     "Game Logs Monitoring": 0,
                     "Monitored Events": 0,
                     "Tray Menu Settings": 0,
-                    "Other": 0
+                    "Other": 0,
+                    "Hotkey Groups": 0,
+                    "Non-EVE Applications": 0
                 }
             },
             "Tray Menu Settings": {
@@ -131,7 +134,8 @@
                     "Auto Save Thumbnail Positions": 1,
                     "Save Thumbnail Positions": 1,
                     "Click Through Thumbnails": 0,
-                    "Show Thumbnails Always on Top": 0
+                    "Show Thumbnails Always on Top": 0,
+                    "Don't Close Active Client": 0
                 }
             },
             "Non-EVE Applications": {
@@ -150,7 +154,7 @@
                 "monitorOnlySelectedChars": 0,
                 "charsToMonitor": [],
                 "lastEventPriority": 1,
-                "supressForFocused": 1,
+                "supressForFocused": 1, 
                 "showEventText": 0,
                 "flashBorderEnabled": 1,
                 "stopDisplayingOnSwitch": 1,

@@ -72,6 +72,8 @@ class Propertys extends TrayMenu {
         This.ProfileMonitoredEvents := This.ComboGroups["Monitored Events"] ? "Default" : This.LastUsedProfile
         This.ProfileTrayMenuSettings := This.ComboGroups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.ComboGroups["Other"] ? "Default" : This.LastUsedProfile
+        This.ProfileHotkeysGroups := This.ComboGroups["Hotkey Groups"] ? "Default" : This.LastUsedProfile
+        This.ProfileNonEVEApplications := This.ComboGroups["Non-EVE Applications"] ? "Default" : This.LastUsedProfile
     }
 
 
@@ -164,61 +166,13 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ShowAllColoredBorders"] := value
     }
 
-    ; _ProfileProps {
-    ;     get {
-    ;         Arr := []
-    ;         profilesOrder := Map(
-    ;             "Hotkey Groups", 1,
-    ;             "Hotkeys Settings", 2,
-    ;             "Thumbnails Behavior", 3,
-    ;             "Thumbnails Visuals", 4,
-    ;             "Thumbnail Visibility", 5,
-    ;             "Client Settings", 6,
-    ;             "Custom Colors", 7,
-    ;             "Non-EVE Applications", 8,
-    ;             "Tray Menu Settings", 9,
-    ;             "Other", 10
-    ;         )
-            
-    ;         for k in This._JSON["_Profiles"][This.LastUsedProfile] {
-    ;             for prof, v in profilesOrder {
-    ;                 if prof == k {
-    ;                     Arr.Push(k)
-    ;                     break
-    ;                 }
-    ;             }
-    ;         }
-
-    ;         ; Sorting by set order so settings looks more organized
-    ;         delimited := ""
-    ;         for index, value in Arr
-    ;             delimited .= (delimited ? "|" : "") . value
-    ;         sorted_delimited := Sort(delimited, "D|", (item1,item2,*)=>(obj:=profilesOrder, pos1:=obj.Get(item1,999), pos2:=obj.Get(item2,999), pos1>pos2?1:pos1<pos2?-1:0))
-    ;         sorted_arr := StrSplit(sorted_delimited, "|")
-
-    ;         return sorted_arr
-    ;     }
-    ; }
-
     Thumbnail_visibility[key?] {
         get {
             return This._JSON["_Profiles"][This.ProfileThumbnailVisibility]["Thumbnail Visibility"]
-
-            ; if IsSet(Key) {
-            ;     Arr := Array()
-            ;     for k, v in This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail_visibility"]
-            ;         Arr.Push(k)
-            ; return Arr
-            ; }
-            ; else
-            ;     return This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail_visibility"]
         }
         set {
             if (IsObject(value)) {
                 This._JSON["_Profiles"][This.ProfileThumbnailVisibility]["Thumbnail Visibility"] := value
-                ;     for k, v in Value {
-                ;         This._JSON["_Profiles"][This.LastUsedProfile]["Thumbnail_visibility"][k] := v
-                ;     }
             }
             This.Save_Settings()
 
@@ -554,18 +508,23 @@ class Propertys extends TrayMenu {
     }
 
     PreserveHotkeysOnLogout {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["PreserveHotkeysOnLogout"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["PreserveHotkeysOnLogout"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["PreserveHotkeysOnLogout"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["PreserveHotkeysOnLogout"] := value
     }
 
     KeepGroupsPositions {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["KeepGroupsPositions"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["KeepGroupsPositions"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["KeepGroupsPositions"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["KeepGroupsPositions"] := value
     }
 
     dynamicGroupsEnabled {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["dynamicGroupsEnabled"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["dynamicGroupsEnabled"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"] := value
+    }
+
+    dynamicGroupsColor {
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"])
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
     }
 
     Close_Active_EVE_Win_Hotkey {
@@ -584,8 +543,8 @@ class Propertys extends TrayMenu {
     }
 
     GroupsHoldDelay {
-        get => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["GroupsHoldDelay"]
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["GroupsHoldDelay"] := value
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"] := value
     }
 
     HideThumbnailsHotkey {
@@ -610,30 +569,21 @@ class Propertys extends TrayMenu {
             This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][Key] := Map("Characters", value, "ForwardsHotkey", "", "BackwardsHotkey", "")
         }
     }
-    ; Hotkey_Groups_Hotkeys[Name?, Hotkey?] {
-    ;     get {
-
-    ;     }
-    ;     set {
-    ;         This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey_Groups"][Name][Hotkey] := Value
-    ;     }
-    ; }
-
 
     _Hotkeys[key?] {
         get {
             if (IsSet(Key)) {
-                loop This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"].Length {
-                    if (This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"][A_Index].Has(key)) {
-                        return This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"][A_Index][key]
+                loop This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["CharacterHotkeys"].Length {
+                    if (This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["CharacterHotkeys"][A_Index].Has(key)) {
+                        return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["CharacterHotkeys"][A_Index][key]
                     }
                 }
                 return 0
             }
             if !(IsSet(Key))
-                return This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"]
+                return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["CharacterHotkeys"]
         }
-        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CharacterHotkeys"] := Value
+        set => This._JSON["_Profiles"][This.LastUsedProfile]["Hotkeys Settings"]["CharacterHotkeys"] := Value
     }
 
     ; Tray Menu Settings ##############################
@@ -647,7 +597,7 @@ class Propertys extends TrayMenu {
     
     NonEVEGroups {
         get {
-            temp := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"]
+            temp := This._JSON["_Profiles"][This.ProfileNonEVEApplications]["Non-EVE Applications"]["NonEVEGroups"]
             res := Map()
             for n, group in temp {
                 if group["exe"] = []
@@ -659,7 +609,7 @@ class Propertys extends TrayMenu {
             }
             return res
         }
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEGroups"] := value
+        set => This._JSON["_Profiles"][This.ProfileNonEVEApplications]["Non-EVE Applications"]["NonEVEGroups"] := value
     }
 
     GetNonEVEGroupsList() {
@@ -672,7 +622,7 @@ class Propertys extends TrayMenu {
 
     NonEVEHotkeys {
         get {
-            data := This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"]
+            data := This._JSON["_Profiles"][This.ProfileNonEVEApplications]["Non-EVE Applications"]["NonEVEHotkeys"]
             if data["exe"] = [] || data["exe"] = [""]
                 return Map("exe", [], "title", [], "hotkey", [])
             for i, _ in data["exe"] {
@@ -683,7 +633,7 @@ class Propertys extends TrayMenu {
             }
             return data
         }
-        set => This._JSON["_Profiles"][This.LastUsedProfile]["Non-EVE Applications"]["NonEVEHotkeys"] := value
+        set => This._JSON["_Profiles"][This.ProfileNonEVEApplications]["Non-EVE Applications"]["NonEVEHotkeys"] := value
     }
 
     ; Game Logs Monitoring ##############################################
@@ -1026,6 +976,7 @@ class Propertys extends TrayMenu {
 ; }
 
 convertToHex(rgbString) {
+    rgbString := Trim(rgbString, "`n ")
     ; Check if the string corresponds to the decimal value format (e.g. "255, 255, 255" or "rgb(255, 255, 255)")
     if (RegExMatch(rgbString, "^\s*(rgb\s*\(?)?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)?\s*$", &matches)) {
         red := matches[2], green := matches[3], blue := matches[4]

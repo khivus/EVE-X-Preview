@@ -74,12 +74,12 @@ Class ThumbWindow extends Propertys {
 
         if (CheckError || !This.CustomColorsActive) {
             try {
-                ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c" This.ThumbnailTextColor, This.ThumbnailTextFont)
+                ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c0x" This.ThumbnailTextColor, This.ThumbnailTextFont)
             }
             catch as e {
                 MsgBox("Error: Thumbnail Text Color Or Thumbnail Text Font are wrong´nin: Profile Settings - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
-                This.ThumbnailTextSize := "12", This.ThumbnailTextColor := "0xfac57a", This.ThumbnailTextFont := "Gill Sans MT"
-                ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c" This.ThumbnailTextColor, This.ThumbnailTextFont)
+                This.ThumbnailTextSize := "12", This.ThumbnailTextColor := "fac57a", This.ThumbnailTextFont := "Gill Sans MT"
+                ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c0x" This.ThumbnailTextColor, This.ThumbnailTextFont)
             }
         }
 
@@ -419,43 +419,27 @@ Class ThumbWindow extends Propertys {
         if This.HideThumbnails || !IsSet(EVEHwnd) || !This.ThumbWindows.HasProp(EVEHwnd)
             return
 
+        ; Getting win title
         Win_Title := This.ThumbWindows.%EVEHwnd%["Window"].Title
 
         static LastActiveThumbHwnd := EVEHwnd
         static lastActiveThumbTitle := ""
 
-        ; Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
-        if This.gameLogsMonitoringEnabled && This.stopDisplayingOnSwitch {
-            if This.flashBorderEnabled && This.flashMethod.Has(Win_Title) {
-                try {
-                    SetTimer(This.flashMethod[Win_Title]["flashMethod"], 0) ; Stop timer
-                    SetTimer(This.flashMethod[Win_Title]["endMethod"], 0) ; Stop timer
-                    This.flashMethod.Delete(Win_Title)
-                    This.ThumbWindows.%EVEHwnd%["Border"].Show("Hide")
-                }
-            }
-            if This.showEventText && This.textMethod.Has(Win_Title) {
-                try {
-                    SetTimer(This.textMethod[Win_Title], 0) ; Stop timer
-                    This.textMethod.Delete(Win_Title)
-                    This.updateThumbnailText(Win_Title, EVEHwnd)
-                }
-            }
+        if This.gameLogsMonitoringEnabled && This.stopDisplayingOnSwitch && This.eventMethods.Has(Win_Title) {
+            This.endEvent(Win_Title, EVEHwnd)
         }
 
-        if !This.CustomColorsActive && !This.ShowAllColoredBorders && !This.ignoredChars.Has(LastActiveThumbHwnd) { ; This should somehow improve performance if custom colors and show all colored borders disabled
+        clearLastThumb := !This.ignoredChars.Has(LastActiveThumbHwnd) && (!This.flashMethod.Has(lastActiveThumbTitle) || This.stopDisplayingOnSwitch)
+
+        if !This.CustomColorsActive && !This.ShowAllColoredBorders && clearLastThumb {
             try
                 This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Show("Hide")
         }
-        else if !This.ignoredChars.Has(LastActiveThumbHwnd){
-            ; for EW_Hwnd, Objs in This.ThumbWindows.OwnProps() {
+        else if clearLastThumb {
             if !This.ShowAllColoredBorders && This.ThumbWindows.%LastActiveThumbHwnd%.Has("Border")
                 This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Show("Hide")
 
             else {
-                ; if (This.ThumbWindows.%EW_Hwnd%["Window"].Name = Win_Title)
-                    ; continue
-                ; else if (!This.CustomColorsActive && This.ShowAllColoredBorders) {
                 if (!This.CustomColorsActive && This.ShowAllColoredBorders) {
                     try
                         This.ThumbWindows.%LastActiveThumbHwnd%["Border"].BackColor := This.InactiveClientBorderColor
@@ -465,7 +449,6 @@ Class ThumbWindow extends Propertys {
                 }
                 else if (This.CustomColorsActive && This.ShowAllColoredBorders) {
                     title := This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Title
-                    ; title := This.CleanTitle(WinGetTitle("Ahk_Id " EW_Hwnd))
                     if (This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["IABorder"] != "") {
                         try
                             This.ThumbWindows.%LastActiveThumbHwnd%["Border"].BackColor := This.CustomColorsGet[title]["IABorder"]
@@ -481,36 +464,47 @@ Class ThumbWindow extends Propertys {
                     This.BorderSize(This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Hwnd, This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Hwnd, This.InactiveClientBorderthickness)
                 }
             }
-            ; }
         }
+        else if !This.stopDisplayingOnSwitch && This.flashMethod.Has(lastActiveThumbTitle) {
+            This.ThumbWindows.%LastActiveThumbHwnd%["Border"].BackColor := "0x" This.monitoredEvents[This.flashMethod[lastActiveThumbTitle]["event"]]["color"]
+            This.BorderSize(This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Hwnd, This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+        }        
         else if This.ignoredChars.Has(LastActiveThumbHwnd) {
             This.ThumbWindows.%LastActiveThumbHwnd%["Border"].BackColor := "0xff0000"
             This.BorderSize(This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Hwnd, This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
         }
-        if (!This.Thumbnail_visibility.Has(Win_Title) && This.ShowClientHighlightBorder) {
-            if (This.CustomColorsActive && This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Border"] != "") {
-                This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.CustomColorsGet[Win_Title]["Border"]
-                This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
-            }
-            else {
-                This.ThumbWindows.%EVEHwnd%["Border"].BackColor := This.ClientHighligtColor
-                This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
-            }
+
+        if !This.Thumbnail_visibility.Has(Win_Title) && This.ShowClientHighlightBorder {
+            if This.CustomColorsActive && This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Border"] != ""
+                color := This.CustomColorsGet[Win_Title]["Border"]
+            else
+                color := This.ClientHighligtColor
+
+            This.ThumbWindows.%EVEHwnd%["Border"].BackColor := color
+            This.BorderSize(This.ThumbWindows.%EVEHwnd%["Window"].Hwnd, This.ThumbWindows.%EVEHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
             This.ThumbWindows.%EVEHwnd%["Border"].Show("NoActivate")
         }
+
         lastActiveThumbTitle := Win_Title
         LastActiveThumbHwnd := EVEHwnd
         This.LastActiveThumbHwnd := EVEHwnd
     }
 
-    flashBorder(title, event) {
+    flashBorder(title) {
         if !This.flashMethod.Has(title)
             return
 
+        if !This.stopDisplayingOnSwitch && This.supressForFocused && WinActive(title " ahk_exe exefile.exe") {
+            This.flashMethod[title]["isOn"] := !This.flashMethod[title]["isOn"]
+            return
+        }
+
         hwnd := WinGetID(title " ahk_exe exefile.exe")
-        This.ThumbWindows.%hwnd%["Border"].BackColor := "0x" This.monitoredEvents[event]["color"]
+        try This.ThumbWindows.%hwnd%["Border"].BackColor := "0x" This.monitoredEvents[This.flashMethod[title]["event"]]["color"]
+        catch
+            This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"
         This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
-        
+
         This.flashMethod[title]["isOn"] := !This.flashMethod[title]["isOn"]
         if This.flashMethod[title]["isOn"]
             This.ThumbWindows.%hwnd%["Border"].Show("NoActivate")
@@ -519,7 +513,9 @@ Class ThumbWindow extends Propertys {
     }
 
     toggleColorBorder(hwnd, title, enable := 1) {
-        This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"
+        try This.ThumbWindows.%hwnd%["Border"].BackColor := "0x" This.dynamicGroupsColor
+        catch 
+            This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"
         This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
         
         if enable
