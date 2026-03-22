@@ -1,10 +1,36 @@
-﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new).
+﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or write me in Discord dm: @khivus.
 
 <p align="center">
-<img width="548" height="952" alt="EVE-X-Preview_usB30Vwy9H" src="https://github.com/user-attachments/assets/294f8f7e-3ebe-44af-b99a-81c5d458c79b" />
+<img width="702" height="662" alt="Image" src="https://github.com/user-attachments/assets/3ba8c1ce-250d-4f30-a284-13c196a5b2be" />
 </p>
 
-# What’s New
+
+
+## Don't forget to add * in the beggining of every hotkey!
+
+# v1.5.0.7
+
+### Changes
+* Redone all settings GUI.
+* Added override settings from default profile to all others.
+* Added Update All Thumbnails button that updates all thumbnail sizes to default one.
+* Added Auto Save Thumbnail Positions.
+* Added Report Bug button that opens GitHub issues.
+* Added buttons to import characters names from launched game windows.
+* Added Rename profile button.
+* Added Keep Hotkey Group Position.
+* Added customizable Hotkey Groups Hold Delay with default 100 ms and minimum 75 ms.
+* Added Hide Thumbnails toggle in tray menu and hotkey to it.
+* Added Exclude from Closing profile settings group and Hide Thumbnails on Lost Focus setting in tray menu.
+
+### Other
+* Improved update checking logic.
+* Optimized some functions.
+* Moved Exclude from Closing to Client Settings group.
+* Moved Preserve Hotkeys on Logout to Hotkeys Groups.
+* Simplified + optimized windows switching logic.
+
+# What’s New in v1.4.1.2 and earlier
 {Setting Name} = {Default Value}. {Description}.
 ### Hotkeys and Management
 * __Cycle Login Screens – Hotkey__ = _Empty_. Login (character selection) screen windows sorted by process time (powered by __*bubble sort!!!*__). 

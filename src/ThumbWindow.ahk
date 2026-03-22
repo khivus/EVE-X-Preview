@@ -354,7 +354,7 @@ Class ThumbWindow extends Propertys {
         catch
             title := 0
         if (!This.Thumbnail_visibility.Has(This.CleanTitle(title))) {
-            if (HideOrShow = "Show") {
+            if HideOrShow = "Show" && !This.HideThumbnails {
                 for k, v in This.ThumbWindows.%EVEWindowHwnd% {
                     if (k = "Thumbnail")
                         continue
@@ -383,6 +383,11 @@ Class ThumbWindow extends Propertys {
         }
     }
 
+    ShowHideAllThumbnails(ShowOrHide) {
+        for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
+            This.ShowThumb(EvEHwnd, ShowOrHide)
+        }
+    }
 
     Update_Thumb(AllOrOne := true, ThumbHwnd?) {
         If (AllOrOne && !IsSet(ThumbHwnd)) {
@@ -411,6 +416,9 @@ Class ThumbWindow extends Propertys {
     }
 
     ShowActiveBorder(EVEHwnd?, ThumbHwnd?) {
+        if This.HideThumbnails
+            return
+
         If (IsSet(EVEHwnd) && This.ThumbWindows.HasProp(EVEHwnd)) {
             Win_Title := This.CleanTitle(WinGetTitle("Ahk_Id " EVEHwnd))
 
