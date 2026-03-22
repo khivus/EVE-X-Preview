@@ -7,6 +7,49 @@
 
 
 ## Don't forget to add * in the beggining of every hotkey!
+## I very much care about prorgam performance so if you disable some features, it won't check for unnecessary things.
+
+# v1.5.1.15
+
+### Changes
+* Customizable tray menu items.
+* Added color previews to color imports.
+* Added hotkey capture button to every edit box for hotkey import.
+* Added override override (disable override) for each profile if default profile overrides settings group.
+* Added Click through thumbnails toggle and hotkey (credits to @CJKondur).
+* Added Non-EVE Application hotkey and groups switching support.
+* Added dont close active client for close all active clients.
+* Added hotkey to disable char in hotkey group by shift+clicking it.
+* Added Show Thumbnails Always on Top and Don't close active client to tray menu items.
+* Added Game Logs Monitoring with supported events:
+    * Stopped Shooting,
+    * Under Attack By Player,
+    * Under Attack By NPC,
+    * Engaged With Faction BS NPC,
+    * Engaged With Officer NPC,
+    * Engaged With Capital NPC,
+    * Warp Disrupted,
+    * Decloaked,
+    * Gate Jumped,
+    * Convo Request,
+    * Fleet Invited,
+    * Fleet Warped,
+    * Fleet Regrouped,
+    * Conduited,
+    * Crystal Broke,
+    * Mining Stopped,
+    * Mining Bay Is Full.
+
+This feature does not violate the EULA or ToS, but it is neither endorsed nor supported by CCP. Use at your own risk.
+Enabling more options decreases performance. The effect increases with the number of characters currently being tracked.
+
+### Other
+* Settings restarts program only when they changed.
+* Added migration that changes all character names with prefix "EVE - ". This needed for Non-EVE apps working together with usual eve windows
+* Wider some edit boxes
+* Optimized thubmnail border activation
+* Removed direct character hotkeys from default override
+* Thumbnail active border now triggers not every program tick, but only on win activation
 
 # v1.5.0.7
 
