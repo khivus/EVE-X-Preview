@@ -1,8 +1,10 @@
 ﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or write me in Discord dm: @khivus.
 
 <p align="center">
-<img width="548" height="952" alt="EVE-X-Preview_usB30Vwy9H" src="https://github.com/user-attachments/assets/294f8f7e-3ebe-44af-b99a-81c5d458c79b" />
+<img width="702" height="662" alt="Image" src="https://github.com/user-attachments/assets/3ba8c1ce-250d-4f30-a284-13c196a5b2be" />
 </p>
+
+
 
 ## Don't forget to add * in the beggining of every hotkey!
 
