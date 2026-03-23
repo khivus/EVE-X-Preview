@@ -971,8 +971,10 @@
                         This.toggleColorBorder(hwndEVE, title, false)
                         This.ignoredChars.Delete(hwndEVE)
 
-                        if WinActive(title " ahk_exe exefile.exe")
+                        if WinActive(title " ahk_exe exefile.exe") {
                             This.ShowActiveBorder(This.LastActiveThumbHwnd)
+                            SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, This.LastActiveThumbHwnd), -50)
+                        }
                     }
                 }
                 return 0
@@ -1161,8 +1163,10 @@
             }
         }
         This.DestroyThumbnailsToggle := 1
-        if hwnd := WinActive("ahk_exe exefile.exe")
+        if hwnd := WinActive("ahk_exe exefile.exe") {
             This.ShowActiveBorder(hwnd)
+            SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
+        }
     }
     
     ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
@@ -1211,7 +1215,7 @@
             WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
         
         This.ShowActiveBorder(hwnd)
-        This.UpdateThumb_AfterActivation(, hwnd)
+        SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1543,7 +1547,7 @@
             WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
         
         This.ShowActiveBorder(hwnd)
-        This.UpdateThumb_AfterActivation(, hwnd)
+        SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
     }
     
     ;*WinApi Functions
@@ -2307,8 +2311,10 @@
             SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
             This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
-            if WinActive(charName " ahk_exe exefile.exe")
+            if WinActive(charName " ahk_exe exefile.exe") {
                 This.ShowActiveBorder(This.LastActiveThumbHwnd)
+                SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, This.LastActiveThumbHwnd), -50)
+            }
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)
