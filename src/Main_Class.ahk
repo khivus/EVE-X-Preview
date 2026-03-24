@@ -265,7 +265,9 @@
             This.UpdateActiveNonEVEApps()
         __t1 := __t0
 
-        static HideShowToggle := 0, LastActiveHWND := 0, WinList := []
+        static HideShowToggle := 0, LastActiveHWND := 0, WinList := [], apps := ["exefile.exe"]
+        if apps.Length = 1
+            apps.Push(This.ActiveNonEVEApps*)
 
         try
             WinList := WinGetList(This.EVEExe)
@@ -325,16 +327,23 @@
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-                ; ActiveProcessName := WinGetProcessName("A")
-                ; CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
+                ActiveProcessName := WinGetProcessName("A")
+                apn := ""
+                for pName in apps {
+                    if pName != ActiveProcessName
+                        continue
+                    apn := pName
+                    break
+                }
+                CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
 
-                ; if ((CallResponse || ActiveProcessName != "exefile.exe") && !HideShowToggle && This.HideThumbnailsOnLostFocus) {
-                if (!HideShowToggle && This.HideThumbnailsOnLostFocus) {
+                if (CallResponse || apn = "") && !HideShowToggle && This.HideThumbnailsOnLostFocus {
+                ; if (!HideShowToggle && This.HideThumbnailsOnLostFocus) {
                     SetTimer(This.CheckforActiveWindow, -500)
                     HideShowToggle := 1
                 }
-                ; else if ( ActiveProcessName == "exefile.exe" && !CallResponse) {
-                else {
+                else if apn != "" && !CallResponse {
+                ; else {
                     Ahwnd := WinExist("A")
                     if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
@@ -353,15 +362,15 @@
                             This.BorderActive := 0
                         }
                         ; sets the Border to the active window thumbnail 
-                        ; else if (Ahwnd != This.BorderActive) {
-                        ;     ;Shows the Thumbnail on top of other thumbnails
-                        ;     if (This.ShowThumbnailsAlwaysOnTop)
-                        ;         WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
+                        else if Ahwnd != This.BorderActive {
+                            ; Shows the Thumbnail on top of other thumbnails
+                            if This.ShowThumbnailsAlwaysOnTop
+                                WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
                             
-                        ;     This.ShowActiveBorder(Ahwnd)
-                        ;     This.UpdateThumb_AfterActivation(, Ahwnd)
-                        ;     This.BorderActive := Ahwnd
-                        ; }
+                            This.ShowActiveBorder(Ahwnd)
+                            This.UpdateThumb_AfterActivation(, Ahwnd)
+                            This.BorderActive := Ahwnd
+                        }
                     }
                 }
             }
@@ -875,6 +884,8 @@
             if This.monitoringInitialized && title != "EVE" && !This.monitoredChars.Has(title) {
                 SetTimer(ObjBindMethod(This, "startLogMonitoring", title, This.charsIds.Has(title) ? This.charsIds[title] : 0), -10000) ; Wait to initialize file
             }
+            if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, title)
             This.BorderActive := 0
             This.RegisterHotkeys(title, hwnd)
         }
@@ -957,24 +968,18 @@
                     ; Minimize
                     if (!GetKeyState("RButton"))
                         PostMessage 0x0112, 0xF020, , , This.ThumbHwnd_EvEHwnd[hwnd]
-                }
+                } ; Shift+Click and feature enabled
                 else if wparam = 5 && This.dynamicGroupsEnabled {
                     hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
                     title := This.ThumbWindows.%hwndEVE%["Window"].Title
                     if !This.ignoredChars.Has(hwndEVE) {
-                        ; ToolTip title
-                        ; SetTimer(() => ToolTip(), -(1000))
                         This.ignoredChars[hwndEVE] := true
                         This.toggleColorBorder(hwndEVE, title)
                     }
                     else {
                         This.toggleColorBorder(hwndEVE, title, false)
                         This.ignoredChars.Delete(hwndEVE)
-
-                        if WinActive(title " ahk_exe exefile.exe") {
-                            This.ShowActiveBorder(This.LastActiveThumbHwnd)
-                            SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, This.LastActiveThumbHwnd), -50)
-                        }
+                        This.BorderActive := 0
                     }
                 }
                 return 0
@@ -1163,10 +1168,6 @@
             }
         }
         This.DestroyThumbnailsToggle := 1
-        if hwnd := WinActive("ahk_exe exefile.exe") {
-            This.ShowActiveBorder(hwnd)
-            SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
-        }
     }
     
     ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
@@ -1210,12 +1211,6 @@
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
-
-        if (This.ShowThumbnailsAlwaysOnTop)
-            WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
-        
-        This.ShowActiveBorder(hwnd)
-        SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1542,12 +1537,6 @@
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
-
-        if (This.ShowThumbnailsAlwaysOnTop)
-            WinSetAlwaysOnTop(1, This.ThumbWindows.%hwnd%["Window"].Hwnd )
-        
-        This.ShowActiveBorder(hwnd)
-        SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, hwnd), -50)
     }
     
     ;*WinApi Functions
@@ -2149,7 +2138,7 @@
         if This.monitoringInitialized && !This.monitoredChars.Count
             SetTimer(This.monitorMethod, This.monitoringInterval) ; Start monitoring after stopped
 
-        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size)
+        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "lastShot", 0)
         ; This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "monitorTimer", ObjBindMethod(This, "monitorChanges", charName))
 
         ; SetTimer(This.monitoredChars[charName]["monitorTimer"], This.monitoringInterval) ; Poll every specified by user time
@@ -2177,46 +2166,49 @@
         if !This.monitoredChars.Has(charName) || !This.monitoredChars[charName]["file"]
             return
 
-        char := This.monitoredChars[charName]
-        size := char["file"].Length
-        if size = char["size"]
+        size := This.monitoredChars[charName]["file"].Length
+        if size = This.monitoredChars[charName]["size"]
             return
-        char["size"] := size
+        This.monitoredChars[charName]["size"] := size
 
         if This.supressForFocused && WinActive(charName " ahk_exe exefile.exe") {
-            while !char["file"].AtEOF
-                char["file"].ReadLine()
+            while !This.monitoredChars[charName]["file"].AtEOF
+                This.monitoredChars[charName]["file"].ReadLine()
             return
         }
 
-        while !char["file"].AtEOF {
-            line := char["file"].ReadLine()
+        while !This.monitoredChars[charName]["file"].AtEOF {
+            line := This.monitoredChars[charName]["file"].ReadLine()
 
             if line = ""
                 continue
 
-            event := ""
+            This.monitoredChars[charName]["event"] := ""
             for e, v in This.enabledMonitoredEvents {
+                if This.monitoredChars[charName]["event"] != ""
+                    break
                 if !v["checkNPC"] {
-                    if e = "stoppedShooting" && RegExMatch(line, "<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>") || RegExMatch(line, "Your .+? misses .+? completely") {
-                        This.shootingTimer := A_TickCount
+                    if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
+                        timeInSec := (Integer(m[1]) * 3600) + (Integer(m[2]) * 60) + Integer(m[3])
+
+                        if This.monitoredChars[charName]["lastShot"] = 0
+                            This.monitoredChars[charName]["lastShot"] := timeInSec
 
                         if This.shootingChars.Has(charName) {  ; Clear timer before creating new one
                             SetTimer(This.shootingChars[charName], 0)
-                            This.shootingChars.Delete(charName)
                         }
 
-                        This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, e)
-                        SetTimer(This.shootingChars[charName], -This.shootingInterval)
-                        break
+                        if timeInSec - This.monitoredChars[charName]["lastShot"] > This.shootingInterval / 1000 ; Direct activation
+                            This.handleEventActivation(charName, 1)
+                        else { ; Delayed activation
+                            This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
+                            SetTimer(This.shootingChars[charName], -This.shootingInterval)
+                        }
+                        This.monitoredChars[charName]["lastShot"] := timeInSec
+                        This.monitoredChars[charName]["event"] := e
                     }
-                    else if !v["needRegex"] && InStr(line, v["pattern"]) {
-                        event := e
-                        break
-                    }
-                    else if v["needRegex"] && RegExMatch(line, v["pattern"]) {
-                        event := e
-                        break
+                    else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
+                        This.monitoredChars[charName]["event"] := e
                     }
                 }
                 else { ; Advanced NPC checking logic
@@ -2236,45 +2228,50 @@
                     kind := This.ClassifyTarget(target)
 
                     switch e {
-                    case "underAttackByPlayer":
-                        if fromOrTo != "from" || kind != "player"
-                            continue
+                        case "underAttackByPlayer":
+                            if fromOrTo != "from" || kind != "player"
+                                continue
 
-                    case "underAttackByNPC":
-                        if fromOrTo != "from" || kind != "npc"
-                            continue
+                        case "underAttackByNPC":
+                            if fromOrTo != "from" || kind != "npc"
+                                continue
 
-                    case "engagedWithFactionBSNPC":
-                        if kind != "faction"
-                            continue
+                        case "engagedWithFactionBSNPC":
+                            if kind != "faction"
+                                continue
 
-                    case "engagedWithOfficerNPC":
-                        if kind != "officer"
-                            continue
+                        case "engagedWithOfficerNPC":
+                            if kind != "officer"
+                                continue
 
-                    case "engagedWithCapitalNPC":
-                        if kind != "capital"
-                            continue
+                        case "engagedWithCapitalNPC":
+                            if kind != "capital"
+                                continue
 
-                    default:
-                        continue
+                        default:
+                            continue
                     }
 
-                    event := e
+                    This.monitoredChars[charName]["event"] := e
                     break
                 }
             }
 
-            This.handleEventActivation(charName, event)
+            This.handleEventActivation(charName)
         }
     }
 
-    handleEventActivation(charName, event) {
-        if event = ""
+    handleEventActivation(charName, shooting := 0) {
+        static event
+        if This.monitoredChars[charName]["event"] = "" || !shooting
             return
-
-        if This.shootingChars.Has(charName)
-            This.shootingChars.Delete(charName)
+        else if shooting {
+            event := "stoppedShooting"
+            if This.shootingChars.Has(charName)
+                This.shootingChars.Delete(charName)
+        }
+        else
+            event := This.monitoredChars[charName]["event"]
 
         hwnd := WinGetID(charName " ahk_exe exefile.exe")
 
@@ -2311,10 +2308,7 @@
             SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
             This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
-            if WinActive(charName " ahk_exe exefile.exe") {
-                This.ShowActiveBorder(This.LastActiveThumbHwnd)
-                SetTimer(ObjBindMethod(This, "UpdateThumb_AfterActivation",, This.LastActiveThumbHwnd), -50)
-            }
+            This.BorderActive := 0
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)
