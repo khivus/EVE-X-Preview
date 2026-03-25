@@ -56,7 +56,8 @@
 
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
-        This.Updates_Checker() ; Check app updates if setting checked
+        ; Disabled for pre-release, will be reworked a bit
+        ; This.Updates_Checker() ; Check app updates if setting checked
 
         if This.First_Start_After_Update { ; Display message after succsessful update
             Version := FileGetVersion(A_ScriptName)
@@ -191,6 +192,10 @@
 
         ; List for NonEVE Apps to manage thumbnails
         This.CreateNonEVEAppsList()
+        This.allTrackedApps := Map("exefile.exe", true)
+        for NonEVEapp in This.NonEVEAppsList {
+            This.allTrackedApps[NonEVEapp["exe"]] := true
+        }
 
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
@@ -265,9 +270,7 @@
             This.UpdateActiveNonEVEApps()
         __t1 := __t0
 
-        static HideShowToggle := 0, LastActiveHWND := 0, WinList := [], apps := ["exefile.exe"]
-        if apps.Length = 1
-            apps.Push(This.ActiveNonEVEApps*)
+        static HideShowToggle := 0, LastActiveHWND := 0, WinList := []
 
         try
             WinList := WinGetList(This.EVEExe)
@@ -327,23 +330,17 @@
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-                ActiveProcessName := WinGetProcessName("A")
-                apn := ""
-                for pName in apps {
-                    if pName != ActiveProcessName
-                        continue
-                    apn := pName
-                    break
+                activeExe := WinGetProcessName("A")
+                activeWinTracked := 0
+                if This.allTrackedApps.Has(activeExe) {
+                    activeWinTracked := 1
                 }
-                CallResponse := DllCall("IsIconic","UInt", WinActive("ahk_exe exefile.exe")) ; ~16-19% improvment in performance
 
-                if (CallResponse || apn = "") && !HideShowToggle && This.HideThumbnailsOnLostFocus {
-                ; if (!HideShowToggle && This.HideThumbnailsOnLostFocus) {
+                if This.HideThumbnailsOnLostFocus && !HideShowToggle && !activeWinTracked {
                     SetTimer(This.CheckforActiveWindow, -500)
                     HideShowToggle := 1
                 }
-                else if apn != "" && !CallResponse {
-                ; else {
+                else if activeWinTracked {
                     Ahwnd := WinExist("A")
                     if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
@@ -353,24 +350,22 @@
                             This.UpdateThumb_AfterActivation(, Ahwnd)
                         LastActiveHWND := Ahwnd
                     }
-                    else {
-                        if HideShowToggle {
-                            for EVEHWND in This.ThumbWindows.OwnProps() {
-                                This.ShowThumb(EVEHWND, "Show")
-                            }
-                            HideShowToggle := 0
-                            This.BorderActive := 0
+                    else if HideShowToggle {
+                        for EVEHWND in This.ThumbWindows.OwnProps() {
+                            This.ShowThumb(EVEHWND, "Show")
                         }
-                        ; sets the Border to the active window thumbnail 
-                        else if Ahwnd != This.BorderActive {
-                            ; Shows the Thumbnail on top of other thumbnails
-                            if This.ShowThumbnailsAlwaysOnTop
-                                WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
-                            
-                            This.ShowActiveBorder(Ahwnd)
-                            This.UpdateThumb_AfterActivation(, Ahwnd)
-                            This.BorderActive := Ahwnd
-                        }
+                        HideShowToggle := 0
+                        This.BorderActive := 0
+                    }
+                    ; sets the Border to the active window thumbnail 
+                    else if Ahwnd != This.BorderActive {
+                        ; Shows the Thumbnail on top of other thumbnails
+                        if This.ShowThumbnailsAlwaysOnTop
+                            WinSetAlwaysOnTop(1,This.ThumbWindows.%Ahwnd%["Window"].Hwnd )
+                        
+                        This.ShowActiveBorder(Ahwnd)
+                        This.UpdateThumb_AfterActivation(, Ahwnd)
+                        This.BorderActive := Ahwnd
                     }
                 }
             }
@@ -738,7 +733,7 @@
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
         for hwnd in loginHWNDs {
-            if This.ThumbWindows.%hwnd%["Window"].OldTitle == title
+            if This.ThumbWindows.HasProp(hwnd) && This.ThumbWindows.%hwnd%["Window"].OldTitle == title
                 return hwnd
         }
         return
@@ -2171,7 +2166,7 @@
             return
         This.monitoredChars[charName]["size"] := size
 
-        if This.supressForFocused && WinActive(charName " ahk_exe exefile.exe") {
+        if (This.supressForFocused || This.HideThumbForActiveWin) && WinActive(charName " ahk_exe exefile.exe") { ; Skipping event check if thumb active and supressForFocused or HideThumbForActiveWin enabled
             while !This.monitoredChars[charName]["file"].AtEOF
                 This.monitoredChars[charName]["file"].ReadLine()
             return
@@ -2189,22 +2184,16 @@
                     break
                 if !v["checkNPC"] {
                     if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
-                        timeInSec := (Integer(m[1]) * 3600) + (Integer(m[2]) * 60) + Integer(m[3])
+                        This.monitoredChars[charName]["lastShot"] := A_TickCount
 
-                        if This.monitoredChars[charName]["lastShot"] = 0
-                            This.monitoredChars[charName]["lastShot"] := timeInSec
-
-                        if This.shootingChars.Has(charName) {  ; Clear timer before creating new one
+                        if This.shootingChars.Has(charName) {
                             SetTimer(This.shootingChars[charName], 0)
+                            This.shootingChars.Delete(charName)
                         }
 
-                        if timeInSec - This.monitoredChars[charName]["lastShot"] > This.shootingInterval / 1000 ; Direct activation
-                            This.handleEventActivation(charName, 1)
-                        else { ; Delayed activation
-                            This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
-                            SetTimer(This.shootingChars[charName], -This.shootingInterval)
-                        }
-                        This.monitoredChars[charName]["lastShot"] := timeInSec
+                        This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
+                        SetTimer(This.shootingChars[charName], -This.shootingInterval)
+
                         This.monitoredChars[charName]["event"] := e
                     }
                     else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
@@ -2262,8 +2251,7 @@
     }
 
     handleEventActivation(charName, shooting := 0) {
-        static event
-        if This.monitoredChars[charName]["event"] = "" || !shooting
+        if (This.monitoredChars[charName]["event"] = "" || This.monitoredChars[charName]["event"] = "stoppedShooting") && !shooting
             return
         else if shooting {
             event := "stoppedShooting"
