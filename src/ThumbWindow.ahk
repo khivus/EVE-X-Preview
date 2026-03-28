@@ -425,7 +425,7 @@ Class ThumbWindow extends Propertys {
         static LastActiveThumbHwnd := 0
         static lastActiveThumbTitle := ""
 
-        if EVEHwnd = LastActiveThumbHwnd ; Fix for active thumbnail flickering and not displaying event
+        if This.gameLogsMonitoringEnabled && This.eventMethods.Has(Win_Title) && EVEHwnd = LastActiveThumbHwnd ; Fix for active thumbnail flickering and not displaying event
             return
 
         if This.gameLogsMonitoringEnabled && This.stopDisplayingOnSwitch && This.eventMethods.Has(Win_Title) {

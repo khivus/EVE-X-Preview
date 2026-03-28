@@ -2204,11 +2204,12 @@
             SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
             This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
-            This.BorderActive := 0
 
-            if This.ignoredChars.Has(hwnd) {
+            if WinActive(charName " ahk_exe exefile.exe")
+                This.BorderActive := 0
+
+            if This.ignoredChars.Has(hwnd)
                 This.toggleColorBorder(hwnd, 1)
-            }
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)
