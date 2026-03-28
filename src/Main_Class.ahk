@@ -57,6 +57,7 @@
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
         if This.First_Start_After_Update { ; Display message after succsessful update
+            Sleep 500 ; Let updater time to close
             SetWorkingDir(A_ScriptDir)
             updaterExe := "EVE-X-Preview-Updater.exe" ; Delete updater exe if still exists
             if FileExist(updaterExe)
@@ -880,7 +881,8 @@
                     else {
                         This.toggleColorBorder(hwndEVE, false)
                         This.ignoredChars.Delete(hwndEVE)
-                        This.BorderActive := 0
+                        if WinActive("ahk_id " hwndEVE)
+                            This.BorderActive := 0
                     }
                 }
                 return 0

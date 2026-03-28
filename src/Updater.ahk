@@ -1,5 +1,7 @@
 #Requires AutoHotkey v2.0
 
+VERSION := "1.0"
+
 try {
     oldScriptName := A_Args[1]
     newTag := A_Args[2]
@@ -45,6 +47,7 @@ catch { ; If started without arguments we parse updates and get latest release v
 }
 
 SetWorkingDir(A_ScriptDir)
+Sleep 500 ; Wait some time berfore doing anything
 
 ; Downloading file and running
 newScriptName := "EVE-X-Preview-v" newTag ".exe"
@@ -75,7 +78,6 @@ try {
     }
         
     Run(oldScriptName)
-    Sleep 250
 }
 catch Error as e {
     MsgBox("An error occurred while trying to update the application:`n" e.Message "`nIF program stops working properly, redownload it from github!")

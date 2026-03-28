@@ -1625,10 +1625,12 @@
             if !FileExist(updaterExeName)
                 Throw Error("Could not download EVE-X-Preview-Updater.exe!")
             
-            Run(updaterExeName " `"" A_ScriptName "`" `"" newTag "`"")
             This.First_Start_After_Update := 1 ; For showing update message
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             Sleep 250 ; Waiting for settings to save
+
+            Run(updaterExeName " `"" A_ScriptName "`" `"" newTag "`"")
+
             ExitApp
         }
 
