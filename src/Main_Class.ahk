@@ -56,14 +56,17 @@
 
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
-        ; Disabled for pre-release, will be reworked a bit
-        ; This.Updates_Checker() ; Check app updates if setting checked
-
         if This.First_Start_After_Update { ; Display message after succsessful update
-            Version := FileGetVersion(A_ScriptName)
-            MsgBox("EVE-X-Preview succsessfully updated to version " Version)
+            SetWorkingDir(A_ScriptDir)
+            updaterExe := "EVE-X-Preview-Updater.exe" ; Delete updater exe if still exists
+            if FileExist(updaterExe)
+                FileDelete(updaterExe)
+
             This.First_Start_After_Update := 0
             SetTimer(This.Save_Settings_Delay_Timer, -200)
+
+            Version := FileGetVersion(A_ScriptName)
+            MsgBox("EVE-X-Preview succsessfully updated to version " Version)
         }
 
         ; Register Hotkey for Puase Hotkeys if the user has is Set
@@ -405,98 +408,6 @@
         }
     }
     
-
-    Updates_Checker() {
-        if !This.Check_Updates || !A_IsCompiled
-            return
-
-        ; Getting .exe version
-        Version := FileGetVersion(A_ScriptName)
-
-        try {
-            ; Getting json of latest release
-            apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest"
-            whr := ComObject("WinHttp.WinHttpRequest.5.1")
-            whr.Open("GET", apiUrl)
-            whr.SetRequestHeader("User-Agent", "AHK")
-            whr.Send()
-            whr.WaitForResponse()
-            json_ans := whr.ResponseText
-        }
-        catch {
-            MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
-            return
-        }
-
-        ; Finding tag of latest release
-        tag := RegExReplace(json_ans, '.*"tag_name":\s*"([^"]+)".*', "$1")
-        tag := StrReplace(tag, "v")
-
-        if tag == Version
-            return ; No update available
-
-        Message := "New version: v" tag " available!`n" . 
-            "Current version: v" Version ".`n`n" . 
-            "`"Cancel`" or `"X`" button will disable updates!`n`n" . 
-            "Do you want automatically download and install the update now?`n" . 
-            "Please don`'t touch the application until the update is complete."
-
-        result := MsgBox(Message, "EVE-X-Preview update", "YesNoCancel")
-
-        try {
-            if result = "Yes" {
-                ; Downloading file and running
-                scriptName := A_ScriptName
-                newScriptName := "EVE-X-Preview_new_version.exe"
-
-                ; Checking if file of new verison exist and deleting if so
-                if FileExist(newScriptName)
-                    FileDelete(newScriptName)
-                
-                exeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" tag "/EVE-X-Preview.exe"
-                Download(exeUrl, newScriptName) ; Download file from GitHub
-
-                ; Checking if new version downloaded
-                if !FileExist(newScriptName)
-                    Throw Error("Error downloading new version!")
-                
-                batName := "EVE-X-Preview_update.bat"
-                batContent := '@echo off' . "`r`n" .
-                    'timeout /t 2 /nobreak >nul' . "`r`n" .
-                    'del /f /q "%~dp0\' . scriptName . '"' . "`r`n" .
-                    'if exist "%~dp0' . newScriptName . '" (' . "`r`n" .
-                    '  ren "%~dp0' . newScriptName . '" "' . scriptName . '"' . "`r`n" .
-                    '  start "" "' . scriptName . '"' . "`r`n" .
-                    ')' . "`r`n" .
-                    'del "%~dp0\' . batName . '"'
-
-                ; Removing old update.bat if exist
-                if FileExist(batName)
-                    FileDelete(batName)
-
-                FileAppend(batContent, batName) ; Creating update.bat
-
-                if !FileExist(batName)
-                    Throw Error("Could not create update.bat!")
-
-                This.First_Start_After_Update := 1 ; For showing update message
-                SetTimer(This.Save_Settings_Delay_Timer, -200)
-                Sleep 250 ; Waiting for settings to save
-
-                Run(batName) ; For some unknown reason the hidden mode does not work on some systems
-                ExitApp()
-            }
-            else if result = "Cancel" {
-                This.Check_Updates := 0
-                SetTimer(This.Save_Settings_Delay_Timer, -200)
-            }
-        }
-        catch ValueError as e {
-            MsgBox("An error occurred while trying to update the application:`n" e.Message "`n" e.Extra "`nUpdate checker is disabled.")
-            This.Check_Updates := 0
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        }
-    }
 
     ; The function for the timer which gets started if no EVE window is in focus 
     HideOnLostFocusTimer() {
@@ -853,11 +764,6 @@
             ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
             This.RestoreClientPossitions(hwnd, title)
 
-            ; if (title = "") {
-            ;     This.EvEWindowDestroy(hwnd, title)
-            ;     This.EVE_WIN_Created(hwnd,title)
-            ; }
-
             If (This.ThumbnailPositions.Has(title)) {
                 This.EvEWindowDestroy(hwnd, title)
                 This.EVE_WIN_Created(hwnd,title)
@@ -877,10 +783,10 @@
                 } 
             }
             if This.monitoringInitialized && title != "EVE" && !This.monitoredChars.Has(title) {
-                SetTimer(ObjBindMethod(This, "startLogMonitoring", title, This.charsIds.Has(title) ? This.charsIds[title] : 0), -10000) ; Wait to initialize file
+                SetTimer(ObjBindMethod(This, "startLogMonitoring", title, This.charsIds.Has(title) ? This.charsIds[title] : 0), -30000) ; Wait to initialize file
             }
             if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, title)
+                This.toggleColorBorder(hwnd)
             This.BorderActive := 0
             This.RegisterHotkeys(title, hwnd)
         }
@@ -969,10 +875,10 @@
                     title := This.ThumbWindows.%hwndEVE%["Window"].Title
                     if !This.ignoredChars.Has(hwndEVE) {
                         This.ignoredChars[hwndEVE] := true
-                        This.toggleColorBorder(hwndEVE, title)
+                        This.toggleColorBorder(hwndEVE)
                     }
                     else {
-                        This.toggleColorBorder(hwndEVE, title, false)
+                        This.toggleColorBorder(hwndEVE, false)
                         This.ignoredChars.Delete(hwndEVE)
                         This.BorderActive := 0
                     }
@@ -1021,7 +927,7 @@
                 }
             }
             if This.monitoringInitialized && Win_Title != "EVE" && !This.monitoredChars.Has(Win_Title) {
-                SetTimer(ObjBindMethod(This, "startLogMonitoring", Win_Title, This.charsIds.Has(Win_Title) ? This.charsIds[Win_Title] : 0), -10000) ; Wait to initialize file
+                SetTimer(ObjBindMethod(This, "startLogMonitoring", Win_Title, This.charsIds.Has(Win_Title) ? This.charsIds[Win_Title] : 0), -30000) ; Wait to initialize file
             }
             This.RegisterNonEVEHotkeys()
             This.RegisterHotkeys(Win_Title, Win_Hwnd)
@@ -2071,8 +1977,10 @@
             }
         }
 
+        tempMethods := Map()
         for charName, charId in activeCharsToMonitor {
-            This.startLogMonitoring(charName, charId)
+            tempMethods[charName] := ObjBindMethod(This, "startLogMonitoring", charName, charId)
+            SetTimer(tempMethods[charName], -30000) ; Wait 30s to initialize file if program started in the middle of login
         }
 
         This.monitoringInitialized := 1
@@ -2297,6 +2205,10 @@
             This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
             This.BorderActive := 0
+
+            if This.ignoredChars.Has(hwnd) {
+                This.toggleColorBorder(hwnd, 1)
+            }
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)

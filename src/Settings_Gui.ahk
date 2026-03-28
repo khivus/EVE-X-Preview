@@ -25,6 +25,7 @@
         This.NonEVEApps_Ctrl()
         This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
+        This.About_Ctrl()
 
         This._Button_Load()
         ControlClick(This.firstBtn)
@@ -55,14 +56,15 @@
             "Monitored Events",
             "Non-EVE Applications",
             "Tray Menu Settings",
-            "Other"
+            "Other",
+            "About"
         ]
 
         This.baseGrid := 8
         This.contentGap := 16
 
         This.guiWidth := 700
-        This.guiHeight := 191 + (This.profilesGroups.Length * 42) ; Dynamic height size! Depends on buttons count
+        This.guiHeight := 160 + (This.profilesGroups.Length * 42) ; Dynamic height size! Depends on buttons count
 
         This.btnH := 32
         This.objH := 20
@@ -88,6 +90,9 @@
         This.sepW := This.contentW - This.contentGap * 2 + 2
         This.cPreviewSize := 24
         This.editC := This.editW - This.cPreviewSize - This.baseGrid
+
+        This.latestReleaseTag := ""
+        This.latestPreReleaseTag := ""
     }
 
     CreateSidebar() {
@@ -114,10 +119,6 @@
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.btnH + This.baseGrid, This.sidebarInnerW, This.btnH), btn_text)
             btn.OnEvent("Click", (Obj, *) => This.SettingsGroup_Handler(Obj))
         }
-
-        This.Sidebar.Add("Button", Format("xp y{} w{} h{}", This.guiHeight - This.contentGap - This.btnH, This.sidebarInnerW, This.btnH) " vAbout_Button", "About").OnEvent("Click", (*) => This.About_Button_Handler())
-        This.Sidebar.Add("Button", Format("xp yp-{} w{} h{}", This.btnH + This.baseGrid, (This.sidebarInnerW - This.baseGrid) / 2, This.btnH) " vHelp_Button", "Help").OnEvent("Click", (*) => This.Help_Button_Handler())
-        This.Sidebar.Add("Button", Format("xp+{} yp w{} h{}", (This.sidebarInnerW - This.baseGrid) / 2 + This.baseGrid, (This.sidebarInnerW - This.baseGrid) / 2, This.btnH) " vReportBugBtn", "Report Bug").OnEvent("Click", (*) => This.Report_Bug_Button_Handler())
 
         This.SelectProfile_DDL.Choose(This.LastUsedProfile)
         This.SelectProfile_DDL.OnEvent("Change", (obj,*) => This._Button_Load(Obj))
@@ -146,40 +147,6 @@
             }                
         }
         This.S_Gui.Show()
-    }
-
-    About_Button_Handler() {
-        Version := "?"
-        if A_IsCompiled
-            Version := FileGetVersion(A_ScriptName)
-        static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n`nCredits to: mrmjstc, CJKondur`n"
-        funny := "`nF`nu`nn`nn`ny"
-        text_len := StrLen(text)
-        funny_len := StrLen(funny)
-
-        if This.ThisThat && SubStr(text, text_len - funny_len + 1, funny_len) != funny
-            text := text . funny
-
-        what := MsgBox(text, "EVE-X-Preview - About", "CancelTryAgainContinue Iconi")
-
-        if what == "Cancel" || what == "Continue"
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        else if what == "TryAgain" {
-            This.ThisThat := !This.ThisThat
-
-            if not This.ThisThat
-                text := SubStr(text, 1, text_len - 1)
-
-            This.About_Button_Handler()
-        }
-    }
-
-    Help_Button_Handler() {
-        Run("https://github.com/khivus/EVE-X-Preview/blob/main/README.MD")
-    }
-
-    Report_Bug_Button_Handler() {
-        Run("https://github.com/khivus/EVE-X-Preview/issues/new")
     }
 
     createHtkCaptureBtn() {
@@ -1446,10 +1413,7 @@
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Switch Language to English on Error:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
 
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Check for Updates on Startup:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vCheck_Updates Checked" This.Check_Updates, "On/Off")
-
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.lGap, This.sepW))
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap) " vOvrLabel", "PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPlaceholder") ; If too short message will be displaying only part of text
         
         for group in This.GlobalGroupsOrder {
@@ -1465,7 +1429,6 @@
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateThumbnails", "Update All Thumbnails")
 
         This.MainFrame["SwitchLangOnErr"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
-        This.MainFrame["Check_Updates"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateGls"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateThumbnails"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
 
@@ -1474,9 +1437,6 @@
 
             if (obj.name = "SwitchLangOnErr") {
                 This.SwitchLangOnErr := obj.value
-            }
-            else if (obj.name = "Check_Updates") {
-                This.Check_Updates := obj.value
             }
             else if (obj.name = "UpdateGls") {
                 for group in This.GlobalGroupsOrder {
@@ -1545,6 +1505,149 @@
 
         This.MainFrame.Group["Tray Menu Settings"] := arr
         for k, v in This.MainFrame.Group["Tray Menu Settings"]
+            v.Visible := 0
+    }
+
+    About_Ctrl() {
+        arr := []
+
+        try
+            This.programVersion := FileGetVersion(A_ScriptName)
+        catch
+            This.programVersion := "1.0.0.0"
+
+        updBtnW := 158
+        offsetX := 150
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "About EVE-X-Preview")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Created by gonzo83")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Forked and Maintained by khivus")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Credits to: mrmjstc and CJKondur")
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.xlGap), "Current Version:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX), "v" This.programVersion)
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Release:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestReleaseVersion", "unknown")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Pre-Release:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.xlGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
+        arr.Push This.MainFrame.Add("Button", Format("xs+{} ys w{}", updBtnW + This.baseGrid, updBtnW) " vupdateToPreReleaseBtn", "Update to Pre-Release")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vhelpBtn", "Help")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp Section", 48 + This.baseGrid) " vreportBugBtn", "Report Bug")
+
+        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 65 - This.contentGap, This.guiHeight - 30 - This.contentGap, 65) " vfunnyBtn", "Funny" . (This.ThisThat ? "!" : "?"))
+
+        This.MainFrame["checkUpdatesBtn"].OnEvent("Click", (obj, *) => checkForNewUpdate())
+        This.MainFrame["updateToReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("false"))
+        This.MainFrame["updateToPreReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("true"))
+        This.MainFrame["helpBtn"].OnEvent("Click", (obj, *) => helpButtonHandler())
+        This.MainFrame["reportBugBtn"].OnEvent("Click", (obj, *) => reportBugButtonHandler())
+        This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
+
+        checkForNewUpdate() {
+            try {
+                ; Getting json of latest release
+                apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases"
+                whr := ComObject("WinHttp.WinHttpRequest.5.1")
+                whr.Open("GET", apiUrl)
+                whr.SetRequestHeader("User-Agent", "AHK")
+                whr.Send()
+                whr.WaitForResponse()
+                json_ans := whr.ResponseText
+            }
+            catch {
+                MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
+                return
+            }
+
+            ; Finding tag of latest release
+            pattern := '"tag_name":\s*"v?V?([^"]+)",[\s\S]*?"prerelease":\s*(true|false),'
+            pos := 1
+            while matchPos := RegExMatch(json_ans, pattern, &match, pos) {
+                tag := match[1]
+                preRelease := match[2]
+
+                if preRelease = "false" && This.latestReleaseTag = ""
+                    This.latestReleaseTag := tag
+                else if preRelease = "true" && This.latestPreReleaseTag = ""
+                    This.latestPreReleaseTag := tag
+
+                if This.latestReleaseTag != "" && This.latestPreReleaseTag != ""
+                    break
+
+                pos := matchPos + match.Len ; Advance past this match
+            }
+
+            if This.latestReleaseTag != "" {
+                This.MainFrame["latestReleaseVersion"].Value := "v" This.latestReleaseTag
+                if VerCompare(This.latestReleaseTag, This.programVersion) > 0
+                    This.MainFrame["updateToReleaseBtn"].Enabled := 1
+            }
+
+            if This.latestPreReleaseTag != "" {
+                This.MainFrame["latestPreReleaseVersion"].Value := "v" This.latestPreReleaseTag
+                if VerCompare(This.latestPreReleaseTag, This.programVersion) > 0
+                    This.MainFrame["updateToPreReleaseBtn"].Enabled := 1
+            }
+        }
+
+        processUpdateApp(preRelease?) {
+            if !IsSet(preRelease)
+                return
+
+            if preRelease = "false"
+                newTag := This.latestReleaseTag
+            else if preRelease = "true"
+                newTag := This.latestPreReleaseTag
+            else
+                return
+
+            SetWorkingDir(A_ScriptDir)
+
+            updaterExeName := "EVE-X-Preview-Updater.exe"
+            updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
+
+            if FileExist(updaterExeName)
+                FileDelete(updaterExeName)
+            
+            Download(updaterExeUrl, updaterExeName) ; Download file from GitHub
+
+            if !FileExist(updaterExeName)
+                Throw Error("Could not download EVE-X-Preview-Updater.exe!")
+            
+            Run(updaterExeName " `"" A_ScriptName "`" `"" newTag "`"")
+            This.First_Start_After_Update := 1 ; For showing update message
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+            Sleep 250 ; Waiting for settings to save
+            ExitApp
+        }
+
+        helpButtonHandler() {
+            Run("https://github.com/khivus/EVE-X-Preview/blob/main/README.MD")
+        }
+    
+        reportBugButtonHandler() {
+            Run("https://github.com/khivus/EVE-X-Preview/issues/new")
+        }
+
+        funnyHandler() {
+            This.ThisThat := !This.ThisThat
+            This.MainFrame["funnyBtn"].Text := "Funny" . (This.ThisThat ? "!" : "?")
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["About"] := arr
+        for k, v in This.MainFrame.Group["About"]
             v.Visible := 0
     }
 
@@ -1880,7 +1983,6 @@
 
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
-        This.MainFrame["Check_Updates"].value := This.Check_Updates
 
         for group in This.GlobalGroupsOrder {
             group_ := StrReplace(group, A_Space, "_")
@@ -1903,6 +2005,9 @@
         }
         This.enableCtrlsInGroupsSettings(0)
         This.enableCtrlsInNonEVEGroupsSettings(0)
+
+        This.MainFrame["updateToReleaseBtn"].Enabled := 0
+        This.MainFrame["updateToPreReleaseBtn"].Enabled := 0
 
         This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders

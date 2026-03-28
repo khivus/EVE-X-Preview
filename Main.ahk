@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.18
+;@Ahk2Exe-Let U_version = 1.5.1.19
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -75,9 +75,6 @@ Load_JSON() {
 
         dver := DJSON["settings_version"]
         uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
-
-        if A_IsCompiled && uver != ""
-            backupPath  := "EVE-X-Preview." uver ".PreV" FileGetVersion(A_ScriptName) "." A_Now ".backup.json"
 
         if (uver != dver) {
             ; Create a timestamped backup of the existing file before merge

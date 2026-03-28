@@ -475,10 +475,6 @@ class Propertys extends TrayMenu {
 
     ;#########
     ; Other
-    Check_Updates {
-        get => This._JSON["_Profiles"][This.ProfileOther]["Other"]["Check_Updates"]
-        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["Check_Updates"] := value
-    }
     SwitchLangOnErr {
         get => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SwitchLangOnErr"]
         set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SwitchLangOnErr"] := value

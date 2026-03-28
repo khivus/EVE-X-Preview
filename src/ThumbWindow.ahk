@@ -422,8 +422,11 @@ Class ThumbWindow extends Propertys {
         ; Getting win title
         Win_Title := This.ThumbWindows.%EVEHwnd%["Window"].Title
 
-        static LastActiveThumbHwnd := EVEHwnd
+        static LastActiveThumbHwnd := 0
         static lastActiveThumbTitle := ""
+
+        if EVEHwnd = LastActiveThumbHwnd ; Fix for active thumbnail flickering and not displaying event
+            return
 
         if This.gameLogsMonitoringEnabled && This.stopDisplayingOnSwitch && This.eventMethods.Has(Win_Title) {
             This.endEvent(Win_Title, EVEHwnd)
@@ -470,8 +473,7 @@ Class ThumbWindow extends Propertys {
             This.BorderSize(This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Hwnd, This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
         }        
         else if This.ignoredChars.Has(LastActiveThumbHwnd) {
-            This.ThumbWindows.%LastActiveThumbHwnd%["Border"].BackColor := "0xff0000"
-            This.BorderSize(This.ThumbWindows.%LastActiveThumbHwnd%["Window"].Hwnd, This.ThumbWindows.%LastActiveThumbHwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+            This.toggleColorBorder(LastActiveThumbHwnd, 1)
         }
 
         if !This.Thumbnail_visibility.Has(Win_Title) && This.ShowClientHighlightBorder {
@@ -508,11 +510,24 @@ Class ThumbWindow extends Propertys {
         This.flashMethod[title]["isOn"] := !This.flashMethod[title]["isOn"]
         if This.flashMethod[title]["isOn"]
             This.ThumbWindows.%hwnd%["Border"].Show("NoActivate")
-        else
+        else {
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
+            if WinActive(title " ahk_exe exefile.exe") {
+                if !This.Thumbnail_visibility.Has(title) && This.ShowClientHighlightBorder {
+                    if This.CustomColorsActive && This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["Border"] != ""
+                        color := This.CustomColorsGet[title]["Border"]
+                    else
+                        color := This.ClientHighligtColor
+        
+                    This.ThumbWindows.%hwnd%["Border"].BackColor := color
+                    This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd, This.ClientHighligtBorderthickness)
+                    This.ThumbWindows.%hwnd%["Border"].Show("NoActivate")
+                }
+            }
+        }
     }
 
-    toggleColorBorder(hwnd, title, enable := 1) {
+    toggleColorBorder(hwnd, enable := 1) {
         try This.ThumbWindows.%hwnd%["Border"].BackColor := "0x" This.dynamicGroupsColor
         catch 
             This.ThumbWindows.%hwnd%["Border"].BackColor := "0xff0000"

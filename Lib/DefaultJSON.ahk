@@ -107,7 +107,6 @@
             },
             "Other": {
                 "SwitchLangOnErr": 0,
-                "Check_Updates": 1,
                 "Global_Groups": {
                     "Client Settings": 0,
                     "Thumbnails Behavior": 0,
