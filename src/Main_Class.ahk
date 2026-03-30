@@ -313,6 +313,11 @@
                                                 This.ThumbnailStartLocation["height"],
                                                 This.ThumbWindows.%hwnd%)
                         }
+
+                        if This.monitoringInitialized && WinList.%hwnd%.Title != "EVE" && !This.monitoredChars.Has(WinList.%hwnd%.Title) && !This.waitingMonitoringChars.Has(WinList.%hwnd%.Title) { ; Check if for some reason char isn't monitored and add it to monitoring list
+                            This.waitingMonitoringChars[WinList.%hwnd%.Title] := ObjBindMethod(This, "startLogMonitoring", WinList.%hwnd%.Title, This.charsIds.Has(WinList.%hwnd%.Title) ? This.charsIds[WinList.%hwnd%.Title] : 0)
+                            SetTimer(This.waitingMonitoringChars[WinList.%hwnd%.Title], -60000) ; Wait to initialize file
+                        }
                     
                         ; if in Character selection screen 
                         if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "EVE" && This.PreserveCharNameOnLogout) {
@@ -783,8 +788,9 @@
                         This.ShowThumb(k, "Show")
                 } 
             }
-            if This.monitoringInitialized && title != "EVE" && !This.monitoredChars.Has(title) {
-                SetTimer(ObjBindMethod(This, "startLogMonitoring", title, This.charsIds.Has(title) ? This.charsIds[title] : 0), -30000) ; Wait to initialize file
+            if This.monitoringInitialized && title != "EVE" && !This.monitoredChars.Has(title) && !This.waitingMonitoringChars.Has(title) {
+                This.waitingMonitoringChars[title] := ObjBindMethod(This, "startLogMonitoring", title, This.charsIds.Has(title) ? This.charsIds[title] : 0)
+                SetTimer(This.waitingMonitoringChars[title], -60000) ; Wait to initialize file
             }
             if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
                 This.toggleColorBorder(hwnd)
@@ -928,9 +934,9 @@
                         This.ShowThumb(k, "Show")
                 }
             }
-            if This.monitoringInitialized && Win_Title != "EVE" && !This.monitoredChars.Has(Win_Title) {
-                SetTimer(ObjBindMethod(This, "startLogMonitoring", Win_Title, This.charsIds.Has(Win_Title) ? This.charsIds[Win_Title] : 0), -30000) ; Wait to initialize file
-            }
+            ; if This.monitoringInitialized && Win_Title != "EVE" && !This.monitoredChars.Has(Win_Title) { ж 
+            ;     SetTimer(ObjBindMethod(This, "startLogMonitoring", Win_Title, This.charsIds.Has(Win_Title) ? This.charsIds[Win_Title] : 0), -60000) ; Wait to initialize file
+            ; }
             This.RegisterNonEVEHotkeys()
             This.RegisterHotkeys(Win_Title, Win_Hwnd)
         }
@@ -1350,7 +1356,11 @@
         if !This.AtLeastOneWinExist_(group)
             return
 
-        while !This.OnWinExist_(group["exe"][index], group["title"][index]) {
+        loop length {
+            hwnd := This.OnWinExist_(group["exe"][index], group["title"][index])
+            if hwnd && !This.ignoredChars.Has(hwnd)
+                break
+
             index := DirectionHandler(direction, index, length)
         }
 
@@ -1379,9 +1389,8 @@
 
         IsActiveWinInGroup(exe, title, group) {
             for i, exec in group["exe"] {
-                if exec == exe
-                    if (title != "" && title == group["title"][i]) || title == ""
-                        return i
+                if exec = exe && ((group["title"][i] != "" && group["title"][i] = title  || group["title"][i])== "")
+                    return i
             }
             return 0
         }
@@ -1409,9 +1418,9 @@
             return false
     
         if title != ""
-            return WinExist(title)
+            return WinExist(title " ahk_exe " exe)
     
-        return true
+        return WinExist("ahk_exe " exe)
     }
 
     ActivateNonEVE(exe, title, direct?, *) {
@@ -1419,13 +1428,13 @@
         if title != ""
             criteria := title . " " . criteria
     
-        hwnd := WinExist(criteria)
-        if !hwnd || WinActive("Ahk_id " hwnd)
-            return
-
         This.LastHotkGroupInd := -1
         if IsSet(direct) && direct
             This.LastNonEVEGroupInd := -1
+
+        hwnd := WinExist(criteria)
+        if !hwnd || WinActive("Ahk_id " hwnd)
+            return
 
         if (DllCall("IsIconic", "UInt", hwnd)) {
             This.ShowWindowAsync(hwnd) ; Restore
@@ -1691,7 +1700,8 @@
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
-        This.monitoredChars := Map() ; charName: {charId, fileName, file, fileSize}
+        This.monitoredChars := Map()
+        This.waitingMonitoringChars := Map()
         This.shootingChars := Map()
         This.flashMethod := Map()
         This.eventMethods := Map()
@@ -1896,50 +1906,62 @@
             This.capitalNPCs[npc] := true
 
         eventPatterns := Map(
-            "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
-            "underAttackByNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "engagedWithFactionBSNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "engagedWithOfficerNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "engagedWithCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
-            "warpDisrupted", Map("pattern", "you!", "needRegex", 0, "checkNPC", 0),
-            "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0, "checkNPC", 0),
-            "fleetWarped", Map("pattern", "Following .+? in warp", "needRegex", 1, "checkNPC", 0), ; Just following don't works because "following reasons"
-            "fleetRegrouped", Map("pattern", "Regrouping", "needRegex", 0, "checkNPC", 0),
-            "decloaked", Map("pattern", "cloak deactivates", "needRegex", 0, "checkNPC", 0),
-            "convoRequest", Map("pattern", "is inviting you to a conversation", "needRegex", 0, "checkNPC", 0),
-            "conduited", Map("pattern", "A Conduit Field activated by", "needRegex", 0, "checkNPC", 0),
-            "gateJumped", Map("pattern", "(Jumping from|jumping to)", "needRegex", 1, "checkNPC", 0),
-            "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0, "checkNPC", 0),
-            "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0, "checkNPC", 0),
-            "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0, "checkNPC", 0),
-            "stoppedShooting", Map("pattern", "123456789", "needRegex", 0, "checkNPC", 0)
+            ; "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
+            ; "underAttackByNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            ; "engagedWithFactionBSNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            ; "engagedWithOfficerNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            ; "engagedWithCapitalNPC", Map("pattern", "", "needRegex", 0, "checkNPC", 1),
+            "warpDisrupted", Map("pattern", "you!", "needRegex", 0),
+            "fleetInvited", Map("pattern", "wants you to join their fleet", "needRegex", 0),
+            "fleetWarped", Map("pattern", "Following .+? in warp", "needRegex", 1), ; Just following don't works because "following reasons"
+            "fleetRegrouped", Map("pattern", "Regrouping", "needRegex", 0),
+            "decloaked", Map("pattern", "cloak deactivates", "needRegex", 0),
+            "convoRequest", Map("pattern", "is inviting you to a conversation", "needRegex", 0),
+            "conduited", Map("pattern", "A Conduit Field activated by", "needRegex", 0),
+            "gateJumped", Map("pattern", "(Jumping from|jumping to)", "needRegex", 1),
+            "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0),
+            "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0),
+            "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0),
+            "stoppedShooting", Map("pattern", "123456789abcdefg", "needRegex", 0) ; Placeholder pattern
         )
 
         This.checkFactionNPCs := false
         This.checkOfficerNPCs := false
         This.checkCapitalNPCs := false
         This.checkGeneralNPCs := false
+        This.anyNPCEngagmentEnabled := false
+        This.playerEngagmentEnabled := false
 
         This.checkedNPCs := Map()
         This.enabledMonitoredEvents := Map() ; To check only enabled events
         for event, v in This.monitoredEvents {
             if v["enabled"] {
-                This.enabledMonitoredEvents[event] := This.monitoredEvents[event].Clone()
-                This.enabledMonitoredEvents[event]["pattern"] := eventPatterns[event]["pattern"]
-                This.enabledMonitoredEvents[event]["needRegex"] := eventPatterns[event]["needRegex"]
-                This.enabledMonitoredEvents[event]["checkNPC"] := eventPatterns[event]["checkNPC"]
                 if event = "engagedWithFactionBSNPC"
                     This.checkFactionNPCs := true
                 else if event = "engagedWithOfficerNPC"
                     This.checkOfficerNPCs := true
                 else if event = "engagedWithCapitalNPC"
                     This.checkCapitalNPCs := true
-                else if event = "underAttackByNPC" || event = "underAttackByPlayer" ; Both will triger check for general npcs
+                else if event = "underAttackByNPC" {
                     This.checkGeneralNPCs := true
+                    This.anyNPCEngagmentEnabled := true
+                } else if event = "underAttackByPlayer" {
+                    This.checkGeneralNPCs := true
+                    This.playerEngagmentEnabled := true
+                } else {
+                    This.enabledMonitoredEvents[event] := This.monitoredEvents[event].Clone()
+                    This.enabledMonitoredEvents[event]["pattern"] := eventPatterns[event]["pattern"]
+                    This.enabledMonitoredEvents[event]["needRegex"] := eventPatterns[event]["needRegex"]
+                    ; This.enabledMonitoredEvents[event]["checkNPC"] := eventPatterns[event]["checkNPC"]
+                }
             }
         }
         if !This.enabledMonitoredEvents.Count ; If dont enabled
             return
+
+        This.checkNPCs := false
+        if This.checkFactionNPCs || This.checkOfficerNPCs || This.checkCapitalNPCs || This.checkGeneralNPCs
+            This.checkNPCs := true
 
         activeCharsToMonitor := Map() ; Must be active/logged in and in list of monitored
         if This.monitorOnlySelectedChars {
@@ -1979,10 +2001,9 @@
             }
         }
 
-        tempMethods := Map()
         for charName, charId in activeCharsToMonitor {
-            tempMethods[charName] := ObjBindMethod(This, "startLogMonitoring", charName, charId)
-            SetTimer(tempMethods[charName], -30000) ; Wait 30s to initialize file if program started in the middle of login
+            This.waitingMonitoringChars[charName] := ObjBindMethod(This, "startLogMonitoring", charName, charId)
+            SetTimer(This.waitingMonitoringChars[charName], -30000) ; Wait 60s to initialize file if program started in the middle of login
         }
 
         This.monitoringInitialized := 1
@@ -2004,6 +2025,9 @@
     startLogMonitoring(charName, charId) {
         if !This.gameLogsMonitoringEnabled
             return
+
+        if This.waitingMonitoringChars.Has(charName)
+            This.waitingMonitoringChars.Delete(charName)
 
         filesListSorted := This.getFilesList()
         if !filesListSorted
@@ -2040,26 +2064,17 @@
         file.Seek(-1, 2)
         file.ReadLine()
 
-        if This.monitoringInitialized && !This.monitoredChars.Count
-            SetTimer(This.monitorMethod, This.monitoringInterval) ; Start monitoring after stopped
+        ; if This.monitoringInitialized && !This.monitoredChars.Count
+        ;     SetTimer(This.monitorMethod, This.monitoringInterval) ; Start monitoring after stopped
 
         This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "lastShot", 0)
-        ; This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "monitorTimer", ObjBindMethod(This, "monitorChanges", charName))
-
-        ; SetTimer(This.monitoredChars[charName]["monitorTimer"], This.monitoringInterval) ; Poll every specified by user time
-        ; ToolTip "Started for " charName
-        ; SetTimer(() => ToolTip(), -(1000))
     }
 
     stopLogMonitoring(charName) {
-        ; SetTimer(This.monitoredChars[charName]["monitorTimer"], 0) ; Stopping monitoring
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
-        if !This.monitoredChars.Count
-            SetTimer(This.monitorMethod, 0) ; Stopping monitoring
-        
-        ; ToolTip "Stopped for " charName
-        ; SetTimer(() => ToolTip(), -(1000))
+        ; if !This.monitoredChars.Count
+        ;     SetTimer(This.monitorMethod, 0) ; Stopping monitoring
     }
 
     monitorAllChars() {
@@ -2070,6 +2085,11 @@
     monitorChanges(charName) {
         if !This.monitoredChars.Has(charName) || !This.monitoredChars[charName]["file"]
             return
+
+        if !WinExist(charName " ahk_exe exefile.exe") {
+            This.stopLogMonitoring(charName)
+            return
+        }
 
         size := This.monitoredChars[charName]["file"].Length
         if size = This.monitoredChars[charName]["size"]
@@ -2092,69 +2112,24 @@
             for e, v in This.enabledMonitoredEvents {
                 if This.monitoredChars[charName]["event"] != ""
                     break
-                if !v["checkNPC"] {
-                    if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
-                        This.monitoredChars[charName]["lastShot"] := A_TickCount
+                if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
+                    This.monitoredChars[charName]["lastShot"] := A_TickCount
 
-                        if This.shootingChars.Has(charName) {
-                            SetTimer(This.shootingChars[charName], 0)
-                            This.shootingChars.Delete(charName)
-                        }
-
-                        This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
-                        SetTimer(This.shootingChars[charName], -This.shootingInterval)
-
-                        This.monitoredChars[charName]["event"] := e
+                    if This.shootingChars.Has(charName) {
+                        SetTimer(This.shootingChars[charName], 0)
+                        This.shootingChars.Delete(charName)
                     }
-                    else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
-                        This.monitoredChars[charName]["event"] := e
-                    }
-                }
-                else { ; Advanced NPC checking logic
-                    if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
-                        fromOrTo := m[1]
-                        target := m[2]
-                    } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
-                        fromOrTo := "from"
-                        target := m[1]
-                    } else if RegExMatch(line, "Your .+? misses (.+?) completely", &m) { ; You missed target
-                        fromOrTo := "to"
-                        target := m[1]
-                    }
-                    else
-                        continue
 
-                    kind := This.ClassifyTarget(target)
-
-                    switch e {
-                        case "underAttackByPlayer":
-                            if fromOrTo != "from" || kind != "player"
-                                continue
-
-                        case "underAttackByNPC":
-                            if fromOrTo != "from" || kind != "npc"
-                                continue
-
-                        case "engagedWithFactionBSNPC":
-                            if kind != "faction"
-                                continue
-
-                        case "engagedWithOfficerNPC":
-                            if kind != "officer"
-                                continue
-
-                        case "engagedWithCapitalNPC":
-                            if kind != "capital"
-                                continue
-
-                        default:
-                            continue
-                    }
+                    This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
+                    SetTimer(This.shootingChars[charName], -This.shootingInterval)
 
                     This.monitoredChars[charName]["event"] := e
-                    break
+                }
+                else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
+                    This.monitoredChars[charName]["event"] := e
                 }
             }
+            This.processNPCCheck(charName, line) ; checking npcs if any event enabled
 
             This.handleEventActivation(charName)
         }
@@ -2207,7 +2182,7 @@
             This.flashMethod.Delete(charName)
             This.ThumbWindows.%hwnd%["Border"].Show("Hide")
 
-            if WinActive(charName " ahk_exe exefile.exe")
+            if This.LastActiveThumbHwnd = hwnd
                 This.BorderActive := 0
 
             if This.ignoredChars.Has(hwnd)
@@ -2220,6 +2195,56 @@
 
     updateThumbnailText(title, hwnd) {
         This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(title)
+    }
+
+    processNPCCheck(charName, line) {
+        if !This.checkNPCs || (This.monitoredChars[charName]["event"] != "" && This.monitoredChars[charName]["event"] != "stoppedShooting")
+            return
+
+        if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
+            fromOrTo := m[1]
+            target := m[2]
+        } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
+            fromOrTo := "from"
+            target := m[1]
+        } else if RegExMatch(line, "Your .+? misses (.+?) completely", &m) { ; You missed target
+            fromOrTo := "to"
+            target := m[1]
+        } else
+            return
+
+        kind := This.ClassifyTarget(target)
+        event := ""
+
+        switch kind {
+            case "player":
+                if This.playerEngagmentEnabled && fromOrTo = "from"
+                    event := "underAttackByPlayer"
+
+            case "npc":
+                if This.anyNPCEngagmentEnabled && fromOrTo = "from"
+                    event := "underAttackByNPC"
+
+            case "faction":
+                if This.checkFactionNPCs
+                    event := "engagedWithFactionBSNPC"
+
+            case "officer":
+                if This.checkOfficerNPCs
+                    event := "engagedWithOfficerNPC"
+
+            case "capital":
+                if This.checkCapitalNPCs
+                    event := "engagedWithCapitalNPC"
+
+            default:
+                return
+        }
+
+        if event = ""
+            return
+
+        This.monitoredChars[charName]["event"] := event
     }
 
     isExact(set, target) {

@@ -1804,7 +1804,7 @@
                     if k != group || !enab
                         continue
                     if group = "Other" {
-                        Loop 6
+                        Loop 4
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkeys Settings" {
