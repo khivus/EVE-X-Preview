@@ -1514,7 +1514,7 @@
         try
             This.programVersion := FileGetVersion(A_ScriptName)
         catch
-            This.programVersion := "1.0.0.0"
+            This.programVersion := "1.5.1.22"
 
         updBtnW := 158
         offsetX := 150
@@ -1590,7 +1590,7 @@
 
             if This.latestReleaseTag != "" {
                 This.MainFrame["latestReleaseVersion"].Value := "v" This.latestReleaseTag
-                if VerCompare(This.latestReleaseTag, This.programVersion) > 0
+                if VerCompare(This.latestReleaseTag, This.programVersion) != 0
                     This.MainFrame["updateToReleaseBtn"].Enabled := 1
             }
 
