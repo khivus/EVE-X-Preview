@@ -1514,7 +1514,7 @@
         try
             This.programVersion := FileGetVersion(A_ScriptName)
         catch
-            This.programVersion := "1.5.1.22"
+            This.programVersion := "1.0.0.0"
 
         updBtnW := 158
         offsetX := 150

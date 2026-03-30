@@ -793,7 +793,7 @@
                 SetTimer(This.waitingMonitoringChars[title], -60000) ; Wait to initialize file
             }
             if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd)
+                This.toggleColorBorder(hwnd, title)
             This.BorderActive := 0
             This.RegisterHotkeys(title, hwnd)
         }
@@ -882,11 +882,11 @@
                     title := This.ThumbWindows.%hwndEVE%["Window"].Title
                     if !This.ignoredChars.Has(hwndEVE) {
                         This.ignoredChars[hwndEVE] := true
-                        This.toggleColorBorder(hwndEVE)
+                        This.toggleColorBorder(hwndEVE, title)
                     }
                     else {
-                        This.toggleColorBorder(hwndEVE, false)
                         This.ignoredChars.Delete(hwndEVE)
+                        This.toggleColorBorder(hwndEVE, title, false)
                         if WinActive("ahk_id " hwndEVE)
                             This.BorderActive := 0
                     }
@@ -2180,13 +2180,14 @@
         if This.flashBorderEnabled && This.flashMethod.Has(charName) {
             SetTimer(This.flashMethod[charName]["flashMethod"], 0) ; Stop timer
             This.flashMethod.Delete(charName)
-            This.ThumbWindows.%hwnd%["Border"].Show("Hide")
+            This.clearBorder(hwnd, charName)
+            ; This.ThumbWindows.%hwnd%["Border"].Show("Hide")
 
             if This.LastActiveThumbHwnd = hwnd
                 This.BorderActive := 0
 
             if This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, 1)
+                This.toggleColorBorder(hwnd, charName)
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)
