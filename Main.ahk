@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.24
+;@Ahk2Exe-Let U_version = 1.5.1.25
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -392,7 +392,7 @@ MigrateSettings(userObj, uver, dver) {
                     prof_settings["Hotkey Groups"][k]["Characters"] := DeepClone(temp)
                 }
             }
-            if prof_settings.Has("Hotkeys Settings") {
+            if prof_settings.Has("Hotkeys Settings") && prof_settings["Hotkeys Settings"].Has("CharacterHotkeys") {
                 temp := []
                 for c, v in prof_settings["Hotkeys Settings"]["CharacterHotkeys"]
                     for c, h in v
@@ -406,14 +406,18 @@ MigrateSettings(userObj, uver, dver) {
                 prof_settings["Thumbnail Visibility"] := DeepClone(temp)
             }
             if prof_settings.Has("Client Settings") {
-                temp := []
-                for i, c in prof_settings["Client Settings"]["DontCloseClients"]
-                    temp.Push(AddEVE(c))
-                prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(temp)
-                temp := []
-                for i, c in prof_settings["Client Settings"]["Dont_Minimize_Clients"]
-                    temp.Push(AddEVE(c))
-                prof_settings["Client Settings"]["Dont_Minimize_Clients"] := DeepClone(temp)
+                if prof_settings["Client Settings"].Has("DontCloseClients") {
+                    temp := []
+                    for i, c in prof_settings["Client Settings"]["DontCloseClients"]
+                        temp.Push(AddEVE(c))
+                    prof_settings["Client Settings"]["DontCloseClients"] := DeepClone(temp)
+                }
+                if prof_settings["Client Settings"].Has("Dont_Minimize_Clients") {
+                    temp := []
+                    for i, c in prof_settings["Client Settings"]["Dont_Minimize_Clients"]
+                        temp.Push(AddEVE(c))
+                    prof_settings["Client Settings"]["Dont_Minimize_Clients"] := DeepClone(temp)
+                }
             }
             if prof_settings.Has("Custom Colors") {
                 temp := []

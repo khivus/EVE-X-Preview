@@ -72,109 +72,96 @@
 
         ; Register Hotkey for Puase Hotkeys if the user has is Set
         if (This.Suspend_Hotkeys_Hotkey != "") {
-            HotIf (*) => WinExist(This.EVEExe)
+            HotIf (*) => This.anyWinExists()
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Suspend Hotkeys-Hotkey" )
-                }
             }
-            else {
+            else
                 Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
-            }
         }
 
         ; Register Hotkey for Hide Thumbnails if the user has is Set
         if (This.HideThumbnailsHotkey != "") {
+            HotIf (*) => This.anyWinExists()
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Hide Thumbnails Hotkey" )
-                }
             }
-            else {
+            else
                 Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
-            }
         }
 
         ; Register Hotkey for Click Through if the user has is Set
         if (This.ClickThroughHotkey != "") {
+            HotIf (*) => This.anyWinExists()
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Click Through Thumbnails Hotkey" )
-                }
             }
-            else {
+            else
                 Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
-            }
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
+            HotIf (*) => WinExist(This.EVEExe)
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
-                }
             }
-            else {
+            else
                 Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
-            }
         }
 
         ; Register Hotkey for Close Active EVE Window Hotkey if user set
         if (This.Close_Active_EVE_Win_Hotkey != "") {
+            HotIf (*) => WinExist(This.EVEExe)
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Close Active EVE Window Hotkey")
-                }
             }
-            else {
+            else
                 Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
-            }
         }
 
         ; Register Hotkey for Close All EVE Windows Hotkey if user set
         if (This.Close_All_EVE_Win_Hotkey != "") {
+            HotIf (*) => WinExist(This.EVEExe)
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Close All EVE Windows Hotkey")
-                }
             }
-            else {
+            else
                 Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
-            }
         }
 
         ; Register Hotkey for Reload EVE-X-Preview Hotkey if user set
         if (This.Reload_Program_Hotkey != "") {
+            HotIf (*) => This.anyWinExists()
             if !This.SwitchLangOnErr {
-                try {
+                try
                     Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
-                }
-                catch ValueError as e {
+                catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Reload EVE-X-Preview Hotkey")
-                }
             }
-            else {
-                    Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
-            }
+            else
+                Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
         }
+
+        HotIf() ; Reset hotif
 
         ; Profiling
         This.ProfActive := false
@@ -434,6 +421,14 @@
         }
     }
 
+    anyWinExists() {
+        try
+            if WinGetList(This.EVEExe).Length != 0 || This.ActiveNonEVEApps.Length != 0
+                return true
+
+        return false
+    }
+
     ;Register set Hotkeys by the user in settings
     RegisterHotkeys(title, EvE_hwnd) {  
         ;if the user has set Hotkeys in Options 
@@ -522,8 +517,6 @@
             return
         prevTick := tick
 
-        HWND := 0
-        activateByHWND := 0
         arr := This.HotkGroups[ArrInd]
         index := This.HotkGroupsInds[ArrInd]
         length := arr.Length
@@ -545,22 +538,21 @@
             return
 
         Loop length { ; Using loop len instead of while to avoid infinite while
-            if HWND := This.hasMathcingOldTitle(arr[index]) {
-                activateByHWND := 1
-                break
-            }
             hwndEVE := WinExist(arr[index] " ahk_exe exefile.exe")
             if hwndEVE && !This.ignoredChars.Has(hwndEVE)
                 break
+            else if hwndTemp := This.hasMathcingOldTitle(arr[index]) {
+                if !This.ignoredChars.Has(hwndTemp) {
+                    hwndEVE := hwndTemp
+                    break
+                }
+            }
+
             index := DirectionHandler(direction, index, length)
         }
 
-        try {
-            if !activateByHWND
-                This.ActivateEVEWindow(,,arr[index])
-            else
-                This.ActivateEVEWindow(HWND,,)
-        }
+        try
+            This.ActivateEVEWindow(hwndEVE,,)
 
         This.LastHotkGroupInd := ArrInd
         This.LastNonEVEGroupInd := -1
@@ -641,8 +633,8 @@
     }
 
 
-    ; Checks for OldTitle == title in all login screen windows
-    ; return HWND if found
+    ; Checks for OldTitle = title in all login screen windows
+    ; returns hwnd if found
     hasMathcingOldTitle(title) {
         if !This.PreserveHotkeysOnLogout
             return
@@ -650,7 +642,7 @@
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
         for hwnd in loginHWNDs {
-            if This.ThumbWindows.HasProp(hwnd) && This.ThumbWindows.%hwnd%["Window"].OldTitle == title
+            if This.ThumbWindows.HasProp(hwnd) && This.ThumbWindows.%hwnd%["Window"].OldTitle = title
                 return hwnd
         }
         return
@@ -665,11 +657,10 @@
         prevTick := tick
 
         LoginWins := []
-        currentHWND := WinExist("A")
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
         for hwnd in loginHWNDs {
-            if This.ThumbWindows.%hwnd%["Window"].OldTitle != "EVE" && This.PreserveHotkeysOnLogout
+            if This.ThumbWindows.HasProp(hwnd) && This.ThumbWindows.%hwnd%["Window"].OldTitle != "EVE" && This.PreserveHotkeysOnLogout
                 continue
 
             PID := WinGetPID(hwnd)
@@ -688,8 +679,9 @@
         This.LastHotkGroupInd := -1
         This.LastNonEVEGroupInd := -1
 
-        if LoginWins.Length == 1 {
-            This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
+        if LoginWins.Length = 1 {
+            try
+                This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
             This.hitThis()
             return
         }
@@ -698,6 +690,7 @@
             LoginWins := This.CustomSort(LoginWins, "CreationTime")
         }
 
+        currentHWND := WinExist("A")
         for i, Win in LoginWins {
             if currentHWND == Win["hwnd"] {
                 currentIndex := i
@@ -720,7 +713,8 @@
                 currentIndex := 1
         }
 
-        This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
+        try
+            This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
         This.hitThis()
     }
 
@@ -737,7 +731,7 @@
             If ( WinExist(Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") ) {
                 return true
             }
-            else if This.PreserveHotkeysOnLogout && This.hasMathcingOldTitle(Name) && !WinActive("EVE-X-Preview - Settings") {
+            else if This.hasMathcingOldTitle(Name) && !WinActive("EVE-X-Preview - Settings") {
                 return true
             }
         }
@@ -840,11 +834,11 @@
             ; Move the Window with right mouse button 
             If (msg == Main_Class.WM_RBUTTONDOWN) {
                 while (GetKeyState("RButton")) {
-                    
                     if !(GetKeyState("LButton")) {
-                        ;sleep 1
-                        This.Mouse_DragMove(wparam, lparam, msg, hwnd)
-                        This.Window_Snap(hwnd, This.ThumbWindows)
+                        try {
+                            This.Mouse_DragMove(wparam, lparam, msg, hwnd)
+                            This.Window_Snap(hwnd, This.ThumbWindows)
+                        }
                     }
                     else
                         This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
@@ -1706,7 +1700,7 @@
         This.flashMethod := Map()
         This.eventMethods := Map()
 
-        if !This.gameLogsMonitoringEnabled
+        if !This.gameLogsMonitoringEnabled || (!This.flashBorderEnabled && !This.showEventText) ; When events displaying disabled, don't initiate monitoring
             return
 
         ; Thanks to @CJKondur to having this list
@@ -2064,17 +2058,12 @@
         file.Seek(-1, 2)
         file.ReadLine()
 
-        ; if This.monitoringInitialized && !This.monitoredChars.Count
-        ;     SetTimer(This.monitorMethod, This.monitoringInterval) ; Start monitoring after stopped
-
-        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "lastShot", 0)
+        This.monitoredChars[charName] := Map("id", fileCharId, "fileName", foundFile, "file", file, "size", size, "lastChangedTime", A_TickCount)
     }
 
     stopLogMonitoring(charName) {
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
-        ; if !This.monitoredChars.Count
-        ;     SetTimer(This.monitorMethod, 0) ; Stopping monitoring
     }
 
     monitorAllChars() {
@@ -2091,10 +2080,17 @@
             return
         }
 
+        tick := A_TickCount
         size := This.monitoredChars[charName]["file"].Length
-        if size = This.monitoredChars[charName]["size"]
+        if size = This.monitoredChars[charName]["size"] {
+            if tick - This.monitoredChars[charName]["lastChangedTime"] > 180000 { ; if there is no changes for 3 minutes, try find new file
+                This.stopLogMonitoring(charName)
+                This.startLogMonitoring(charName, This.charsIds.Has(charName) ? This.charsIds[charName] : 0)
+            }
             return
+        }
         This.monitoredChars[charName]["size"] := size
+        This.monitoredChars[charName]["lastChangedTime"] := tick
 
         if (This.supressForFocused || This.HideThumbForActiveWin) && WinActive(charName " ahk_exe exefile.exe") { ; Skipping event check if thumb active and supressForFocused or HideThumbForActiveWin enabled
             while !This.monitoredChars[charName]["file"].AtEOF
@@ -2113,8 +2109,6 @@
                 if This.monitoredChars[charName]["event"] != ""
                     break
                 if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
-                    This.monitoredChars[charName]["lastShot"] := A_TickCount
-
                     if This.shootingChars.Has(charName) {
                         SetTimer(This.shootingChars[charName], 0)
                         This.shootingChars.Delete(charName)

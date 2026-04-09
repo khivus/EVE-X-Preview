@@ -188,6 +188,7 @@ Class TrayMenu extends Settings_Gui {
             This.ShowHideAllThumbnails("Hide")
         else
             This.ShowHideAllThumbnails("Show")
+        This.BorderActive := 0
         SetTimer(This.Save_Settings_Delay_Timer, -200)
     }
 
