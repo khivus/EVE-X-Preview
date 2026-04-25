@@ -111,7 +111,11 @@
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
-            HotIf (*) => WinExist(This.EVEExe)
+            if This.Global_Hotkeys
+                HotIf (*) => WinExist(This.EVEExe)
+            else
+                HotIf (*) => WinActive(This.EVEExe)
+            
             if !This.SwitchLangOnErr {
                 try
                     Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
@@ -521,15 +525,18 @@
         index := This.HotkGroupsInds[ArrInd]
         length := arr.Length
 
-        if !This.KeepGroupsPositions && This.LastHotkGroupInd != ArrInd {
-            if This.LastHotkGroupInd != -1
-                index := 0
-            else {
-                try {
-                    title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : WinGetTitle("A")
-                    index := IsActiveWinInGroup(title, arr)
-                }
+        ; if !This.KeepGroupsPositions && This.LastHotkGroupInd != ArrInd {
+        if !This.KeepGroupsPositions {
+        ;     if This.LastHotkGroupInd != -1
+        ;         index := 0
+        ;     else {
+            try {
+                title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : WinGetTitle("A")
+                index := IsActiveWinInGroup(title, arr)
             }
+            catch
+                index := 0
+            ; }
         }
 
         index := DirectionHandler(direction, index, length)
@@ -550,6 +557,9 @@
 
             index := DirectionHandler(direction, index, length)
         }
+
+        if This.ignoredChars.Has(hwndEVE) ; Last check if loop leaked window there
+            return
 
         try
             This.ActivateEVEWindow(hwndEVE,,)
@@ -680,6 +690,9 @@
         This.LastNonEVEGroupInd := -1
 
         if LoginWins.Length = 1 {
+            if This.ignoredChars.Has(LoginWins[1]["hwnd"])
+                return
+
             try
                 This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
             This.hitThis()
@@ -690,14 +703,13 @@
             LoginWins := This.CustomSort(LoginWins, "CreationTime")
         }
 
+        currentIndex := 0
         currentHWND := WinExist("A")
         for i, Win in LoginWins {
             if currentHWND == Win["hwnd"] {
                 currentIndex := i
                 break
             }
-            else
-                currentIndex := 0
         }
 
         currentIndex += 1
@@ -712,6 +724,9 @@
             if currentIndex > LoginWins.Length
                 currentIndex := 1
         }
+
+        if This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"]) ; Last check if loop leaked window there
+            return
 
         try
             This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
@@ -1333,16 +1348,19 @@
         index := This.NonEVEGroupsInds[groupIndex]
         length := group["exe"].Length
 
-        if !This.KeepGroupsPositions && This.LastNonEVEGroupInd != groupIndex {
-            if This.LastNonEVEGroupInd != -1
-                index := 0
-            else {
-                try {
-                    exec := WinGetProcessName("A")
-                    title := WinGetTitle("A")
-                    index := IsActiveWinInGroup(exec, title, group)
-                }
+        ; if !This.KeepGroupsPositions && This.LastNonEVEGroupInd != groupIndex {
+        if !This.KeepGroupsPositions {
+            ; if This.LastNonEVEGroupInd != -1
+            ;     index := 0
+            ; else {
+            try {
+                exec := WinGetProcessName("A")
+                title := WinGetTitle("A")
+                index := IsActiveWinInGroup(exec, title, group)
             }
+            catch
+                index := 0
+            ; }
         }
 
         index := DirectionHandler(direction, index, length)
@@ -1357,6 +1375,9 @@
 
             index := DirectionHandler(direction, index, length)
         }
+
+        if This.ignoredChars.Has(hwnd) ; Last check if loop leaked window there
+            return
 
         try
             This.ActivateNonEVE(group["exe"][index], group["title"][index])

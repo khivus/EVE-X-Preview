@@ -353,28 +353,33 @@ Class ThumbWindow extends Propertys {
             title := WinGetTitle("Ahk_Id " EVEWindowHwnd)
         catch
             title := 0
-        if (!This.Thumbnail_visibility.Has(title)) {
-            if HideOrShow = "Show" && !This.HideThumbnails {
-                for k, v in This.ThumbWindows.%EVEWindowHwnd% {
-                    if (k = "Thumbnail")
-                        continue
-                    if (k = "Border" && !This.ShowAllColoredBorders)
-                        continue
-                    
-                    This.ThumbWindows.%EVEWindowHwnd%[k].Show("NoActivate")
 
-                    if (k = "TextOverlay" && !This.ShowThumbnailTextOverlay)
-                        This.ThumbWindows.%EVEWindowHwnd%["TextOverlay"].Show("Hide")
-                    else if (k = "TextOverlay" && This.ShowThumbnailTextOverlay)
-                        This.ThumbWindows.%EVEWindowHwnd%["TextOverlay"].Show("NoActivate")
-                }
+        if This.Thumbnail_visibility.Has(title)
+            return
+
+        if HideOrShow = "Show" && !This.HideThumbnails {
+            for k, v in This.ThumbWindows.%EVEWindowHwnd% {
+                if (k = "Thumbnail")
+                    continue
+                if (k = "Border" && !This.ShowAllColoredBorders)
+                    continue
+                
+                This.ThumbWindows.%EVEWindowHwnd%[k].Show("NoActivate")
+
+                if (k = "TextOverlay" && !This.ShowThumbnailTextOverlay)
+                    This.ThumbWindows.%EVEWindowHwnd%["TextOverlay"].Show("Hide")
+                else if (k = "TextOverlay" && This.ShowThumbnailTextOverlay)
+                    This.ThumbWindows.%EVEWindowHwnd%["TextOverlay"].Show("NoActivate")
             }
-            else {
-                for k, v in This.ThumbWindows.%EVEWindowHwnd% {
-                    if (k = "Thumbnail")
-                        continue
-                    This.ThumbWindows.%EVEWindowHwnd%[k].Show("Hide")
-                }
+            hwndEVE := Integer(EVEWindowHwnd)
+            if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwndEVE)
+                This.toggleColorBorder(hwndEVE, title)
+        }
+        else {
+            for k, v in This.ThumbWindows.%EVEWindowHwnd% {
+                if (k = "Thumbnail")
+                    continue
+                This.ThumbWindows.%EVEWindowHwnd%[k].Show("Hide")
             }
         }
     }
