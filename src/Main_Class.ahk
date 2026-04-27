@@ -477,7 +477,6 @@
         keys := Map()
         This.HotkGroups := []
         This.HotkGroupsInds := []
-        This.LastHotkGroupInd := 1
         index := 1
 
         if !IsObject(This.Hotkey_Groups) || This.Hotkey_Groups.Count = 0
@@ -525,18 +524,13 @@
         index := This.HotkGroupsInds[ArrInd]
         length := arr.Length
 
-        ; if !This.KeepGroupsPositions && This.LastHotkGroupInd != ArrInd {
         if !This.KeepGroupsPositions {
-        ;     if This.LastHotkGroupInd != -1
-        ;         index := 0
-        ;     else {
             try {
                 title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : WinGetTitle("A")
                 index := IsActiveWinInGroup(title, arr)
             }
             catch
                 index := 0
-            ; }
         }
 
         index := DirectionHandler(direction, index, length)
@@ -564,8 +558,6 @@
         try
             This.ActivateEVEWindow(hwndEVE,,)
 
-        This.LastHotkGroupInd := ArrInd
-        This.LastNonEVEGroupInd := -1
         This.HotkGroupsInds[ArrInd] := index
 
         This.hitThis()
@@ -594,27 +586,24 @@
         }
     }
 
-
-    SetHotkGroupInd(hwnd) {
-        if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
-            hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
-            title := WinGetTitle("Ahk_id " Hwnd)
-        }
-        else
-            return
+    ; SetHotkGroupInd(hwnd) {
+    ;     if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
+    ;         hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
+    ;         title := WinGetTitle("Ahk_id " Hwnd)
+    ;     }
+    ;     else
+    ;         return
         
-        for groupId, arr in This.HotkGroups {
-            for i, charName in arr {
-                if charName != title
-                    continue
+    ;     for groupId, arr in This.HotkGroups {
+    ;         for i, charName in arr {
+    ;             if charName != title
+    ;                 continue
 
-                This.HotkGroupsInds[groupId] := i
-                break
-            }
-        }
-    }
-
-
+    ;             This.HotkGroupsInds[groupId] := i
+    ;             break
+    ;         }
+    ;     }
+    ; }
 
     hitThis() {
         if not This.ThisThat
@@ -685,9 +674,6 @@
 
         if !LoginWins.Length
             return
-
-        This.LastHotkGroupInd := -1
-        This.LastNonEVEGroupInd := -1
 
         if LoginWins.Length = 1 {
             if This.ignoredChars.Has(LoginWins[1]["hwnd"])
@@ -824,7 +810,7 @@
     }
 
     ThumbClickThrough(thumbObj, forced?) { ; Thanks to @CJKondur
-        if !This.ClickThroughActive && !IsSet(forced) && !forced
+        if !(This.ClickThroughActive || IsSet(forced))
             return
 
         WS_EX_TRANSPARENT := 0x20
@@ -873,9 +859,6 @@
                 if (wparam = 1) {
                     try { ; Probably fix for bug
                         if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd])) {
-                            This.SetHotkGroupInd(hwnd)
-                            This.LastHotkGroupInd := -1
-                            This.LastNonEVEGroupInd := -1
                             This.ActivateEVEWindow(hwnd)
                         }
                     }
@@ -911,44 +894,40 @@
         This.RestoreClientPossitions(Win_Hwnd, Win_Title)        
         
         ;Creates the Thumbnail and stores the EVE Hwnd in the array
-        If !(This.ThumbWindows.HasProp(Win_Hwnd)) {       
-            This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
-            This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
-            This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
+        If This.ThumbWindows.HasProp(Win_Hwnd)
+            return
 
-            try
-                This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails 
+        This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
+        This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
+        This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
 
-            ;if the User is in character selection screen
-            if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "EVE") {
-                This.SetThumbnailText[Win_Hwnd] := Win_Title
-                This.ShiftThumbs(Win_Hwnd)
-                return
-            }  
+        ;if the User is in character selection screen
+        if (This.ThumbWindows.%Win_Hwnd%["Window"].Title = "EVE") {
+            This.SetThumbnailText[Win_Hwnd] := Win_Title
+            This.ShiftThumbs(Win_Hwnd)
+            return
+        }  
+        ;if the user loged in into a Character then move the Thumbnail to the right possition 
+        else If (This.ThumbnailPositions.Has(Win_Title)) {
+            This.SetThumbnailText[Win_Hwnd] := Win_Title
+            rect := This.ThumbnailPositions[Win_Title]
+            This.ThumbMove( rect["x"],
+                            rect["y"],
+                            rect["width"],
+                            rect["height"],
+                            This.ThumbWindows.%Win_Hwnd% )
 
-            ;if the user loged in into a Character then move the Thumbnail to the right possition 
-            else If (This.ThumbnailPositions.Has(Win_Title)) {
-                This.SetThumbnailText[Win_Hwnd] := Win_Title
-                rect := This.ThumbnailPositions[Win_Title]
-                This.ThumbMove( rect["x"],
-                                rect["y"],
-                                rect["width"],
-                                rect["height"],
-                                This.ThumbWindows.%Win_Hwnd% )
-
-                This.BorderSize(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, This.ThumbWindows.%Win_Hwnd%["Border"].Hwnd)
-                This.Update_Thumb(true)
-                If ( This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe) || !This.HideThumbnailsOnLostFocus && !WinActive(This.EVEExe) || !This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) {
-                    for k, v in This.ThumbWindows.OwnProps()
-                        This.ShowThumb(k, "Show")
-                }
+            This.BorderSize(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, This.ThumbWindows.%Win_Hwnd%["Border"].Hwnd)
+            This.Update_Thumb(true)
+            If ((This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) || (!This.HideThumbnailsOnLostFocus)) {
+                for k, v in This.ThumbWindows.OwnProps()
+                    This.ShowThumb(k, "Show")
             }
-            ; if This.monitoringInitialized && Win_Title != "EVE" && !This.monitoredChars.Has(Win_Title) { ж 
-            ;     SetTimer(ObjBindMethod(This, "startLogMonitoring", Win_Title, This.charsIds.Has(Win_Title) ? This.charsIds[Win_Title] : 0), -60000) ; Wait to initialize file
-            ; }
-            This.RegisterNonEVEHotkeys()
-            This.RegisterHotkeys(Win_Title, Win_Hwnd)
         }
+
+        This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails
+        This.RegisterNonEVEHotkeys()
+        This.RegisterHotkeys(Win_Title, Win_Hwnd)
     }
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
@@ -1118,11 +1097,8 @@
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
-        if IsSet(direct) && direct {
-            This.SetHotkGroupInd(hwnd)
-            This.LastHotkGroupInd := -1
-            This.LastNonEVEGroupInd := -1
-        }
+        ; if IsSet(direct) && direct { ; Might need later
+        ; }
 
         ;Sets the timer to minimize client if the user enable this.
         if (This.MinimizeInactiveClients) {
@@ -1295,7 +1271,6 @@
     RegisterNonEVEGroups() {
         This.NonEVEGroupsL := []
         This.NonEVEGroupsInds := []
-        This.LastNonEVEGroupInd := -1
         directions := Map()
         index := 1
 
@@ -1348,11 +1323,7 @@
         index := This.NonEVEGroupsInds[groupIndex]
         length := group["exe"].Length
 
-        ; if !This.KeepGroupsPositions && This.LastNonEVEGroupInd != groupIndex {
         if !This.KeepGroupsPositions {
-            ; if This.LastNonEVEGroupInd != -1
-            ;     index := 0
-            ; else {
             try {
                 exec := WinGetProcessName("A")
                 title := WinGetTitle("A")
@@ -1360,7 +1331,6 @@
             }
             catch
                 index := 0
-            ; }
         }
 
         index := DirectionHandler(direction, index, length)
@@ -1382,7 +1352,6 @@
         try
             This.ActivateNonEVE(group["exe"][index], group["title"][index])
 
-        This.LastNonEVEGroupInd := groupIndex
         This.NonEVEGroupsInds[groupIndex] := index
 
         This.hitThis()
@@ -1443,9 +1412,7 @@
         if title != ""
             criteria := title . " " . criteria
     
-        This.LastHotkGroupInd := -1
-        if IsSet(direct) && direct
-            This.LastNonEVEGroupInd := -1
+        ; if IsSet(direct) && direct
 
         hwnd := WinExist(criteria)
         if !hwnd || WinActive("Ahk_id " hwnd)
