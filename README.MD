@@ -1,4 +1,4 @@
-﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or write me in Discord dm: @khivus.
+﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join Discord server](https://discord.gg/d9EzgUXnT6).
 
 <p align="center">
 <img width="702" height="662" alt="Image" src="https://github.com/user-attachments/assets/3ba8c1ce-250d-4f30-a284-13c196a5b2be" />
