@@ -1,4 +1,4 @@
-# v1.5.1.15
+# v1.5.1.28
 
 ### Changes
 * Customizable tray menu items.
@@ -10,10 +10,12 @@
 * Added dont close active client for close all active clients.
 * Added hotkey to disable char in hotkey group by shift+clicking it.
 * Added Show Thumbnails Always on Top and Don't close active client to tray menu items.
+* Rewrited about page.
+* Rewrited updating logic.
 * Added Game Logs Monitoring with supported events:
     * Stopped Shooting,
-    * Under Attack By Player,
-    * Under Attack By NPC,
+    * Under Attack by Player,
+    * Under Attack by NPC,
     * Engaged With Faction BS NPC,
     * Engaged With Officer NPC,
     * Engaged With Capital NPC,
@@ -34,11 +36,9 @@ Enabling more options decreases performance. The effect increases with the numbe
 
 ### Other
 * Settings restarts program only when they changed.
-* Added migration that changes all character names with prefix "EVE - ". This needed for Non-EVE apps working together with usual eve windows
-* Wider some edit boxes
-* Optimized thubmnail border activation
-* Removed direct character hotkeys from default override
-* Thumbnail active border now triggers not every program tick, but only on win activation
+* Added migration that changes all character names with prefix "EVE - ". This needed for Non-EVE apps working together with usual eve windows.
+* Wider some edit boxes.
+* Removed direct character hotkeys from default override.
 
 # v1.5.0.7
 

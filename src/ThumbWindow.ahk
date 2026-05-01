@@ -271,6 +271,9 @@ Class ThumbWindow extends Propertys {
                 Wh := This.ThumbnailMinimumSize["height"]
             }
 
+            if !This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[hwnd]) || !IsObject(This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%)
+                continue
+
             for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]% {
                 WinMove(, , Wn, Wh, v.hwnd)
             }
@@ -279,7 +282,7 @@ Class ThumbWindow extends Propertys {
 
             if (!GetKeyState("LCtrl")) {
                 for ThumbIDs in This.ThumbHwnd_EvEHwnd {
-                    if (ThumbIDs == This.ThumbHwnd_EvEHwnd[hwnd])
+                    if (ThumbIDs == This.ThumbHwnd_EvEHwnd[hwnd]) || !This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[ThumbIDs])
                         continue
                     for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[ThumbIDs]% {
                         if k = "Window"
@@ -391,27 +394,29 @@ Class ThumbWindow extends Propertys {
     }
 
     Update_Thumb(AllOrOne := true, ThumbHwnd?) {
-        If (AllOrOne && !IsSet(ThumbHwnd)) {
-            for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
-                for Name, Obj in ThumbObj {
-                    if (Name = "Window") {
-                        WinGetPos(, , &TWidth, &THeight, Obj.Hwnd)
-                        WinGetClientPos(, , &EWidth, &EHeight, "Ahk_Id" EvEHwnd)
-                        ThumbObj["Thumbnail"].Source := [0, 0, EWidth, EHeight]
-                        ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
-                        ThumbObj["Thumbnail"].Update()
+        try {
+            If (AllOrOne && !IsSet(ThumbHwnd)) {
+                for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
+                    for Name, Obj in ThumbObj {
+                        if (Name = "Window") {
+                            WinGetPos(, , &TWidth, &THeight, Obj.Hwnd)
+                            WinGetClientPos(, , &EWidth, &EHeight, "Ahk_Id" EvEHwnd)
+                            ThumbObj["Thumbnail"].Source := [0, 0, EWidth, EHeight]
+                            ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
+                            ThumbObj["Thumbnail"].Update()
+                        }
                     }
                 }
             }
-        }
-        else {
-            If (IsSet(ThumbHwnd)) {
-                WinGetPos(, , &TWidth, &THeight, ThumbHwnd)
-                WinGetClientPos(, , &EWidth, &EHeight, This.ThumbHwnd_EvEHwnd[ThumbHwnd])
-                ThumbObj := This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[ThumbHwnd]%
-                ThumbObj["Thumbnail"].Source := [0, 0, EWidth, EHeight]
-                ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
-                ThumbObj["Thumbnail"].Update()
+            else {
+                If (IsSet(ThumbHwnd)) {
+                    WinGetPos(, , &TWidth, &THeight, ThumbHwnd)
+                    WinGetClientPos(, , &EWidth, &EHeight, This.ThumbHwnd_EvEHwnd[ThumbHwnd])
+                    ThumbObj := This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[ThumbHwnd]%
+                    ThumbObj["Thumbnail"].Source := [0, 0, EWidth, EHeight]
+                    ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
+                    ThumbObj["Thumbnail"].Update()
+                }
             }
         }
     }

@@ -841,8 +841,11 @@
                             This.Window_Snap(hwnd, This.ThumbWindows)
                         }
                     }
-                    else
-                        This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
+                    else {
+                        try
+                            This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
+
+                    }
                 }
 
                 if This.AutoSaveThumbnailPositions ; Positions autosave
