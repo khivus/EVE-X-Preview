@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "1",
+    "settings_version": "2",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -18,6 +18,7 @@
                 ],
                 "Minimize_Delay": 100,
                 "DontCloseOnLoginScreen": 0,
+                "dontCloseActiveClient": 0,
                 "DontCloseClients" : [
                     "Example Name1",
                     "Example Name2",
@@ -43,26 +44,27 @@
                 "ShiftThumbVerticalStep": 0,
                 "PreserveThumbPosOnLogout": 1,
                 "PreserveCharNameOnLogout": 0,
-                "AutoSaveThumbnailPositions": 0,
-                "HideThumbnails": 0
+                "AutoSaveThumbnailPositions": 1,
+                "HideThumbnails": 0,
+                "ClickThroughActive": 0
             },
             "Thumbnails Visuals": {
                 "ShowThumbnailTextOverlay": 1,
-                "ThumbnailTextColor":"#FAC57A",
+                "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
                 "ThumbnailTextFont": "Gill Sans MT",
                 "ThumbnailTextMargins": {
-                    "x": 15,
+                    "x": 10,
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,
-                "ClientHighligtColor": "#E36A0D",
+                "ClientHighligtColor": "E36A0D",
                 "ClientHighligtBorderthickness": 4,
                 "ThumbnailOpacity": 80,
                 "ShowAllColoredBorders": 0,
                 "InactiveClientBorderthickness": 2,
-                "InactiveClientBorderColor": "#8A8A8A",
-                "ThumbnailBackgroundColor":"#57504E",
+                "InactiveClientBorderColor": "8A8A8A",
+                "ThumbnailBackgroundColor":"57504E",
                 "ThumbnailMinimumSize": {
                     "width": 50,
                     "height": 50
@@ -85,7 +87,10 @@
                     {"Example Name4":"^XButton1 & 1"}
                 ],
                 "GroupsHoldDelay": 100,
-                "HideThumbnailsHotkey": ""
+                "HideThumbnailsHotkey": "",
+                "ClickThroughHotkey": "",
+                "dynamicGroupsEnabled": 1,
+                "dynamicGroupsColor": "ff0000"
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -102,7 +107,6 @@
             },
             "Other": {
                 "SwitchLangOnErr": 0,
-                "Check_Updates": 1,
                 "Global_Groups": {
                     "Client Settings": 0,
                     "Thumbnails Behavior": 0,
@@ -110,7 +114,70 @@
                     "Hotkeys Settings": 0,
                     "Thumbnail Visibility": 0,
                     "Custom Colors": 0,
-                    "Other": 0
+                    "Game Logs Monitoring": 0,
+                    "Monitored Events": 0,
+                    "Tray Menu Settings": 0,
+                    "Other": 0,
+                    "Hotkey Groups": 0,
+                    "Non-EVE Applications": 0
+                }
+            },
+            "Tray Menu Settings": {
+                "TrayMenuShortcuts": {
+                    "Suspend Hotkeys": 1,
+                    "Hide Thumbnails": 1,
+                    "Minimize Inactive Clients": 0,
+                    "Close all EVE Clients": 1,
+                    "Restore Client Positions": 1,
+                    "Save Client Positions": 1,
+                    "Auto Save Thumbnail Positions": 1,
+                    "Save Thumbnail Positions": 1,
+                    "Click Through Thumbnails": 0,
+                    "Show Thumbnails Always on Top": 0,
+                    "Don't Close Active Client": 0
+                }
+            },
+            "Non-EVE Applications": {
+                "NonEVEGroups": {},
+                "NonEVEHotkeys": {
+                "exe": ["App1.exe"], 
+                "title": ["Titel"], 
+                "hotkey": ["*^!Tab"]
+                }
+            },
+            "Game Logs Monitoring": {
+                "gameLogsMonitoringEnabled": 0,
+                "monitoringInterval": 1000,
+                "gameLogsDirectory": "",
+                "charsIds": {},
+                "monitorOnlySelectedChars": 0,
+                "charsToMonitor": [],
+                "lastEventPriority": 1,
+                "supressForFocused": 1, 
+                "showEventText": 0,
+                "flashBorderEnabled": 1,
+                "stopDisplayingOnSwitch": 1,
+                "eventDisplayDuration": 2000,
+                "flashBorderInterval": 300,
+                "shootingInterval": 10000,
+                "monitoredEvents": {
+                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000"},
+                    "underAttackByNPC": {"enabled": 0, "color": "ff8800"},
+                    "engagedWithFactionBSNPC": {"enabled": 0, "color": "11470d"},
+                    "engagedWithOfficerNPC": {"enabled": 0, "color": "340e73"},
+                    "engagedWithCapitalNPC": {"enabled": 0, "color": "ffd700"},
+                    "warpDisrupted": {"enabled": 0, "color": "ff0000"},
+                    "fleetInvited": {"enabled": 0, "color": "2196f3"},
+                    "fleetWarped": {"enabled": 0, "color": "ffeb3b"},
+                    "fleetRegrouped": {"enabled": 0, "color": "ffeb3b"},
+                    "decloaked": {"enabled": 0, "color": "ff0000"},
+                    "convoRequest": {"enabled": 0, "color": "2196f3"},
+                    "conduited": {"enabled": 0, "color": "ffeb3b"},
+                    "gateJumped": {"enabled": 0, "color": "2196f3"},
+                    "crystalBroke": {"enabled": 0, "color": "63f321"},
+                    "miningStopped": {"enabled": 0, "color": "63f321"},
+                    "miningBayIsFull": {"enabled": 0, "color": "63f321"},
+                    "stoppedShooting": {"enabled": 0, "color": "ff8800"}
                 }
             }
         }

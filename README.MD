@@ -1,242 +1,339 @@
-﻿## If you found bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join Discord server](https://discord.gg/d9EzgUXnT6).
+﻿## If you found a bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join the Discord server](https://discord.gg/d9EzgUXnT6).
 
 <p align="center">
-<img width="702" height="662" alt="Image" src="https://github.com/user-attachments/assets/3ba8c1ce-250d-4f30-a284-13c196a5b2be" />
+<img width="702" height="738" alt="Image" src="https://github.com/user-attachments/assets/40e1f9ea-7555-4d7d-b91d-7c42c66e791b" />
 </p>
 
+## Before running the program
 
+Before first use, I suggest creating a backup of your settings. The program creates a backup when settings are migrated, but it is still a good idea to make one manually.
 
-## Don't forget to add * in the beggining of every hotkey!
+I suggest adding `*` at the beginning of every hotkey used for window activation.
 
-# v1.5.0.7
+I care a lot about performance, so if you disable some features, the program will stop checking for unnecessary things.
 
-### Changes
-* Redone all settings GUI.
-* Added override settings from default profile to all others.
-* Added Update All Thumbnails button that updates all thumbnail sizes to default one.
-* Added Auto Save Thumbnail Positions.
-* Added Report Bug button that opens GitHub issues.
-* Added buttons to import characters names from launched game windows.
-* Added Rename profile button.
-* Added Keep Hotkey Group Position.
-* Added customizable Hotkey Groups Hold Delay with default 100 ms and minimum 75 ms.
-* Added Hide Thumbnails toggle in tray menu and hotkey to it.
-* Added Exclude from Closing profile settings group and Hide Thumbnails on Lost Focus setting in tray menu.
+# EVE-X-Preview
 
-### Other
-* Improved update checking logic.
-* Optimized some functions.
-* Moved Exclude from Closing to Client Settings group.
-* Moved Preserve Hotkeys on Logout to Hotkeys Groups.
-* Simplified + optimized windows switching logic.
+EVE-X-Preview is a Windows tool for EVE Online that helps manage multiple clients.
+It shows thumbnails of running EVE clients and lets you bring a client to the foreground by clicking its thumbnail or using a hotkey.
+Mouse and keyboard input are supported for interaction.
 
-# What’s New in v1.4.1.2 and earlier
-{Setting Name} = {Default Value}. {Description}.
-### Hotkeys and Management
-* __Cycle Login Screens – Hotkey__ = _Empty_. Login (character selection) screen windows sorted by process time (powered by __*bubble sort!!!*__). 
-* __Login Screen Cycle Direction__ = _Old->New_. Direction for Cycle Login Screens. Old->New means the first window launched will be the first in the list and other way around.
-* __Close Active EVE Window – Hotkey__ = _Empty_. This hotkey closes active EVE client.
-* __Close All EVE Windows – Hotkey__ = _Empty_. This hotkey closes all EVE clients.
-* __Reload EVE-X-Preview – Hotkey__ = _Empty_. This hotkey reloads EVE-X-Preview.
+The program supports multiple profiles, so you can quickly switch hotkey assignments, thumbnail positions, and color settings.
 
-### Thumbnail Settings
-* __Hide Thumbnail for Active Window__ = _False_. When you activate the EVE window, its thumbnail will be hidden.
+## What it does
 
-### Shifting Thumbnails
-* __Shift Thumbnails on Login Screen__ = _True_. When a new thumbnail is created it shifts from the default position by a set amount of pixels.
-* __Enable Thumbnail Collision Avoidance__ = _True_. When "Shift Thumbnails on Login Screen" is enabled, it checks for collisions in the next position, including width and height of thumbnails. Also it will fill "gaps" between thumbnails.
-* __Thumbnail Shift Direction__ = _right->left, top->bottom_. There are all eight possible stack directions. If you "touch" the screen edge, it will shift in the second direction.
-* __Thumbnail Shift Horizontal Step (px)__ = _0_. Horizontal step in pixels. If set to 0, the default thumbnail width will be used.
-* __Thumbnail Shift Vertical Step (px)__ = _0_. Vertical step in pixels. If set to 0, the default thumbnail height will be used.
+* Displays thumbnails for active EVE clients.
+* Brings an EVE client to the foreground with a hotkey, mouse click, or window action.
+* Supports full keyboard and mouse interaction.
+* Lets you create multiple profiles.
+* Lets you customize text, borders, font, opacity, colors, and placement.
+* Supports different thumbnail sizes.
+* Supports hotkey groups.
+* Can save and restore client positions.
+* Includes a graphical interface for all settings.
 
-### Thumbnail Preservations
-* __Preserve Hotkeys on Logout__ = _False_. When you logout of your character, program saves your nickname and you still can use profile hotkeys on these windows. It also removes it from the "Cycle Login Screens" group.
-* __Preserve Character Name On logout__ = _False_. If enabled, your character name will still be visible on the thumbnail on the character selection screen after you logout.
-* __Preserve Thumbnail Position on Logout__ = _True_. If enabled, thumbnail will keep position after logout.
+## What it does not do
 
-### Other
-* __Switch Language to English on Error__ = _False_. __*This feature may be unstable. If program repeatedly restarts, disable it.*__ If you have multiple languages on your PC, you may encounter the error "Invalid key name". This function switches the language to English, but disables a few error messages for hotkey registration.
-* __Check for Updates on Startup__ = _True_. When program starts it compares version of app with [github latest release](https://github.com/khivus/EVE-X-Preview/releases/latest) version and if they are not equal it suggests to download and install update. All what user need to do is click "yes". After update, program will show message of successful installation.
-* __About button__. Shows program version and developers.
-* __Help button__. Opens link to [this page](https://github.com/khivus/EVE-X-Preview/blob/main/README.MD).
+* It does not broadcast keyboard or mouse input to multiple clients.
+* It does not send individual input to clients in the way input broadcasting tools do.
+* It does not display cropped client content as thumbnails.
+* It does not manipulate the game client itself.
 
-### Exclude from Closing category in Profiles settings
-Settings for not closing windows when you use "close all EVE Clients" in tray menu or keybind.
-* __Exclude on Login Screen__ = _False_. If True don't closes windows in login (character selection) screen.
-* __Don't Close Clients__ = _Empty_. List of character names (case sensitive) divided by new line that don't need to be closed.
+EVE-X-Preview does not interact directly with the game client. It only changes the foreground window using hotkeys and thumbnails.
+No features will be added now or in the future that intentionally break the EVE Online EULA or Terms of Service.
 
-## Changes
-* New version system 1.{Release}.{Pre Release}.{Hot Fix}. This is done to make "Check for Updates" feature possible.
-* Reorganized and renamed Global Settings.
-* Small Cycle Hotkey Groups optimization.
-* "Hide Thumbnail on Lost Focus" setting now also hides thumbnails in login screen.
-* Minimize Inactive Clients now also minimizes clients in login (character selection) screen. This can greatly improve performance on low-end PCs.
-* Added profiling testing for optimization checks.
-* Improved performance of main function by ~30-40%.
-* Added "Hide Thumbnails on Lost Focus" toggle to tray menu (QoL).
+## How to use
 
-##  EVE-X-Preview
+1. Download the `EVE-X-Preview.exe` from the [releases page](https://github.com/khivus/EVE-X-Preview/releases).
+2. Create a folder anywhere except Program Files or other protected program folders, then move `EVE-X-Preview.exe` into that folder.
+3. Start `EVE-X-Preview.exe`. It will create a JSON file in the same folder. This file must stay together with the executable because it stores all settings.
+4. A tray icon will appear in the bottom-right corner of the taskbar.
+5. Right-click the tray icon and choose **Open**, or double-click it, then go to **Profile Settings** and create a new profile or edit default one.
+6. Configure the settings as needed.
 
-EVE-X-Preview is a tool for Windows for the game EVE Online that makes it easy to manage and use multiple EVE clients. 
-It allows displaying thumbnails of the running EVE clients and bringing EVE clients to the foreground with a click on the thumbnail or with a set hotkey. <br>
-Mouse and keyboard buttons are supported.
+`Important Note:`
+`Some settings require a restart of the tool. The settings window must be closed before those changes are applied.`
 
-It is possible to create multiple profiles to quickly change the hotkey assignments, thumbnail position, and color adjustments.
+## Run from source
 
-
-**In summary, this tool offers the following features:**
-
-* Display thumbnails of active EVE clients.
-* Bring an EVE client to the foreground with a hotkey, including full keyboard and mouse support.
-* Create multiple profiles.
-* Customize text color, size, borders, font, and position.
-* Display thumbnails of varying sizes.
-* Create hotkey groups.
-* Save EVE client positions and restore them.
-* Graphical user interface to configure all settings
-
-
-**The following is not supported**
-* The simultaneous sending of keyboard or mouse inputs to multiple EVE clients, also known as input broadcasting.
-* Sending individual keyboard or mouse inputs.
-* Displaying excerpts from the client as thumbnails.
-* Manipulating EVE clients. 
-
-#### EVE-X-Preview does not interact directly with the game clients in any way. It only allows changing the foreground window with the help of hotkeys and thumbnails. <br> No features will be added now or in the future who intentionally break the EULA and Terms of Service of EVE Online. 
-
-
-
-## How To Use
-
-1. Download the EXE file from here https://github.com/g0nzo83/EVE-X-Preview/releases
-2. Create a new Folder on Dektop or in Documents or where you like with the exception of the Programs folders. And move EVE-X-Preview.exe to the created folder.
-3. Start EVE-X-Preview.exe. It should create a json file. This file must always be in the same folder as EVE-X-Preview.exe. It contains all your settings 
-4. A tray icon should then appear at the bottom right of the taskbar. Right-click on it to access the settings. 
-5. Right Click on the Tryicon and klick "Open" or double klick it and klick on "Profile Settings" create a new Profile.
-6. From here on you can adjust as you like
-
-`Important Note:`  <br> `Some settings require a restart of the tool. The settings window must be closed so that the settings made there are applied`
-
-## Run from Source
-
-1. Download and install [Autohotkey v2](https://www.autohotkey.com/)
-2. Download the Zip file from https://github.com/g0nzo83/EVE-X-Preview/releases
-3. Unpack the Zip file and Run the file `Main.ahk`
+1. Download and install [AutoHotkey v2](https://www.autohotkey.com/).
+2. Download the ZIP archive from the [releases page](https://github.com/khivus/EVE-X-Preview/releases).
+3. Extract the archive and run `Main.ahk`.
 
 ## Will I get banned if I use it?
-As I understand the EVE Online EULA and Terms of Service, this tool does not break any rules. <br>
-Since EVE-X-Preview uses the same methods as [EVE-O Preview](https://github.com/EveOPlus/eve-o-preview), another tool which offers similar functions and is permitted, I assume that this also applies to EVE-X-Preview. <br>
-Nevertheless I want to point out that the use of EVE-X-Preview or any other Thrid-Party tool is at your own risk. <br>
-**I assume no liability whatsoever**
 
-## Application Options
+As I understand the EVE Online EULA and Terms of Service, this tool does not break any rules.
+Since EVE-X-Preview uses the same method as [EVE-O Preview](https://github.com/EveOPlus/eve-o-preview), a similar tool that is permitted, I assume the same applies here.
+Nevertheless, using EVE-X-Preview or any other third-party tool is always at your own risk.
 
-### Mouse Gestures and Actions
+**I assume no liability whatsoever.**
 
-Mouse gestures are applied to the thumbnail window currently being hovered over.
+## Mouse gestures and actions
 
-| Action | Gesture |
-| --- | --- |
-| Activate the EVE Online client and bring it to front  | Left click the thumbnail |
-| Minimize the EVE Online client | Hold Control key and click the thumbnail |
-| Move thumbnail to a new position | Press right mouse button and move the mouse |
-| Move all thumbnails | Hold Control and right Mousebutton and move the mouse |
-| Adjust all thumbnails height and width | Press both left and right mouse buttons and move the mouse up or down |
-|Adjust a single thumbnails height and width | Hold Control and the right+left mouse button and move the mouse|
+Mouse gestures apply to the thumbnail window that is currently hovered.
 
-<br>
+| Action                                        | Gesture                                                       |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| Activate the EVE client and bring it to front | Left click the thumbnail                                      |
+| Minimize the EVE client                       | Hold `Ctrl` and click the thumbnail                           |
+| Move a thumbnail                              | Right-click and drag                                          |
+| Move all thumbnails                           | Hold `Ctrl` and right-click drag                              |
+| Resize all thumbnails                         | Press both left and right mouse buttons, then drag up or down |
+| Resize a single thumbnail                     | Hold `Ctrl` and press both mouse buttons, then drag           |
+| Disable thumbnail from hotkey group           | Hold `Shift` and click the thumbnail                          |
 
-### **Tray Menu - Settings**
+## Tray menu
 
-| Option | Description | 
-| --- | --- |
-| Open | Opens the settings window  |
-| Suspend Hotkeys | Deactivates the hotkeys |
-| Close all EVE clients | Closes all open EVE windows | 
-| Restore Client Positions | Toggles On/ Off <br> Restores the previously saved client positions automatically if activated  |
-| Save Client Positions | Saves the current position of all EVE clients so that they can be restored with Restore Client Positions <br> Positions are not saved automatically. If the position has been changed, it must be saved again |
-| Save Thumbnail Positions | Saves the current position of the thumbnails. Thumbnail positions are not saved automatically. If the position has been changed, it must be saved again |
-| Reload | If problems occur with the tool, it can simply be restarted with this option |
-| Exit | Exits the program |
+| Option                        | Description                                                          |
+| ----------------------------- | -------------------------------------------------------------------- |
+| Open                          | Opens the settings window                                            |
+| Select profile                | Selects settings profile and reloads program                         |
+| Suspend Hotkeys               | Disables all hotkeys                                                 |
+| Hide Thumbnails               | Hides all thumbnails                                                 |
+| Show Thumbnails Always on Top | Keeps thumbnails above other windows                                 |
+| Click Through Thumbnails      | Lets mouse clicks pass through thumbnails                            |
+| Minimize Inactive Clients     | Minimizes clients that are not active                                |
+| Don't Close Active Client     | Prevents the active client from being closed by the close-all action |
+| Close all EVE Clients         | Closes all open EVE windows                                          |
+| Restore Client Positions      | Restores previously saved client positions                           |
+| Save Client Positions         | Saves the current positions of all EVE clients                       |
+| Auto Save Thumbnail Positions | Saves thumbnail positions automatically                              |
+| Save Thumbnail Positions      | Saves the current thumbnail positions                                |
+| Reload                        | Restarts the program                                                 |
+| Exit                          | Closes the program                                                   |
 
-<br>
+## Hotkey and key syntax
 
-### **Global Settings**
-| Option | Description | 
-| --- | --- |
-| Suspend Hotkeys - Hotkey |Allows you to set a hotkey to su all active hotkeys. The tray icon changes when the pause is activated and a short message is displayed next to the cursor  |
-| Hotkey activation Scope | **Global: ->** Allows you to activate an EVE client with a hotkey regardless of which window you are in. <br><br> **If an EVE window is Active: ->** Activates the hotkeys only when any EVE Window is in the foreground|
-| Thumbnail Background Color | Setting the background color of the thumbnail. This is only visible if the content of the thumbnail is not visible, such as when the EVE window is minimized and the thumbnail was created afterwards <br> **HEX: ->** 0xFFFFFF or #FFFFFF or FFFFFF <br> **RGB: ->** 	RGB(225,255,255) or (225,255,255) or 225,255,255|
-| Thumbnail Default Location | Setting the dafault thumbnail position such as the thumbnail of the character selection screen |
-| Thumbnail Minimum Size | Allows you to set a minimum size of the thumbnail to prevent it from becoming too small to edit |
-| Thumbnail Snap | Allows you to switch the automatic alignment of the thumbnails to each other to On or Off |
-| Thumbnail Snap Distance | Defines the range up to which the thumbnails automatically align with each other. <br> This only has an effect when Thumbnail Snap is activated |
-| Minimize EVE Window Delay | Sets the delay before an inactive client is minimized after another one has been activated. This option is only used if "Minimize Inactive Client" has been activated |
+Hotkeys use AutoHotkey v2 syntax.
+For a detailed reference, see [Hotkey Modifier Symbols](https://www.autohotkey.com/docs/v2/Hotkeys.htm#Symbols) and [List of Keys](https://www.autohotkey.com/docs/v2/KeyList.htm).
 
-<br>
+A few useful rules:
 
-### **Profile Settings - Client Settings**
-| Option | Description |
-| --- | --- |
-| Minimize Inactive Clients | If this option is activated, all inactive clients are minimized if they are not entered in the "Dont Minimize Clients" list  |
-| Always Maximize Clients | Thumbnails width. Can be set to any value from **100** to **640** points |
-| Thumbnail Height | This is an important option. This means that the client is always maximized. This largely prevents the overview of the EVE client from shifting when the PC is on heavily load |
-| Dont Minimize CLients| All EVE character names entered here are exempt from minimization. This is useful if you always need a current preview image of the client. Since a preview image of a minimized client can only be shown frozen  |
+* Simple hotkeys can be a key name or a key code, for example `1`, `Tab`, `LButton`, `XButton1`, or `Ctrl`.
+* Modifier prefixes can be combined, for example `^1`, `+1`, `#1`, or `!1`.
+* Prefix form can stack, for example `+^1` means Shift+Ctrl+1.
+* The `*` prefix allows a hotkey to trigger even when another key is held.
+* Using a mouse button as a simple hotkey is not recommended because it may block normal mouse use.
 
-### **Profile Settings - Custom Colors**
-| Allows you to set custom colors for the font and borders|
-| --- |
-| The supported syntax is: <br>HEX: -> 0xFFFFFF or #FFFFFF or FFFFFF <br> RGB: -> RGB(225,255,255) or (225,255,255) or 225,255,255|
+## Settings overview
 
-**Inactive Border Color will only take effect if the settings "Show All Borders" is selected in "Thumbnail Settings" <br> This overwrites the color in "Inactive Client Border Color" for the specified characters.**
+### Profile selector and group navigation
 
-<br>
+The left panel contains the profile selector and profile management buttons:
 
+* Add profile
+* Rename profile
+* Delete profile
 
-### **Profile Settings - Hotkey Groups**
-| Option | Description |
-| --- | --- |
-| Select Group | Enables the creation and deletion of hotkey groups. Each group must have a unique name  |
-| Hotkey Groups Text field| The character names that belong to the group are entered here. The names must be entered one below the other. The activation sequence is from top to bottom |
-| Forwards Hotkey <br> Backwards Hotkey | *Explanation of the hotkeys, see below* |
+It also contains buttons for settings groups. When you select a group, the main window shows the settings for that group.
 
-### **Profile Settings - Hotkeys**
-|**The character names must be entered one below the other and the corresponding hotkey on the opposite side <br> The same hotkey may only be assigned to one character!** <br> *Explanation of the hotkeys, see below*|
-|---|
+### Hotkey Groups
 
-### **Hotkeys - Explanation**
-There are several ways to specify hotkeys <br> For a detailed description you can have a look at the following pages <br> [Hotkey Modifier Symbols](https://www.autohotkey.com/docs/v2/Hotkeys.htm#Symbols) and [List Of Keys](https://www.autohotkey.com/docs/v2/KeyList.htm)
+Use hotkey groups to organize characters into ordered groups.
+The order in the list matters: top to bottom.
 
-| Hotkey | Description |
-| ---| --- |
-| 1 <br> 2 <br> Tab <br> ~ <br> Lbutton <br> Rbutton <br> Xbutton1 <br> Xbutton2 <br>Ctrl <br> Shift | These are simple hotkeys. They are defined by the letter itself or the name of the key. virtual key codes are also supported <br><br> It is not recommended to use the left or right mouse button as a simple hotkey. This would prevent you from being able to use the buttons. <br> These hotkeys can only be triggered when they are pressed alone. If another button is pressed that is not part of the hotkey, the hotkey is not triggered  |
-| ........Modifierkeys:.......... <br> ^1 = Ctrl & 1 <br> +1 = Shift & 1 <br> #1 = Win & 1<br> !1 = Alt & 1 | Both Hotkey combos are valid here. <br> the difference is that a hotkey defined with a prefix allows any number of prefixes, for example: <br>  `+^1` means Shift+Control+1 <br> while the assignment of 2 buttons as a hotkey is limited to 2  for example: <br> `Shift & Ctrl & 1` is not permitted <br> while these symbols are translated into Modifierkeys like `Ctrl`and `Shift` if used as a prefix but they do not mean it if they stand alone like: `+` alone means means the actual plus key   |
-| Special Prefix: <br> *1 | The `*` prefix allows the hotkey to be triggered even if it is pressed together with another button <br> This is a very useful prefix as you are not forced to press the additional key again like: <br> `*1`
+Settings in this group:
 
-### **Profile Settings - Thumbnail Settings**
-| Option | Description |
-| --- | --- |
-| Show Thumbnail Text Overlay | Shows or removes the character name on the thumbnail |
-| Thumbnail Text Color | Sets the color of the text of the character name on the thumbnail <br> The supported syntax is: <br> HEX: -> 0xFFFFFF or #FFFFFF or FFFFFF <br> RGB: -> RGB(225,255,255) or (225,255,255) or 225,255,255 |
-|Thumbnail Text Size | Changes the size of the text of the character name. |
-| Thumbnail Text Font | Changes the font of the text on the Thubnail. The font must be available in the Windows system. |
-| Thumbnail Text Margins | Changes the distance of the thumbnail text to the edges of the thumbnail |
-| Client Highlight Color | Changes the color of the color frame displayed on the thumbnail of the active client. <br> The supported syntax is: <br> HEX: -> 0xFFFFFF or #FFFFFF or FFFFFF <br> RGB: -> RGB(225,255,255) or (225,255,255) or 225,255,255|
-|Client Highlight Border thickness | Changes the thickness of color frame displayed on the thumbnail of the active client |
-| Show Client Highlight Border | Activates or deactivates the display of the color frame displayed on the thumbnail of the active client |
-| Hide Thumbnails on Lost Focus | If activated, the thumbnails are not displayed if no EVE client is in the foreground and active. |
-| Thumbnail Opacity | Sets the transparency of the thumbnail. The values are in percent from 0-100 |
-| Show Thumbnails AlwaysOnTop | If activated, the thumbnails are always displayed above all windows. |
-| Show All Borders | Displays a border around each thumbnail. The color and thickness is specified in the settings below. <br> Character specific colors can be set under Custom Colors setting. |
-|Inactive Client Border Thickness | Sets the size of the border that is displayed around the thumbnail for inactive clients |
-|Inactive Client Border Color | Sets the color of the border that is displayed around the thumbnail when the client is inactive <br> The supported syntax is: <br> HEX: -> 0xFFFFFF or #FFFFFF or FFFFFF <br> RGB: -> RGB(225,255,255) or (225,255,255) or 225,255,255|
+* Preserve Hotkeys on Logout: keeps hotkeys assigned after character logout.
+* Keep Groups Positions: keeps group positions when switching from one group to another.
+* Disable Char in Group (Shift+Click): lets you disable a character in a group with Shift+Click.
+* Disabled Thumbnail Color (Hex/RGB): color used for disabled thumbnails.
+* Groups Hold Delay (ms): delay used when holding group actions. Minimum is 75 ms.
+* Add/Delete Groups: create or remove groups.
+* Select Group: choose the group to edit.
+* Forwards Hotkey: hotkey for moving forward through the group.
+* Backwards Hotkey: hotkey for moving backward through the group.
+* Characters List: list of characters in the group.
 
-### **Profile Settings - Thumbnail Visibility**
-|The thumbnails of the selected characters are not displayed |
-|---|
+### Hotkeys Settings
 
+This group controls global hotkeys and client actions.
 
+* Suspend All Hotkeys - Hotkey: pauses all hotkeys.
+* Hide Thumbnails Hotkey: toggles thumbnail visibility.
+* Click Through Thumbnails - Hotkey: toggles click-through mode.
+* Hotkey Activation Scope: chooses between global hotkeys or hotkeys active only when an EVE window is focused.
+* Cycle Login Screens - Hotkey: cycles through login-screen windows.
+* Login Screen Cycle Direction: chooses old-to-new or new-to-old order.
+* Close Active EVE Window - Hotkey: closes the currently active EVE window.
+* Close All EVE Windows - Hotkey: closes all EVE windows.
+* Reload EVE-X-Preview - Hotkey: reloads the program.
+* Character Name: character bound to the hotkey entry.
+* Hotkeys: hotkeys assigned to the character.
 
-## About
-EVE-X-Preview is Created and Maintained by [g0nzo83](https://github.com/g0nzo83) also known as "*John Xer*" in EVE Online
-Forked and updated by [khivus](https://github.com/khivus) same name in EVE Online: [Khivus](https://evewho.com/character/2121577034)
+### Thumbnails Behavior
+
+This group controls thumbnail placement, movement, and visibility behavior.
+
+* Auto Save Thumbnail Positions: saves thumbnail positions automatically on thumbnail move or resize.
+* Hide Thumbnails: hides all thumbnails.
+* Hide Thumbnails on Lost Focus: hides thumbnails when no EVE client is active.
+* Show Thumbnails Always on Top: keeps thumbnails above other windows.
+* Click Through Thumbnails: lets clicks pass through thumbnails.
+* Default Thumbnail Position (px): default X/Y position.
+* Default Thumbnail Size (px): default width and height.
+* Enable Thumbnail Snap: enables thumbnail snapping.
+* Thumbnail Snap Distance (px): snap threshold in pixels.
+* Hide Thumbnail for Active Window: hides the thumbnail of the active client.
+* Shift Thumbnails on Login Screen: offsets new thumbnails from the default position.
+* Enable Thumbnail Collision Avoidance: prevents thumbnails from overlapping while shifting.
+* Thumbnail Shift Direction: stacking direction for new thumbnails.
+* Thumbnail Shift Horizontal Step (px): horizontal shift step; `0` uses thumbnail width.
+* Thumbnail Shift Vertical Step (px): vertical shift step; `0` uses thumbnail height.
+* Preserve Character Name on Logout: keeps the name visible after logout.
+* Preserve Thumbnail Position on Logout: keeps the thumbnail position after logout.
+
+### Thumbnails Visuals
+
+This group controls how thumbnails look.
+
+* Show Thumbnail Text Overlay: shows or hides the character name on the thumbnail.
+* Thumbnail Text Color (Hex/RGB): text color.
+* Thumbnail Text Size: text size.
+* Thumbnail Text Font: font used for thumbnail text.
+* Thumbnail Text Margins (px): text padding inside the thumbnail.
+* Client Highlight Color (Hex/RGB): border color for the active client.
+* Client Highlight Border Thickness (px): thickness of the active-client border.
+* Show Client Highlight Border: shows or hides the active-client border.
+* Thumbnail Opacity (%): thumbnail transparency.
+* Show All Borders: shows borders around every thumbnail.
+* Inactive Client Border Thickness (px): thickness of inactive-client borders.
+* Inactive Client Border Color (Hex/RGB): border color for inactive clients.
+* Thumbnail Background Color (Hex/RGB): background color used when thumbnail content is not available.
+* Minimum Thumbnail Size (px): minimum allowed thumbnail size.
+
+### Thumbnail Visibility
+
+This group controls whether selected client thumbnails are hidden.
+
+* Select Any Client to Hide The Thumbnail: choose a client to hide.
+
+### Client Settings
+
+This group controls EVE client behavior.
+
+* Minimize Inactive Clients: minimizes clients that are not active.
+* Always Maximize Clients: keeps clients maximized.
+* EVE Window Minimize Delay (ms): delay before minimizing an inactive client.
+* Don't Close Clients on Login Screen: excludes login-screen windows from close actions.
+* Don't Close Active Client: excludes the active client from close actions.
+* Don't Minimize Clients: list of clients that should never be minimized.
+* Don't Close Clients: list of clients that should never be closed.
+
+### Custom Colors
+
+Use this group to assign per-character colors.
+
+* Custom Colors Active: enables or disables custom colors.
+* Character Name: character this color profile applies to.
+* Active Border Color: custom border color for the active client.
+* Text Color: custom text color.
+* Inactive Border Color: custom border color for inactive clients.
+
+### Game Logs Monitoring
+
+This feature does not violate the EULA or Terms of Service, but it is neither endorsed nor supported by CCP. Use it at your own risk.
+Performance impact increases with the number of characters tracked at the same time.
+
+* Game Logs Monitoring Enabled: turns log monitoring on or off.
+* Game Logs Directory: path to the EVE log folder.
+* Monitoring Interval (ms): polling interval.
+* Event Priority if Several Incoming: chooses whether the first or last event wins.
+* Supress for Focused Window: suppresses events for the active window.
+* Show Event Text: shows event text in the UI.
+* Flash Border: flashes the border on an event.
+* Stop Displaying Event on Switch: stops showing the event after switching.
+* Event Display Duration (ms): how long the event remains visible.
+* Flash Border Interval (ms): flash timing (if `Flash Border Interval` = `Event Display Duration` border will not flash, but just stay with set color for specified time).
+* Monitor Only Selected Characters: limits monitoring to selected characters.
+* Characters to Monitor: list of monitored characters.
+
+### Monitored events
+
+Monitored events for Game Logs Monitoring feature.
+Enabling more events reduces performance. The effect becomes larger as more characters are tracked.
+
+* Stopped Shooting
+* Under Attack By Player
+* Under Attack By NPC
+* Engaged With Faction BS NPC
+* Engaged With Officer NPC
+* Engaged With Capital NPC
+* Warp Disrupted
+* Decloaked
+* Gate Jumped
+* Convo Request
+* Fleet Invited
+* Fleet Warped
+* Fleet Regrouped
+* Conduited
+* Crystal Broke
+* Mining Stopped
+* Mining Bay Is Full
+
+### Non-EVE Applications
+
+This section lets you add non-EVE apps by exact executable name, and optionally by window title for better matching.
+The thumbnail appears for the app, and the assigned hotkey can activate it.
+
+* Add/Delete Groups: create or remove app groups.
+* Select Group: choose the app group to edit.
+* Forwards Hotkey: hotkey for forward group cycling.
+* Backwards Hotkey: hotkey for backward group cycling.
+* Process Names (.exe): executable names to match.
+* Titles (optional): optional window titles to match.
+* Hotkeys: hotkeys assigned to the app group.
+
+### Tray Menu Settings
+
+Choose which entries appear in the tray menu.
+
+* Suspend Hotkeys.
+* Hide Thumbnails.
+* Show Thumbnails Always on Top.
+* Click Through Thumbnails.
+* Minimize Inactive Clients.
+* Don't Close Active Client.
+* Close all EVE Clients.
+* Restore Client Positions.
+* Save Client Positions.
+* Auto Save Thumbnail Positions.
+* Save Thumbnail Positions.
+
+### Other
+
+* Switch Language to English on Error: switches the Windows language to English if hotkey assigning error occurs.
+* Update all thumbnails size to default size: use this button to update every thumbnail size to the current default size.
+
+### Profile override behavior
+
+Some settings groups can be overridden from the default profile to every other profile.
+Each profile can also disable that override, which makes that group unique for that profile.
+
+* Hotkey Groups: include the hotkey groups section in overrides.
+* Hotkeys Settings: include hotkeys settings in overrides.
+* Thumbnails Behavior: include thumbnail behavior settings in overrides.
+* Thumbnails Visuals: include thumbnail visuals settings in overrides.
+* Thumbnail Visibility: include thumbnail visibility settings in overrides.
+* Client Settings: include client settings in overrides.
+* Custom Colors: include custom colors in overrides.
+* Game Logs Monitoring: include game log monitoring in overrides.
+* Non-EVE Applications: include non-EVE applications in overrides.
+* Monitored Events: include monitored event settings in overrides.
+* Tray Menu Settings: include tray menu settings in overrides.
+* Other: include other settings in overrides.
+
+### About
+
+Buttons:
+* Check Updates: click to checks aviable updates.
+* Update to Release: after update checking can use for update/downgrade to latest release version.
+* Update to Pre-Release: after update checking can use for update/downgrade to latest pre-release version.
+* Help: opens this README page.
+* Report Bug: opens [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) page.
+
+### EVE-X-Preview
+
+* Created by [gonzo83](https://github.com/g0nzo83/EVE-X-Preview)
+* Forked and maintained by [khivus](https://github.com/khivus)
+* Credits to [mrmjstc](https://github.com/mrmjstc/eve-apm-preview) and [CJKondur](https://github.com/CJKondur/EVE-MultiPreview)

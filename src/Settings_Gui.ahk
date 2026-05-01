@@ -2,10 +2,9 @@
 
     MainGui() {
         ;if settings got chnaged which require a restart to apply
-        This.NeedRestart := 1
+        This.NeedRestart := 0
 
         SetControlDelay(-1)
-        ; This.S_Gui := Gui("+OwnDialogs +MinimizeBox -Resize -MaximizeBox SysMenu +MinSize500x250")
         This.S_Gui := Gui("+OwnDialogs -MinimizeBox -Resize -MaximizeBox SysMenu")
         This.S_Gui.Title := "EVE-X-Preview - Settings"
 
@@ -21,7 +20,12 @@
         This.ThumbnailsBehavior_Ctrl()
         This.ThumbnailsVisuals_Ctrl()
         This.ThumbnailVisibility_Ctrl()
+        This.GameLogsMonitoring_Ctrl()
+        This.MonitoredEvents_Ctrl()
+        This.NonEVEApps_Ctrl()
+        This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
+        This.About_Ctrl()
 
         This._Button_Load()
         ControlClick(This.firstBtn)
@@ -40,11 +44,27 @@
     }
 
     SetState() {
+        This.profilesGroups := [
+            "Hotkey Groups",
+            "Hotkeys Settings",
+            "Thumbnails Behavior",
+            "Thumbnails Visuals",
+            "Thumbnail Visibility",
+            "Client Settings",
+            "Custom Colors",
+            "Game Logs Monitoring",
+            "Monitored Events",
+            "Non-EVE Applications",
+            "Tray Menu Settings",
+            "Other",
+            "About"
+        ]
+
         This.baseGrid := 8
         This.contentGap := 16
 
         This.guiWidth := 700
-        This.guiHeight := 630
+        This.guiHeight := 160 + (This.profilesGroups.Length * 42) ; Dynamic height size! Depends on buttons count
 
         This.btnH := 32
         This.objH := 20
@@ -58,22 +78,21 @@
         This.lGap := 24
         This.xlGap := 32
         This.editW := 160
+        This.captBtnW := 60
+        This.captBtnH := 26
+        This.editHtkW := This.editW - This.captBtnW - This.baseGrid
+        This.editExW := 197
+        This.editEx2W := 250
         This.editH := 200
         This.editOffset := 3
         This.offsetX := 250
         This.editExH := 300
         This.sepW := This.contentW - This.contentGap * 2 + 2
+        This.cPreviewSize := 24
+        This.editC := This.editW - This.cPreviewSize - This.baseGrid
 
-        This.directions := Map(
-            1, "left -> right, top -> bottom",
-            2, "left -> right, bottom -> top",
-            3, "right -> left, top -> bottom",
-            4, "right -> left, bottom -> top",
-            5, "top -> bottom, left -> right",
-            6, "top -> bottom, right -> left",
-            7, "bottom -> top, left -> right",
-            8, "bottom -> top, right -> left"
-        )
+        This.latestReleaseTag := ""
+        This.latestPreReleaseTag := ""
     }
 
     CreateSidebar() {
@@ -91,7 +110,7 @@
 
         This.Sidebar.Add("Text", Format("xs yp+{}", This.btnH + This.contentGap), "Select a settings group")
 
-        for index, btn_text in This._ProfileProps {
+        for index, btn_text in This.profilesGroups {
             if index == 1 {
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.contentGap, This.sidebarInnerW, This.btnH), btn_text)
                 This.firstBtn := btn
@@ -100,10 +119,6 @@
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.btnH + This.baseGrid, This.sidebarInnerW, This.btnH), btn_text)
             btn.OnEvent("Click", (Obj, *) => This.SettingsGroup_Handler(Obj))
         }
-
-        This.Sidebar.Add("Button", Format("xp y{} w{} h{}", This.guiHeight - This.contentGap - This.btnH, This.sidebarInnerW, This.btnH) " vAbout_Button", "About").OnEvent("Click", (*) => This.About_Button_Handler())
-        This.Sidebar.Add("Button", Format("xp yp-{} w{} h{}", This.btnH + This.baseGrid, (This.sidebarInnerW - This.baseGrid) / 2, This.btnH) " vHelp_Button", "Help").OnEvent("Click", (*) => This.Help_Button_Handler())
-        This.Sidebar.Add("Button", Format("xp+{} yp w{} h{}", (This.sidebarInnerW - This.baseGrid) / 2 + This.baseGrid, (This.sidebarInnerW - This.baseGrid) / 2, This.btnH) " vReportBugBtn", "Report Bug").OnEvent("Click", (*) => This.Report_Bug_Button_Handler())
 
         This.SelectProfile_DDL.Choose(This.LastUsedProfile)
         This.SelectProfile_DDL.OnEvent("Change", (obj,*) => This._Button_Load(Obj))
@@ -134,36 +149,8 @@
         This.S_Gui.Show()
     }
 
-    About_Button_Handler() {
-        Version := FileGetVersion(A_ScriptName)
-        static text := "EVE-X-Preview v" Version "`n`nCreated by gonzo83`nForked by khivus`n"
-        funny := "`nF`nu`nn`nn`ny"
-        text_len := StrLen(text)
-        funny_len := StrLen(funny)
-
-        if This.ThisThat && SubStr(text, text_len - funny_len + 1, funny_len) != funny
-            text := text . funny
-
-        what := MsgBox(text, "EVE-X-Preview - About", "CancelTryAgainContinue Iconi")
-
-        if what == "Cancel" || what == "Continue"
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        else if what == "TryAgain" {
-            This.ThisThat := !This.ThisThat
-
-            if not This.ThisThat
-                text := SubStr(text, 1, text_len - 1)
-
-            This.About_Button_Handler()
-        }
-    }
-
-    Help_Button_Handler() {
-        Run("https://github.com/khivus/EVE-X-Preview/blob/main/README.MD")
-    }
-
-    Report_Bug_Button_Handler() {
-        Run("https://github.com/khivus/EVE-X-Preview/issues/new")
+    createHtkCaptureBtn() {
+        return This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH), "Capture")
     }
 
     ClientSettings_Ctrl(visible?) {
@@ -186,13 +173,16 @@
         ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Clients on Login Screen:")
         ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseOnLoginScreen Checked" This.DontCloseOnLoginScreen, "On/Off")
 
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Minimize Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
-        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Active Client:")
+        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vdontCloseActiveClient", "On/Off")
 
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Don't Close Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
-        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW), "Import from Launched")
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Minimize Clients:")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
+        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
+
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Don't Close Clients:")
+        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
+        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
 
         This.MainFrame["MinimizeInactiveClients"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["AlwaysMaximize"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
@@ -201,6 +191,7 @@
         ClientSettings.Push ImpBtn1
         ImpBtn1.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["Dont_Minimize_Clients"]))
         This.MainFrame["DontCloseOnLoginScreen"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
+        This.MainFrame["dontCloseActiveClient"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
         This.MainFrame["DontCloseClients"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
         ClientSettings.Push ImpBtn2
         ImpBtn2.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["DontCloseClients"]))
@@ -227,12 +218,16 @@
             else if (obj.name = "Minimizeclients_Delay") {
                 This.Minimizeclients_Delay := obj.value
             }
-            if (obj.name = "DontCloseOnLoginScreen") {
+            else if (obj.name = "DontCloseOnLoginScreen") {
                 This.DontCloseOnLoginScreen := obj.value
+            }
+            else if (obj.name = "dontCloseActiveClient") {
+                This.dontCloseActiveClient := obj.value
             }
             else if (obj.name = "DontCloseClients") {
                 This.DontCloseClients := obj.value
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -250,18 +245,18 @@
         CustomColors.Push This.MainFrame.Add("CheckBox", Format("xs+{} yp", This.offsetX) " vCcoloractive Checked" This.CustomColorsActive, "On/Off")
 
         CustomColors.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Character Name:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCchars", This.CustomColors_AllCharNames)
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCchars", This.CustomColors_AllCharNames)
 
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editW), "Import from Launched")
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editExW), "Import from Launched")
 
-        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Active Border Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCBorderColor", This.CustomColors_AllBColors)
+        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Active Border Color:")
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCBorderColor", This.CustomColors_AllBColors)
 
         CustomColors.Push This.MainFrame.Add("Text", Format("x{} ys+{} Section", This.contentGap, This.editH + This.xlGap + This.btnH), "Text Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vCTextColor", This.CustomColors_AllTColors)
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vCTextColor", This.CustomColors_AllTColors)
 
-        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Inactive Border Color:")
-        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vIABorderColor", This.CustomColors_IABorder_Colors)
+        CustomColors.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Inactive Border Color:")
+        CustomColors.Push This.MainFrame.Add("Edit", Format("xp ys+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vIABorderColor", This.CustomColors_IABorder_Colors)
 
         This.MainFrame["Ccoloractive"].OnEvent("Click", (obj, *) => Cclors_Eventhandler(obj))
         This.MainFrame["Cchars"].OnEvent("Change", (obj, *) => Cclors_Eventhandler(obj))
@@ -286,7 +281,6 @@
                     obj.value := This.CustomColors_AllCharNames
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }
             else if (obj.Name = "CBorderColor") {
                 indexOld := This.IndexcBorder
@@ -295,7 +289,6 @@
                     obj.value := This.CustomColors_AllBColors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }
             else if (obj.Name = "CTextColor") {
                 indexOld := This.IndexcText
@@ -304,7 +297,6 @@
                     obj.value := This.CustomColors_AllTColors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }            
             else if (obj.Name = "IABorderColor") {
                 indexOld := This.IndexcText
@@ -313,8 +305,8 @@
                     obj.value := This.CustomColors_IABorder_Colors
                     ControlSend("^{End}", obj.Hwnd)
                 }
-                This.NeedRestart := 1
             }            
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -322,9 +314,8 @@
     HotkeyGroups_Ctrl() {
         This.MainFrame.Group["Hotkey Groups"] := [], Hotkey_Groups := []
 
-        btnW := (This.editW - This.baseGrid) / 2
+        btnW := ((This.editW - This.baseGrid) / 2) + 1
         btnEditH := 26
-
 
         This.MainFrame.SetFont("s12 w700 q5")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Hotkey Groups")
@@ -337,46 +328,56 @@
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Keep Groups Positions:")
         Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vKeepGroupsPositions Checked" This.KeepGroupsPositions, "On/Off")
 
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Disable Char in Group (Shift+Click):")
+        Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vdynamicGroupsEnabled", "On/Off")
+
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Disabled Thumbnail Color (Hex/RGB):")
+        Hotkey_Groups.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vdynamicGroupsColor -Wrap")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize) " vPreviewdynamicGroupsColor Border")
+
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Groups Hold Delay (ms):")
         Hotkey_Groups.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, 50) " vGroupsHoldDelay")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp+{} yp+{}", 50 + This.baseGrid, This.editOffset), "Minimum = 75")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Add/Delete Groups:")
-        addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX, 5, btnW, btnEditH), "Add")
+        addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 1, 5, btnW, btnEditH), "Add")
+        Hotkey_Groups.Push addBtn
         DeleteButton := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
+        Hotkey_Groups.Push DeleteButton
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Select Group:")
-        ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
+        ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
+        Hotkey_Groups.Push ddl
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
-        HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vForwardsKey")
+        HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vForwardsKey")
+        Hotkey_Groups.Push HKForwards
+        Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn1", "Capture")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
-        HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Disabled vBackwardsdKey")
+        HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vBackwardsdKey")
+        Hotkey_Groups.Push HKBackwards
+        Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn2", "Capture")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters List:")
-        EditBox := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX, This.editOffset, This.editW, This.editExH) " -Wrap Disabled vHKCharlist")
-
-        ImportBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editW) " Disabled vImpNamesBtn", "Import from Launched")
-
-        Hotkey_Groups.Push ddl
-        Hotkey_Groups.Push addBtn
-        Hotkey_Groups.Push DeleteButton
-        Hotkey_Groups.Push HKForwards
-        Hotkey_Groups.Push HKBackwards
+        EditBox := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editExH) " -Wrap vHKCharlist")
         Hotkey_Groups.Push EditBox
-        Hotkey_Groups.Push ImportBtn
+        Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editEx2W) " vImpNamesBtn", "Import from Launched")
 
         This.MainFrame["PreserveHotkeysOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["KeepGroupsPositions"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["dynamicGroupsEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["dynamicGroupsColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["GroupsHoldDelay"].OnEvent("Change", (obj, *) => EventHandler(obj))
-        This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards, ImportBtn))
+        This.MainFrame["HotkeyGroupDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditBox, HKForwards, HKBackwards,))
         addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditBox))
         DeleteButton.OnEvent("Click", (*) => Delete_Group(ddl, HKForwards, HKBackwards, EditBox))
         This.MainFrame["ForwardsKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
         This.MainFrame["BackwardsdKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
         This.MainFrame["HKCharlist"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
-        ImportBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(EditBox))
+        This.MainFrame["ImpNamesBtn"].OnEvent("Click", (obj, *) => This.ImportNamesFromThumbs(EditBox))
+        This.MainFrame["capGrHtkBtn1"].OnEvent("Click", (obj, *) => This.hotkeyCapture(HKForwards))
+        This.MainFrame["capGrHtkBtn2"].OnEvent("Click", (obj, *) => This.hotkeyCapture(HKBackwards))
 
         This.MainFrame.Group["Hotkey Groups"] := Hotkey_Groups
         for k, v in This.MainFrame.Group["Hotkey Groups"]
@@ -385,11 +386,16 @@
         EventHandler(obj) {
             if (obj.name = "PreserveHotkeysOnLogout") {
                 This.PreserveHotkeysOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "KeepGroupsPositions") {
                 This.KeepGroupsPositions := obj.value
-                This.NeedRestart := 1
+            }
+            else if (obj.name = "dynamicGroupsEnabled") {
+                This.dynamicGroupsEnabled := obj.value
+            }
+            else if (obj.name = "dynamicGroupsColor") {
+                This.dynamicGroupsColor := obj.value
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "GroupsHoldDelay") {
                 delay := Integer(obj.value)
@@ -398,11 +404,10 @@
                 }
                 else
                     This.GroupsHoldDelay := delay
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
-
         CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj) {
             ArrayIndex := 0
             Obj := InputBox("Enter a Groupname", "Create New Group", "w200 h90")
@@ -418,7 +423,7 @@
                 }
             }
             EditObj.value := "", ForwardHKObj.value := "", BackwardHKObj.value := ""
-            ForwardHKObj.Enabled := 1, BackwardHKObj.Enabled := 1, EditObj.Enabled := 1
+            This.enableCtrlsInGroupsSettings()
             ddlObj.Choose(ArrayIndex)
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -431,22 +436,21 @@
             ddlObj.Delete()
             ddlObj.Add(This.GetGroupList())
             ForwardHKObj.value := "", BackwardHKObj.value := "", EditObj.value := ""
-            ForwardHKObj.Enabled := 0, BackwardHKObj.Enabled := 0, EditObj.Enabled := 0
+            This.enableCtrlsInGroupsSettings(0)
             This.NeedRestart := 1
-
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
-        SetEditText(ddlObj, EditObj, ForwardHKObj?, BackwardHKObj?, ImpBtn?) {
+        SetEditText(ddlObj, EditObj, ForwardHKObj, BackwardHKObj) {
             text := ""
             if (ddlObj.Text != "" && This.Hotkey_Groups.Has(ddlObj.Text)) {
                 for index, Names in This.Hotkey_Groups[ddlObj.Text]["Characters"] {
-                    text .= Names "`n"
+                    text .= This.CleanTitle(Names) "`n"
                 }
-                EditObj.value := text, EditObj.Enabled := 1
-                ForwardHKObj.value := This.Hotkey_Groups[ddlObj.Text]["ForwardsHotkey"], ForwardHKObj.Enabled := 1
-                BackwardHKObj.value := This.Hotkey_Groups[ddlObj.Text]["BackwardsHotkey"], BackwardHKObj.Enabled := 1
-                ImpBtn.Enabled := 1
+                EditObj.value := text
+                ForwardHKObj.value := This.Hotkey_Groups[ddlObj.Text]["ForwardsHotkey"]
+                BackwardHKObj.value := This.Hotkey_Groups[ddlObj.Text]["BackwardsHotkey"]
+                This.enableCtrlsInGroupsSettings()
             }
         }
 
@@ -454,10 +458,10 @@
             if (obj.Name = "HKCharlist" && ddl.Text != "") {
                 Arr := []
                 for k, v in StrSplit(obj.value, "`n") {
-                    Chars := Trim(v, "`n ")
-                    if (Chars = "")
+                    char := Trim(v, "`n ")
+                    if char = ""
                         continue
-                    Arr.Push(Chars)
+                    Arr.Push(This.AntiCleanTitle(char))
                 }
                 This.Hotkey_Groups[ddl.Text]["Characters"] := Arr
             }
@@ -472,13 +476,23 @@
         }
     }
 
+    ; Enable or disable controls in groups settings
+    enableCtrlsInGroupsSettings(enable := 1) {
+        This.MainFrame["ForwardsKey"].Enabled := enable
+        This.MainFrame["BackwardsdKey"].Enabled := enable
+        This.MainFrame["HKCharlist"].Enabled := enable
+        This.MainFrame["ImpNamesBtn"].Enabled := enable
+        This.MainFrame["capGrHtkBtn1"].Enabled := enable
+        This.MainFrame["capGrHtkBtn2"].Enabled := enable
+    }
+
     HotkeysSettings_Ctrl() {
         This.MainFrame.Group["Hotkeys Settings"] := [], HotkeysSettings := []
 
         Charlist := "", Hklist := ""
         for index, value in This._Hotkeys {
             for name, hotkey in value {
-                Charlist .= name "`n"
+                Charlist .= This.CleanTitle(name) "`n"
                 Hklist .= hotkey "`n"
             }
         }
@@ -489,42 +503,61 @@
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        captBtn1 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn1
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails Hotkey - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
+        captBtn2 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn2
+
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClickThroughHotkey", This.ClickThroughHotkey)
+        captBtn3 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn3
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkey Activation Scope:")
         HotkeysSettings.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vTTT vHotkey_Scoope Choose" (This.Global_Hotkeys ? 1 : 2), ["Global", "If an EVE window is Active"])
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Cycle Login Screens - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vLogin_Screen_Cycle_Hotkey", This.Login_Screen_Cycle_Hotkey)
+        captBtn4 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn4
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Login Screen Cycle Direction:")
         HotkeysSettings.Push This.MainFrame.Add("Radio", Format("xp+{} yp", This.offsetX + 1) " vLoginScreenCycleDirectionForwards Checked" This.LoginScreenCycleDirection, "Old->New")
         HotkeysSettings.Push This.MainFrame.Add("Radio", Format("xp+{} yp", 83) " vLoginScreenCycleDirectionBackwards Checked" (This.LoginScreenCycleDirection ? 0 : 1), "New->Old")
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close Active EVE Window - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClose_Active_EVE_Win_Hotkey", This.Close_Active_EVE_Win_Hotkey)
+        captBtn5 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn5
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Close All EVE Windows - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vClose_All_EVE_Win_Hotkey", This.Close_All_EVE_Win_Hotkey)
+        captBtn6 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn6
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
-        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        captBtn7 := This.createHtkCaptureBtn()
+        HotkeysSettings.Push captBtn7
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap - 3), "Character Name:")
-        HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyCharList", Charlist)
+        HKCharList := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyCharList", Charlist)
         HotkeysSettings.Push HKCharList
 
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editW), "Import from Launched")
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH + This.baseGrid, This.editExW), "Import from Launched")
+        HotkeysSettings.Push ImpBtn
 
-        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.offsetX), "Hotkeys:")
-        HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editW, This.editH) " -Wrap vHotkeyList", Hklist)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Hotkeys:")
+        HKKeylist := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editH) " -Wrap vHotkeyList", Hklist)
         HotkeysSettings.Push HKKeylist
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["ClickThroughHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Hotkey_Scoope"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Login_Screen_Cycle_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["LoginScreenCycleDirectionForwards"].OnEvent("Click", (obj, *) => cHotkeys_EventHandler(obj))
@@ -533,9 +566,15 @@
         This.MainFrame["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         HKCharList.OnEvent("Change", (obj, *) => EventHandler(obj))
-        HotkeysSettings.Push ImpBtn
-        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(HKCharList))
         HKKeylist.OnEvent("Change", (obj, *) => EventHandler(obj))
+        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(HKCharList))
+        captBtn1.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["Suspend_Hotkeys_Hotkey"]))
+        captBtn2.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["HideThumbnailsHotkey"]))
+        captBtn3.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["ClickThroughHotkey"]))
+        captBtn4.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["Login_Screen_Cycle_Hotkey"]))
+        captBtn5.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["Close_Active_EVE_Win_Hotkey"]))
+        captBtn6.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["Close_All_EVE_Win_Hotkey"]))
+        captBtn7.OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["Reload_Program_Hotkey"]))
 
         This.MainFrame.Group["Hotkeys Settings"] := HotkeysSettings
         for k, v in This.MainFrame.Group["Hotkeys Settings"]
@@ -544,41 +583,35 @@
         cHotkeys_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
+            }
+            else if (obj.name = "ClickThroughHotkey") {
+                This.ClickThroughHotkey := Trim(obj.value, "`n ")
             }
             else if (obj.name = "Hotkey_Scoope") {
                 This.Global_Hotkeys := (obj.value = 1 ? 1 : 0)
-                This.NeedRestart := 1
             }
-            
             else if (obj.name = "Login_Screen_Cycle_Hotkey") {
                 This.Login_Screen_Cycle_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "LoginScreenCycleDirectionForwards") {
                 This.LoginScreenCycleDirection := 1
-                This.NeedRestart := 1
             }
             else if (obj.name = "LoginScreenCycleDirectionBackwards") {
                 This.LoginScreenCycleDirection := 0
-                This.NeedRestart := 1
             }
             else if (obj.name = "Close_Active_EVE_Win_Hotkey") {
                 This.Close_Active_EVE_Win_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "Close_All_EVE_Win_Hotkey") {
                 This.Close_All_EVE_Win_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
             else if (obj.name = "Reload_Program_Hotkey") {
                 This.Reload_Program_Hotkey := Trim(obj.value, "`n ")
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
 
@@ -586,7 +619,7 @@
         EventHandler(obj) {
             tempvar := []
             ListChars := StrSplit(This.MainFrame["HotkeyCharList"].value, "`n"), ListHotkeys := StrSplit(This.MainFrame["HotkeyList"].value, "`n")
-            for k, v in ListChars {
+            for _, v in ListChars {
                 chars := "", keys := ""
                 if (A_Index <= ListChars.Length) {
                     chars := Trim(ListChars[A_Index], "`n ")
@@ -599,7 +632,7 @@
                 }
                 if (chars = "")
                     continue
-                tempvar.Push Map(chars, keys)
+                tempvar.Push Map(This.AntiCleanTitle(chars), keys)
             }
             this._Hotkeys := tempvar
             This.NeedRestart := 1
@@ -610,10 +643,22 @@
     ThumbnailsBehavior_Ctrl() {
         This.MainFrame.Group["Thumbnails Behavior"] := [], arr := []
 
+        This.directions := Map(
+            1, "left -> right, top -> bottom",
+            2, "left -> right, bottom -> top",
+            3, "right -> left, top -> bottom",
+            4, "right -> left, bottom -> top",
+            5, "top -> bottom, left -> right",
+            6, "top -> bottom, right -> left",
+            7, "bottom -> top, left -> right",
+            8, "bottom -> top, right -> left"
+        )
+
         ddl_options := []
         for key, value in This.directions {
             ddl_options.Push(value)
         }
+
         smallEditW := 35
         mediumEditW := 50
 
@@ -633,6 +678,9 @@
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Thumbnails Always on Top:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowThumbnailsAlwaysOnTop Checked" This.ShowThumbnailsAlwaysOnTop, "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vClickThroughActive Checked" This.ClickThroughActive, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Default Thumbnail Position (px):")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", This.offsetX), "x:")
@@ -682,6 +730,7 @@
         This.MainFrame["HideThumbnails"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["HideThumbnailsOnLostFocus"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["ClickThroughActive"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationx"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationy"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationwidth"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -714,7 +763,9 @@
             }
             else if (obj.name = "ShowThumbnailsAlwaysOnTop") {
                 This.ShowThumbnailsAlwaysOnTop := obj.value
-                This.NeedRestart := 1
+            }
+            else if (obj.name = "ClickThroughActive") {
+                This.ClickThroughActive := obj.value
             }
             else if (obj.name = "ThumbnailStartLocationx") {
                 This.ThumbnailStartLocation["x"] := obj.value
@@ -736,36 +787,29 @@
             }
             else if (obj.name = "PreserveThumbPosOnLogout") {
                 This.PreserveThumbPosOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "PreserveCharNameOnLogout") {
                 This.PreserveCharNameOnLogout := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "HideThumbForActiveWin") {
                 This.HideThumbForActiveWin := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsForLoginScreen") {
                 This.ShiftThumbsForLoginScreen := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsCollisionCheck") {
                 This.ShiftThumbsCollisionCheck := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbsDirection") {
                 This.ShiftThumbsDirection := obj.Value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbHorizontalStep") {
                 This.ShiftThumbHorizontalStep := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShiftThumbVerticalStep") {
                 This.ShiftThumbVerticalStep := obj.value
-                This.NeedRestart := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
     }
@@ -785,7 +829,8 @@
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowThumbnailTextOverlay Checked" This.ShowThumbnailTextOverlay, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Text Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailTextColor -Wrap", This.ThumbnailTextColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vThumbnailTextColor -Wrap", This.ThumbnailTextColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ThumbnailTextColor) " vPreviewThumbnailTextColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Text Size:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailTextSize -Wrap", This.ThumbnailTextSize)
@@ -800,7 +845,8 @@
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 44, This.editOffset, smallEditW) " vThumbnailTextMarginsy -Wrap", This.ThumbnailTextMargins["y"])
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Highligt Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClientHighligtColor -Wrap", This.ClientHighligtColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vClientHighligtColor -Wrap", This.ClientHighligtColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ClientHighligtColor) " vPreviewClientHighligtColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Highligt Border Thickness (px):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vClientHighligtBorderthickness -Wrap", This.ClientHighligtBorderthickness)
@@ -818,10 +864,12 @@
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vInactiveClientBorderthickness -Wrap", This.InactiveClientBorderthickness)
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Inactive Client Border Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vInactiveClientBorderColor -Wrap", This.InactiveClientBorderColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vInactiveClientBorderColor -Wrap", This.InactiveClientBorderColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.InactiveClientBorderColor) " vPreviewInactiveClientBorderColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Background Color (Hex/RGB):")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vThumbnailBackgroundColor", This.ThumbnailBackgroundColor)
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{} Background{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, This.ThumbnailBackgroundColor) " vPreviewThumbnailBackgroundColor Border")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Minimum Thumbnail Size (px):")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", This.offsetX), "width:")
@@ -854,60 +902,51 @@
         EventHandler(obj) {
             if (obj.name = "ShowThumbnailTextOverlay") {
                 This.ShowThumbnailTextOverlay := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextColor") {
                 This.ThumbnailTextColor := obj.value
-                This.NeedRestart := 1
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailTextSize") {
                 This.ThumbnailTextSize := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextFont") {
                 This.ThumbnailTextFont := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextMarginsx") {
                 This.ThumbnailTextMargins["x"] := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailTextMarginsy") {
                 This.ThumbnailTextMargins["y"] := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ClientHighligtColor") {
                 This.ClientHighligtColor := obj.value
-                This.NeedRestart := 1
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ClientHighligtBorderthickness") {
                 This.ClientHighligtBorderthickness := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ShowClientHighlightBorder") {
                 This.ShowClientHighlightBorder := obj.value
             }
             else if (obj.name = "ThumbnailOpacity") {
                 This.ThumbnailOpacity := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.Name = "ShowAllBorders") {
                 This.ShowAllColoredBorders := obj.value
                 This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
                 This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders
-                This.NeedRestart := 1
             }
             else if (obj.Name = "InactiveClientBorderColor") {
                 This.InactiveClientBorderColor := obj.value
-                This.NeedRestart := 1
+                This.RedrawColorPreview(obj)
             }
             else if (obj.Name = "InactiveClientBorderthickness") {
                 This.InactiveClientBorderthickness := obj.value
-                This.NeedRestart := 1
             }
             else if (obj.name = "ThumbnailBackgroundColor") {
                 This.ThumbnailBackgroundColor := obj.value
-                This.NeedRestart := 1
+                This.RedrawColorPreview(obj)
             }
             else if (obj.name = "ThumbnailMinimumSizewidth") {
                 This.ThumbnailMinimumSize["width"] := obj.value
@@ -915,8 +954,15 @@
             else if (obj.name = "ThumbnailMinimumSizeheight") {
                 This.ThumbnailMinimumSize["height"] := obj.value
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
+    }
+
+    RedrawColorPreview(obj) {
+        try
+            This.MainFrame["Preview" obj.name].Opt("Background" obj.value)
+        This.MainFrame["Preview" obj.name].Redraw()
     }
 
     ThumbnailVisibility_Ctrl() {
@@ -928,7 +974,7 @@
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
         Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Select Any Client to Hide The Thumbnail:")
-        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editW) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
+        This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editEx2W) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
         Thumbnail_visibility.Push This.Tv_LV
 
         for k, v in This.compare_openclients_with_list() {
@@ -940,7 +986,7 @@
             }
         }
 
-        This.Tv_LV.ModifyCol(1, 150), This.Tv_LV.ModifyCol(2, 115)
+        This.Tv_LV.ModifyCol(1, This.editEx2W) ; , This.Tv_LV.ModifyCol(2, 115)
         This.Tv_LV.OnEvent("ItemCheck", ObjBindMethod(This, "_Tv_LVSelectedRow"))
 
         This.MainFrame.Group["Thumbnail Visibility"] := Thumbnail_visibility
@@ -948,8 +994,416 @@
             v.Visible := 0
     }
 
+    GameLogsMonitoring_Ctrl() {
+        arr := []
+
+        monitoredChars := ""
+        for char in This.charsToMonitor {
+            monitoredChars .= This.CleanTitle(char) "`n"
+        }
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Game Logs Monitoring")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "This feature does not violate the EULA or ToS, but it is neither endorsed")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "nor supported by CCP. Use at your own risk. Performance impact")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "increases with the number of characters tracked simultaneously.")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Directory:")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 60 - This.baseGrid, 5, 60, 26) " vselectGameLogsDirectory", "Select")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp+{} w{}", 60 + This.baseGrid, 1, This.editW) " vgameLogsDirectory")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Monitoring Interval (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vmonitoringInterval")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event Priority if Several Incoming:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vlastEventPriority", "Last/First")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Supress for Focused Window:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vsupressForFocused", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Event Text:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vshowEventText", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vflashBorderEnabled", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Stop Displaying Event on Switch:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vstopDisplayingOnSwitch", "On/Off")
+        
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event Display Duration (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " veventDisplayDuration")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Flash Border Interval (ms):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vflashBorderInterval")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Monitor Only Selected Characters:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vmonitorOnlySelectedChars", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters to Monitor:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editH - 40) " -Wrap vcharsToMonitor", monitoredChars)
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH - 40 + This.baseGrid, This.editEx2W), "Import from Launched")
+        
+        arr.Push ImpBtn
+
+        This.MainFrame["gameLogsMonitoringEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["selectGameLogsDirectory"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["gameLogsDirectory"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["monitoringInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["lastEventPriority"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["supressForFocused"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["showEventText"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["stopDisplayingOnSwitch"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["eventDisplayDuration"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["flashBorderInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["monitorOnlySelectedChars"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["charsToMonitor"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["charsToMonitor"]))
+
+        EventHandler(obj) {
+            if obj.name = "gameLogsMonitoringEnabled"
+                This.gameLogsMonitoringEnabled := obj.value
+            else if obj.name = "gameLogsDirectory"
+                This.gameLogsDirectory := obj.value
+            else if obj.name = "selectGameLogsDirectory" {
+                dir := DirSelect(,, "Select Gamelogs folder.") ; Select directory
+                if dir = "" ; Cancelled
+                    return
+                This.gameLogsDirectory := dir
+                This.MainFrame["gameLogsDirectory"].Value := dir
+            }
+            else if obj.name = "monitoringInterval"
+                This.monitoringInterval := obj.value
+            else if obj.name = "lastEventPriority"
+                This.lastEventPriority := obj.value
+            else if obj.name = "supressForFocused"
+                This.supressForFocused := obj.value
+            else if obj.name = "showEventText"
+                This.showEventText := obj.value
+            else if obj.name = "flashBorderEnabled"
+                This.flashBorderEnabled := obj.value
+            else if obj.name = "stopDisplayingOnSwitch"
+                This.stopDisplayingOnSwitch := obj.value
+            else if obj.name = "eventDisplayDuration"
+                This.eventDisplayDuration := obj.value
+            else if obj.name = "flashBorderInterval"
+                This.flashBorderInterval := obj.value
+            else if obj.name = "monitorOnlySelectedChars"
+                This.monitorOnlySelectedChars := obj.value
+            else if obj.name = "charsToMonitor" {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    char := Trim(v, "`n ")
+                    if char = ""
+                        continue
+                    Arr.Push(This.AntiCleanTitle(char))
+                }
+                This.charsToMonitor := Arr
+            }
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Game Logs Monitoring"] := arr
+        for k, v in This.MainFrame.Group["Game Logs Monitoring"]
+            v.Visible := 0
+    }
+
+    MonitoredEvents_Ctrl() {
+        arr := []
+
+        monitoredEventsOrder := [ ; This added because Map() for some reason sorts itself
+            "stoppedShooting",
+            "underAttackByPlayer",
+            "underAttackByNPC",
+            "engagedWithFactionBSNPC",
+            "engagedWithOfficerNPC",
+            "engagedWithCapitalNPC",
+            "warpDisrupted",
+            "decloaked",
+            "gateJumped",
+            "convoRequest",
+            "fleetInvited",
+            "fleetWarped",
+            "fleetRegrouped",
+            "conduited",
+            "crystalBroke",
+            "miningStopped",
+            "miningBayIsFull"
+        ]
+
+        editCW := 60
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Monitored Events")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enabling more options decreases performance. The effect increases")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
+
+        for event in monitoredEventsOrder {
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), This.monitoredEventsTexts[event] . (event = "stoppedShooting" ? " (Interval ms):" : ":"))
+
+            if event = "stoppedShooting" {
+                arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX - 50 - This.baseGrid, This.editOffset, 50) " vshootingInterval")
+                This.MainFrame["shootingInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
+            }
+
+            arr.Push This.MainFrame.Add("CheckBox", Format("xs+{} ys", This.offsetX) " vE" event, "On/Off")
+            arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 60 + This.baseGrid, This.editOffset, editCW) " vC" event)
+            arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", editCW + This.baseGrid, This.cPreviewSize, This.cPreviewSize,) " vPreviewC" event " Border")
+            
+            This.MainFrame["E" event].OnEvent("Click", (obj, *) => EventHandler(obj))
+            This.MainFrame["C" event].OnEvent("Change", (obj, *) => EventHandler(obj))
+        }
+
+        EventHandler(obj) {
+            object := SubStr(obj.name, 1, 1)
+            event := SubStr(obj.name, 2)
+            if object = "E"
+                This.monitoredEvents[event]["enabled"] := obj.value
+            else if object = "C" {
+                This.monitoredEvents[event]["color"] := obj.value
+                This.RedrawColorPreview(obj)
+            }
+            else if obj.name = "shootingInterval" {
+                This.shootingInterval := obj.value
+            }
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Monitored Events"] := arr
+        for k, v in This.MainFrame.Group["Monitored Events"]
+            v.Visible := 0
+    }
+
+    NonEVEApps_Ctrl() {
+        This.MainFrame.Group["Non-EVE Applications"] := [], arr := []
+
+        btnW := (This.editW - This.baseGrid) / 2
+        btnEditH := 26
+        editCustomW := 131
+        editCustomH := 190
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Non-EVE Applications")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enter exact .exe name (optional: window title for better matching).`nThumbnail will appear, and assigned hotkey can activate the app.")
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap * 2), "Add/Delete Groups:")
+        addBtn := This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX, 5, btnW, btnEditH), "Add")
+        delBtn := This.MainFrame.Add("Button", Format("xp+{} yp w{} h{}", btnW + This.baseGrid, btnW, btnEditH), "Delete")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Select Group:")
+        ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vNonEVEGroupsDDL", This.GetNonEVEGroupsList())
+
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
+        HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vNonEVEForwardsKey")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapNonEVEGrHtkBtn1", "Capture")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
+        HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vNonEVEBackwardsdKey")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapNonEVEGrHtkBtn2", "Capture")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Process Names (.exe):")
+        EditExe := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, editCustomH) " -Wrap vNonEVEProcessGroups")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", This.editExW + This.contentGap), "Titles (optional):")
+        EditTitle := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, editCustomH) " -Wrap vNonEVETitlesGroups")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} w{} h2 +0x10", editCustomH + This.contentGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Process Names (.exe):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVEProcessHtks")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", editCustomW + This.baseGrid + 1), "Titles (optional):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVETitlesHtks")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", (editCustomW + This.baseGrid) * 2 + 1), "Hotkeys:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, editCustomW, editCustomH) " -Wrap vNonEVEHotkeysHtks")
+
+        arr.Push ddl
+        arr.Push addBtn
+        arr.Push delBtn
+        arr.Push HKForwards
+        arr.Push HKBackwards
+        arr.Push EditExe
+        arr.Push EditTitle
+
+        This.MainFrame["NonEVEGroupsDDL"].OnEvent("Change", (*) => SetEditText(ddl, EditExe, EditTitle, HKForwards, HKBackwards))
+        addBtn.OnEvent("Click", (*) => CreateNewGroup(ddl, HKForwards, HKBackwards, EditExe, EditTitle))
+        delBtn.OnEvent("Click", (*) => Delete_Group(ddl, HKForwards, HKBackwards, EditExe, EditTitle))
+        This.MainFrame["NonEVEForwardsKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEBackwardsdKey"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEProcessGroups"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVETitlesGroups"].OnEvent("Change", (obj, *) => SaveHKGroupList(obj))
+        This.MainFrame["NonEVEProcessHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+        This.MainFrame["NonEVETitlesHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+        This.MainFrame["NonEVEHotkeysHtks"].OnEvent("Change", (obj, *) => SaveHKList(obj))
+        This.MainFrame["capNonEVEGrHtkBtn1"].OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["NonEVEForwardsKey"]))
+        This.MainFrame["capNonEVEGrHtkBtn2"].OnEvent("Click", (obj, *) => This.hotkeyCapture(This.MainFrame["NonEVEBackwardsdKey"]))
+
+        This.MainFrame.Group["Non-EVE Applications"] := arr
+        for k, v in This.MainFrame.Group["Non-EVE Applications"]
+            v.Visible := 0
+
+        CreateNewGroup(ddlObj, ForwardHKObj, BackwardHKObj, EditObj1, EditObj2) {
+            ArrayIndex := 0
+            Obj := InputBox("Enter a Groupname", "Create New Group", "w200 h90")
+            if (Obj.Result != "OK")
+                return
+
+            temp := This.NonEVEGroups
+            temp[Obj.value] := Map("exe", [], "title", [], "fkey", "", "bkey", "")
+            This.NonEVEGroups := temp
+
+            ddlObj.Delete()
+            ddlObj.Add(This.GetNonEVEGroupsList())
+            for k in This.NonEVEGroups {
+                if k = Obj.value {
+                    ArrayIndex := A_Index
+                    break
+                }
+            }
+
+            EditObj1.value := "", EditObj2.value := "", ForwardHKObj.value := "", BackwardHKObj.value := ""
+            This.enableCtrlsInNonEVEGroupsSettings()
+
+            ddlObj.Choose(ArrayIndex)
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        Delete_Group(ddlObj, ForwardHKObj, BackwardHKObj, EditObj1, EditObj2) {
+            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text)) {
+                temp := This.NonEVEGroups
+                temp.Delete(ddlObj.Text) ; Properly deletes obj
+                This.NonEVEGroups := temp
+            }
+
+            ddlObj.Delete()
+            ddlObj.Add(This.GetNonEVEGroupsList())
+            ForwardHKObj.value := "", BackwardHKObj.value := "", EditObj1.value := "", EditObj2.value := ""
+            This.enableCtrlsInNonEVEGroupsSettings(0)
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        SetEditText(ddlObj, EditObj1, EditObj2, ForwardHKObj?, BackwardHKObj?) {
+            if (ddlObj.Text != "" && This.NonEVEGroups.Has(ddlObj.Text)) {
+                text1 := ""
+                for Names in This.NonEVEGroups[ddlObj.Text]["exe"] {
+                    text1 .= Names "`n"
+                }
+                text2 := ""
+                for Names in This.NonEVEGroups[ddlObj.Text]["title"] {
+                    text2 .= Names "`n"
+                }
+                EditObj1.value := text1, EditObj2.value := text2
+                ForwardHKObj.value := This.NonEVEGroups[ddlObj.Text]["fkey"]
+                BackwardHKObj.value := This.NonEVEGroups[ddlObj.Text]["bkey"]
+                This.enableCtrlsInNonEVEGroupsSettings()
+            }
+        }
+
+        SaveHKGroupList(obj) {
+            if ddl.Text == ""
+                return
+
+            if obj.Name = "NonEVEProcessGroups" {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    execs := Trim(v, "`n ")
+                    if (execs = "")
+                        continue
+                    Arr.Push(execs)
+                }
+                This.NonEVEGroups[ddl.Text]["exe"] := Arr
+            }
+            else if obj.Name = "NonEVETitlesGroups" {
+                Arr := []
+                for k, v in StrSplit(obj.value, "`n") {
+                    titles := Trim(v, "`n ")
+                    Arr.Push(titles)
+                }
+                This.NonEVEGroups[ddl.Text]["title"] := Arr
+            }
+            else if obj.Name = "NonEVEForwardsKey" {
+                This.NonEVEGroups[ddl.Text]["fkey"] := Trim(obj.value, "`n ")
+            }
+            else if obj.Name = "NonEVEBackwardsdKey" {
+                This.NonEVEGroups[ddl.Text]["bkey"] := Trim(obj.value, "`n ")
+            }
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        SaveHKList(obj) {
+            if obj.Name = "NonEVEProcessHtks" {
+                what := "exe"
+            }
+            else if obj.Name = "NonEVETitlesHtks" {
+                what := "title"
+            }
+            else if obj.Name = "NonEVEHotkeysHtks" {
+                what := "hotkey"
+            }
+
+            arr := []
+            for i, v in StrSplit(obj.value, "`n") {
+                data := Trim(v, "`n ")
+                if data = "" && what != "title" && what != "hotkey"
+                    continue
+
+                arr.Push(data)
+            }
+
+            This.NonEVEHotkeys[what] := arr
+
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+    }
+
+    enableCtrlsInNonEVEGroupsSettings(enable := 1) {
+        This.MainFrame["NonEVEForwardsKey"].Enabled := enable
+        This.MainFrame["NonEVEBackwardsdKey"].Enabled := enable
+        This.MainFrame["NonEVEProcessGroups"].Enabled := enable
+        This.MainFrame["NonEVETitlesGroups"].Enabled := enable
+        This.MainFrame["capNonEVEGrHtkBtn1"].Enabled := enable
+        This.MainFrame["capNonEVEGrHtkBtn2"].Enabled := enable
+    }
+
     Other_Ctrl() {
         This.MainFrame.Group["Other"] := [], Other := []
+
+        This.GlobalGroupsOrder := [
+            "Hotkey Groups",
+            "Hotkeys Settings",
+            "Thumbnails Behavior",
+            "Thumbnails Visuals",
+            "Thumbnail Visibility",
+            "Client Settings",
+            "Custom Colors",
+            "Game Logs Monitoring",
+            "Non-EVE Applications",
+            "Monitored Events",
+            "Tray Menu Settings",
+            "Other"
+        ]
 
         This.MainFrame.SetFont("s12 w700 q5")
         Other.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Other")
@@ -959,42 +1413,23 @@
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Switch Language to English on Error:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
 
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Check for Updates on Startup:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vCheck_Updates Checked" This.Check_Updates, "On/Off")
-
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
-        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Selected Groups Override Defaults, Skipping Per-Profile Setup.")
+        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap) " vOvrLabel", "PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPlaceholder") ; If too short message will be displaying only part of text
         
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hotkeys:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalHotkeys Checked" This.Global_Groups["Hotkeys Settings"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnails Behavior:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailsBehavior Checked" This.Global_Groups["Thumbnails Behavior"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnails Visuals:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailsVisuals Checked" This.Global_Groups["Thumbnails Visuals"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Thumbnail Visibility:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalThumbnailVisibility Checked" This.Global_Groups["Thumbnail Visibility"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Client Settings:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalClientSettings Checked" This.Global_Groups["Client Settings"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Custom Colors:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalCustomColors Checked" This.Global_Groups["Custom Colors"], "On/Off")
-        
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Other:")
-        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobalOther Checked" This.Global_Groups["Other"], "On/Off")
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), group ":")
+            Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vGlobal" group_ " Checked" This.Global_Groups[group], "On/Off")
+        }
 
-        Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGlobals", "Update")
+        Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateGls", "Update")
 
-        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap + This.objH, This.sepW))
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.lGap + This.objH, This.sepW))
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "Update All Thumbnails Size to Default Size.")
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateThumbnails", "Update All Thumbnails")
 
         This.MainFrame["SwitchLangOnErr"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
-        This.MainFrame["Check_Updates"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
-        This.MainFrame["UpdateGlobals"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
+        This.MainFrame["UpdateGls"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateThumbnails"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
 
         cOther_EventHandler(obj) {
@@ -1003,44 +1438,20 @@
             if (obj.name = "SwitchLangOnErr") {
                 This.SwitchLangOnErr := obj.value
             }
-            else if (obj.name = "Check_Updates") {
-                This.Check_Updates := obj.value
-            }
-            else if (obj.name = "UpdateGlobals") {
-                if This.Global_Groups["Hotkeys Settings"] != This.MainFrame["GlobalHotkeys"].value {
-                    This.Global_Groups["Hotkeys Settings"] := This.MainFrame["GlobalHotkeys"].value
-                    need_reload := 1
-                } 
-                if This.Global_Groups["Thumbnails Behavior"] != This.MainFrame["GlobalThumbnailsBehavior"].value {
-                    This.Global_Groups["Thumbnails Behavior"] := This.MainFrame["GlobalThumbnailsBehavior"].value
-                    need_reload := 1
+            else if (obj.name = "UpdateGls") {
+                for group in This.GlobalGroupsOrder {
+                    group_ := StrReplace(group, A_Space, "_")
+                    if This.AntiGlobalGroups[group] != This.MainFrame["Global" group_].value {
+                        This.AntiGlobalGroups[group] := This.MainFrame["Global" group_].value
+                        need_reload := 1
+                    }
                 }
-                if This.Global_Groups["Thumbnails Visuals"] != This.MainFrame["GlobalThumbnailsVisuals"].value {
-                    This.Global_Groups["Thumbnails Visuals"] := This.MainFrame["GlobalThumbnailsVisuals"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Thumbnail Visibility"] != This.MainFrame["GlobalThumbnailVisibility"].value {
-                    This.Global_Groups["Thumbnail Visibility"] := This.MainFrame["GlobalThumbnailVisibility"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Client Settings"] != This.MainFrame["GlobalClientSettings"].value {
-                    This.Global_Groups["Client Settings"] := This.MainFrame["GlobalClientSettings"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Custom Colors"] != This.MainFrame["GlobalCustomColors"].value {
-                    This.Global_Groups["Custom Colors"] := This.MainFrame["GlobalCustomColors"].value
-                    need_reload := 1
-                }
-                if This.Global_Groups["Other"] != This.MainFrame["GlobalOther"].value {
-                    This.Global_Groups["Other"] := This.MainFrame["GlobalOther"].value
-                    need_reload := 1
-                }
-
             }
             else if (obj.name = "UpdateThumbnails") {
                 This.Update_All_Thumbnails()
                 need_reload := 1
             }
+            This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             if need_reload {
                 Sleep(250)
@@ -1050,6 +1461,195 @@
 
         This.MainFrame.Group["Other"] := Other
         for k, v in This.MainFrame.Group["Other"]
+            v.Visible := 0
+    }
+
+    TrayMenuSettings_Ctrl() {
+        arr := []
+
+        This.TrayMenuShortcutsOrder := [
+            "Suspend Hotkeys",
+            "Hide Thumbnails",
+            "Show Thumbnails Always on Top",
+            "Click Through Thumbnails",
+            "Minimize Inactive Clients",
+            "Don't Close Active Client",
+            "Close all EVE Clients",
+            "Restore Client Positions",
+            "Save Client Positions",
+            "Auto Save Thumbnail Positions",
+            "Save Thumbnail Positions"
+        ]
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Tray Menu Settings")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Show/Hide Tray Menu Items:")
+
+        for TMI in This.TrayMenuShortcutsOrder {
+            TMI_ := StrReplace(TMI, A_Space, "_")
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), TMI ":")
+            arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vTM" TMI_ " Checked" This.TrayMenuShortcuts[TMI], "On/Off")
+            This.MainFrame["TM" TMI_].OnEvent("Click", (obj, *) => EventHandler(obj))
+        }
+
+        EventHandler(obj) {
+            temp := StrReplace(obj.name, "TM")
+            TMI := StrReplace(temp, "_", A_Space)
+            This.TrayMenuShortcuts[TMI] := obj.value
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["Tray Menu Settings"] := arr
+        for k, v in This.MainFrame.Group["Tray Menu Settings"]
+            v.Visible := 0
+    }
+
+    About_Ctrl() {
+        arr := []
+
+        try
+            This.programVersion := FileGetVersion(A_ScriptName)
+        catch
+            This.programVersion := "1.0.0.0"
+
+        updBtnW := 158
+        offsetX := 150
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "About EVE-X-Preview")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Created by gonzo83")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Forked and Maintained by khivus")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{}", This.lGap), "Credits to: mrmjstc and CJKondur")
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.xlGap), "Current Version:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX), "v" This.programVersion)
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Release:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestReleaseVersion", "unknown")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Pre-Release:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.xlGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
+        arr.Push This.MainFrame.Add("Button", Format("xs+{} ys w{}", updBtnW + This.baseGrid, updBtnW) " vupdateToPreReleaseBtn", "Update to Pre-Release")
+
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vhelpBtn", "Help")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp Section", 48 + This.baseGrid) " vreportBugBtn", "Report Bug")
+
+        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 65 - This.contentGap, This.guiHeight - 30 - This.contentGap, 65) " vfunnyBtn", "Funny" . (This.ThisThat ? "!" : "?"))
+
+        This.MainFrame["checkUpdatesBtn"].OnEvent("Click", (obj, *) => checkForNewUpdate())
+        This.MainFrame["updateToReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("false"))
+        This.MainFrame["updateToPreReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("true"))
+        This.MainFrame["helpBtn"].OnEvent("Click", (obj, *) => helpButtonHandler())
+        This.MainFrame["reportBugBtn"].OnEvent("Click", (obj, *) => reportBugButtonHandler())
+        This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
+
+        checkForNewUpdate() {
+            try {
+                ; Getting json of latest release
+                apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases"
+                whr := ComObject("WinHttp.WinHttpRequest.5.1")
+                whr.Open("GET", apiUrl)
+                whr.SetRequestHeader("User-Agent", "AHK")
+                whr.Send()
+                whr.WaitForResponse()
+                json_ans := whr.ResponseText
+            }
+            catch {
+                MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
+                return
+            }
+
+            ; Finding tag of latest release
+            pattern := '"tag_name":\s*"v?V?([^"]+)",[\s\S]*?"prerelease":\s*(true|false),'
+            pos := 1
+            while matchPos := RegExMatch(json_ans, pattern, &match, pos) {
+                tag := match[1]
+                preRelease := match[2]
+
+                if preRelease = "false" && This.latestReleaseTag = ""
+                    This.latestReleaseTag := tag
+                else if preRelease = "true" && This.latestPreReleaseTag = ""
+                    This.latestPreReleaseTag := tag
+
+                if This.latestReleaseTag != "" && This.latestPreReleaseTag != ""
+                    break
+
+                pos := matchPos + match.Len ; Advance past this match
+            }
+
+            if This.latestReleaseTag != "" {
+                This.MainFrame["latestReleaseVersion"].Value := "v" This.latestReleaseTag
+                if VerCompare(This.latestReleaseTag, This.programVersion) != 0
+                    This.MainFrame["updateToReleaseBtn"].Enabled := 1
+            }
+
+            if This.latestPreReleaseTag != "" {
+                This.MainFrame["latestPreReleaseVersion"].Value := "v" This.latestPreReleaseTag
+                if VerCompare(This.latestPreReleaseTag, This.programVersion) > 0
+                    This.MainFrame["updateToPreReleaseBtn"].Enabled := 1
+            }
+        }
+
+        processUpdateApp(preRelease?) {
+            if !IsSet(preRelease)
+                return
+
+            if preRelease = "false"
+                newTag := This.latestReleaseTag
+            else if preRelease = "true"
+                newTag := This.latestPreReleaseTag
+            else
+                return
+
+            SetWorkingDir(A_ScriptDir)
+
+            updaterExeName := "EVE-X-Preview-Updater.exe"
+            updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
+
+            if FileExist(updaterExeName)
+                FileDelete(updaterExeName)
+            
+            Download(updaterExeUrl, updaterExeName) ; Download file from GitHub
+
+            if !FileExist(updaterExeName)
+                Throw Error("Could not download EVE-X-Preview-Updater.exe!")
+            
+            This.First_Start_After_Update := 1 ; For showing update message
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+            Sleep 250 ; Waiting for settings to save
+
+            Run(updaterExeName " `"" A_ScriptName "`" `"" newTag "`"")
+
+            ExitApp
+        }
+
+        helpButtonHandler() {
+            Run("https://github.com/khivus/EVE-X-Preview/blob/main/README.MD")
+        }
+    
+        reportBugButtonHandler() {
+            Run("https://github.com/khivus/EVE-X-Preview/issues/new")
+        }
+
+        funnyHandler() {
+            This.ThisThat := !This.ThisThat
+            This.MainFrame["funnyBtn"].Text := "Funny" . (This.ThisThat ? "!" : "?")
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["About"] := arr
+        for k, v in This.MainFrame.Group["About"]
             v.Visible := 0
     }
 
@@ -1079,7 +1679,7 @@
     Dont_Minimize_List() {
         list := ""
         for k in This.Dont_Minimize_Clients {
-            list .= k "`n"
+            list .= This.CleanTitle(k) "`n"
         }
         return list
     }
@@ -1087,9 +1687,100 @@
     DontCloseList() {
         list := ""
         for k in This.DontCloseClients {
-            list .= k "`n"
+            list .= This.CleanTitle(k) "`n"
         }
         return list
+    }
+
+    UpdateOvrText() {
+        if This.LastUsedProfile == "Default"
+            ovr_explanation_text := "Selected Groups Override Settings Groups from Default Profile"
+        else
+            ovr_explanation_text := "Selected Groups Disables Override from Default Profile"
+
+        This.MainFrame["OvrLabel"].Text := ovr_explanation_text
+    }
+
+    ; Capture a hotkey and put the AHK hotkey string into an Edit control.
+    hotkeyCapture(editField) {
+        oldValue := editField.Value
+        editField.Opt("+ReadOnly")
+        editField.Value := "Press key..."
+        Suspend true
+    
+        try {
+            state := {
+                mods: Map("Shift", false, "Ctrl", false, "Alt", false, "Win", false),
+                mainKey: ""
+            }
+    
+            ih := InputHook("T5")
+            ih.KeyOpt("{All}", "N")  ; notify on press/release
+    
+            ih.OnKeyDown := (ih, vk, sc) => This.CaptureKeyDown(ih, vk, sc, state)
+            ih.OnKeyUp   := (ih, vk, sc) => This.CaptureKeyUp(ih, vk, sc, state)
+    
+            ih.Start()
+            ih.Wait()
+    
+            if (state.mainKey = "") {
+                editField.Value := oldValue
+                return
+            }
+    
+            editField.Value := ""
+            ControlSendText(This.BuildHotkeyString(state.mods, state.mainKey), , editField.Hwnd) ; Using ControlSendText so edit Change handler triggers properly
+        }
+        finally {
+            Suspend false
+            editField.Opt("-ReadOnly")
+        }
+    }
+    
+    CaptureKeyDown(ih, vk, sc, state) {
+        name := GetKeyName(Format("vk{:x}sc{:x}", vk, sc))
+
+        if (name = "Escape") {
+            state.mainKey := ""
+            ih.Stop()
+            return
+        }
+    
+        switch name {
+            case "LShift", "RShift", "Shift":
+                state.mods["Shift"] := true
+            case "LControl", "RControl", "Ctrl", "Control":
+                state.mods["Ctrl"] := true
+            case "LAlt", "RAlt", "Alt":
+                state.mods["Alt"] := true
+            case "LWin", "RWin", "Win":
+                state.mods["Win"] := true
+            default:
+                if (state.mainKey = "")
+                    state.mainKey := name
+        }
+    }
+    
+    CaptureKeyUp(ih, vk, sc, state) {
+        name := GetKeyName(Format("vk{:x}sc{:x}", vk, sc))
+    
+        ; Once we have the main key, stop on the first release.
+        if (state.mainKey != "")
+            ih.Stop()
+    }
+    
+    BuildHotkeyString(mods, key) {
+        prefix := ""
+        if mods["Ctrl"]
+            prefix .= "^"
+        if mods["Alt"]
+            prefix .= "!"
+        if mods["Shift"]
+            prefix .= "+"
+        if mods["Win"]
+            prefix .= "#"
+    
+        return prefix . key
     }
 
     _Button_Load(obj?,*) {
@@ -1097,10 +1788,11 @@
             This.NeedRestart := 1
         
         This.LastUsedProfile := This.Sidebar["SelectedProfile"].Text
-        This.Refresh_ControlValues()
         This.ProfileOverride()
+        This.Refresh_ControlValues()
+        This.UpdateOvrText()
 
-        if (This.Sidebar["SelectedProfile"].Text = "Default") {
+        if This.LastUsedProfile = "Default" {
             for k, ob in This.MainFrame.Group["Other"] {
                 if InStr(ob.name, "Global")
                     ob.Enabled := 1
@@ -1108,12 +1800,34 @@
         }
         else {
             for k, v in This.MainFrame.Group {
-                for group, enab in This.Global_Groups {
+                for group, enab in This.ComboGroups {
                     if k != group || !enab
                         continue
-                    for _, ob in v {
-                        ob.Enabled := 0
+                    if group = "Other" {
+                        Loop 4
+                            v[A_Index].Enabled := 0
                     }
+                    else if group = "Hotkeys Settings" {
+                        Loop 28
+                            v[A_Index].Enabled := 0
+                    }
+                    else if group = "Hotkey Groups" {
+                        Loop 14
+                            v[A_Index].Enabled := 0
+                    }
+                    else {
+                        for _, ob in v {
+                            ob.Enabled := 0
+                        }
+                    }
+                }
+            }
+            for k, ob in This.MainFrame.Group["Other"] {
+                if InStr(ob.name, "Global") {
+                    groupName_ := StrReplace(ob.name, "Global", "")
+                    groupName := StrReplace(groupName_, "_", A_Space)
+                    if This.ComboGroups[groupName] || This.AntiGlobalGroups[groupName]
+                        ob.Enabled := 1
                 }
             }
         }
@@ -1129,6 +1843,7 @@
         This.MainFrame["Dont_Minimize_Clients"].value := This.Dont_Minimize_List()
         This.MainFrame["Minimizeclients_Delay"].value := This.Minimizeclients_Delay
         This.MainFrame["DontCloseOnLoginScreen"].value := This.DontCloseOnLoginScreen
+        This.MainFrame["dontCloseActiveClient"].value := This.dontCloseActiveClient
         This.MainFrame["DontCloseClients"].value := This.DontCloseList()
 
         ;Custom Colors
@@ -1141,6 +1856,9 @@
         ;Hotkey Groups
         This.MainFrame["PreserveHotkeysOnLogout"].value := This.PreserveHotkeysOnLogout
         This.MainFrame["KeepGroupsPositions"].value := This.KeepGroupsPositions
+        This.MainFrame["dynamicGroupsEnabled"].value := This.dynamicGroupsEnabled
+        This.MainFrame["dynamicGroupsColor"].value := This.dynamicGroupsColor
+        This.RedrawColorPreview(This.MainFrame["dynamicGroupsColor"])
         This.MainFrame["GroupsHoldDelay"].value := This.GroupsHoldDelay
         This.MainFrame["HotkeyGroupDDL"].Delete()
         This.MainFrame["HotkeyGroupDDL"].Add(This.GetGroupList())
@@ -1151,6 +1869,7 @@
         ;Hotkeys
         This.MainFrame["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
         This.MainFrame["HideThumbnailsHotkey"].value := This.HideThumbnailsHotkey
+        This.MainFrame["ClickThroughHotkey"].value := This.ClickThroughHotkey
         This.MainFrame["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
         This.MainFrame["Login_Screen_Cycle_Hotkey"].value := This.Login_Screen_Cycle_Hotkey
         This.MainFrame["LoginScreenCycleDirectionForwards"].value := This.LoginScreenCycleDirection
@@ -1162,7 +1881,7 @@
         Charlist := "", Hklist := ""
         for index, value in This._Hotkeys {
             for name, hotkey in value {
-                Charlist .= name "`n"
+                Charlist .= This.CleanTitle(name) "`n"
                 Hklist .= hotkey "`n"
             }
         }
@@ -1173,11 +1892,13 @@
         ;Thumbnail Settings
         This.MainFrame["ShowThumbnailTextOverlay"].value := This.ShowThumbnailTextOverlay
         This.MainFrame["ThumbnailTextColor"].value := This.ThumbnailTextColor
+        This.RedrawColorPreview(This.MainFrame["ThumbnailTextColor"])
         This.MainFrame["ThumbnailTextSize"].value := This.ThumbnailTextSize
         This.MainFrame["ThumbnailTextFont"].value := This.ThumbnailTextFont
         This.MainFrame["ThumbnailTextMarginsx"].value := This.ThumbnailTextMargins["x"]
         This.MainFrame["ThumbnailTextMarginsy"].value := This.ThumbnailTextMargins["y"]
         This.MainFrame["ClientHighligtColor"].value := This.ClientHighligtColor
+        This.RedrawColorPreview(This.MainFrame["ClientHighligtColor"])
         This.MainFrame["ClientHighligtBorderthickness"].value := This.ClientHighligtBorderthickness
         This.MainFrame["ShowClientHighlightBorder"].value := This.ShowClientHighlightBorder
         This.MainFrame["AutoSaveThumbnailPositions"].value := This.AutoSaveThumbnailPositions
@@ -1185,10 +1906,13 @@
         This.MainFrame["HideThumbnailsOnLostFocus"].value := This.HideThumbnailsOnLostFocus
         This.MainFrame["ThumbnailOpacity"].value := IntegerToPercentage(This.ThumbnailOpacity)
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].value := This.ShowThumbnailsAlwaysOnTop
+        This.MainFrame["ClickThroughActive"].value := This.ClickThroughActive
         This.MainFrame["ShowAllBorders"].value := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderthickness"].value := This.InactiveClientBorderthickness
         This.MainFrame["InactiveClientBorderColor"].value := This.InactiveClientBorderColor
+        This.RedrawColorPreview(This.MainFrame["InactiveClientBorderColor"])
         This.MainFrame["ThumbnailBackgroundColor"].value := This.ThumbnailBackgroundColor
+        This.RedrawColorPreview(This.MainFrame["ThumbnailBackgroundColor"])
         This.MainFrame["ThumbnailStartLocationx"].value := This.ThumbnailStartLocation["x"]
         This.MainFrame["ThumbnailStartLocationy"].value := This.ThumbnailStartLocation["y"]
         This.MainFrame["ThumbnailStartLocationwidth"].value := This.ThumbnailStartLocation["width"]
@@ -1218,37 +1942,82 @@
             }
         }
 
+        ; Game Logs Monitoring
+        This.MainFrame["gameLogsMonitoringEnabled"].value := This.gameLogsMonitoringEnabled
+        This.MainFrame["monitoringInterval"].value := This.monitoringInterval
+        This.MainFrame["gameLogsDirectory"].value := This.gameLogsDirectory
+        This.MainFrame["monitorOnlySelectedChars"].value := This.monitorOnlySelectedChars
+        This.MainFrame["lastEventPriority"].value := This.lastEventPriority
+        This.MainFrame["supressForFocused"].value := This.supressForFocused
+        This.MainFrame["showEventText"].value := This.showEventText
+        This.MainFrame["flashBorderEnabled"].value := This.flashBorderEnabled
+        This.MainFrame["stopDisplayingOnSwitch"].value := This.stopDisplayingOnSwitch
+        This.MainFrame["eventDisplayDuration"].value := This.eventDisplayDuration
+        This.MainFrame["flashBorderInterval"].value := This.flashBorderInterval
+
+        ; Monitored Events
+        for event, v in This.monitoredEvents {
+            This.MainFrame["E" event].value := This.monitoredEvents[event]["enabled"]
+            This.MainFrame["C" event].value := This.monitoredEvents[event]["color"]
+            This.RedrawColorPreview(This.MainFrame["C" event])
+        }
+        This.MainFrame["shootingInterval"].value := This.shootingInterval
+
+        ; Non-EVE Applications
+        This.MainFrame["NonEVEGroupsDDL"].Delete()
+        This.MainFrame["NonEVEGroupsDDL"].Add(This.GetNonEVEGroupsList())
+        This.MainFrame["NonEVEForwardsKey"].value := ""
+        This.MainFrame["NonEVEBackwardsdKey"].value := ""
+        This.MainFrame["NonEVEProcessGroups"].value := ""
+        This.MainFrame["NonEVETitlesGroups"].value := ""
+
+        t1 := "", t2 := "", t3 := ""
+        for i, v in This.NonEVEHotkeys["exe"]
+            t1 .= v "`n"
+        for i, v in This.NonEVEHotkeys["title"]
+            t2 .= v "`n"
+        for i, v in This.NonEVEHotkeys["hotkey"]
+            t3 .= v "`n"
+
+        This.MainFrame["NonEVEProcessHtks"].value := t1
+        This.MainFrame["NonEVETitlesHtks"].value := t2
+        This.MainFrame["NonEVEHotkeysHtks"].value := t3
+
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
-        This.MainFrame["Check_Updates"].value := This.Check_Updates
 
-        This.MainFrame["GlobalHotkeys"].value := This.Global_Groups["Hotkeys Settings"]
-        This.MainFrame["GlobalThumbnailsBehavior"].value := This.Global_Groups["Thumbnails Behavior"]
-        This.MainFrame["GlobalThumbnailsVisuals"].value := This.Global_Groups["Thumbnails Visuals"]
-        This.MainFrame["GlobalThumbnailVisibility"].value := This.Global_Groups["Thumbnail Visibility"]
-        This.MainFrame["GlobalClientSettings"].value := This.Global_Groups["Client Settings"]
-        This.MainFrame["GlobalCustomColors"].value := This.Global_Groups["Custom Colors"]
-        This.MainFrame["GlobalOther"].value := This.Global_Groups["Other"]
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            if This.Global_Groups[group] && This.LastUsedProfile != "Default"
+                This.MainFrame["Global" group_].Value := This.AntiGlobalGroups[group]
+            else
+                This.MainFrame["Global" group_].Value := This.Global_Groups[group]
+        }
+
+        ; Tray Menu Settings
+        for TMI in This.TrayMenuShortcutsOrder {
+            TMI_ := StrReplace(TMI, A_Space, "_")
+            This.MainFrame["TM" TMI_].Value := This.TrayMenuShortcuts[TMI]
+        }
 
         for k, v in This.MainFrame.Group {
             for _, ob in v {
                 ob.Enabled := 1
             }
-            This.MainFrame["HKCharlist"].Enabled := 0
-            This.MainFrame["ForwardsKey"].Enabled := 0
-            This.MainFrame["BackwardsdKey"].Enabled := 0
-            This.MainFrame["ImpNamesBtn"].Enabled := 0
         }
+        This.enableCtrlsInGroupsSettings(0)
+        This.enableCtrlsInNonEVEGroupsSettings(0)
+
+        This.MainFrame["updateToReleaseBtn"].Enabled := 0
+        This.MainFrame["updateToPreReleaseBtn"].Enabled := 0
+
         This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders
 
-        This.MainFrame["GlobalHotkeys"].Enabled := 0
-        This.MainFrame["GlobalThumbnailsBehavior"].Enabled := 0
-        This.MainFrame["GlobalThumbnailsVisuals"].Enabled := 0
-        This.MainFrame["GlobalThumbnailVisibility"].Enabled := 0
-        This.MainFrame["GlobalClientSettings"].Enabled := 0
-        This.MainFrame["GlobalCustomColors"].Enabled := 0
-        This.MainFrame["GlobalOther"].Enabled := 0
+        for group in This.GlobalGroupsOrder {
+            group_ := StrReplace(group, A_Space, "_")
+            This.MainFrame["Global" group_].Enabled := 0
+        }
     }
 
 
@@ -1256,10 +2025,10 @@
         EvENameList := []
         for EveHwnd in This.ThumbWindows.OwnProps() {
             try {
-                if title := This.CleanTitle(WinGetTitle("Ahk_Id " EveHwnd) = "") {
+                if title := WinGetTitle("Ahk_Id " EveHwnd) = "EVE" {
                     continue
                 }
-                EvENameList.Push This.CleanTitle(WinGetTitle("Ahk_Id " EveHwnd))
+                EvENameList.Push WinGetTitle("Ahk_Id " EveHwnd)
             }
         }
         return EvENameList
