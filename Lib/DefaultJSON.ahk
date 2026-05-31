@@ -5,6 +5,7 @@
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
+    "DebugMode": 0,
     "_Profiles": {
         "Default": {
             "Client Settings": {

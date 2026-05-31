@@ -32,6 +32,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["ThisThat"] := value
     }
 
+    DebugMode {
+        get => This._JSON["DebugMode"]
+        set => This._JSON["DebugMode"] := value
+    }
+
     LastUsedProfile {
         get => This._JSON["LastUsedProfile"]
         set => This._JSON["LastUsedProfile"] := value
