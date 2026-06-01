@@ -26,15 +26,14 @@ Class ThumbWindow extends Propertys {
  
 
         ;Set The Opacity who is set in the JSON File, its important to set this on the MainWindow and not on the Thumbnail itself
-        WinSetTransparent(This.ThumbnailOpacity, ThumbObj["Window"].Hwnd)
+        WinSetTransparent(This.ThumbnailOpacity)
 
         ;creates the GUI but Hides it 
         ThumbObj["Window"].Show("Hide")
         WinMove(    This.ThumbnailStartLocation["x"],
                     This.ThumbnailStartLocation["y"],
                     This.ThumbnailStartLocation["width"],
-                    This.ThumbnailStartLocation["height"],
-                    ThumbObj["Window"].Hwnd
+                    This.ThumbnailStartLocation["height"]
                 )
     
 
@@ -59,7 +58,7 @@ Class ThumbWindow extends Propertys {
         ThumbObj["TextOverlay"].MarginY := This.ThumbnailTextMargins["y"]
 
         CheckError := 0
-        if (This.CustomColorsActive && This.CustomColorsGet.Has(Win_Title)) {
+        if This.CustomColorsActive {
             if (This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Text"] != "") {
                 try {
                     ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c" This.CustomColorsGet[Win_Title]["Text"] , This.ThumbnailTextFont)
@@ -89,14 +88,13 @@ Class ThumbWindow extends Propertys {
         ThumbTitle.Opt("+Background040101")
 
         ThumbObj["TextOverlay"].BackColor := "040101" ;Sets a Color for the Text Control to make it also invisible, same as background color
-        WinSetTransColor("040101", ThumbObj["TextOverlay"].Hwnd)
+        WinSetTransColor("040101")
 
         ThumbObj["TextOverlay"].Show("Hide")
         WinMove(This.ThumbnailStartLocation["x"],
             This.ThumbnailStartLocation["y"],
             This.ThumbnailStartLocation["width"],
-            This.ThumbnailStartLocation["height"],
-            ThumbObj["TextOverlay"].Hwnd
+            This.ThumbnailStartLocation["height"]
         )
 
         ;#### Create Borders
@@ -104,10 +102,10 @@ Class ThumbWindow extends Propertys {
         border_thickness := This.ClientHighligtBorderthickness
         border_color := This.ClientHighligtColor
 
-        ThumbObj["Border"] := Gui("-Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd " " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop"))
-        
+        ThumbObj["Border"] := Gui("-Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd)
+
         CheckError := 0
-        if (This.CustomColorsActive && !This.ShowAllColoredBorders && This.CustomColorsGet.Has(Win_Title)) {
+        if This.CustomColorsActive && !This.ShowAllColoredBorders {
             if (This.CustomColorsGet[Win_Title]["Char"] != "" && This.CustomColorsGet[Win_Title]["Border"] != "") {
                 try {
                     ThumbObj["Border"].BackColor := This.CustomColorsGet[Win_Title]["Border"]
@@ -488,7 +486,7 @@ Class ThumbWindow extends Propertys {
                     This.BorderSize(thumbWin.Hwnd, thumbBorder.Hwnd, This.InactiveClientBorderthickness)
                 }
                 else if (This.CustomColorsActive && This.ShowAllColoredBorders) {
-                    if This.CustomColorsGet.Has(thumbWin.Title) && This.CustomColorsGet[thumbWin.Title]["Char"] != "" && This.CustomColorsGet[thumbWin.Title]["IABorder"] != "" {
+                    if This.CustomColorsGet[thumbWin.Title]["Char"] != "" && This.CustomColorsGet[thumbWin.Title]["IABorder"] != "" {
                         try
                             thumbBorder.BackColor := This.CustomColorsGet[thumbWin.Title]["IABorder"]
                         catch
@@ -523,7 +521,7 @@ Class ThumbWindow extends Propertys {
         if !thumb.Has("Window") || !thumb.Has("Border")
             return
 
-        if This.CustomColorsActive && This.CustomColorsGet.Has(title) && This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["Border"] != ""
+        if This.CustomColorsActive && This.CustomColorsGet[title]["Char"] != "" && This.CustomColorsGet[title]["Border"] != ""
             color := This.CustomColorsGet[title]["Border"]
         else
             color := This.ClientHighligtColor

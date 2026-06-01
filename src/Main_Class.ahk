@@ -1077,7 +1077,7 @@
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
     EvEWindowDestroy(hwnd?, WinTitle?) {
         if IsSet(WinTitle)
-            This.debugToolTip("Destroying thumbnail for "  WinTitle)
+            This.debugToolTip("Destroying thumbnail for " WinTitle)
         else if IsSet(hwnd)
             This.debugToolTip("Destroying thumbnail for hwnd " hwnd)
          else
@@ -1687,8 +1687,8 @@
         }
 
         ; Optimized files count check
-        This.filesCount := 0
-        This.oldFilesList := []
+        static filesCount := 0
+        static oldFilesList := []
         newFilesCount := 0
 
         files := []
@@ -1696,10 +1696,10 @@
             files.Push({name: A_LoopFileName, time: A_LoopFileTimeModified})
             newFilesCount++
         }
-        if newFilesCount = This.filesCount
-            return This.oldFilesList
+        if newFilesCount = filesCount
+            return oldFilesList
         else
-            This.filesCount := newFilesCount
+            filesCount := newFilesCount
 
         ; comparator: return <0 if a < b, 0 if equal, >0 if a > b
         ; for descending (newest first) we invert the usual order
@@ -1713,7 +1713,7 @@
         for file in files {
             fileList.Push(This.gameLogsDirectory "\" file.name)
         }
-        This.oldFilesList := fileList
+        oldFilesList := fileList
         return fileList
     }
 
