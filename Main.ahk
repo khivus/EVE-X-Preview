@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.30
+;@Ahk2Exe-Let U_version = 1.5.1.31
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus

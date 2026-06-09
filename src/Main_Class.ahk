@@ -264,9 +264,10 @@
         ; if This.ProfActive ; Profiling
         static __t1 := 0
         __t0 := A_TickCount
-        if __t0 - __t1 >= 5000 ; Slow check
+        if __t0 - __t1 > 1000 { ; Check every second to avoid lag and not check for new windows on every tick
             This.UpdateActiveNonEVEApps()
-        __t1 := __t0
+            __t1 := __t0
+        }
 
         static HideShowToggle := 0, LastActiveHWND := 0, WinList := [], activeExe := ""
 
@@ -329,6 +330,8 @@
                     }
                 }
             }
+            catch
+                This.debugToolTip("Error in Main Timer EVE Window Check")
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
@@ -374,6 +377,8 @@
                 }
                 LastActiveHWND := Ahwnd
             }
+            catch
+                This.debugToolTip("Error in Main Timer Active Window Check")
         }
 
         ; Check if a Thumbnail exist without EVE Window. if so destroy the Thumbnail and free memory
@@ -2031,9 +2036,11 @@
             }
         }
 
+        timer := -5000 ; Dynamic timer so we don't lag the PC if there is a lot of chars
         for charName, charId in activeCharsToMonitor {
             This.waitingMonitoringChars[charName] := ObjBindMethod(This, "startLogMonitoring", charName, charId)
-            SetTimer(This.waitingMonitoringChars[charName], -5000) ; Wait 5s to initialize file if program started in the middle of login
+            SetTimer(This.waitingMonitoringChars[charName], timer) ; Wait 5s to initialize file if program started in the middle of login
+            timer -= 1000 ; Adding offset for each char to avoid lags if there is a lot of them
         }
 
         This.debugToolTip("Initialized log monitoring for chars:`n" This.StrJoin("`n", activeCharsToMonitor) "`n`nWaiting for chars to update logs...")
