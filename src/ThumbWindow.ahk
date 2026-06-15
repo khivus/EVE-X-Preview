@@ -219,6 +219,8 @@ Class ThumbWindow extends Propertys {
             Ny := y - y0, NEUy := wy + Ny       ;Ny -> stores the pixel diffrenz from Start to stop Moveing, NEUy -> Calculates the new Position
             if This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[hwnd]) {
                 for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]% {
+                    if WinGetProcessName(v.Hwnd) = "exefile.exe"
+                        continue
                     WinMove(NEUx, NEUy, , , v.Hwnd)
                 }
             }
@@ -233,6 +235,8 @@ Class ThumbWindow extends Propertys {
                         Ax := ThumbMap[Obj.Hwnd].x + Nx
                         Ay := ThumbMap[Obj.Hwnd].y + Ny
 
+                        if WinGetProcessName(Obj.Hwnd) = "exefile.exe"
+                            continue
                         WinMove(Ax, Ay, , , Obj.Hwnd)
                     }
                 }
@@ -269,8 +273,11 @@ Class ThumbWindow extends Propertys {
                 continue
 
             for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]% {
+                if WinGetProcessName(v.Hwnd) = "exefile.exe" ; if the window is the game client window, only resize the thumbnail
+                    continue
                 WinMove(, , Wn, Wh, v.hwnd)
             }
+
             This.Update_Thumb(false, hwnd)
             This.BorderSize(This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%["Window"].Hwnd, This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%["Border"].Hwnd)
 
@@ -281,6 +288,8 @@ Class ThumbWindow extends Propertys {
                     for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[ThumbIDs]% {
                         if k = "Window"
                             window := v.Hwnd
+                        if WinGetProcessName(v.Hwnd) = "exefile.exe"
+                            continue 
                         WinMove(, , Wn, Wh, v.Hwnd)
                         if (k = "Border") {
                             border := v.Hwnd
@@ -335,8 +344,11 @@ Class ThumbWindow extends Propertys {
             ;If some window is in range then Snap the moving window into it
             ; Snap the full GUI Obj stack
             if (shouldMove) {
-                for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%
+                for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]% {
+                    if WinGetProcessName(v.Hwnd) = "exefile.exe"
+                        continue
                     WinMove(destX, destY, , , v.Hwnd)
+                }
             }
         }
         ;Nested Function for the Window Calculation

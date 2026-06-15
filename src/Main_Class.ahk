@@ -1218,7 +1218,7 @@
         if GuiObj = ""
             return
         for Names, Obj in GuiObj {
-            if (Names = "Thumbnail")
+            if Names = "Thumbnail" || WinGetProcessName(Obj.Hwnd) = "exefile.exe"
                 continue
             WinMove(x, y, Width, Height, Obj.Hwnd)
         }
@@ -1577,8 +1577,12 @@
     }
 
     SaveJsonToFile() {
-        FileDelete("EVE-X-Preview.json")
-        FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json")
+        time := A_Now
+        if FileExist("EVE-X-Preview.json")
+            FileMove("EVE-X-Preview.json", "EVE-X-Preview-Backup-" time ".json", 1) ; Backup old file with timestamp
+        FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json") ; Save new file
+        if FileExist("EVE-X-Preview-Backup-" time ".json")
+            FileDelete("EVE-X-Preview-Backup-" time ".json") ; Delete backup after saving
     }
 
     ; Thanks to SKAN
