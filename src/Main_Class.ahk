@@ -77,7 +77,7 @@
                 try
                     Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Suspend Hotkeys-Hotkey" )
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Suspend All Hotkeys - Hotkey" )
             }
             else
                 Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
@@ -90,7 +90,7 @@
                 try
                     Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Hide Thumbnails Hotkey" )
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Hide Thumbnails - Hotkey" )
             }
             else
                 Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
@@ -103,7 +103,7 @@
                 try
                     Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in: Global Settings -> Click Through Thumbnails Hotkey" )
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Click Through Thumbnails - Hotkey" )
             }
             else
                 Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
@@ -120,7 +120,7 @@
                 try
                     Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in Login Screen Cycle Hotkey")
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Login Screens - Hotkey")
             }
             else
                 Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
@@ -133,7 +133,7 @@
                 try
                     Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in Close Active EVE Window Hotkey")
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close Active EVE Window - Hotkey")
             }
             else
                 Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
@@ -146,7 +146,7 @@
                 try
                     Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in Close All EVE Windows Hotkey")
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close All EVE Windows - Hotkey")
             }
             else
                 Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
@@ -159,7 +159,7 @@
                 try
                     Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
                 catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in Reload EVE-X-Preview Hotkey")
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Reload EVE-X-Preview - Hotkey")
             }
             else
                 Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
@@ -194,6 +194,11 @@
         for NonEVEapp in This.NonEVEAppsList {
             This.allTrackedApps[NonEVEapp["exe"]] := true
         }
+
+        ; Debug tooltip method
+        This.debugToolTipMethod := ObjBindMethod(This, "debugToolTip")
+        This.debugToolTipText := ""
+        This.debugToolTipDelay := -1000
 
         ; The Timer property for Asycn Minimizing.
         this.timer := ObjBindMethod(this, "EVEMinimize")
@@ -330,8 +335,10 @@
                     }
                 }
             }
-            catch
-                This.debugToolTip("Error in Main Timer EVE Window Check")
+            catch {
+                This.debugToolTipText .= "Error in Main Timer EVE Window Check`n"
+                SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+            }
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
@@ -377,8 +384,10 @@
                 }
                 LastActiveHWND := Ahwnd
             }
-            catch
-                This.debugToolTip("Error in Main Timer Active Window Check")
+            catch {
+                This.debugToolTipText .= "Error in Main Timer Active Window Check`n"
+                SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+            }
         }
 
         ; Check if a Thumbnail exist without EVE Window. if so destroy the Thumbnail and free memory
@@ -448,7 +457,8 @@
         if !This._Hotkeys[title]
             return
 
-        This.debugToolTip("Registering hotkeys for " title)
+        This.debugToolTipText .= "Registering hotkeys for " title "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     
         if This.Global_Hotkeys
             HotIf (*) => WinExist(title " " This.EVEExe) && !WinActive("EVE-X-Preview - Settings")
@@ -475,7 +485,8 @@
         if !IsObject(This.Hotkey_Groups) || This.Hotkey_Groups.Count = 0
             return
 
-        This.debugToolTip("Registering Hotkey Groups")
+        This.debugToolTipText .= "Registering Hotkey Groups`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         for k, v in This.Hotkey_Groups {
             This.HotkGroups.Push(v["Characters"])
@@ -516,26 +527,7 @@
         prevTick := tick
 
         arr := This.HotkGroups[ArrInd]
-        ; index := This.HotkGroupsInds[ArrInd]
         length := arr.Length
-
-        ; if !This.KeepGroupsPositions {
-        ;     try {
-        ;         loop 2 {
-        ;             title := This.PreserveHotkeysOnLogout ? This.ThumbWindows.%WinExist("A")%["Window"].OldTitle : WinGetTitle("A")
-        ;             index := IsActiveWinInGroup(title, arr)
-
-        ;             if index = -1 && A_Index = 1
-        ;                 Sleep 50 ; Delay so if game lags it checks 2 times and not return to 1 win in middle of a cycle group
-        ;             else if index = -1
-        ;                 index += 1
-        ;             else
-        ;                 break
-        ;         }
-        ;     }
-        ;     catch
-        ;         index := 0
-        ; }
 
         if This.KeepGroupsPositions {
             ; Trust stored index always — no re-sync ever
@@ -589,14 +581,6 @@
             }
             return index
         }
-
-        ; IsActiveWinInGroup(title, arr) {
-        ;     for ind, names in arr {
-        ;         if names = title
-        ;             return ind
-        ;     }
-        ;     return -1
-        ; }
     }
 
     ; Tries to find active window in group, with brief retry on lag
@@ -620,25 +604,6 @@
         }
         return -1
     }
-
-    ; SetHotkGroupInd(hwnd) {
-    ;     if This.ThumbHwnd_EvEHwnd.Has(hwnd) {
-    ;         hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
-    ;         title := WinGetTitle("Ahk_id " Hwnd)
-    ;     }
-    ;     else
-    ;         return
-        
-    ;     for groupId, arr in This.HotkGroups {
-    ;         for i, charName in arr {
-    ;             if charName != title
-    ;                 continue
-
-    ;             This.HotkGroupsInds[groupId] := i
-    ;             break
-    ;         }
-    ;     }
-    ; }
 
     hitThis() {
         if not This.ThisThat
@@ -797,7 +762,8 @@
 
     ;This function updates the Thumbnails and hotkeys if the user switches Charakters in the character selection screen 
     EVENameChange(hwnd, title) {
-        This.debugToolTip("Name changed for: " title)
+        This.debugToolTipText .= "Name changed for: " title "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         if (This.ThumbWindows.HasProp(hwnd)) {
             This.SetThumbnailText[hwnd] := title
             ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
@@ -929,7 +895,8 @@
 
     ; Creates a new thumbnail if a new window got created
     EVE_WIN_Created(Win_Hwnd, Win_Title) {
-        This.debugToolTip("Creating thumbnail for " Win_Title)
+        This.debugToolTipText .= "Creating thumbnail for " Win_Title "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         ; Moves the Window to the saved possition if any are stored 
         This.RestoreClientPossitions(Win_Hwnd, Win_Title)        
         
@@ -1082,11 +1049,13 @@
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
     EvEWindowDestroy(hwnd?, WinTitle?) {
         if IsSet(WinTitle)
-            This.debugToolTip("Destroying thumbnail for " WinTitle)
+            This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
         else if IsSet(hwnd)
-            This.debugToolTip("Destroying thumbnail for hwnd " hwnd)
+            This.debugToolTipText .= "Destroying thumbnail for hwnd " hwnd "`n"
          else
-            This.debugToolTip("Destroying thumbnail for unknown window")
+            This.debugToolTipText .= "Destroying thumbnail for unknown window`n"
+
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
             for k, v in This.ThumbWindows.%hwnd% {
@@ -1129,7 +1098,8 @@
             hwnd := WinExist(title " Ahk_exe exefile.exe")
         }
         if !IsSet(hwnd) || !hwnd {
-            This.debugToolTip("ActivateEVEWindow: hwnd not found for " title)
+            This.debugToolTipText .= "ActivateEVEWindow: hwnd not found for " title "`n"
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             return
         }
         ;return when the user tries to bring a window to foreground which is already in foreground 
@@ -1333,7 +1303,8 @@
         directions := Map()
         index := 1
 
-        This.debugToolTip("Registering Non-EVE Groups")
+        This.debugToolTipText .= "Registering Non-EVE Groups`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         for _, group in This.NonEVEGroups {
             gr := group
@@ -1440,7 +1411,8 @@
     }
 
     RegisterNonEVEHotkeys() {
-        This.debugToolTip("Registering Non-EVE Hotkeys")
+        This.debugToolTipText .= "Registering Non-EVE Hotkeys`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         apps := This.NonEVEHotkeys
         for i, _ in apps["exe"] {
             if !apps["hotkey"].Has(i) || apps["hotkey"][i] = ""
@@ -2047,7 +2019,8 @@
             timer -= 1000 ; Adding offset for each char to avoid lags if there is a lot of them
         }
 
-        This.debugToolTip("Initialized log monitoring for chars:`n" This.StrJoin("`n", activeCharsToMonitor) "`n`nWaiting for chars to update logs...")
+        This.debugToolTipText .= "Initialized log monitoring for chars:`n" This.StrJoin("`n", activeCharsToMonitor) "`n`nWaiting for chars to update logs...`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         This.monitoringInitialized := 1
         This.monitorMethod := ObjBindMethod(This, "monitorAllChars")
         SetTimer(This.monitorMethod, This.monitoringInterval) ; Poll every specified by user time
@@ -2112,7 +2085,8 @@
         if This.waitingMonitoringChars.Has(charName)
             This.waitingMonitoringChars.Delete(charName)
 
-        This.debugToolTip("Started monitoring: " . charName . "`n`nAll monitored chars:`n" . This.StrJoin("`n", This.monitoredChars))
+        This.debugToolTipText .= "Started monitoring: " . charName . "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     }
 
     stopLogMonitoring(charName) {
@@ -2121,7 +2095,8 @@
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
 
-        This.debugToolTip("Stopped monitoring " charName)
+        This.debugToolTipText .= "Stopped monitoring: " . charName . "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     }
 
     monitorAllChars() {
@@ -2205,7 +2180,8 @@
         else if This.lastEventPriority && exists ; Clearing last event 
             This.endEvent(charName, hwnd)
 
-        This.debugToolTip("handleEventActivation: event " event " triggered for: " charName)
+        This.debugToolTipText .= "handleEventActivation: event " event " triggered for: " charName "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if This.flashBorderEnabled { ; Flashing border if enabled
             try {
@@ -2230,7 +2206,8 @@
         SetTimer(This.eventMethods[charName], 0)
         This.eventMethods.Delete(charName)
 
-        This.debugToolTip("endEvent: event ended for: " charName)
+        This.debugToolTipText .= "endEvent: event ended for: " charName "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if This.flashBorderEnabled && This.flashMethod.Has(charName) {
             flashRef := This.flashMethod[charName]["flashMethod"]
@@ -2336,16 +2313,21 @@
         return "player"
     }
 
-    debugToolTip(text?) {
-        if not IsSet(text) || !This.DebugMode
+    ; Debug tooltip method called from timers
+    debugToolTip() {
+        if !This.debugToolTipText
             return
 
-        x := A_ScreenWidth
-        y := A_ScreenHeight
+        if This.DebugMode {
+            x := A_ScreenWidth
+            y := A_ScreenHeight
+    
+            CoordMode "ToolTip", "Screen"
+            ToolTip(This.debugToolTipText, x, y)
+            SetTimer(() => ToolTip(), -5000)
+        }
 
-        CoordMode "ToolTip", "Screen"
-        ToolTip(text, x, y)
-        SetTimer(() => ToolTip(), -3000)
+        This.debugToolTipText := ""
     }
 
     StrJoin(delimiter, arr) {

@@ -15,7 +15,7 @@ Class ThumbWindow extends Propertys {
             ThumbObj["Window"].BackColor := 0x57504e
             This.ThumbnailBackgroundColor := 0x57504e
             ThumbObj["Window"].BackColor := This.ThumbnailBackgroundColor
-            MsgBox( "Invalid Color:  Global Settings -> Thumbnail Background Color`n`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`n`nColor is now set to default")
+            MsgBox( "Invalid Color: Thumbnails Visuals -> Thumbnail Background Color`n`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`n`nColor is now set to default")
         }
         
         ;Enable Shadow 
@@ -65,7 +65,7 @@ Class ThumbWindow extends Propertys {
                 }
                 catch as e {
                     CheckError := 1
-                    MsgBox("Error: Thumbnail Text Color is wrong´nin: Profile Settings - " This.LastUsedProfile " - Custom Colors -> " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
+                    MsgBox("Error: Thumbnail Text Color is wrong´nin: Thumbnails Visuals - " This.LastUsedProfile " - Custom Colors -> " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
                 }
             }
             else 
@@ -77,7 +77,7 @@ Class ThumbWindow extends Propertys {
                 ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c0x" This.ThumbnailTextColor, This.ThumbnailTextFont)
             }
             catch as e {
-                MsgBox("Error: Thumbnail Text Color Or Thumbnail Text Font are wrong´nin: Profile Settings - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
+                MsgBox("Error: Thumbnail Text Color Or Thumbnail Text Font are wrong´nin: Thumbnails Visuals - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
                 This.ThumbnailTextSize := "12", This.ThumbnailTextColor := "fac57a", This.ThumbnailTextFont := "Gill Sans MT"
                 ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c0x" This.ThumbnailTextColor, This.ThumbnailTextFont)
             }
@@ -112,7 +112,7 @@ Class ThumbWindow extends Propertys {
                 }
                 catch as e {
                     CheckError := 1
-                    MsgBox("Error: Client Highligt Color are wrong´nin: Profile Settings - " This.LastUsedProfile " - Custom Colors - " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
+                    MsgBox("Error: Client Highligt Color are wrong´nin: " This.LastUsedProfile " - Custom Colors - " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
                 }
             }
             else
@@ -125,7 +125,7 @@ Class ThumbWindow extends Propertys {
                 }
                 catch as e {
                     CheckError := 1
-                    MsgBox("Error: Client Highligt Color are wrong´nin: Profile Settings - " This.LastUsedProfile " - Custom Colors - " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
+                    MsgBox("Error: Client Highligt Color are wrong´nin: " This.LastUsedProfile " - Custom Colors - " Win_Title "`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
                 }
             }
             else {
@@ -134,7 +134,7 @@ Class ThumbWindow extends Propertys {
                 }
                 catch as e {
                     CheckError := 1
-                    MsgBox("Error: Client Highligt Color are wrong´nin: Profile Settings - " This.LastUsedProfile " Thumbnail Settings - Inactive Border Color `nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
+                    MsgBox("Error: Client Highligt Color are wrong´nin: Thumbnails Visuals - " This.LastUsedProfile " Thumbnail Settings - Inactive Border Color `nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)")
                 }
             }
         }
@@ -144,7 +144,7 @@ Class ThumbWindow extends Propertys {
                 ThumbObj["Border"].BackColor := border_color
             }
             catch as e {
-                MsgBox("Error: Client Highligt Color are wrong´nin: Profile Settings - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
+                MsgBox("Error: Client Highligt Color are wrong´nin: Thumbnails Visuals - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
                 This.ClientHighligtColor := "0xe36a0d"
                 ThumbObj["Border"].BackColor := This.ClientHighligtColor
             }

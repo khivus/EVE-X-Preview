@@ -508,7 +508,7 @@
         ; captBtn1 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn1
 
-        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails Hotkey - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
         ; captBtn2 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn2
