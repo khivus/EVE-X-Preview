@@ -1,7 +1,6 @@
-# v1.5.2-dev.1
+# v1.5.2
 
 ### Changes
-* Versioning system in github now is v1.5.2-dev.1, but the version in the program is still uses the same v1.5.2.1.
 * Added Debug Mode functionality for enhanced troubleshooting and runtime inspection.
 * Commented out hotkey capture buttons and related logic in settings.
 * Improved error handling and expanded debugging output across the entire application.
@@ -16,7 +15,7 @@
 * Unexpected errors now trigger the default AHK error dialog, including class, function, and code context for improved reporting and debugging.
 * Updated various settings labels and message popups for clarity and consistency.
 
-# v1.5.1.28
+# v1.5.1
 
 ### Changes
 * Customizable tray menu items.
@@ -58,7 +57,7 @@ Enabling more options decreases performance. The effect increases with the numbe
 * Wider some edit boxes.
 * Removed direct character hotkeys from default override.
 
-# v1.5.0.7
+# v1.5.0
 
 ### Changes
 * Redone all settings GUI.
@@ -80,7 +79,7 @@ Enabling more options decreases performance. The effect increases with the numbe
 * Moved Preserve Hotkeys on Logout to Hotkeys Groups.
 * Simplified + optimized windows switching logic.
 
-# v1.4.1.2 and earlier
+# v1.4.1 and earlier
 
 {Setting Name} = {Default Value}. {Description}.
 ### Hotkeys and Management

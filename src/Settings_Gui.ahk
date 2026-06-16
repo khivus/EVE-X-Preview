@@ -1533,10 +1533,10 @@
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX), "v" This.programVersion)
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Release:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestReleaseVersion", "unknown")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestReleaseVersion", "unknown          ") ; This spaces is stupid because ahk cuts text after update if initial text is shorter than updated text
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Pre-Release:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown          ")
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
 
@@ -1600,7 +1600,7 @@
 
             if This.latestPreReleaseTag != "" {
                 This.MainFrame["latestPreReleaseVersion"].Value := "v" This.latestPreReleaseTag
-                if VerCompare(This.latestPreReleaseTag, This.programVersion) > 0
+                if VerCompare(This.latestPreReleaseTag, This.programVersion) != 0
                     This.MainFrame["updateToPreReleaseBtn"].Enabled := 1
             }
         }
