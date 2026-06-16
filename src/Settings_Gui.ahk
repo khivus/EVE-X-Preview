@@ -75,11 +75,12 @@
 
         This.contentW := This.guiWidth - This.sidebarW
 
+        This.dividerGap := 22
         This.lGap := 24
         This.xlGap := 32
         This.editW := 160
         This.captBtnW := 60
-        This.captBtnH := 26
+        This.inlineBtnH := 26
         ; This.editHtkW := This.editW - This.captBtnW - This.baseGrid
         This.editHtkW := 160
         This.editExW := 197
@@ -94,6 +95,20 @@
 
         This.latestReleaseTag := ""
         This.latestPreReleaseTag := ""
+    }
+
+    SetSettings() {
+        This.AllSettings := Map(
+            "Client Settings", Map(
+                "MinimizeInactiveClients", {text: "Minimize Inactive Clients", type: "CheckBox"},
+                "AlwaysMaximize", {text: "Always Maximize Clients", type: "CheckBox"},
+                "Minimizeclients_Delay", {text: "EVE Window Minimize Delay (ms)", type: "DefaultEdit"},
+                "DontCloseOnLoginScreen", {text: "Don't Close Clients on Login Screen", type: "CheckBox"},
+                "dontCloseActiveClient", {text: "Don't Close Active Client", type: "CheckBox"},
+                "Dont_Minimize_Clients", {text: "Don't Minimize Clients", type: "EditWin", val: This.Dont_Minimize_List()},
+                "DontCloseClients", {text: "Don't Close Clients", type: "EditWin", val: This.DontCloseList()}
+            ),
+        )
     }
 
     CreateSidebar() {
@@ -150,52 +165,105 @@
         This.S_Gui.Show()
     }
 
-    createHtkCaptureBtn() {
-        return This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH), "Capture")
+    AddRow(arr, text, controlFn, bindName, opts := "") {  
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), text)
+    
+        if !controlFn || !bindName
+            return
+
+        ctrl := controlFn(bindName, opts)
+        arr.Push ctrl
+        return ctrl
     }
+
+    AddCheckBox(bindName, opts := "") {
+        if opts = ""
+            opts := Format("xs+{} yp v{}", This.offsetX, bindName)
+        return This.MainFrame.Add("CheckBox", opts, "On/Off")
+    }
+
+    AddDefaultEdit(bindName, opts := "") {
+        if opts = ""
+            opts := Format("xs+{} yp-{} w{} v{}", This.offsetX, This.editOffset, This.editW, bindName)
+        return This.MainFrame.Add("Edit", opts)
+    }
+
+    AddEditWinButton(bindName, opts := "") {
+        if opts = ""
+            opts := Format("xp+{} yp-{} w{} h{} v{}", This.offsetX - 1, 5, This.editW, This.inlineBtnH, bindName)
+        return This.MainFrame.Add("Button", opts, "Edit List")
+    }
+
+    OpenEditWin(parentGui, title, initialValue, callback) {
+        parentGui.Opt("+Disabled")  ; FREEZE parent
+
+        dlg := Gui("+Owner" parentGui.Hwnd " +ToolWindow", title)
+        dlg.SetFont("s10")
+    
+        btnW := (This.editEx2W - This.baseGrid) / 2
+    
+        edt := dlg.AddEdit(Format("w{} h{} vInput", This.editEx2W, This.editExH), initialValue)
+        ImpBtn := dlg.AddButton(Format("w{}", This.editEx2W), "Import from Launched")
+        btnOk := dlg.AddButton(Format("w{} Default", btnW), "OK")
+        btnCancel := dlg.AddButton(Format("xp+{} w{}", btnW + This.baseGrid, btnW, This.editEx2W), "Cancel")
+
+        finish(value := "") {
+            parentGui.Opt("-Disabled")
+            parentGui.Show()
+            dlg.Destroy()
+            callback(value)
+        }
+    
+        ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(edt))
+        btnOk.OnEvent("Click", (*) => finish(edt.Value))
+        btnCancel.OnEvent("Click", (*) => finish())
+        dlg.OnEvent("Close", (*) => finish())
+        dlg.Show()
+    }
+
 
     ClientSettings_Ctrl(visible?) {
         This.MainFrame.Group["Client Settings"] := [], ClientSettings := []
-        
+
+        This.SSSettings := Map(
+            "MinimizeInactiveClients", {text: "Minimize Inactive Clients", type: "CheckBox"},
+            "AlwaysMaximize", {text: "Always Maximize Clients", type: "CheckBox"},
+            "Minimizeclients_Delay", {text: "EVE Window Minimize Delay (ms)", type: "DefaultEdit"},
+            "DontCloseOnLoginScreen", {text: "Don't Close Clients on Login Screen", type: "CheckBox"},
+            "dontCloseActiveClient", {text: "Don't Close Active Client", type: "CheckBox"},
+            "Dont_Minimize_Clients", {text: "Don't Minimize Clients", type: "EditWin", val: This.Dont_Minimize_List()},
+            "DontCloseClients", {text: "Don't Close Clients", type: "EditWin", val: This.DontCloseList()}
+        )
+
+        ClientSettingsOrder := [
+            "MinimizeInactiveClients",
+            "AlwaysMaximize",
+            "Minimizeclients_Delay",
+            "DontCloseOnLoginScreen",
+            "dontCloseActiveClient",
+            "Dont_Minimize_Clients",
+            "DontCloseClients"
+        ]
+
         This.MainFrame.SetFont("s12 w700 q5")
         ClientSettings.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Client Settings")
         This.MainFrame.SetFont("s11 w400")
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+        ClientSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.dividerGap, This.sepW))
 
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Minimize Inactive Clients:")
-        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xs+{} yp", This.offsetX) " vMinimizeInactiveClients Checked" This.MinimizeInactiveClients, "On/Off")
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Always Maximize Clients:")
-        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xs+{} yp", This.offsetX) " vAlwaysMaximize Checked" This.AlwaysMaximize, "On/Off")
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "EVE Window Minimize Delay (ms):")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vMinimizeclients_Delay", This.Minimizeclients_Delay)
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Clients on Login Screen:")
-        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseOnLoginScreen Checked" This.DontCloseOnLoginScreen, "On/Off")
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Close Active Client:")
-        ClientSettings.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vdontCloseActiveClient", "On/Off")
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Don't Minimize Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xs yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDont_Minimize_Clients -Wrap", This.Dont_Minimize_List())
-        ImpBtn1 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
-
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xs+{} ys Section", This.editExW + This.contentGap), "Don't Close Clients:")
-        ClientSettings.Push This.MainFrame.Add("Edit", Format("xp yp+{} w{} h{}", This.contentGap, This.editExW, This.editExH) " vDontCloseClients -Wrap", This.DontCloseList())
-        ImpBtn2 := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editExH + This.baseGrid, This.editExW), "Import from Launched")
-
-        This.MainFrame["MinimizeInactiveClients"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
-        This.MainFrame["AlwaysMaximize"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
-        This.MainFrame["Minimizeclients_Delay"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
-        This.MainFrame["Dont_Minimize_Clients"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
-        ClientSettings.Push ImpBtn1
-        ImpBtn1.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["Dont_Minimize_Clients"]))
-        This.MainFrame["DontCloseOnLoginScreen"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
-        This.MainFrame["dontCloseActiveClient"].OnEvent("Click", (obj, *) => cSettings_EventHandler(obj))
-        This.MainFrame["DontCloseClients"].OnEvent("Change", (obj, *) => cSettings_EventHandler(obj))
-        ClientSettings.Push ImpBtn2
-        ImpBtn2.OnEvent("Click", (*) => This.ImportNamesFromThumbs(This.MainFrame["DontCloseClients"]))
+        for setting in ClientSettingsOrder {
+            if This.SSSettings[setting].type = "CheckBox" {
+                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddCheckBox.Bind(This), setting)
+                ctrl.OnEvent("Click", (obj, *) => cSettings_EventHandler(obj.name, obj.value))
+            }
+            else if This.SSSettings[setting].type = "DefaultEdit" {
+                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddDefaultEdit.Bind(This), setting)
+                ctrl.OnEvent("Change", (obj, *) => cSettings_EventHandler(obj.name, obj.value))
+            }
+            else if This.SSSettings[setting].type = "EditWin" {
+                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddEditWinButton.Bind(This), setting)
+                ctrl.OnEvent("Click", (obj, *) => This.OpenEditWin(This.S_Gui, This.SSSettings[obj.name].text, This.SSSettings[obj.name].val, (newVal) => cSettings_EventHandler(obj.name, newVal)))
+            }
+        }
 
         ;Pulls the GUI Object into the Map
         This.MainFrame.Group["Client Settings"] := ClientSettings
@@ -203,31 +271,8 @@
         for k, v in This.MainFrame.Group["Client Settings"]
             v.Visible := 0
 
-        cSettings_EventHandler(obj) {
-            if (obj.name = "MinimizeInactiveClients") {
-                This.MinimizeInactiveClients := obj.value
-            }
-            else if (obj.name = "AlwaysMaximize") {
-                This.AlwaysMaximize := obj.value
-            }
-            else if (obj.name = "TrackClientPossitions") {
-                This.TrackClientPossitions := obj.value
-            }
-            else if (obj.name = "Dont_Minimize_Clients") {
-                This.Dont_Minimize_Clients := obj.value
-            }
-            else if (obj.name = "Minimizeclients_Delay") {
-                This.Minimizeclients_Delay := obj.value
-            }
-            else if (obj.name = "DontCloseOnLoginScreen") {
-                This.DontCloseOnLoginScreen := obj.value
-            }
-            else if (obj.name = "dontCloseActiveClient") {
-                This.dontCloseActiveClient := obj.value
-            }
-            else if (obj.name = "DontCloseClients") {
-                This.DontCloseClients := obj.value
-            }
+        cSettings_EventHandler(name, newVal) {
+            This.%name% := newVal
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
         }
@@ -1869,11 +1914,11 @@
         ;Client Settings
         This.MainFrame["MinimizeInactiveClients"].value := This.MinimizeInactiveClients
         This.MainFrame["AlwaysMaximize"].value := This.AlwaysMaximize
-        This.MainFrame["Dont_Minimize_Clients"].value := This.Dont_Minimize_List()
+        ; This.MainFrame["Dont_Minimize_Clients"].value := This.Dont_Minimize_List()
         This.MainFrame["Minimizeclients_Delay"].value := This.Minimizeclients_Delay
         This.MainFrame["DontCloseOnLoginScreen"].value := This.DontCloseOnLoginScreen
         This.MainFrame["dontCloseActiveClient"].value := This.dontCloseActiveClient
-        This.MainFrame["DontCloseClients"].value := This.DontCloseList()
+        ; This.MainFrame["DontCloseClients"].value := This.DontCloseList()
 
         ;Custom Colors
         This.MainFrame["Ccoloractive"].value := This.CustomColorsActive
