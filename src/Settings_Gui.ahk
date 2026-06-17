@@ -9,6 +9,7 @@
         This.S_Gui.Title := "EVE-X-Preview - Settings"
 
         This.SetState()
+        This.SetSettings()
         
         This.CreateSidebar()
         This.CreateMainFrame()
@@ -79,6 +80,7 @@
         This.lGap := 24
         This.xlGap := 32
         This.editW := 160
+        This.shortEditW := 50
         This.captBtnW := 60
         This.inlineBtnH := 26
         ; This.editHtkW := This.editW - This.captBtnW - This.baseGrid
@@ -98,6 +100,17 @@
     }
 
     SetSettings() {
+        This.SettingsOrder := Map(
+            "Client Settings", [
+                "MinimizeInactiveClients",
+                "AlwaysMaximize",
+                "Minimizeclients_Delay",
+                "DontCloseOnLoginScreen",
+                "dontCloseActiveClient",
+                "Dont_Minimize_Clients",
+                "DontCloseClients"
+            ]
+        )
         This.AllSettings := Map(
             "Client Settings", Map(
                 "MinimizeInactiveClients", {text: "Minimize Inactive Clients", type: "CheckBox"},
@@ -107,6 +120,18 @@
                 "dontCloseActiveClient", {text: "Don't Close Active Client", type: "CheckBox"},
                 "Dont_Minimize_Clients", {text: "Don't Minimize Clients", type: "EditWin", val: This.Dont_Minimize_List()},
                 "DontCloseClients", {text: "Don't Close Clients", type: "EditWin", val: This.DontCloseList()}
+            ),
+            "Hotkey Groups", Map(
+                "PreserveHotkeysOnLogout", {text: "Preserve Hotkeys on Logout", type: "CheckBox"},
+                "KeepGroupsPositions", {text: "Keep Groups Positions", type: "CheckBox"},
+                "dynamicGroupsEnabled", {text: "Disable Char in Group (Shift+Click)", type: "CheckBox"},
+                "dynamicGroupsColor", {text: "Disabled Thumbnail Color (Hex/RGB)", type: "ColorEdit"},
+                "GroupsHoldDelay", {text: "Groups Hold Delay (ms)", type: "ShortEdit", val: "Minimum = 75"},
+                ; "doublebuttons", {text: "Add/Delete Groups", type: "ColorEdit"}, ; TODO
+                "HotkeyGroupDDL", {text: "Select Group", type: "DDL", val: This.GetGroupList()},
+                "ForwardsKey", {text: "Forwards Hotkey", type: "HotkeyEdit"},
+                "BackwardsdKey", {text: "Backwards Hotkey", type: "HotkeyEdit"},
+                "HKCharlist", {text: "Characters List", type: "EditWin", val: ""} ; TODO add val
             ),
         )
     }
@@ -166,7 +191,7 @@
     }
 
     AddRow(arr, text, controlFn, bindName, opts := "") {  
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), text)
+        arr.Push This.AddText(text)
     
         if !controlFn || !bindName
             return
@@ -174,6 +199,12 @@
         ctrl := controlFn(bindName, opts)
         arr.Push ctrl
         return ctrl
+    }
+
+    AddText(text, opts := "") {
+        if opts = ""
+            opts := Format("xs ys+{} Section", This.xlGap)
+        return This.MainFrame.Add("Text", opts, text)
     }
 
     AddCheckBox(bindName, opts := "") {
@@ -192,6 +223,18 @@
         if opts = ""
             opts := Format("xp+{} yp-{} w{} h{} v{}", This.offsetX - 1, 5, This.editW, This.inlineBtnH, bindName)
         return This.MainFrame.Add("Button", opts, "Edit List")
+    }
+
+    AddColorPreview(bindNmae, opts := "") {
+        if opts = ""
+            opts := Format("xp+{} yp w{} h{} vPreview{} Border", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize, bindNmae)
+        return This.MainFrame.Add("Text", opts)
+    }
+
+    AddDDL(bindName, opts := "") {
+        if opts = ""
+            opts := Format("xp+{} yp-{} w{} v{}", This.offsetX, 6, This.editW, bindName)
+        return This.MainFrame.Add("DDL", opts)
     }
 
     OpenEditWin(parentGui, title, initialValue, callback) {
@@ -221,19 +264,76 @@
         dlg.Show()
     }
 
+    SettingsBuilder(GroupName, SettingsOrder, arr) {
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), GroupName)
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.dividerGap, This.sepW))
+
+        for setting in SettingsOrder {
+            if This.AllSettings[GroupName][setting].type = "CheckBox" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddCheckBox.Bind(This), setting)
+                ctrl.OnEvent("Click", (obj, *) => This.SettingsEventHandler(obj.name, obj.value))
+            }
+            else if This.AllSettings[GroupName][setting].type = "DefaultEdit" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddDefaultEdit.Bind(This), setting)
+                ctrl.OnEvent("Change", (obj, *) => This.SettingsEventHandler(obj.name, obj.value))
+            }
+            else if This.AllSettings[GroupName][setting].type = "EditWin" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddEditWinButton.Bind(This), setting)
+                ctrl.OnEvent("Click", (obj, *) => This.OpenEditWin(This.S_Gui, This.AllSettings[GroupName][obj.name].text, This.AllSettings[GroupName][obj.name].val, (newVal) => This.SettingsEventHandler(obj.name, newVal)))
+            }
+            else if This.AllSettings[GroupName][setting].type = "ColorEdit" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddDefaultEdit.Bind(This), setting, Format("xp+{} yp-{} w{} v{} -Wrap", This.offsetX, This.editOffset, This.editC, setting))
+                arr.Push This.AddColorPreview(setting)
+                ctrl.OnEvent("Change", (obj, *) => This.SettingsEventHandler(obj.name, obj.value, "ColorEdit"))
+            }
+            else if This.AllSettings[GroupName][setting].type = "ShortEdit" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddDefaultEdit.Bind(This), setting, Format("xp+{} yp-{} w{} v{}", This.offsetX, This.editOffset, This.shortEditW, setting))
+                arr.Push This.AddText(This.AllSettings[GroupName][setting].val, Format("xp+{} yp+{}", This.shortEditW + This.baseGrid, This.editOffset))
+                ctrl.OnEvent("Change", (obj, *) => This.SettingsEventHandler(obj.name, obj.value))
+            }
+            else if This.AllSettings[GroupName][setting].type = "DDL" {
+                ctrl := This.AddRow(arr, This.AllSettings[GroupName][setting].text, This.AddDDL.Bind(This), setting)
+                ctrl.OnEvent("Change", (obj, *) => This.SettingsEventHandler(obj.name, obj.value, "DDL"))
+            }
+        }
+    }
+
+    SettingsEventHandler(name, newVal, type := "") {
+        if type = ""
+            This.%name% := newVal
+        else {
+            if type = "ColorEdit" {
+                This.%name% := newVal
+                This.RedrawColorPreview(name, newVal)
+            }
+            else if type = "DDL" {
+                
+            }
+        }
+        This.NeedRestart := 1
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    BuildGroups() {
+        SettingsGroups := ["Client Settings"]
+
+        for GroupName in SettingsGroups {
+            GroupArray := []
+
+            This.SettingsBuilder(GroupName, This.SettingsOrder[GroupName], GroupArray)
+
+            This.MainFrame.Group[GroupName] := GroupArray
+
+            for k, v in This.MainFrame.Group[GroupName]
+                v.Visible := 0
+        }
+    }
+
 
     ClientSettings_Ctrl(visible?) {
         This.MainFrame.Group["Client Settings"] := [], ClientSettings := []
-
-        This.SSSettings := Map(
-            "MinimizeInactiveClients", {text: "Minimize Inactive Clients", type: "CheckBox"},
-            "AlwaysMaximize", {text: "Always Maximize Clients", type: "CheckBox"},
-            "Minimizeclients_Delay", {text: "EVE Window Minimize Delay (ms)", type: "DefaultEdit"},
-            "DontCloseOnLoginScreen", {text: "Don't Close Clients on Login Screen", type: "CheckBox"},
-            "dontCloseActiveClient", {text: "Don't Close Active Client", type: "CheckBox"},
-            "Dont_Minimize_Clients", {text: "Don't Minimize Clients", type: "EditWin", val: This.Dont_Minimize_List()},
-            "DontCloseClients", {text: "Don't Close Clients", type: "EditWin", val: This.DontCloseList()}
-        )
 
         ClientSettingsOrder := [
             "MinimizeInactiveClients",
@@ -245,37 +345,13 @@
             "DontCloseClients"
         ]
 
-        This.MainFrame.SetFont("s12 w700 q5")
-        ClientSettings.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Client Settings")
-        This.MainFrame.SetFont("s11 w400")
-        ClientSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.dividerGap, This.sepW))
-
-        for setting in ClientSettingsOrder {
-            if This.SSSettings[setting].type = "CheckBox" {
-                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddCheckBox.Bind(This), setting)
-                ctrl.OnEvent("Click", (obj, *) => cSettings_EventHandler(obj.name, obj.value))
-            }
-            else if This.SSSettings[setting].type = "DefaultEdit" {
-                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddDefaultEdit.Bind(This), setting)
-                ctrl.OnEvent("Change", (obj, *) => cSettings_EventHandler(obj.name, obj.value))
-            }
-            else if This.SSSettings[setting].type = "EditWin" {
-                ctrl := This.AddRow(ClientSettings, This.SSSettings[setting].text, This.AddEditWinButton.Bind(This), setting)
-                ctrl.OnEvent("Click", (obj, *) => This.OpenEditWin(This.S_Gui, This.SSSettings[obj.name].text, This.SSSettings[obj.name].val, (newVal) => cSettings_EventHandler(obj.name, newVal)))
-            }
-        }
+        This.SettingsBuilder("Client Settings", ClientSettingsOrder, ClientSettings)
 
         ;Pulls the GUI Object into the Map
         This.MainFrame.Group["Client Settings"] := ClientSettings
 
         for k, v in This.MainFrame.Group["Client Settings"]
             v.Visible := 0
-
-        cSettings_EventHandler(name, newVal) {
-            This.%name% := newVal
-            This.NeedRestart := 1
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        }
     }
 
     ; User defined colors per Client
@@ -441,7 +517,7 @@
             }
             else if (obj.name = "dynamicGroupsColor") {
                 This.dynamicGroupsColor := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if (obj.name = "GroupsHoldDelay") {
                 delay := Integer(obj.value)
@@ -951,7 +1027,7 @@
             }
             else if (obj.name = "ThumbnailTextColor") {
                 This.ThumbnailTextColor := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if (obj.name = "ThumbnailTextSize") {
                 This.ThumbnailTextSize := obj.value
@@ -967,7 +1043,7 @@
             }
             else if (obj.name = "ClientHighligtColor") {
                 This.ClientHighligtColor := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if (obj.name = "ClientHighligtBorderthickness") {
                 This.ClientHighligtBorderthickness := obj.value
@@ -985,14 +1061,14 @@
             }
             else if (obj.Name = "InactiveClientBorderColor") {
                 This.InactiveClientBorderColor := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if (obj.Name = "InactiveClientBorderthickness") {
                 This.InactiveClientBorderthickness := obj.value
             }
             else if (obj.name = "ThumbnailBackgroundColor") {
                 This.ThumbnailBackgroundColor := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if (obj.name = "ThumbnailMinimumSizewidth") {
                 This.ThumbnailMinimumSize["width"] := obj.value
@@ -1005,10 +1081,10 @@
         }
     }
 
-    RedrawColorPreview(obj) {
+    RedrawColorPreview(name, value) {
         try
-            This.MainFrame["Preview" obj.name].Opt("Background" obj.value)
-        This.MainFrame["Preview" obj.name].Redraw()
+            This.MainFrame["Preview" name].Opt("Background" value)
+        This.MainFrame["Preview" name].Redraw()
     }
 
     ThumbnailVisibility_Ctrl() {
@@ -1218,7 +1294,7 @@
                 This.monitoredEvents[event]["enabled"] := obj.value
             else if object = "C" {
                 This.monitoredEvents[event]["color"] := obj.value
-                This.RedrawColorPreview(obj)
+                This.RedrawColorPreview(obj.name, obj.value)
             }
             else if obj.name = "shootingInterval" {
                 This.shootingInterval := obj.value
