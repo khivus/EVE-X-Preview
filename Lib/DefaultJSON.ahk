@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "2",
+    "settings_version": "3",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -49,6 +49,17 @@
                 "HideThumbnails": 0,
                 "ClickThroughActive": 0
             },
+            "Thumbnails Interaction": {
+                "ActivateThumbnail": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 0},
+                "MoveThumbnail": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 0},
+                "ResizeThumbnail": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 1},
+                "MoveAllThumbnails": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 1},
+                "ResizeAllThumbnails": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 0},
+                "MinimizeClient": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 1},
+                "CloseClient": {"lmb": 0, "rmb": 0, "shift": 0, "ctrl": 0},
+                "DisableFromGroups": {"lmb": 1, "rmb": 0, "shift": 1, "ctrl": 0},
+                "QuickGroup": {"lmb": 0, "rmb": 1, "shift": 1, "ctrl": 0}
+            },
             "Thumbnails Visuals": {
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
@@ -90,8 +101,10 @@
                 "GroupsHoldDelay": 100,
                 "HideThumbnailsHotkey": "",
                 "ClickThroughHotkey": "",
-                "dynamicGroupsEnabled": 1,
-                "dynamicGroupsColor": "ff0000"
+                "dynamicGroupsColor": "ff0000",
+                "QuickGroupColor": "72efdd",
+                "QuickGroupHotkey": "",
+                "QuickGroupIgnoredInOtherGroups": 1
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -110,6 +123,7 @@
                 "SwitchLangOnErr": 0,
                 "Global_Groups": {
                     "Client Settings": 0,
+                    "Thumbnails Interaction": 0,
                     "Thumbnails Behavior": 0,
                     "Thumbnails Visuals": 0,
                     "Hotkeys Settings": 0,

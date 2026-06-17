@@ -173,8 +173,9 @@
         if ProfEnabled
             This.StartProfiling()
 
-        ; Map of ignored chars in hotkey groups
-        This.ignoredChars := Map()
+        ; Map of Disabled and Quickgroup chars
+        This.DisabledChars := Map()
+        This.QuickGroupChars := Map()
 
         ; Inited monitoring check
         This.monitoringInitialized := 0
@@ -207,6 +208,9 @@
         This.margins := Buffer(16, 0)
         NumPut("Int", 0, This.margins)
         
+        ; Build Interaction Map for OnMessage listener
+        This.BuildThumbnailInteractionMap()
+
         ;Register all messages wich are inside LISTENERS
         for i, message in this.LISTENERS
             OnMessage(message, ObjBindMethod(This, "_OnMessage"))
@@ -453,9 +457,11 @@
     }
 
     ;Register set Hotkeys by the user in settings
-    RegisterHotkeys(title, EvE_hwnd) {
+    RegisterHotkeys(title) {
         if !This._Hotkeys[title]
             return
+        
+        SelectedHotkey := This._Hotkeys[title]
 
         This.debugToolTipText .= "Registering hotkeys for " title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
@@ -467,12 +473,12 @@
     
         if !This.SwitchLangOnErr {
             try
-                Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+                Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(,,title, 1), "P1"
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in Hotkey Settings - " This.LastUsedProfile " Hotkeys")
         } 
         else
-            Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+            Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(,,title, 1), "P1"
     }    
 
     ;Register the Hotkeys for cycle Groups if any set
@@ -503,7 +509,7 @@
                 keys["BackwardsHotkey"] := v["BackwardsHotkey"]
 
             HotIf ObjBindMethod(This, method, This.HotkGroups[index])
-            for direction, key in keys
+            for direction, key in keys {
                 if !This.SwitchLangOnErr {
                     try
                         Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
@@ -512,10 +518,40 @@
                 }
                 else
                     Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
+            }
+
+            if v["FirstCharHotkey"] != "" && v["Characters"].Length > 0 {
+                if !This.SwitchLangOnErr {
+                    try
+                        Hotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1")
+                    catch ValueError as e
+                        MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - First Active Character Hotkey")
+                }
+                else
+                    Hotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1")
+            }
 
             index += 1
             keys := Map()
         }
+    }
+
+    ActivateFirstActiveCharInGroup(ArrInd, *) {
+        arr := This.HotkGroups[ArrInd]
+        length := arr.Length
+
+        found := false
+        loop length {
+            hwndEVE := WinExist(arr[A_Index] " ahk_exe exefile.exe")
+            if hwndEVE && This.IsWinAllowed(hwndEVE) {
+                found := true
+                break
+            } 
+        }
+
+        if found && This.IsWinAllowed(hwndEVE)
+            try
+                This.ActivateEVEWindow(hwndEVE,,) 
     }
 
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
@@ -545,10 +581,10 @@
 
         Loop length { ; Using loop len instead of while to avoid infinite while
             hwndEVE := WinExist(arr[index] " ahk_exe exefile.exe")
-            if hwndEVE && !This.ignoredChars.Has(hwndEVE)
+            if hwndEVE && This.IsWinAllowed(hwndEVE)
                 break
             else if hwndTemp := This.hasMathcingOldTitle(arr[index]) {
-                if !This.ignoredChars.Has(hwndTemp) {
+                if This.IsWinAllowed(hwndEVE) {
                     hwndEVE := hwndTemp
                     break
                 }
@@ -557,7 +593,7 @@
             index := DirectionHandler(direction, index, length)
         }
 
-        if This.ignoredChars.Has(hwndEVE) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(hwndEVE) ; Last check if loop leaked window there
             return
 
         try
@@ -581,6 +617,13 @@
             }
             return index
         }
+    }
+
+    IsWinAllowed(hwnd) {
+        if This.QuickGroupIgnoredInOtherGroups
+            return !This.DisabledChars.Has(hwnd) && !This.QuickGroupChars.Has(hwnd)
+        else
+            return !This.DisabledChars.Has(hwnd)
     }
 
     ; Tries to find active window in group, with brief retry on lag
@@ -647,6 +690,55 @@
         return
     }
 
+    ; Register QuickGroup Hotkey
+    RegisterQuickGroup() {
+        if !This.QuickGroupEnabled || !This.QuickGroupHotkey
+            return
+
+        if This.Global_Hotkeys
+            HotIf (*) => WinExist(This.EVEExe)
+        else
+            HotIf (*) => WinActive(This.EVEExe)
+        
+        if !This.SwitchLangOnErr {
+            try
+                Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
+            catch ValueError as e
+                MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnail Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
+        }
+        else
+            Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
+    }
+
+    CycleQuickGroup(*) {
+        if !This.QuickGroupEnabled || !This.QuickGroupChars.Count
+            return
+
+        static tick, prevTick := 0
+        tick := A_TickCount
+        if tick - prevTick < This.GroupsHoldDelay
+            return
+        prevTick := tick
+
+        str := ""
+        for k, v in This.QuickGroupChars ; k is hwnd, v is title
+            str .= v "`n"
+        str := Sort(Trim(str, "`n "))
+        arr := StrSplit(str, "`n")
+        length := arr.Length
+
+        ; Derive from active window, reset to start if not found
+        currentIndex := This._GetCurrentGroupIndex(arr)
+        index := currentIndex = -1 ? 0 : currentIndex
+
+        index += 1
+        if index > length
+            index := 1
+
+        try
+            This.ActivateEVEWindow(,, arr[index])
+    }
+
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
         static tick, prevTick := 0
@@ -676,7 +768,7 @@
             return
 
         if LoginWins.Length = 1 {
-            if This.ignoredChars.Has(LoginWins[1]["hwnd"])
+            if !This.IsWinAllowed(LoginWins[1]["hwnd"])
                 return
 
             try
@@ -702,7 +794,7 @@
             currentIndex := 1
 
         Loop LoginWins.Length {
-            if !This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"])
+            if This.IsWinAllowed(LoginWins[currentIndex]["hwnd"])
                 break
 
             currentIndex += 1
@@ -710,7 +802,7 @@
                 currentIndex := 1
         }
 
-        if This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"]) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(LoginWins[currentIndex]["hwnd"]) ; Last check if loop leaked window there
             return
 
         try
@@ -789,10 +881,12 @@
                         This.ShowThumb(k, "Show")
                 }
             }
-            if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, title)
+            if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
+            if This.QuickGroupEnabled && this.QuickGroupChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
             This.BorderActive := 0
-            This.RegisterHotkeys(title, hwnd)
+            This.RegisterHotkeys(title)
         }
     }
 
@@ -830,66 +924,127 @@
         }
     }
 
-    ;#### Gets Called after receiveing a mesage from the Listeners
-    ;#### Handels Window Border, Resize, Activation 
-    _OnMessage(wparam, lparam, msg, hwnd) {
-        If (This.ThumbHwnd_EvEHwnd.Has(hwnd)  ) {            
-            ; Move the Window with right mouse button 
-            If (msg == Main_Class.WM_RBUTTONDOWN) {
-                while (GetKeyState("RButton")) {
-                    if !(GetKeyState("LButton")) {
-                        try {
-                            This.Mouse_DragMove(wparam, lparam, msg, hwnd)
-                            This.Window_Snap(hwnd, This.ThumbWindows)
-                        }
-                    }
-                    else {
-                        try
-                            This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
-
-                    }
-                }
-
-                if This.AutoSaveThumbnailPositions ; Positions autosave
-                    This.Save_ThumbnailPossitions
-                
-                return 0
+    ; Builds a map of Thumbnail Interaction Actions to their corresponding numbers
+    ; We can access needed interaction by using the wparam number
+    BuildThumbnailInteractionMap() {
+        This.DisabledFromGroupsEnabled := false
+        This.QuickGroupEnabled := false
+        This.ThumbnailInteractionMap := Map()
+        for action, value in This.ThumbnailInteractions {
+            combination := 0
+            for k, v in value {
+                if k = "lmb"
+                    combination += v * 1
+                else if k = "rmb"
+                    combination += v * 2
+                else if k = "shift"
+                    combination += v * 4
+                else if k = "ctrl"
+                    combination += v * 8
             }
+            if !combination
+                continue
+            if This.ThumbnailInteractionMap.Has(combination) {
+                MsgBox("Duplicated value for Thumbnail Interaction Action: " action)
+                continue
+            }
+            This.ThumbnailInteractionMap[combination] := action
 
-            ; Wparam -  9 Ctrl+Lclick
-            ;           5 Shift+Lclick
-            ;           13 Shift+ctrl+click
-            Else If (msg == Main_Class.WM_LBUTTONDOWN) {
-                ;Activates the EVE Window by clicking on the Thumbnail 
-                if (wparam = 1) {
-                    try { ; Probably fix for bug
-                        if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd])) {
-                            This.ActivateEVEWindow(hwnd)
-                        }
-                    }
+            ; Activate flags for Thumbnail Interaction Actions
+            if action = "DisableFromGroups"
+                This.DisabledFromGroupsEnabled := true
+            else if action = "QuickGroup" {
+                This.QuickGroupEnabled := true
+                This.RegisterQuickGroup()
+            }
+        }
+    }
+
+    ; All usable wparam combinations = 12 
+    ; 1 - Left Click
+    ; 2 - Right Click
+    ; 3 - Left + Right Click
+    ; 5 - Left Click + Shift
+    ; 6 - Right Click + Shift
+    ; 7 - Left + Right Click + Shift
+    ; 9 - Left Click + Ctrl
+    ; 10 - Right Click + Ctrl
+    ; 11 - Left + Right Click + Ctrl
+    ; 13 - Left Click + Shift + Ctrl
+    ; 14 - Right Click + Shift + Ctrl
+    ; 15 - Left + Right Click + Shift + Ctrl
+    
+    ; Gets Called after receiveing a mesage from the Listeners
+    ; Handels Window Border, Resize, Activation 
+    _OnMessage(wparam, lparam, msg, hwnd) {
+        if !This.ThumbHwnd_EvEHwnd.Has(hwnd) || !This.ThumbnailInteractionMap.Has(wparam) ; If the hwnd is not a thumbnail or the action is not set 
+            return
+
+        action := This.ThumbnailInteractionMap[wparam]
+        hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
+        title := This.ThumbWindows.%hwndEVE%["Window"].Title
+
+        try {
+            if action = "ActivateThumbnail" {
+                This.ActivateEveWindow(hwndEVE)
+            }
+            else if action = "MoveThumbnail" {
+                This.Mouse_DragMove(hwnd) ; Moves one thumbnail
+                This.Window_Snap(hwnd, This.ThumbWindows)
+            }
+            else if action = "ResizeThumbnail" {
+                This.Mouse_ResizeThumb(hwnd) ; Resizes one thumbnail
+            }
+            else if action = "MoveAllThumbnails" {
+                This.Mouse_DragMove(hwnd, 1) ; Moves all thumbnails
+                This.Window_Snap(hwnd, This.ThumbWindows)
+            }
+            else if action = "ResizeAllThumbnails" {
+                This.Mouse_ResizeThumb(hwnd, 1) ; Resizes all thumbnails
+            }
+            else if action = "MinimizeClient" {
+                if (!GetKeyState("RButton"))
+                    PostMessage 0x0112, 0xF020, , , hwndEVE
+            }
+            else if action = "CloseClient" {
+                WinClose("ahk_id " hwndEVE " ahk_exe exefile.exe")
+            }
+            else if action = "DisableFromGroups" && This.DisabledFromGroupsEnabled {
+                if This.QuickGroupChars.Has(hwndEVE) { ; Overrides DisabledChars -> Quickgroup
+                    This.QuickGroupChars.Delete(hwndEVE)
                 }
-                ; Ctrl+Lbutton, Minimizes the Window on whose thumbnail the user clicks
-                else if (wparam = 9) { 
-                    ; Minimize
-                    if (!GetKeyState("RButton"))
-                        PostMessage 0x0112, 0xF020, , , This.ThumbHwnd_EvEHwnd[hwnd]
-                } ; Shift+Click and feature enabled
-                else if wparam = 5 && This.dynamicGroupsEnabled {
-                    hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
-                    title := This.ThumbWindows.%hwndEVE%["Window"].Title
-                    if !This.ignoredChars.Has(hwndEVE) {
-                        This.ignoredChars[hwndEVE] := true
-                        This.toggleColorBorder(hwndEVE, title)
-                    }
-                    else {
-                        This.ignoredChars.Delete(hwndEVE)
-                        This.toggleColorBorder(hwndEVE, title, false)
-                        if WinActive("ahk_id " hwndEVE)
-                            This.BorderActive := 0
-                    }
+
+                if !This.DisabledChars.Has(hwndEVE) {
+                    This.DisabledChars[hwndEVE] := title
+                    This.toggleColorBorder(hwndEVE, title, 1, This.DisableFromGroupsColor)
                 }
-                return 0
-            }   
+                else {
+                    This.DisabledChars.Delete(hwndEVE)
+                    This.toggleColorBorder(hwndEVE, title, 0)
+                    if WinActive("ahk_id " hwndEVE)
+                        This.BorderActive := 0
+                }
+            }
+            else if action = "QuickGroup" && This.QuickGroupEnabled {
+                if This.DisabledChars.Has(hwndEVE) { ; Overrides DisabledChars -> Quickgroup
+                    This.DisabledChars.Delete(hwndEVE)
+                }
+
+                if !This.QuickGroupChars.Has(hwndEVE) {
+                    This.QuickGroupChars[hwndEVE] := title
+                    This.toggleColorBorder(hwndEVE, title, 1, This.QuickGroupColor)
+                }
+                else {
+                    This.QuickGroupChars.Delete(hwndEVE)
+                    This.toggleColorBorder(hwndEVE, title, 0)
+                    if WinActive("ahk_id " hwndEVE)
+                        This.BorderActive := 0
+                }
+            }
+        }
+        catch {
+            This.debugToolTipText .= "Error OnMessage Listener`n"
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         }
     }
 
@@ -937,7 +1092,7 @@
 
         This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails
         This.RegisterNonEVEHotkeys()
-        This.RegisterHotkeys(Win_Title, Win_Hwnd)
+        This.RegisterHotkeys(Win_Title)
     }
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
@@ -1372,13 +1527,13 @@
 
         loop length {
             hwnd := This.OnWinExist_(group["exe"][index], group["title"][index])
-            if hwnd && !This.ignoredChars.Has(hwnd)
+            if hwnd && This.IsWinAllowed(hwnd)
                 break
 
             index := DirectionHandler(direction, index, length)
         }
 
-        if This.ignoredChars.Has(hwnd) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(hwnd) ; Last check if loop leaked window there
             return
 
         try
@@ -2219,8 +2374,10 @@
             if This.LastActiveThumbHwnd = hwnd
                 This.BorderActive := 0
 
-            if This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, charName)
+            if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, charName, 1, This.DisableFromGroupsColor)
+            if This.QuickGroupEnabled && this.QuickGroupChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, charName, 1, This.QuickGroupColor)
         }
         if This.showEventText {
             This.updateThumbnailText(charName, hwnd)

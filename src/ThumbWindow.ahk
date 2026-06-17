@@ -188,7 +188,7 @@ Class ThumbWindow extends Propertys {
 
     ;## Moves the Window by holding down the Right Mousebutton
     ;## By Holding CTRL and SHIFT it moves all Windows
-    Mouse_DragMove(wparam, lparam, msg, hwnd) {
+    Mouse_DragMove(hwnd, moveAll := 0) {
         CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
         This.Resize := 1
         dragging := 0
@@ -226,7 +226,7 @@ Class ThumbWindow extends Propertys {
             }
 
             ;Moves all windows
-            if (wparam = 10) { ; Ctrl+RButton
+            if moveAll {
                 for k, v in This.ThumbWindows.OwnProps() {
                     for type, Obj in v {
                         if (hwnd == Obj.Hwnd)
@@ -245,8 +245,8 @@ Class ThumbWindow extends Propertys {
     }
 
 
-    ;   wparam, lparam, msg, hwnd
-    Mouse_ResizeThumb(wparam, lparam, msg, hwnd) {
+    ; Resizes the thumbnail
+    Mouse_ResizeThumb(hwnd, resizeAll := 0) {
         CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
         This.Resize := 0
         while (GetKeyState("LButton") && GetKeyState("RButton")) {
@@ -281,7 +281,7 @@ Class ThumbWindow extends Propertys {
             This.Update_Thumb(false, hwnd)
             This.BorderSize(This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%["Window"].Hwnd, This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]%["Border"].Hwnd)
 
-            if (!GetKeyState("LCtrl")) {
+            if resizeAll {
                 for ThumbIDs in This.ThumbHwnd_EvEHwnd {
                     if (ThumbIDs == This.ThumbHwnd_EvEHwnd[hwnd]) || !This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[ThumbIDs])
                         continue
@@ -391,8 +391,10 @@ Class ThumbWindow extends Propertys {
                 ;     This.ThumbWindows.%EVEWindowHwnd%["TextOverlay"].Show("NoActivate")
             }
             hwndEVE := Integer(EVEWindowHwnd)
-            if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwndEVE)
-                This.toggleColorBorder(hwndEVE, title)
+            if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwndEVE)
+                This.toggleColorBorder(hwndEVE, title, 1, This.DisableFromGroupsColor)
+            if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwndEVE)
+                This.toggleColorBorder(hwndEVE, title, 1, This.QuickGroupColor)
         }
         else {
             for k, v in This.ThumbWindows.%EVEWindowHwnd% {
@@ -480,7 +482,7 @@ Class ThumbWindow extends Propertys {
         thumbWin := thumb["Window"]
         thumbBorder := thumb["Border"]
 
-        clearLastThumb := !This.ignoredChars.Has(hwnd) && (!This.flashMethod.Has(title) || This.stopDisplayingOnSwitch)
+        clearLastThumb := !This.DisabledChars.Has(hwnd) && !This.QuickGroupChars.Has(hwnd) && (!This.flashMethod.Has(title) || This.stopDisplayingOnSwitch)
 
         if !This.CustomColorsActive && !This.ShowAllColoredBorders && clearLastThumb {
             try
@@ -518,9 +520,10 @@ Class ThumbWindow extends Propertys {
             thumbBorder.BackColor := "0x" This.monitoredEvents[This.flashMethod[title]["event"]]["color"]
             This.BorderSize(thumbWin.Hwnd, thumbBorder.Hwnd, This.ClientHighligtBorderthickness)
         }        
-        else if This.ignoredChars.Has(hwnd) {
-            This.toggleColorBorder(hwnd, title)
-        }
+        else if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
+            This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
+        else if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwnd)
+            This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
     }
 
     activateBorder(hwnd, title) {
@@ -582,7 +585,7 @@ Class ThumbWindow extends Propertys {
         }
     }
 
-    toggleColorBorder(hwnd, title, enable := 1) {
+    toggleColorBorder(hwnd, title, enable := 1, color := "ff0000") {
         thumb := This.getThumb(hwnd)
         if !thumb
             return
@@ -590,9 +593,9 @@ Class ThumbWindow extends Propertys {
             return
 
         try 
-            thumb["Border"].BackColor := "0x" This.dynamicGroupsColor
+            thumb["Border"].BackColor := "0x" color
         catch 
-            thumb["Border"].BackColor := "0xff0000"
+            thumb["Border"].BackColor := "0xffffff"
         This.BorderSize(thumb["Window"].Hwnd, thumb["Border"].Hwnd, This.ClientHighligtBorderthickness)
         
         if enable

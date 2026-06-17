@@ -69,6 +69,7 @@ class Propertys extends TrayMenu {
 
         This.ProfileHotkeysSettings := This.ComboGroups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsBehavior := This.ComboGroups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsInteraction := This.ComboGroups["Thumbnails Interaction"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsVisuals := This.ComboGroups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailVisibility := This.ComboGroups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.ComboGroups["Client Settings"] ? "Default" : This.LastUsedProfile
@@ -82,7 +83,34 @@ class Propertys extends TrayMenu {
     }
 
 
+    ; ### Profile Thumbnails Interaction
 
+    ThumbnailInteractions {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Thumbnails Interaction"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Thumbnails Interaction"] := value
+    }
+    
+    DisableFromGroupsColor {
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["dynamicGroupsColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
+    }
+
+    QuickGroupColor {
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupColor"] := convertToHex(value)
+    }
+
+    QuickGroupHotkey {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupHotkey"] := value
+    }
+
+    QuickGroupIgnoredInOtherGroups {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
+    }
+
+    
     ;########################
     ;## Profile ThumbnailSettings
 
@@ -518,16 +546,6 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["KeepGroupsPositions"] := value
     }
 
-    dynamicGroupsEnabled {
-        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"] := value
-    }
-
-    dynamicGroupsColor {
-        get => convertToHex(This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"])
-        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
-    }
-
     Close_Active_EVE_Win_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"] := value
@@ -560,14 +578,13 @@ class Propertys extends TrayMenu {
 
     Hotkey_Groups[key?] {
         get {
-            if (IsSet(key)) {
+            if IsSet(key)
                 return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][key]
-            }
             else
                 return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"]
         }
         set {
-            This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][Key] := Map("Characters", value, "ForwardsHotkey", "", "BackwardsHotkey", "")
+            This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][Key] := Map("Characters", value, "ForwardsHotkey", "", "BackwardsHotkey", "", "FirstCharHotkey", "")
         }
     }
 
