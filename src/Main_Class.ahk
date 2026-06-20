@@ -770,8 +770,6 @@
             This.RestoreClientPossitions(hwnd, title)
 
             if (This.ThumbnailPositions.Has(title)) {
-                if This.AutoSaveThumbnailPositions ; Positions autosave
-                    This.Save_ThumbnailPossitions
                 This.EvEWindowDestroy(hwnd, title)
                 This.EVE_WIN_Created(hwnd,title)
                 rect := This.ThumbnailPositions[title]  
