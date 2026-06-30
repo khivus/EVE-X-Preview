@@ -1,4 +1,21 @@
-# v1.5.1.28
+# v1.5.2
+
+### Changes
+* Added Debug Mode functionality for enhanced troubleshooting and runtime inspection.
+* Commented out hotkey capture buttons and related logic in settings.
+* Improved error handling and expanded debugging output across the entire application.
+* Added additional safeguards to detect game lag during cycle execution, with automatic reset of cycle group and index to 1.
+* Prevented thumbnail preview images from resetting when “minimize inactive clients” is enabled during character switching.
+* Improved monitoring stability, faster initialization, and more reliable file reconnection logic.
+* Performed general bug fixes, code cleanup, and performance optimizations.
+* Introduced per-character offset when connecting to game log files to reduce lag during multi-character initialization or app reload.
+* Fixed an issue where resizing or moving a thumbnail would incorrectly affect the associated game client window.
+* Improved settings persistence logic to prevent rare cases of settings file corruption or deletion.
+* Unexpected errors now trigger the default AHK error dialog, including class, function, and code context for improved reporting and debugging.
+* Updated various settings labels and message popups for clarity and consistency.
+* Changed some default settings values.
+
+# v1.5.1
 
 ### Changes
 * Customizable tray menu items.
@@ -40,7 +57,7 @@ Enabling more options decreases performance. The effect increases with the numbe
 * Wider some edit boxes.
 * Removed direct character hotkeys from default override.
 
-# v1.5.0.7
+# v1.5.0
 
 ### Changes
 * Redone all settings GUI.
@@ -62,7 +79,7 @@ Enabling more options decreases performance. The effect increases with the numbe
 * Moved Preserve Hotkeys on Logout to Hotkeys Groups.
 * Simplified + optimized windows switching logic.
 
-# v1.4.1.2 and earlier
+# v1.4.1 and earlier
 
 {Setting Name} = {Default Value}. {Description}.
 ### Hotkeys and Management

@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.1.28
+;@Ahk2Exe-Let U_version = 1.5.2.2
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -482,7 +482,7 @@ Error_Handler(Thrown, Mode) {
         Reload
     }
 
-    MsgBox("Error: " Thrown.Message "`nIn file: " Thrown.File " at line: " Thrown.Line "`n" Thrown.Extra)
-    
-    return -1
+    ; Will show default AHK error message with class, function and code text, even when app is compiled.
+    ; This is better than silent failure or a MsgBox without context, and allows users to report issues with more info.
+    Throw Thrown
 }
