@@ -9,9 +9,9 @@
     "_Profiles": {
         "Default": {
             "Client Settings": {
-                "MinimizeInactiveClients": false,
-                "AlwaysMaximize": false,
-                "TrackClientPossitions": false,
+                "MinimizeInactiveClients": 0,
+                "AlwaysMaximize": 0,
+                "TrackClientPossitions": 0,
                 "Dont_Minimize_Clients": [
                     "Example Name1",
                     "Example Name2",
@@ -35,7 +35,7 @@
                     "width": 250,
                     "height": 140
                 },
-                "ThumbnailSnap": true,
+                "ThumbnailSnap": 1,
                 "ThumbnailSnap_Distance": 20,
                 "HideThumbForActiveWin": 0,
                 "ShiftThumbsForLoginScreen": 1,
@@ -45,7 +45,7 @@
                 "ShiftThumbVerticalStep": 0,
                 "PreserveThumbPosOnLogout": 1,
                 "PreserveCharNameOnLogout": 0,
-                "AutoSaveThumbnailPositions": 1,
+                "AutoSaveThumbnailPositions": 0,
                 "HideThumbnails": 0,
                 "ClickThroughActive": 0
             },
@@ -66,7 +66,7 @@
                 "ThumbnailTextSize": 12,
                 "ThumbnailTextFont": "Gill Sans MT",
                 "ThumbnailTextMargins": {
-                    "x": 10,
+                    "x": 5,
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,

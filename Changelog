@@ -5,7 +5,6 @@
 * Commented out hotkey capture buttons and related logic in settings.
 * Improved error handling and expanded debugging output across the entire application.
 * Added additional safeguards to detect game lag during cycle execution, with automatic reset of cycle group and index to 1.
-* Thumbnail position autosave now correctly persists position after logout/login transitions.
 * Prevented thumbnail preview images from resetting when “minimize inactive clients” is enabled during character switching.
 * Improved monitoring stability, faster initialization, and more reliable file reconnection logic.
 * Performed general bug fixes, code cleanup, and performance optimizations.
@@ -14,6 +13,7 @@
 * Improved settings persistence logic to prevent rare cases of settings file corruption or deletion.
 * Unexpected errors now trigger the default AHK error dialog, including class, function, and code context for improved reporting and debugging.
 * Updated various settings labels and message popups for clarity and consistency.
+* Changed some default settings values.
 
 # v1.5.1
 
