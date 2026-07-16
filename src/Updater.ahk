@@ -1,6 +1,6 @@
 #Requires AutoHotkey v2.0
 
-VERSION := "1.2"
+VERSION := "1.3"
 
 class UpdaterStatus {
     __New() {
@@ -26,6 +26,11 @@ status.SetStatus("Getting last version...")
 
 try {
     oldScriptPath := A_Args[1]
+    
+    SplitPath(oldScriptPath, &name, &dir)
+    if dir = ""
+        oldScriptPath := A_ScriptDir "\" name
+    
     newTag := A_Args[2]
 }
 catch { ; If started without arguments we parse updates and get latest release version

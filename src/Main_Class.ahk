@@ -59,9 +59,13 @@
         if This.First_Start_After_Update { ; Display message after succsessful update
             Sleep 500 ; Let updater time to close
             SetWorkingDir(A_ScriptDir)
+            
+            ; Check for both old and new updater locations
             updaterExeName := "EVE-X-Preview-Updater.exe"
             updaterExePath := A_ScriptDir "\" updaterExeName
 
+            if FileExist(updaterExeName)
+                FileDelete(updaterExeName)
             if FileExist(updaterExePath)
                 FileDelete(updaterExePath)
 
