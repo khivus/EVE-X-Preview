@@ -649,6 +649,7 @@
             "Move All Thumbnails",
             "Resize Thumbnail",
             "Resize All Thumbnails",
+            "Hide Thumbnail",
             "Minimize Client",
             "Close Client",
             "Disable From Groups",
@@ -697,10 +698,14 @@
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group Ignored in Other Groups:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vQuickGroupIgnoredInOtherGroups" , "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group Resets Groups Position:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vQuickGroupResetsPosition" , "On/Off")
+
         This.MainFrame["DisableFromGroupsColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupHotkey"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupIgnoredInOtherGroups"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["QuickGroupResetsPosition"].OnEvent("Click", (obj, *) => EventHandler(obj))
 
         This.MainFrame.Group["Thumbnails Interactions"] := arr
         for k, v in This.MainFrame.Group["Thumbnails Interactions"] {
@@ -712,7 +717,7 @@
                 This.%obj.name% := obj.value
                 This.RedrawColorPreview(obj)
             }
-            else if obj.name = "QuickGroupHotkey" || obj.name = "QuickGroupIgnoredInOtherGroups" {
+            else if obj.name = "QuickGroupHotkey" || obj.name = "QuickGroupIgnoredInOtherGroups" || obj.name = "QuickGroupResetsPosition" {
                 This.%obj.name% := obj.value
             }
             else {
@@ -1053,16 +1058,16 @@
     }
 
     ThumbnailVisibility_Ctrl() {
-        This.MainFrame.Group["Thumbnail Visibility"] := [], Thumbnail_visibility := []
+        This.MainFrame.Group["Thumbnail Visibility"] := [], arr := []
 
         This.MainFrame.SetFont("s12 w700 q5")
-        Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Thumbnail Visibility")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "Thumbnail Visibility")
         This.MainFrame.SetFont("s11 w400")
-        Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        Thumbnail_visibility.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Select Any Client to Hide The Thumbnail:")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Select Any Client to Hide The Thumbnail:")
         This.Tv_LV := This.MainFrame.Add("ListView", Format("xp yp+{} w{}", This.contentGap, This.editEx2W) " r20 Checked -LV0x10 -Multi -Sort vVisibility_List", ["Client Name"])
-        Thumbnail_visibility.Push This.Tv_LV
+        arr.Push This.Tv_LV
 
         for k, v in This.compare_openclients_with_list() {
             if (k != "EVE" || v != "") {
@@ -1076,7 +1081,7 @@
         This.Tv_LV.ModifyCol(1, This.editEx2W) ; , This.Tv_LV.ModifyCol(2, 115)
         This.Tv_LV.OnEvent("ItemCheck", ObjBindMethod(This, "_Tv_LVSelectedRow"))
 
-        This.MainFrame.Group["Thumbnail Visibility"] := Thumbnail_visibility
+        This.MainFrame.Group["Thumbnail Visibility"] := arr
         for k, v in This.MainFrame.Group["Thumbnail Visibility"]
             v.Visible := 0
     }
@@ -1625,12 +1630,15 @@
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Pre-Release:")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown          ")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Update Status:")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vUpdateStatus", "waiting action...                      ")
+
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
 
-        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.xlGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.captBtnH + This.contentGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
         arr.Push This.MainFrame.Add("Button", Format("xs+{} ys w{}", updBtnW + This.baseGrid, updBtnW) " vupdateToPreReleaseBtn", "Update to Pre-Release")
 
-        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vhelpBtn", "Help")
+        arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.captBtnH + This.contentGap) " vhelpBtn", "Help")
         arr.Push This.MainFrame.Add("Button", Format("xp+{} yp Section", 48 + This.baseGrid) " vreportBugBtn", "Report Bug")
 
         arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 130 - This.contentGap, This.guiHeight - 65 - This.contentGap, 130) " vdebugModeBtn", "Debug Mode: " . (This.DebugMode ? "On" : "Off"))
@@ -1646,6 +1654,7 @@
         This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
 
         checkForNewUpdate() {
+            This.MainFrame["UpdateStatus"].Value := "Checking GitHub..."
             try {
                 ; Getting json of latest release
                 apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases"
@@ -1687,14 +1696,16 @@
 
             if This.latestPreReleaseTag != "" {
                 This.MainFrame["latestPreReleaseVersion"].Value := "v" This.latestPreReleaseTag
-                if VerCompare(This.latestPreReleaseTag, This.programVersion) != 0
-                    This.MainFrame["updateToPreReleaseBtn"].Enabled := 1
+                ; if VerCompare(This.latestPreReleaseTag, This.programVersion) != 0
+                This.MainFrame["updateToPreReleaseBtn"].Enabled := 1 ; Enabled all the time for testing purposes
             }
+            This.MainFrame["UpdateStatus"].Value := "Updates checked."
         }
 
         processUpdateApp(preRelease?) {
             if !IsSet(preRelease)
                 return
+            This.MainFrame["UpdateStatus"].Value := "Working..."
 
             if preRelease = "false"
                 newTag := This.latestReleaseTag
@@ -1705,23 +1716,42 @@
 
             SetWorkingDir(A_ScriptDir)
 
+            if !A_IsAdmin {
+                ans := MsgBox("EVE-X-Preview not running as admin!`n"
+                    "Updater might need admin rights to run!`n`n"
+                    "Do you want to try update without admin rights?", "Warning!", "YesNo")
+                if ans = "No" {
+                    This.MainFrame["UpdateStatus"].Value := "Updater not started."
+                    return
+                }
+            }
+
             updaterExeName := "EVE-X-Preview-Updater.exe"
+            updaterExePath := A_ScriptDir "\" updaterExeName
             updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
 
-            if FileExist(updaterExeName)
-                FileDelete(updaterExeName)
-            
-            Download(updaterExeUrl, updaterExeName) ; Download file from GitHub
+            if FileExist(updaterExePath)
+                FileDelete(updaterExePath)
 
-            if !FileExist(updaterExeName)
+            This.MainFrame["UpdateStatus"].Value := "Downloading Updater..."
+            Download(updaterExeUrl, updaterExePath) ; Download file from GitHub to temp folder
+
+            if !FileExist(updaterExePath)
                 Throw Error("Could not download EVE-X-Preview-Updater.exe!")
             
+            Critical
+            This.MainFrame["UpdateStatus"].Value := "Starting Updater..."
             This.First_Start_After_Update := 1 ; For showing update message
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-            Sleep 250 ; Waiting for settings to save
+            This.SaveJsonToFile()
 
-            Run(updaterExeName " `"" A_ScriptName "`" `"" newTag "`"")
-
+            try {
+                Run '*RunAs "' updaterExePath '" "' A_ScriptFullPath '" "' newTag '"'
+            }
+            catch Error as e {
+                MsgBox("Failed to start updater:`n" e.Message)
+                Critical false
+                return
+            }
             ExitApp
         }
 
@@ -1915,6 +1945,7 @@
         This.RedrawColorPreview(This.MainFrame["QuickGroupColor"])
         This.MainFrame["QuickGroupHotkey"].value := This.QuickGroupHotkey
         This.MainFrame["QuickGroupIgnoredInOtherGroups"].value := This.QuickGroupIgnoredInOtherGroups
+        This.MainFrame["QuickGroupResetsPosition"].value := This.QuickGroupResetsPosition
 
         ;Thumbnail Settings
         This.MainFrame["ShowThumbnailTextOverlay"].value := This.ShowThumbnailTextOverlay

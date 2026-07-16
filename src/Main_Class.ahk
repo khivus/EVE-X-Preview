@@ -59,9 +59,11 @@
         if This.First_Start_After_Update { ; Display message after succsessful update
             Sleep 500 ; Let updater time to close
             SetWorkingDir(A_ScriptDir)
-            updaterExe := "EVE-X-Preview-Updater.exe" ; Delete updater exe if still exists
-            if FileExist(updaterExe)
-                FileDelete(updaterExe)
+            updaterExeName := "EVE-X-Preview-Updater.exe"
+            updaterExePath := A_ScriptDir "\" updaterExeName
+
+            if FileExist(updaterExePath)
+                FileDelete(updaterExePath)
 
             This.First_Start_After_Update := 0
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -167,6 +169,11 @@
 
         HotIf() ; Reset hotif
 
+        ; ##############################
+        ; Global vars and funcs/timers registration
+
+        This.cycleTick := 0
+
         ; Profiling
         This.ProfActive := false
         ProfEnabled := false
@@ -225,7 +232,7 @@
         This.DestroyThumbnails := ObjBindMethod(This, "EvEWindowDestroy")
         This.DestroyThumbnailsToggle := 1
         
-        ;Register the Hotkeys for cycle groups 
+        ;Register the Hotkeys for cycle groups
         This.Register_Hotkey_Groups()
         This.RegisterNonEVEGroups()
         This.BorderActive := 0
@@ -456,6 +463,15 @@
         return false
     }
 
+    ; Returns 1 if within hold delay window, 0 if delay has elapsed and resets the timer
+    IsWithinCycleHoldDelay() {
+        tick := A_TickCount
+        if tick - This.cycleTick < This.GroupsHoldDelay
+            return 1
+        This.cycleTick := tick
+        return 0
+    }
+
     ;Register set Hotkeys by the user in settings
     RegisterHotkeys(title) {
         if !This._Hotkeys[title]
@@ -556,11 +572,8 @@
 
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
     Cycle_Hotkey_Groups(ArrInd, direction, *) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
 
         arr := This.HotkGroups[ArrInd]
         length := arr.Length
@@ -568,6 +581,10 @@
         if This.KeepGroupsPositions {
             ; Trust stored index always — no re-sync ever
             index := This.HotkGroupsInds[ArrInd]
+        } else if This.IsQuickGroupPositionReset {
+            ; Reset position if QuickGroupResetsPosition enabled
+            index := 0
+            This.IsQuickGroupPositionReset := false
         } else {
             ; Derive from active window, reset to start if not found
             currentIndex := This._GetCurrentGroupIndex(arr)
@@ -630,14 +647,23 @@
     _GetCurrentGroupIndex(arr, maxAttempts := 3, interval := 25) {
         loop maxAttempts {
             try {
-                if This.PreserveHotkeysOnLogout
+                if This.PreserveHotkeysOnLogout {
                     title := This.ThumbWindows.%WinExist("A")%["Window"].OldTitle
-                else
-                    title := WinGetTitle("A")
+                    hwnd := WinGetID(title " ahk_exe exefile.exe")
+                } else {
+                    hwnd := WinExist("A")
+                    title := WinGetTitle("ahk_id " hwnd)
+                }
 
-                for ind, name in arr {
-                    if name = title
-                        return ind
+                for ind, item in arr {
+                    ; Support both titles and hwnds
+                    if IsInteger(item) {
+                        if item = hwnd
+                            return ind
+                    } else {
+                        if item = title
+                            return ind
+                    }
                 }
             }
             ; Window not in group yet — only retry if lag is plausible
@@ -710,21 +736,30 @@
             Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
     }
 
+    ; Cycle through QuickGroup
     CycleQuickGroup(*) {
+        if This.IsWithinCycleHoldDelay()
+            return
         if !This.QuickGroupEnabled || !This.QuickGroupChars.Count
             return
 
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
-            return
-        prevTick := tick
+        ; Build array for quick group
+        sortStr := ""
 
-        str := ""
-        for k, v in This.QuickGroupChars ; k is hwnd, v is title
-            str .= v "`n"
-        str := Sort(Trim(str, "`n "))
-        arr := StrSplit(str, "`n")
+        for hwnd, title in This.QuickGroupChars
+            sortStr .= title "|" hwnd "`n"
+
+        ; Sort by title, and use HWND as a fallback when titles are equal.
+        sortStr := Sort(sortStr, "D`n", (a, b, *) => (
+            cmp := StrCompare(StrSplit(a, "|")[1], StrSplit(b, "|")[1], true),
+            cmp != 0 ? cmp : StrSplit(a, "|")[2] - StrSplit(b, "|")[2]
+        ))
+
+        ; Extract sorted HWNDs.
+        arr := []
+
+        for line in StrSplit(RTrim(sortStr, "`n"), "`n")
+            arr.Push(StrSplit(line, "|")[2])
         length := arr.Length
 
         ; Derive from active window, reset to start if not found
@@ -735,17 +770,17 @@
         if index > length
             index := 1
 
+        if This.QuickGroupResetsPosition
+            This.IsQuickGroupPositionReset := true
+
         try
-            This.ActivateEVEWindow(,, arr[index])
+            This.ActivateEVEWindow(arr[index])
     }
 
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
 
         LoginWins := []
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
@@ -787,6 +822,12 @@
                 currentIndex := i
                 break
             }
+        }
+
+        if This.IsQuickGroupPositionReset {
+            ; Reset position if QuickGroupResetsPosition enabled
+            currentIndex := 0
+            This.IsQuickGroupPositionReset := false
         }
 
         currentIndex += 1
@@ -854,38 +895,42 @@
 
     ;This function updates the Thumbnails and hotkeys if the user switches Charakters in the character selection screen 
     EVENameChange(hwnd, title) {
+        if !This.ThumbWindows.HasProp(hwnd)
+            return
+
         This.debugToolTipText .= "Name changed for: " title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
-        if (This.ThumbWindows.HasProp(hwnd)) {
-            This.SetThumbnailText[hwnd] := title
-            ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
-            This.RestoreClientPossitions(hwnd, title)
 
-            if (This.ThumbnailPositions.Has(title)) {
-                This.EvEWindowDestroy(hwnd, title)
-                This.EVE_WIN_Created(hwnd,title)
-                rect := This.ThumbnailPositions[title]  
-                This.ShowThumb(hwnd, "Hide")              
-                This.ThumbMove( rect["x"],
-                                rect["y"],
-                                rect["width"],
-                                rect["height"],
-                                This.ThumbWindows.%hwnd% )
+        This.SetThumbnailText[hwnd] := title
+        ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
+        This.RestoreClientPossitions(hwnd, title)
 
-                This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd) 
-                This.Update_Thumb(false)
-                if (!This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)) {
-                    for k, v in This.ThumbWindows.OwnProps()
-                        This.ShowThumb(k, "Show")
-                }
+        if (This.ThumbnailPositions.Has(title)) {
+            This.EvEWindowDestroy(hwnd, title)
+            This.EVE_WIN_Created(hwnd,title)
+            rect := This.ThumbnailPositions[title]  
+            This.ShowThumb(hwnd, "Hide")              
+            This.ThumbMove( rect["x"],
+                            rect["y"],
+                            rect["width"],
+                            rect["height"],
+                            This.ThumbWindows.%hwnd% )
+
+            This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd) 
+            This.Update_Thumb(false)
+            if (!This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)) {
+                for k, v in This.ThumbWindows.OwnProps()
+                    This.ShowThumb(k, "Show")
             }
-            if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
-            if This.QuickGroupEnabled && this.QuickGroupChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
-            This.BorderActive := 0
-            This.RegisterHotkeys(title)
         }
+        if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
+            This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
+        if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwnd) { ; Removing from QuickGroup if character switched
+            This.toggleColorBorder(hwnd, title, 0)
+            This.QuickGroupChars.Delete(hwnd)
+        }
+        This.BorderActive := 0
+        This.RegisterHotkeys(title)
     }
 
     ; Toggle click through mode on all thumbnail windows
@@ -927,7 +972,9 @@
     BuildThumbnailInteractionMap() {
         This.DisabledFromGroupsEnabled := false
         This.QuickGroupEnabled := false
+        This.IsQuickGroupPositionReset := false
         This.ThumbnailInteractionMap := Map()
+        This.HidedThumbs := Map()
         for action, value in This.ThumbnailInteractions {
             combination := 0
             for k, v in value {
@@ -943,7 +990,8 @@
             if !combination
                 continue
             if This.ThumbnailInteractionMap.Has(combination) {
-                MsgBox("Duplicated value for Thumbnail Interaction Action: " action)
+                ToolTip "Duplicated value for Thumbnail Interaction Action: " action
+                SetTimer () => ToolTip(), -3000
                 continue
             }
             This.ThumbnailInteractionMap[combination] := action
@@ -989,16 +1037,32 @@
             else if action = "MoveThumbnail" {
                 This.Mouse_DragMove(hwnd) ; Moves one thumbnail
                 This.Window_Snap(hwnd, This.ThumbWindows)
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
             }
             else if action = "ResizeThumbnail" {
                 This.Mouse_ResizeThumb(hwnd) ; Resizes one thumbnail
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
             }
             else if action = "MoveAllThumbnails" {
                 This.Mouse_DragMove(hwnd, 1) ; Moves all thumbnails
                 This.Window_Snap(hwnd, This.ThumbWindows)
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
             }
             else if action = "ResizeAllThumbnails" {
                 This.Mouse_ResizeThumb(hwnd, 1) ; Resizes all thumbnails
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
+            }
+            else if action = "HideThumbnail" {
+                ; temp := This.Thumbnail_visibility
+                ; temp[title] := 1
+                ; This.Thumbnail_visibility := temp
+                ; SetTimer(This.Save_Settings_Delay_Timer, -200)
+                This.HidedThumbs[hwndEVE] := title
+                This.ShowThumb(hwndEVE, "Hide")
             }
             else if action = "MinimizeClient" {
                 if (!GetKeyState("RButton"))
@@ -1008,7 +1072,7 @@
                 WinClose("ahk_id " hwndEVE " ahk_exe exefile.exe")
             }
             else if action = "DisableFromGroups" && This.DisabledFromGroupsEnabled {
-                if This.QuickGroupChars.Has(hwndEVE) { ; Overrides DisabledChars -> Quickgroup
+                if This.QuickGroupChars.Has(hwndEVE) { ; Overrides Quickgroup -> DisabledChars
                     This.QuickGroupChars.Delete(hwndEVE)
                 }
 
@@ -1220,6 +1284,10 @@
             This.ThumbWindows.DeleteProp(hwnd)
             if This.monitoringInitialized && IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
                 This.stopLogMonitoring(WinTitle)
+            if This.HidedThumbs.Has(hwnd)
+                This.HidedThumbs.Delete(hwnd)
+            if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwnd)
+                This.QuickGroupChars.Delete(hwnd)
             This.DestroyThumbnailsToggle := 1
             Return
         }
@@ -1235,6 +1303,10 @@
                 This.ThumbWindows.DeleteProp(Win_Hwnd)
                 if This.monitoringInitialized && This.monitoredChars.Has(title)
                     This.stopLogMonitoring(title)
+                if This.HidedThumbs.Has(Win_Hwnd)
+                    This.HidedThumbs.Delete(Win_Hwnd)
+                if This.QuickGroupEnabled && This.QuickGroupChars.Has(Win_Hwnd)
+                    This.QuickGroupChars.Delete(Win_Hwnd)
             }
         }
         This.DestroyThumbnailsToggle := 1
@@ -1498,17 +1570,19 @@
     }
 
     CycleNonEVEGroups(groupIndex, direction, *) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
-
+        
+        static index := 0
         group := This.NonEVEGroupsL[groupIndex]
         index := This.NonEVEGroupsInds[groupIndex]
         length := group["exe"].Length
 
-        if !This.KeepGroupsPositions {
+        if This.IsQuickGroupPositionReset {
+            ; Reset position if QuickGroupResetsPosition enabled
+            index := 0
+            This.IsQuickGroupPositionReset := false
+        } else if !This.KeepGroupsPositions {
             try {
                 exec := WinGetProcessName("A")
                 title := WinGetTitle("A")

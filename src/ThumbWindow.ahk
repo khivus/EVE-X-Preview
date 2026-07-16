@@ -395,6 +395,8 @@ Class ThumbWindow extends Propertys {
                 This.toggleColorBorder(hwndEVE, title, 1, This.DisableFromGroupsColor)
             if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwndEVE)
                 This.toggleColorBorder(hwndEVE, title, 1, This.QuickGroupColor)
+            if This.HidedThumbs.Has(hwndEVE)
+                This.HidedThumbs.Delete(hwndEVE)
         }
         else {
             for k, v in This.ThumbWindows.%EVEWindowHwnd% {
@@ -527,7 +529,7 @@ Class ThumbWindow extends Propertys {
     }
 
     activateBorder(hwnd, title) {
-        if This.Thumbnail_visibility.Has(title) || !This.ShowClientHighlightBorder 
+        if This.Thumbnail_visibility.Has(title) || !This.ShowClientHighlightBorder || This.HidedThumbs.Has(hwnd)
             return
 
         thumb := This.getThumb(hwnd)
@@ -562,6 +564,9 @@ Class ThumbWindow extends Propertys {
             hwnd := WinGetID(title " ahk_exe exefile.exe")
         catch
             return
+
+        if This.HidedThumbs.Has(hwnd)
+            return
         
         thumb := This.getThumb(hwnd)
         if !thumb
@@ -586,6 +591,8 @@ Class ThumbWindow extends Propertys {
     }
 
     toggleColorBorder(hwnd, title, enable := 1, color := "ff0000") {
+        if This.HidedThumbs.Has(hwnd)
+            return
         thumb := This.getThumb(hwnd)
         if !thumb
             return

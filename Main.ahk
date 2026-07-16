@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.6.0.0
+;@Ahk2Exe-Let U_version = 1.6.0.1
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -451,9 +451,6 @@ MigrateSettings(userObj, uver, dver) {
             if prof_settings.Has("Hotkey Groups")
                 for k, v in prof_settings["Hotkey Groups"]
                     prof_settings["Hotkey Groups"][k]["FirstCharHotkey"] := ""
-
-            ; if prof_settings.Has("Other") && prof_settings["Other"].Has("Global_Groups") && IsObject(prof_settings["Other"]["Global_Groups"])
-            ;     prof_settings["Other"]["Global_Groups"]["Thumbnails Interaction"] := 0
         }
     }
 

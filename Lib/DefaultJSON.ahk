@@ -55,6 +55,7 @@
                 "ResizeThumbnail": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 1},
                 "MoveAllThumbnails": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 1},
                 "ResizeAllThumbnails": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 0},
+                "HideThumbnail": {"lmb": 0, "rmb": 0, "shift": 0, "ctrl": 0},
                 "MinimizeClient": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 1},
                 "CloseClient": {"lmb": 0, "rmb": 0, "shift": 0, "ctrl": 0},
                 "DisableFromGroups": {"lmb": 1, "rmb": 0, "shift": 1, "ctrl": 0},
@@ -104,7 +105,8 @@
                 "dynamicGroupsColor": "ff0000",
                 "QuickGroupColor": "72efdd",
                 "QuickGroupHotkey": "",
-                "QuickGroupIgnoredInOtherGroups": 1
+                "QuickGroupIgnoredInOtherGroups": 1,
+                "QuickGroupResetsPosition": 1
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},

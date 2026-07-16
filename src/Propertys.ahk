@@ -110,6 +110,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
     }
 
+    QuickGroupResetsPosition {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupResetsPosition"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupResetsPosition"] := value
+    }
+
     
     ;########################
     ;## Profile ThumbnailSettings
