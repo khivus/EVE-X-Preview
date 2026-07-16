@@ -1,6 +1,6 @@
 #Requires AutoHotkey v2.0
 
-VERSION := "1.1"
+VERSION := "1.2"
 
 class UpdaterStatus {
     __New() {
@@ -68,8 +68,8 @@ catch { ; If started without arguments we parse updates and get latest release v
         ExitApp
 }
 
-SplitPath(oldScriptPath, &oldScriptName)
-SetWorkingDir(oldScriptPath)
+SplitPath(oldScriptPath, &oldScriptName, &oldScriptDir)
+SetWorkingDir(oldScriptDir)
 Sleep 500 ; Wait some time berfore doing anything
 
 ; Downloading file and running
