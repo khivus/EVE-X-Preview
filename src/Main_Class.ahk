@@ -781,7 +781,7 @@
                                 This.ThumbWindows.%hwnd% )
 
                 This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd) 
-                This.Update_Thumb(false)
+                This.Update_Thumb(false, This.ThumbWindows.%hwnd%["Window"].Hwnd)
                 if (!This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)) {
                     for k, v in This.ThumbWindows.OwnProps()
                         This.ShowThumb(k, "Show")
@@ -923,7 +923,7 @@
                             This.ThumbWindows.%Win_Hwnd% )
 
             This.BorderSize(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, This.ThumbWindows.%Win_Hwnd%["Border"].Hwnd)
-            This.Update_Thumb(false)
+            This.Update_Thumb(false, This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
             If ((This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) || (!This.HideThumbnailsOnLostFocus)) {
                 for k, v in This.ThumbWindows.OwnProps()
                     This.ShowThumb(k, "Show")
