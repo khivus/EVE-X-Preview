@@ -116,6 +116,40 @@
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
+        if (This.SwitchToPreviousWindow_Hotkey != "") {
+            if This.Global_Hotkeys
+                HotIf (*) => WinExist(This.EVEExe)
+            else
+                HotIf (*) => WinActive(This.EVEExe)
+            
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"),"P1" )
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Switch to Previous Window - Hotkey")
+            }
+            else
+                Hotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"),"P1" )
+        }
+
+        ; Register Hotkey for Login Screen Cycle Hotkey if user set
+        if (This.CycleEveryLoggedIn_Hotkey != "") {
+            if This.Global_Hotkeys
+                HotIf (*) => WinExist(This.EVEExe)
+            else
+                HotIf (*) => WinActive(This.EVEExe)
+            
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"),"P1" )
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Every Logged in Window - Hotkey")
+            }
+            else
+                Hotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"),"P1" )
+        }
+
+        ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
             if This.Global_Hotkeys
                 HotIf (*) => WinExist(This.EVEExe)
@@ -177,6 +211,7 @@
         ; Global vars and funcs/timers registration
 
         This.cycleTick := 0
+        This.WinActivationHistory := [0]
 
         ; Profiling
         This.ProfActive := false
@@ -238,6 +273,8 @@
         
         ;Register the Hotkeys for cycle groups
         This.Register_Hotkey_Groups()
+        if This.CycleEveryLoggedIn_Hotkey != ""
+            This.HotkGroups.Push("")
         This.RegisterNonEVEGroups()
         This.BorderActive := 0
 
@@ -648,8 +685,9 @@
     }
 
     ; Tries to find active window in group, with brief retry on lag
-    _GetCurrentGroupIndex(arr, maxAttempts := 3, interval := 25) {
-        loop maxAttempts {
+    ; arr: can be either array of titles or hwnds
+    _GetCurrentGroupIndex(arr) {
+        loop This.MaxActiveWindowRetries {
             try {
                 if This.PreserveHotkeysOnLogout {
                     title := This.ThumbWindows.%WinExist("A")%["Window"].OldTitle
@@ -672,14 +710,14 @@
             }
             ; Window not in group yet — only retry if lag is plausible
             ; (i.e. we just activated an EVE window and it hasn't focused yet)
-            if A_Index < maxAttempts
-                Sleep interval
+            if A_Index < This.MaxActiveWindowRetries
+                Sleep This.ActiveWindowRetryInterval
         }
         return -1
     }
 
     hitThis() {
-        if not This.ThisThat
+        if !This.ThisThat || This.debugMode
             return
 
         static counter := 0
@@ -764,14 +802,16 @@
 
         for line in StrSplit(RTrim(sortStr, "`n"), "`n")
             arr.Push(StrSplit(line, "|")[2])
-        length := arr.Length
+
+        This.debugToolTipText .= "Quick Group triggered:`n" sortStr "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         ; Derive from active window, reset to start if not found
         currentIndex := This._GetCurrentGroupIndex(arr)
         index := currentIndex = -1 ? 0 : currentIndex
 
         index += 1
-        if index > length
+        if index > arr.Length
             index := 1
 
         if This.QuickGroupResetsPosition
@@ -779,6 +819,40 @@
 
         try
             This.ActivateEVEWindow(arr[index])
+    }
+
+    SwitchToPrevWin(*) {
+        if This.SwitchToPreviousWindow_Hotkey = "" || This.WinActivationHistory.Length < 3 || This.IsWithinCycleHoldDelay()
+            return
+
+        index := This.WinActivationHistory.Length
+        if WinActive("ahk_id " This.WinActivationHistory[index]) ; Prevents stuck when arr can't update in time
+            index -= 1
+
+        try This.ActivateEVEWindow(This.WinActivationHistory[index])
+    }
+
+    CycleEveryLoggedInWin(*) {
+        if This.CycleEveryLoggedIn_Hotkey = ""
+            return
+
+        hwnds := WinGetList("ahk_exe exefile.exe")
+        
+        if !hwnds.Length
+            return
+        
+        strTitles := ""
+        for hwnd in hwnds {
+            title := WinGetTitle(hwnd)
+            if title != "EVE"
+                strTitles .= title "`n"
+        }
+        titles := StrSplit(Trim(Sort(strTitles), "`n"), "`n")
+
+        index := This.HotkGroups.Length
+        This.HotkGroups[index] := titles
+
+        This.Cycle_Hotkey_Groups(index, "ForwardsHotkey")
     }
 
     ; Cycle windows on Character selection screen
@@ -1033,6 +1107,9 @@
         action := This.ThumbnailInteractionMap[wparam]
         hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
         title := This.ThumbWindows.%hwndEVE%["Window"].Title
+
+        This.debugToolTipText .= "Thumbnail action: " action " for: " title "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         try {
             if action = "ActivateThumbnail" {
@@ -1353,6 +1430,11 @@
 
         ; if IsSet(direct) && direct { ; Might need later
         ; }
+
+        if This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd
+            This.WinActivationHistory.Push(hwnd)
+        if This.WinActivationHistory.Length > 1000 ; Resets the history if it gets too long
+            This.WinActivationHistory := []
 
         This.hitThis()
 
@@ -1876,15 +1958,23 @@
     }
 
     DontCloseWIn(WinTitle) {
-        if !(WinTitle = "EVE") {
-            for k in This.DontCloseClients {
-                value := k
-                if value == WinTitle
+        for k in This.DontCloseClients {
+            if k = WinTitle
+                return 1
+        }
+        if (WinTitle = "EVE" && This.DontCloseOnLoginScreen)
+            return 1
+        if This.DontCloseDisabledClients {
+            for k, v in This.DisabledChars {
+                if v = WinTitle
                     return 1
             }
         }
-        else if (WinTitle = "EVE" && This.DontCloseOnLoginScreen) {
-            return 1
+        if This.DontCloseQuickGroupClients {
+            for k, v in This.QuickGroupChars {
+                if v = WinTitle
+                    return 1
+            }
         }
         return 0
     }
@@ -2165,7 +2255,8 @@
             "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0),
             "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0),
             "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0),
-            "stoppedShooting", Map("pattern", "123456789abcdefg", "needRegex", 0) ; Placeholder pattern
+            "stoppedShooting", Map("pattern", "123456789abcdefg", "needRegex", 0), ; Placeholder pattern
+            "undockedFromNPCStation", Map("pattern", "Undocking from", "needRegex", 0)
         )
 
         This.checkFactionNPCs := false

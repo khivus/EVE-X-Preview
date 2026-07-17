@@ -86,6 +86,8 @@
             "Hotkeys Settings": {
                 "Suspend_Hotkeys_Hotkey": "",
                 "Global_Hotkeys": 1,
+                "SwitchToPreviousWindow_Hotkey": "",
+                "CycleEveryLoggedIn_Hotkey": "",
                 "Login_Screen_Cycle_Hotkey": "",
                 "LoginScreenCycleDirection": 1,
                 "PreserveHotkeysOnLogout": 0,
@@ -100,13 +102,17 @@
                     {"Example Name4":"^XButton1 & 1"}
                 ],
                 "GroupsHoldDelay": 100,
+                "MaxActiveWindowRetries": 3,
+                "ActiveWindowRetryInterval": 25,
                 "HideThumbnailsHotkey": "",
                 "ClickThroughHotkey": "",
                 "dynamicGroupsColor": "ff0000",
                 "QuickGroupColor": "72efdd",
                 "QuickGroupHotkey": "",
                 "QuickGroupIgnoredInOtherGroups": 1,
-                "QuickGroupResetsPosition": 1
+                "QuickGroupResetsPosition": 1,
+                "DontCloseDisabledClients": 0,
+                "DontCloseQuickGroupClients": 0
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -194,7 +200,8 @@
                     "crystalBroke": {"enabled": 0, "color": "63f321"},
                     "miningStopped": {"enabled": 0, "color": "63f321"},
                     "miningBayIsFull": {"enabled": 0, "color": "63f321"},
-                    "stoppedShooting": {"enabled": 0, "color": "ff8800"}
+                    "stoppedShooting": {"enabled": 0, "color": "ff8800"},
+                    "undockedFromNPCStation": {"enabled": 0, "color": "2196f3"}
                 }
             }
         }

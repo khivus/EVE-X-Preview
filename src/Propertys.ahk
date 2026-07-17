@@ -115,7 +115,17 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupResetsPosition"] := value
     }
 
-    
+    DontCloseDisabledClients {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseDisabledClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
+    }
+
+    DontCloseQuickGroupClients {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseQuickGroupClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseQuickGroupClients"] := value
+    }
+
+
     ;########################
     ;## Profile ThumbnailSettings
 
@@ -530,6 +540,16 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"] := value
     }
+
+    SwitchToPreviousWindow_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["SwitchToPreviousWindow_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["SwitchToPreviousWindow_Hotkey"] := value
+    }
+
+    CycleEveryLoggedIn_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CycleEveryLoggedIn_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CycleEveryLoggedIn_Hotkey"] := value
+    }
     
     Login_Screen_Cycle_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Login_Screen_Cycle_Hotkey"]
@@ -569,6 +589,16 @@ class Propertys extends TrayMenu {
     GroupsHoldDelay {
         get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"] := value
+    }
+    
+    MaxActiveWindowRetries {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["MaxActiveWindowRetries"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["MaxActiveWindowRetries"] := value
+    }
+    
+    ActiveWindowRetryInterval {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["ActiveWindowRetryInterval"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["ActiveWindowRetryInterval"] := value
     }
 
     HideThumbnailsHotkey {
@@ -671,6 +701,7 @@ class Propertys extends TrayMenu {
         "warpDisrupted", "Warp Disrupted",
         "decloaked", "Decloaked",
         "gateJumped", "Gate Jumped",
+        "undockedFromNPCStation", "Undocked from NPC Station",
         "convoRequest", "Convo Request",
         "fleetInvited", "Fleet Invited",
         "fleetWarped", "Fleet Warped",
