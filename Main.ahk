@@ -22,7 +22,7 @@ SetTitleMatchMode 3
 
 A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-Let U_version = 1.5.2.2
+;@Ahk2Exe-Let U_version = 1.6.0.4
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -84,6 +84,8 @@ Load_JSON() {
             ; ensure we set new version so merge will not re-trigger
             UJSON["settings_version"] := dver
         }
+        if uver > dver
+            MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
@@ -103,11 +105,19 @@ Load_JSON() {
 
         ; backup the corrupted file (if not already moved)
         try FileMove(userPath, backupPath, true)
-        catch
+        catch {
+            MsgBox "Error while trying to backup corrupted settings file: " e.Message "`nIf this message persists, remove corrupted file manually.`nReloading the program."
+            Reload
+        }
 
-        FileAppend(JSON.Dump(DJSON, , "    "), userPath)
-        _JSON := JSON.Load(FileRead(userPath))
-        return _JSON
+        try {
+            FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+            _JSON := JSON.Load(FileRead(userPath))
+        }
+        catch {
+            MsgBox "Error while trying to create new settings file: " e.Message "`nReloading the program."
+            Reload
+        }
     }
 
     return _JSON
@@ -437,6 +447,20 @@ MigrateSettings(userObj, uver, dver) {
                     temp[AddEVE(c)] := DeepClone(v)
                 prof_settings["Thumbnail Positions"] := DeepClone(temp)
             }
+        }
+    }
+    if (uver = "" || Integer(uver) <= 2) && Integer(dver) >= 3 { ; for v2 -> v3 migration
+        if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
+            throw Error("No profiles found!")
+
+        for prof_name, prof_settings in userObj["_Profiles"] {
+            if !IsObject(prof_settings) ; if it's not an object, skip (unexpected)
+                continue
+
+            ; Updating all hotkey groups with empty "FirstCharHotkey" key
+            if prof_settings.Has("Hotkey Groups")
+                for k, v in prof_settings["Hotkey Groups"]
+                    prof_settings["Hotkey Groups"][k]["FirstCharHotkey"] := ""
         }
     }
 

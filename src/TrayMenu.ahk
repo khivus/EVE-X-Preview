@@ -114,13 +114,13 @@ Class TrayMenu extends Settings_Gui {
             Else if (ItemName = "Auto Save Thumbnail Positions") {
                 This.AutoSaveThumbnailPositions := !This.AutoSaveThumbnailPositions
                 if This.AutoSaveThumbnailPositions ; if turned on save thumbnails
-                    This.Save_ThumbnailPossitions
+                    This.Save_ThumbnailPossitions()
                 TrayMenu.ToggleCheck("Auto Save Thumbnail Positions")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (ItemName = "Save Thumbnail Positions") {
                 ; Saved Thumbnail Positions only if the Saved button is used on the Traymenu
-                This.Save_ThumbnailPossitions
+                This.Save_ThumbnailPossitions()
             }
             Else if (ItemName = "Restore Client Positions") {
                 This.TrackClientPossitions := !This.TrackClientPossitions
