@@ -255,7 +255,7 @@
         NumPut("Int", 0, This.margins)
         
         ; Build Interaction Map for OnMessage listener
-        This.BuildThumbnailInteractionMap()
+        This.BuildThumbnailsInteractionsMap()
 
         ;Register all messages wich are inside LISTENERS
         for i, message in this.LISTENERS
@@ -273,8 +273,10 @@
         
         ;Register the Hotkeys for cycle groups
         This.Register_Hotkey_Groups()
-        if This.CycleEveryLoggedIn_Hotkey != ""
+        if This.CycleEveryLoggedIn_Hotkey != "" {
             This.HotkGroups.Push("")
+            This.HotkGroupsInds.Push(0)
+        }
         This.RegisterNonEVEGroups()
         This.BorderActive := 0
 
@@ -619,13 +621,9 @@
         arr := This.HotkGroups[ArrInd]
         length := arr.Length
 
-        if This.KeepGroupsPositions {
+        if This.KeepGroupsPositions || !This.IsQuickGroupPositionReset {
             ; Trust stored index always — no re-sync ever
             index := This.HotkGroupsInds[ArrInd]
-        } else if This.IsQuickGroupPositionReset {
-            ; Reset position if QuickGroupResetsPosition enabled
-            index := 0
-            This.IsQuickGroupPositionReset := false
         } else {
             ; Derive from active window, reset to start if not found
             currentIndex := This._GetCurrentGroupIndex(arr)
@@ -658,7 +656,7 @@
             This.ActivateEVEWindow(hwndEVE,,)
 
         ; Only persist index when KeepGroupsPositions is on
-        if This.KeepGroupsPositions
+        if This.KeepGroupsPositions || !This.IsQuickGroupPositionReset
             This.HotkGroupsInds[ArrInd] := index
 
         ; Get index by specified direction
@@ -772,7 +770,7 @@
             try
                 Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
             catch ValueError as e
-                MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnail Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
+                MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnails Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
         }
         else
             Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
@@ -852,6 +850,7 @@
         index := This.HotkGroups.Length
         This.HotkGroups[index] := titles
 
+        ; Reusing existing function to do all checks
         This.Cycle_Hotkey_Groups(index, "ForwardsHotkey")
     }
 
@@ -1045,15 +1044,15 @@
         }
     }
 
-    ; Builds a map of Thumbnail Interaction Actions to their corresponding numbers
+    ; Builds a map of Thumbnails Interactions Actions to their corresponding numbers
     ; We can access needed interaction by using the wparam number
-    BuildThumbnailInteractionMap() {
+    BuildThumbnailsInteractionsMap() {
         This.DisabledFromGroupsEnabled := false
         This.QuickGroupEnabled := false
         This.IsQuickGroupPositionReset := false
-        This.ThumbnailInteractionMap := Map()
+        This.ThumbnailsInteractionsMap := Map()
         This.HidedThumbs := Map()
-        for action, value in This.ThumbnailInteractions {
+        for action, value in This.ThumbnailsInteractions {
             combination := 0
             for k, v in value {
                 if k = "lmb"
@@ -1067,14 +1066,14 @@
             }
             if !combination
                 continue
-            if This.ThumbnailInteractionMap.Has(combination) {
-                ToolTip "Duplicated value for Thumbnail Interaction Action: " action
+            if This.ThumbnailsInteractionsMap.Has(combination) {
+                ToolTip "Duplicated value for Thumbnails Interactions Action: " action
                 SetTimer () => ToolTip(), -3000
                 continue
             }
-            This.ThumbnailInteractionMap[combination] := action
+            This.ThumbnailsInteractionsMap[combination] := action
 
-            ; Activate flags for Thumbnail Interaction Actions
+            ; Activate flags for Thumbnails Interactions Actions
             if action = "DisableFromGroups"
                 This.DisabledFromGroupsEnabled := true
             else if action = "QuickGroup" {
@@ -1101,10 +1100,10 @@
     ; Gets Called after receiveing a mesage from the Listeners
     ; Handels Window Border, Resize, Activation 
     _OnMessage(wparam, lparam, msg, hwnd) {
-        if !This.ThumbHwnd_EvEHwnd.Has(hwnd) || !This.ThumbnailInteractionMap.Has(wparam) ; If the hwnd is not a thumbnail or the action is not set 
+        if !This.ThumbHwnd_EvEHwnd.Has(hwnd) || !This.ThumbnailsInteractionsMap.Has(wparam) ; If the hwnd is not a thumbnail or the action is not set 
             return
 
-        action := This.ThumbnailInteractionMap[wparam]
+        action := This.ThumbnailsInteractionsMap[wparam]
         hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
         title := This.ThumbWindows.%hwndEVE%["Window"].Title
 

@@ -49,7 +49,7 @@
                 "HideThumbnails": 0,
                 "ClickThroughActive": 0
             },
-            "Thumbnails Interaction": {
+            "Thumbnails Interactions": {
                 "ActivateThumbnail": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 0},
                 "MoveThumbnail": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 0},
                 "ResizeThumbnail": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 1},
@@ -131,7 +131,7 @@
                 "SwitchLangOnErr": 0,
                 "Global_Groups": {
                     "Client Settings": 0,
-                    "Thumbnails Interaction": 0,
+                    "Thumbnails Interactions": 0,
                     "Thumbnails Behavior": 0,
                     "Thumbnails Visuals": 0,
                     "Hotkeys Settings": 0,

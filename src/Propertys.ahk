@@ -69,7 +69,7 @@ class Propertys extends TrayMenu {
 
         This.ProfileHotkeysSettings := This.ComboGroups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsBehavior := This.ComboGroups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
-        This.ProfileThumbnailsInteraction := This.ComboGroups["Thumbnails Interaction"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsInteractions := This.ComboGroups["Thumbnails Interactions"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsVisuals := This.ComboGroups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailVisibility := This.ComboGroups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.ComboGroups["Client Settings"] ? "Default" : This.LastUsedProfile
@@ -83,46 +83,46 @@ class Propertys extends TrayMenu {
     }
 
 
-    ; ### Profile Thumbnails Interaction
+    ; ### Profile Thumbnails Interactions
 
-    ThumbnailInteractions {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Thumbnails Interaction"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Thumbnails Interaction"] := value
+    ThumbnailsInteractions {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Thumbnails Interactions"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Thumbnails Interactions"] := value
     }
     
     DisableFromGroupsColor {
-        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["dynamicGroupsColor"])
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["dynamicGroupsColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
     }
 
     QuickGroupColor {
-        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupColor"])
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupColor"] := convertToHex(value)
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupColor"] := convertToHex(value)
     }
 
     QuickGroupHotkey {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupHotkey"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupHotkey"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupHotkey"] := value
     }
 
     QuickGroupIgnoredInOtherGroups {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
     }
 
     QuickGroupResetsPosition {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupResetsPosition"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["QuickGroupResetsPosition"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupResetsPosition"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupResetsPosition"] := value
     }
 
     DontCloseDisabledClients {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseDisabledClients"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
     }
 
     DontCloseQuickGroupClients {
-        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseQuickGroupClients"]
-        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteraction]["Hotkeys Settings"]["DontCloseQuickGroupClients"] := value
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"] := value
     }
 
 
@@ -912,14 +912,16 @@ class Propertys extends TrayMenu {
             MsgBox("A profile with this name already exists")
             return
         }
-        if !(This.LastUsedProfile = "Default") {
-            Result := MsgBox("Do you want to use the current settings for the new profile?", , "YesNo")
-        }
-        else
-            Result := "No"
+        
+        Result := MsgBox("Do you want to use the current settings for the new profile?", "Copy Settings?", "YesNo")
 
-        if Result = "Yes"
+        if Result = "Yes" {
             This._JSON["_Profiles"][Obj.value] := JSON.Load(FileRead("EVE-X-Preview.json"))["_Profiles"][This.LastUsedProfile]
+
+            if This.LastUsedProfile = "Default" ; Reset global groups from default profile
+                for k, v in This._JSON["_Profiles"][Obj.value]["Other"]["Global_Groups"]
+                    This._JSON["_Profiles"][Obj.value]["Other"]["Global_Groups"][k] := 0
+        }
         else if Result = "No"
             This._JSON["_Profiles"][Obj.value] := This.default_JSON["_Profiles"]["Default"]
         else

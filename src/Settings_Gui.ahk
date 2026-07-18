@@ -770,8 +770,8 @@
                 splitstr := StrSplit(obj.name, "_")
                 btn := splitstr[1]
                 action := splitstr[2]
-                This.ThumbnailInteractions[action][btn] := obj.value
-                This.BuildThumbnailInteractionMap() ; This will trigger action map rebuild and check for duplicates
+                This.ThumbnailsInteractions[action][btn] := obj.value
+                This.BuildThumbnailsInteractionsMap() ; This will trigger action map rebuild and check for duplicates
             }
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -1532,7 +1532,7 @@
         This.GlobalGroupsOrder := [
             "Hotkey Groups",
             "Hotkeys Settings",
-            "Thumbnails Interaction",
+            "Thumbnails Interactions",
             "Thumbnails Behavior",
             "Thumbnails Visuals",
             "Thumbnail Visibility",
@@ -1678,7 +1678,7 @@
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown          ")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Update Status:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vUpdateStatus", "waiting action...                      ")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vUpdateStatus", "Waiting action...                      ")
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
 
@@ -1900,11 +1900,11 @@
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkeys Settings" {
-                        Loop 21
+                        Loop 25
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkey Groups" {
-                        Loop 9
+                        Loop 15
                             v[A_Index].Enabled := 0
                     }
                     else {
@@ -1984,8 +1984,8 @@
         This.MainFrame["HotkeyCharList"].value := Charlist
         This.MainFrame["HotkeyList"].value := Hklist
 
-        ; Thumbnail Interactions
-        for action, v in This.ThumbnailInteractions {
+        ; Thumbnails Interactions
+        for action, v in This.ThumbnailsInteractions {
             This.MainFrame["lmb_" action].value := v["lmb"]
             This.MainFrame["rmb_" action].value := v["rmb"]
             This.MainFrame["shift_" action].value := v["shift"]
