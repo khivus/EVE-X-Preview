@@ -532,12 +532,12 @@
     
         if !This.SwitchLangOnErr {
             try
-                Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+                Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1"
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in Hotkey Settings - " This.LastUsedProfile " Hotkeys")
         } 
         else
-            Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+            Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1"
     }    
 
     ;Register the Hotkeys for cycle Groups if any set
@@ -609,8 +609,7 @@
         }
 
         if found && This.IsWinAllowed(hwndEVE)
-            try
-                This.ActivateEVEWindow(hwndEVE,,) 
+            try This.ActivateEVEWindow(hwndEVE) 
     }
 
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
@@ -621,9 +620,12 @@
         arr := This.HotkGroups[ArrInd]
         length := arr.Length
 
-        if This.KeepGroupsPositions || !This.IsQuickGroupPositionReset {
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
             ; Trust stored index always — no re-sync ever
             index := This.HotkGroupsInds[ArrInd]
+        } else if This.ResetPosAfterQuickGroupTrigger {
+            index := 0
+            This.ResetPosAfterQuickGroupTrigger := false
         } else {
             ; Derive from active window, reset to start if not found
             currentIndex := This._GetCurrentGroupIndex(arr)
@@ -652,12 +654,13 @@
         if !This.IsWinAllowed(hwndEVE) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateEVEWindow(hwndEVE,,)
+        try activated := This.ActivateEVEWindow(hwndEVE)
 
-        ; Only persist index when KeepGroupsPositions is on
-        if This.KeepGroupsPositions || !This.IsQuickGroupPositionReset
+        ; Only persist index when KeepGroupsPositions or KeepPosAfterQuickGroupTrigger is on
+        if activated && (This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger) {
+            This.KeepPosAfterQuickGroupTrigger := false
             This.HotkGroupsInds[ArrInd] := index
+        }
 
         ; Get index by specified direction
         DirectionHandler(direction, index, length) {
@@ -812,15 +815,14 @@
         if index > arr.Length
             index := 1
 
-        if This.QuickGroupResetsPosition
-            This.IsQuickGroupPositionReset := true
+        This.KeepPosAfterQuickGroupTrigger := !This.QuickGroupResetsPosition
+        This.ResetPosAfterQuickGroupTrigger := This.QuickGroupResetsPosition
 
-        try
-            This.ActivateEVEWindow(arr[index])
+        try This.ActivateEVEWindow(arr[index])
     }
 
     SwitchToPrevWin(*) {
-        if This.SwitchToPreviousWindow_Hotkey = "" || This.WinActivationHistory.Length < 3 || This.IsWithinCycleHoldDelay()
+        if This.SwitchToPreviousWindow_Hotkey = "" || This.WinActivationHistory.Length < 2 || This.IsWithinCycleHoldDelay()
             return
 
         index := This.WinActivationHistory.Length
@@ -859,6 +861,7 @@
         if This.IsWithinCycleHoldDelay()
             return
 
+        static lastWinHwnd := 0
         LoginWins := []
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
@@ -875,56 +878,58 @@
 
             LoginWins.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
         }
+        LoginWins := This.CustomSort(LoginWins, "CreationTime") ; Sort array by creation time
+        
+        ; Write cleaner version of array of sorted hwnds
+        arr := []
+        for win in LoginWins {
+            if !This.IsWinAllowed(win["hwnd"])
+                continue
+            arr.Push(win["hwnd"])
+        }
 
-        if !LoginWins.Length
+        arrLen := arr.Length
+
+        if !arrLen
             return
-
-        if LoginWins.Length = 1 {
-            if !This.IsWinAllowed(LoginWins[1]["hwnd"])
-                return
-
-            try
-                This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
+        else if arrLen = 1 {
+            try activated := This.ActivateEVEWindow(arr[1])
+            if activated
+                lastWinHwnd := arr[1]
             return
         }
 
-        if (LoginWins.Length > 1 ) {
-            LoginWins := This.CustomSort(LoginWins, "CreationTime")
-        }
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger ; Trying to keep position if needed
+            searchHwnd := lastWinHwnd
+        else if This.ResetPosAfterQuickGroupTrigger ; Reset position if needed
+            searchHwnd := 0
+        else ; Checking from active win
+            searchHwnd := WinExist("A")
 
-        currentIndex := 0
-        currentHWND := WinExist("A")
-        for i, Win in LoginWins {
-            if currentHWND == Win["hwnd"] {
-                currentIndex := i
+        index := 0
+        for i, hwnd in arr {
+            if searchHwnd = hwnd {
+                index := i
                 break
             }
         }
 
-        if This.IsQuickGroupPositionReset {
-            ; Reset position if QuickGroupResetsPosition enabled
-            currentIndex := 0
-            This.IsQuickGroupPositionReset := false
+        index += 1
+        if index > arrLen
+            index := 1
+
+        Loop arrLen {
+            index += 1
+            if index > arrLen
+                index := 1
         }
 
-        currentIndex += 1
-        if currentIndex > LoginWins.Length
-            currentIndex := 1
-
-        Loop LoginWins.Length {
-            if This.IsWinAllowed(LoginWins[currentIndex]["hwnd"])
-                break
-
-            currentIndex += 1
-            if currentIndex > LoginWins.Length
-                currentIndex := 1
-        }
-
-        if !This.IsWinAllowed(LoginWins[currentIndex]["hwnd"]) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(arr[index]) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
+        try activated := This.ActivateEVEWindow(arr[index])
+        if activated
+            lastWinHwnd := arr[index]
     }
 
     ; Close Active EVE Client 
@@ -1049,7 +1054,8 @@
     BuildThumbnailsInteractionsMap() {
         This.DisabledFromGroupsEnabled := false
         This.QuickGroupEnabled := false
-        This.IsQuickGroupPositionReset := false
+        This.KeepPosAfterQuickGroupTrigger := false
+        This.ResetPosAfterQuickGroupTrigger := false
         This.ThumbnailsInteractionsMap := Map()
         This.HidedThumbs := Map()
         for action, value in This.ThumbnailsInteractions {
@@ -1392,7 +1398,7 @@
         This.DestroyThumbnailsToggle := 1
     }
     
-    ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
+    ActivateEVEWindow(hwnd?, title?) {   
         ; If the user clicks the Thumbnail then hwnd stores the Thumbnail Hwnd. Here the Hwnd gets changed to the contiguous EVE window hwnd
         if (IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd)) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
@@ -1407,9 +1413,9 @@
             SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             return
         }
-        ;return when the user tries to bring a window to foreground which is already in foreground 
+        ; return when the user tries to bring a window to foreground which is already in foreground 
         if (WinActive("Ahk_id " hwnd))
-            Return
+            return
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
             if This.AlwaysMaximize || (This.TrackClientPossitions && This.ClientPossitions.Has(title) && This.ClientPossitions[title]["IsMaximized"]) {
@@ -1427,9 +1433,6 @@
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
-        ; if IsSet(direct) && direct { ; Might need later
-        ; }
-
         if This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd
             This.WinActivationHistory.Push(hwnd)
         if This.WinActivationHistory.Length > 1000 ; Resets the history if it gets too long
@@ -1442,6 +1445,7 @@
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
+        return true ; succsessful activation
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1660,14 +1664,16 @@
         
         static index := 0
         group := This.NonEVEGroupsL[groupIndex]
-        index := This.NonEVEGroupsInds[groupIndex]
+        ; index := This.NonEVEGroupsInds[groupIndex]
         length := group["exe"].Length
 
-        if This.IsQuickGroupPositionReset {
-            ; Reset position if QuickGroupResetsPosition enabled
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
+            ; Trust stored index always — no re-sync ever
+            index := This.NonEVEGroupsInds[groupIndex]
+        } else if This.ResetPosAfterQuickGroupTrigger {
             index := 0
-            This.IsQuickGroupPositionReset := false
-        } else if !This.KeepGroupsPositions {
+            This.ResetPosAfterQuickGroupTrigger := false
+        } else {
             try {
                 exec := WinGetProcessName("A")
                 title := WinGetTitle("A")
@@ -1693,10 +1699,13 @@
         if !This.IsWinAllowed(hwnd) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateNonEVE(group["exe"][index], group["title"][index])
+        try This.ActivateNonEVE(group["exe"][index], group["title"][index])
 
-        This.NonEVEGroupsInds[groupIndex] := index
+        ; Only persist index when KeepGroupsPositions or KeepPosAfterQuickGroupTrigger is on
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
+            This.KeepPosAfterQuickGroupTrigger := false
+            This.NonEVEGroupsInds[groupIndex] := index
+        }
 
         ; Get new index by specified direction
         DirectionHandler(direction, index, length) {
@@ -1732,12 +1741,12 @@
             HotIf ObjBindMethod(This, "OnWinExist_", apps["exe"][i], apps["title"][i])
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
+                    Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1")
                 catch ValueError as e
                     MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " - Non-EVE Hotkeys")
             }
             else
-                Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
+                Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1")
         }
     }
 
@@ -1751,13 +1760,11 @@
         return WinExist("ahk_exe " exe)
     }
 
-    ActivateNonEVE(exe, title, direct?, *) {
+    ActivateNonEVE(exe, title, *) {
         criteria := "ahk_exe " exe
         if title != ""
             criteria := title . " " . criteria
     
-        ; if IsSet(direct) && direct
-
         hwnd := WinExist(criteria)
         if !hwnd || WinActive("Ahk_id " hwnd)
             return

@@ -1008,18 +1008,17 @@ class Propertys extends TrayMenu {
         text := EditField.Value
         EditField.Value := ""
         charList := ""
-        for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
-            for k, v in ThumbObj {
-                if k = "Window" {
-                    if v.Title == "EVE" || v.Title == "Char Screen"
-                        continue
-                    charList .= This.CleanTitle(v.Title) . "`n"
-                }
-            }
+        eveWins := WinGetList("ahk_exe exefile.exe")
+
+        for hwnd in eveWins {
+            title := WinGetTitle("ahk_id " hwnd)
+            if title != "EVE"
+                charList .= This.CleanTitle(title) "`n"
         }
+
         sorted := Sort(charList)
         text .= sorted
-        ControlSendText(text, , EditField.Hwnd)
+        ControlSendText(text,, EditField.Hwnd)
     }
 }
 
