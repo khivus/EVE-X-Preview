@@ -654,6 +654,7 @@
         if !This.IsWinAllowed(hwndEVE) ; Last check if loop leaked window there
             return
 
+        activated := false
         try activated := This.ActivateEVEWindow(hwndEVE)
 
         ; Only persist index when KeepGroupsPositions or KeepPosAfterQuickGroupTrigger is on
@@ -893,6 +894,7 @@
         if !arrLen
             return
         else if arrLen = 1 {
+            activated := false
             try activated := This.ActivateEVEWindow(arr[1])
             if activated
                 lastWinHwnd := arr[1]
@@ -927,6 +929,7 @@
         if !This.IsWinAllowed(arr[index]) ; Last check if loop leaked window there
             return
 
+        activated := false
         try activated := This.ActivateEVEWindow(arr[index])
         if activated
             lastWinHwnd := arr[index]
