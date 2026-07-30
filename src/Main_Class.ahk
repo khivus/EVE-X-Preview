@@ -211,7 +211,7 @@
         ; Global vars and funcs/timers registration
 
         This.cycleTick := 0
-        This.WinActivationHistory := [0]
+        This.WinActivationHistory := []
 
         ; Profiling
         This.ProfActive := false
@@ -1436,10 +1436,11 @@
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
-        if This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd
+        if !This.WinActivationHistory.Length || This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd {
             This.WinActivationHistory.Push(hwnd)
-        if This.WinActivationHistory.Length > 1000 ; Resets the history if it gets too long
-            This.WinActivationHistory := []
+            if This.WinActivationHistory.Length > 1000 ; Reset while retaining the active window
+                This.WinActivationHistory := [hwnd]
+        }
 
         This.hitThis()
 
