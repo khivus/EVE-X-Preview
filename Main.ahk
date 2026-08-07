@@ -1,49 +1,54 @@
 ﻿#Requires AutoHotkey v2.0
 
-#Include <DefaultJSON> ; The Default Settings Values
-#Include <JSON>
-#Include <LiveThumb>
-#Include <../src/Main_Class>
-#Include <../src/ThumbWindow>
-#Include <../src/TrayMenu>
-#Include <../src/Propertys>
-#Include <../src/Settings_Gui>
+#Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
+#Include "Lib/json.ahk"
+#Include "Lib/LiveThumb.ahk"
+#Include "src/Main_Class.ahk"
+#Include "src/ThumbWindow.ahk"
+#Include "src/TrayMenu.ahk"
+#Include "src/Propertys.ahk"
+#Include "src/Settings_Gui.ahk"
 
-#SingleInstance Force
-Persistent
-ListLines False
-KeyHistory 0
+if !IsSet(__EVE_X_PREVIEW_TESTING__)
+    __EVE_X_PREVIEW_TESTING__ := false
 
-; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
-SetWinDelay -1
-FileEncoding("UTF-8") ; Encoding for JSON file
+if !__EVE_X_PREVIEW_TESTING__ {
+    #SingleInstance Force
+    Persistent
+    ListLines False
+    KeyHistory 0
 
-SetTitleMatchMode 3
+    ; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
+    SetWinDelay -1
+    FileEncoding("UTF-8") ; Encoding for JSON file
 
-A_MaxHotKeysPerInterval := 10000 
+    SetTitleMatchMode 3
 
-;@Ahk2Exe-Let U_version = 1.6.0.7
-;@Ahk2Exe-SetVersion %U_version%
-;@Ahk2Exe-SetFileVersion %U_version%
-;@Ahk2Exe-SetCopyright gonzo83+khivus
-;@Ahk2Exe-SetDescription EVE-X-Preview
-;@Ahk2Exe-SetProductName EVE-X-Preview
-;@Ahk2Exe-ExeName EVE-X-Preview
+    A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-AddResource icon.ico, 160  ; Replaces 'H on blue'
-;@Ahk2Exe-AddResource icon-suspend.ico, 206  ; Replaces 'S on green'
-;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
-;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
+    ;@Ahk2Exe-Let U_version = 1.6.0.8
+    ;@Ahk2Exe-SetVersion %U_version%
+    ;@Ahk2Exe-SetFileVersion %U_version%
+    ;@Ahk2Exe-SetCopyright gonzo83+khivus
+    ;@Ahk2Exe-SetDescription EVE-X-Preview
+    ;@Ahk2Exe-SetProductName EVE-X-Preview
+    ;@Ahk2Exe-ExeName EVE-X-Preview
 
-;@Ahk2Exe-SetMainIcon icon.ico
+    ;@Ahk2Exe-AddResource icon.ico, 160  ; Replaces 'H on blue'
+    ;@Ahk2Exe-AddResource icon-suspend.ico, 206  ; Replaces 'S on green'
+    ;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
+    ;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
 
-if !(A_IsCompiled)
-    TraySetIcon("icon.ico",,true)
+    ;@Ahk2Exe-SetMainIcon icon.ico
 
-; Catch all unhandled Errors to prevent the Script from stopping 
-OnError(Error_Handler)
+    if !(A_IsCompiled)
+        TraySetIcon("icon.ico",,true)
 
-Call := Main_Class()
+    ; Catch all unhandled Errors to prevent the Script from stopping 
+    OnError(Error_Handler)
+
+    Call := Main_Class()
+}
 
 
 ; Improved settings loader
@@ -155,8 +160,9 @@ IsArrayLike(obj) {
     if !IsObject(obj)
         return false
     try {
-        _ := obj.Length
-        return true
+        ; _ := obj.Length
+        ; return true
+        return Type(obj) = "Array"
     } catch {
         return false
     }
@@ -310,37 +316,39 @@ MigrateSettings(userObj, uver, dver) {
                 tv["ThumbnailMinimumSize"] := DeepClone(g["ThumbnailMinimumSize"])
 
             ; Thumbnail Settings -> Thumbnails Behavior
-            ts := prof_settings["Thumbnail Settings"]
-            if ts.Has("HideThumbnailsOnLostFocus")
-                tb["HideThumbnailsOnLostFocus"] := ts["HideThumbnailsOnLostFocus"]
-            if ts.Has("ShowThumbnailsAlwaysOnTop")
-                tb["ShowThumbnailsAlwaysOnTop"] := ts["ShowThumbnailsAlwaysOnTop"]
+            if prof_settings.Has("Thumbnail Settings") {
+                ts := prof_settings["Thumbnail Settings"]
+                if ts.Has("HideThumbnailsOnLostFocus")
+                    tb["HideThumbnailsOnLostFocus"] := ts["HideThumbnailsOnLostFocus"]
+                if ts.Has("ShowThumbnailsAlwaysOnTop")
+                    tb["ShowThumbnailsAlwaysOnTop"] := ts["ShowThumbnailsAlwaysOnTop"]
 
-            ; Thumbnail Settings -> Thumbnails Visuals
-            if ts.Has("ShowThumbnailTextOverlay")
-                tv["ShowThumbnailTextOverlay"] := ts["ShowThumbnailTextOverlay"]
-            if ts.Has("ThumbnailTextColor")
-                tv["ThumbnailTextColor"] := ts["ThumbnailTextColor"]
-            if ts.Has("ThumbnailTextSize")
-                tv["ThumbnailTextSize"] := ts["ThumbnailTextSize"]
-            if ts.Has("ThumbnailTextFont")
-                tv["ThumbnailTextFont"] := ts["ThumbnailTextFont"]
-            if ts.Has("ThumbnailTextMargins")
-                tv["ThumbnailTextMargins"] := DeepClone(ts["ThumbnailTextMargins"])
-            if ts.Has("ShowClientHighlightBorder")
-                tv["ShowClientHighlightBorder"] := ts["ShowClientHighlightBorder"]
-            if ts.Has("ClientHighligtColor")
-                tv["ClientHighligtColor"] := ts["ClientHighligtColor"]
-            if ts.Has("ClientHighligtBorderthickness")
-                tv["ClientHighligtBorderthickness"] := ts["ClientHighligtBorderthickness"]
-            if ts.Has("ThumbnailOpacity")
-                tv["ThumbnailOpacity"] := ts["ThumbnailOpacity"]
-            if ts.Has("ShowAllColoredBorders")
-                tv["ShowAllColoredBorders"] := ts["ShowAllColoredBorders"]
-            if ts.Has("InactiveClientBorderthickness")
-                tv["InactiveClientBorderthickness"] := ts["InactiveClientBorderthickness"]
-            if ts.Has("InactiveClientBorderColor")
-                tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
+                ; Thumbnail Settings -> Thumbnails Visuals
+                if ts.Has("ShowThumbnailTextOverlay")
+                    tv["ShowThumbnailTextOverlay"] := ts["ShowThumbnailTextOverlay"]
+                if ts.Has("ThumbnailTextColor")
+                    tv["ThumbnailTextColor"] := ts["ThumbnailTextColor"]
+                if ts.Has("ThumbnailTextSize")
+                    tv["ThumbnailTextSize"] := ts["ThumbnailTextSize"]
+                if ts.Has("ThumbnailTextFont")
+                    tv["ThumbnailTextFont"] := ts["ThumbnailTextFont"]
+                if ts.Has("ThumbnailTextMargins")
+                    tv["ThumbnailTextMargins"] := DeepClone(ts["ThumbnailTextMargins"])
+                if ts.Has("ShowClientHighlightBorder")
+                    tv["ShowClientHighlightBorder"] := ts["ShowClientHighlightBorder"]
+                if ts.Has("ClientHighligtColor")
+                    tv["ClientHighligtColor"] := ts["ClientHighligtColor"]
+                if ts.Has("ClientHighligtBorderthickness")
+                    tv["ClientHighligtBorderthickness"] := ts["ClientHighligtBorderthickness"]
+                if ts.Has("ThumbnailOpacity")
+                    tv["ThumbnailOpacity"] := ts["ThumbnailOpacity"]
+                if ts.Has("ShowAllColoredBorders")
+                    tv["ShowAllColoredBorders"] := ts["ShowAllColoredBorders"]
+                if ts.Has("InactiveClientBorderthickness")
+                    tv["InactiveClientBorderthickness"] := ts["InactiveClientBorderthickness"]
+                if ts.Has("InactiveClientBorderColor")
+                    tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
+            }
 
             ; Hotkeys -> Hotkeys Settings
             prof_settings["Hotkeys Settings"] := Map()

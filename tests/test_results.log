@@ -1,0 +1,13 @@
+PASS: Example arithmetic
+PASS: Example object key check
+PASS: JSON merge keeps user values
+PASS: JSON merge adds missing default keys
+PASS: JSON merge adds missing profile entries
+PASS: DeepClone copies nested objects and arrays
+PASS: IsArrayLike detects arrays
+PASS: JsonMergeNoOverwrite handles object-vs-primitive mismatches
+PASS: JsonMergeNoOverwrite keeps nested arrays independent
+PASS: MigrateSettings migrates legacy global settings
+PASS: MigrateSettings fails on invalid legacy structure
+
+Test summary: 11 passed, 0 failed, 11 total.
