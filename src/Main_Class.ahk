@@ -57,7 +57,7 @@
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
         if This.First_Start_After_Update { ; Display message after succsessful update
-            Sleep 500 ; Let updater time to close
+            Sleep 3000 ; Let updater time to close
             SetWorkingDir(A_ScriptDir)
             
             ; Check for both old and new updater locations
