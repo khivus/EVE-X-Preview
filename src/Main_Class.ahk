@@ -62,7 +62,7 @@
             
             ; Check for both old and new updater locations
             updaterExeName := "EVE-X-Preview-Updater.exe"
-            updaterExePath := A_ScriptDir "\" updaterExeName
+            updaterExePath := A_Temp "\" updaterExeName
 
             if FileExist(updaterExeName)
                 FileDelete(updaterExeName)
@@ -605,8 +605,12 @@
             if hwndEVE && This.IsWinAllowed(hwndEVE) {
                 found := true
                 break
-            } 
+            }
         }
+
+        ; Reset flag, because we activating first window
+        if This.ResetPosAfterQuickGroupTrigger
+            This.ResetPosAfterQuickGroupTrigger := false
 
         if found && This.IsWinAllowed(hwndEVE)
             try This.ActivateEVEWindow(hwndEVE) 
@@ -790,8 +794,13 @@
         ; Build array for quick group
         sortStr := ""
 
-        for hwnd, title in This.QuickGroupChars
+        for hwnd, title in This.QuickGroupChars {
+            if !WinExist("ahk_id " hwnd) { ; Additional check for closed windows
+                This.DeleteFromQuickGroup(hwnd)
+                continue
+            }
             sortStr .= title "|" hwnd "`n"
+        }
 
         ; Sort by title, and use HWND as a fallback when titles are equal.
         sortStr := Sort(sortStr, "D`n", (a, b, *) => (
@@ -901,12 +910,14 @@
             return
         }
 
-        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger ; Trying to keep position if needed
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger { ; Trying to keep position if needed
             searchHwnd := lastWinHwnd
-        else if This.ResetPosAfterQuickGroupTrigger ; Reset position if needed
+        } else if This.ResetPosAfterQuickGroupTrigger { ; Reset position if needed
             searchHwnd := 0
-        else ; Checking from active win
+            This.ResetPosAfterQuickGroupTrigger := false
+        } else { ; Checking from active win
             searchHwnd := WinExist("A")
+        }
 
         index := 0
         for i, hwnd in arr {
@@ -921,6 +932,9 @@
             index := 1
 
         Loop arrLen {
+            if This.IsWinAllowed(arr[index])
+                break
+
             index += 1
             if index > arrLen
                 index := 1
@@ -1008,12 +1022,8 @@
                     This.ShowThumb(k, "Show")
             }
         }
-        if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
-            This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
-        if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwnd) { ; Removing from QuickGroup if character switched
-            This.toggleColorBorder(hwnd, title, 0)
-            This.QuickGroupChars.Delete(hwnd)
-        }
+        This.DeleteFromQuickGroup(hwnd)
+        This.DeleteFromDisabled(hwnd)
         This.BorderActive := 0
         This.RegisterHotkeys(title)
     }
@@ -1161,42 +1171,68 @@
                 WinClose("ahk_id " hwndEVE " ahk_exe exefile.exe")
             }
             else if action = "DisableFromGroups" && This.DisabledFromGroupsEnabled {
-                if This.QuickGroupChars.Has(hwndEVE) { ; Overrides Quickgroup -> DisabledChars
-                    This.QuickGroupChars.Delete(hwndEVE)
-                }
-
-                if !This.DisabledChars.Has(hwndEVE) {
-                    This.DisabledChars[hwndEVE] := title
-                    This.toggleColorBorder(hwndEVE, title, 1, This.DisableFromGroupsColor)
-                }
-                else {
-                    This.DisabledChars.Delete(hwndEVE)
-                    This.toggleColorBorder(hwndEVE, title, 0)
-                    if WinActive("ahk_id " hwndEVE)
-                        This.BorderActive := 0
-                }
+                if !This.DisabledChars.Has(hwndEVE)
+                    This.AddToDisabled(hwndEVE, title)
+                else
+                    This.DeleteFromDisabled(hwndEVE)
             }
             else if action = "QuickGroup" && This.QuickGroupEnabled {
-                if This.DisabledChars.Has(hwndEVE) { ; Overrides DisabledChars -> Quickgroup
-                    This.DisabledChars.Delete(hwndEVE)
-                }
-
-                if !This.QuickGroupChars.Has(hwndEVE) {
-                    This.QuickGroupChars[hwndEVE] := title
-                    This.toggleColorBorder(hwndEVE, title, 1, This.QuickGroupColor)
-                }
-                else {
-                    This.QuickGroupChars.Delete(hwndEVE)
-                    This.toggleColorBorder(hwndEVE, title, 0)
-                    if WinActive("ahk_id " hwndEVE)
-                        This.BorderActive := 0
-                }
+                if !This.QuickGroupChars.Has(hwndEVE)
+                    This.AddToQuickGroup(hwndEVE, title)
+                else
+                    This.DeleteFromQuickGroup(hwndEVE)
             }
         }
         catch {
             This.debugToolTipText .= "Error OnMessage Listener`n"
             SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         }
+    }
+
+    AddToQuickGroup(hwnd, title) {
+        if !This.QuickGroupEnabled || This.QuickGroupChars.Has(hwnd)
+            return
+
+        if This.DisabledChars.Has(hwnd) { ; Overrides DisabledChars -> Quickgroup
+            This.DisabledChars.Delete(hwnd)
+        }
+
+        This.QuickGroupChars[hwnd] := title
+        This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
+    }
+
+    DeleteFromQuickGroup(hwnd) {
+        if !This.QuickGroupEnabled || !This.QuickGroupChars.Has(hwnd)
+            return
+
+        title := This.QuickGroupChars[hwnd]
+        This.QuickGroupChars.Delete(hwnd)
+        This.toggleColorBorder(hwnd, title, 0)
+        if WinActive("ahk_id " hwnd)
+            This.BorderActive := 0
+    }
+
+    AddToDisabled(hwnd, title) {
+        if !This.DisabledFromGroupsEnabled || This.DisabledChars.Has(hwnd)
+            return
+
+        if This.QuickGroupChars.Has(hwnd) { ; Overrides Quickgroup -> DisabledChars
+            This.QuickGroupChars.Delete(hwnd)
+        }
+
+        This.DisabledChars[hwnd] := title
+        This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
+    }
+
+    DeleteFromDisabled(hwnd) {
+        if !This.DisabledFromGroupsEnabled || !This.DisabledChars.Has(hwnd)
+            return
+
+        title := This.DisabledChars[hwnd]
+        This.DisabledChars.Delete(hwnd)
+        This.toggleColorBorder(hwnd, title, 0)
+        if WinActive("ahk_id " hwnd)
+            This.BorderActive := 0
     }
 
     ; Creates a new thumbnail if a new window got created
@@ -1364,6 +1400,9 @@
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
+            This.DeleteFromQuickGroup(hwnd)
+            This.DeleteFromDisabled(hwnd)
+
             for k, v in This.ThumbWindows.%hwnd% {
                 if (k = "Thumbnail")
                     continue
@@ -1375,14 +1414,15 @@
                 This.stopLogMonitoring(WinTitle)
             if This.HidedThumbs.Has(hwnd)
                 This.HidedThumbs.Delete(hwnd)
-            if This.QuickGroupEnabled && This.QuickGroupChars.Has(hwnd)
-                This.QuickGroupChars.Delete(hwnd)
             This.DestroyThumbnailsToggle := 1
             Return
         }
         ;If a EVE Windows get destroyed 
-        for Win_Hwnd,v in This.ThumbWindows.Clone().OwnProps() {
+        for Win_Hwnd, v in This.ThumbWindows.Clone().OwnProps() {
             if (!WinExist("Ahk_Id " Win_Hwnd)) {
+                This.DeleteFromQuickGroup(Win_Hwnd)
+                This.DeleteFromDisabled(Win_Hwnd)
+
                 title := This.ThumbWindows.%Win_Hwnd%["Window"].Title
                 for k, v in This.ThumbWindows.Clone().%Win_Hwnd% {
                     if (k = "Thumbnail")
@@ -1394,8 +1434,6 @@
                     This.stopLogMonitoring(title)
                 if This.HidedThumbs.Has(Win_Hwnd)
                     This.HidedThumbs.Delete(Win_Hwnd)
-                if This.QuickGroupEnabled && This.QuickGroupChars.Has(Win_Hwnd)
-                    This.QuickGroupChars.Delete(Win_Hwnd)
             }
         }
         This.DestroyThumbnailsToggle := 1

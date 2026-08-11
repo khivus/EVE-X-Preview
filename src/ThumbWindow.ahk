@@ -472,7 +472,7 @@ Class ThumbWindow extends Propertys {
         This.lastActiveThumbHwnd := EVEHwnd
     }
 
-    clearBorder(hwnd, title) {
+    clearBorder(hwnd, title?) {
         if !This.ThumbWindows.HasOwnProp(hwnd)
             return
 
@@ -483,6 +483,9 @@ Class ThumbWindow extends Propertys {
             return
         thumbWin := thumb["Window"]
         thumbBorder := thumb["Border"]
+
+        if !IsSet(title)
+            title := WinGetTitle("ahk_id " hwnd)
 
         clearLastThumb := !This.DisabledChars.Has(hwnd) && !This.QuickGroupChars.Has(hwnd) && (!This.flashMethod.Has(title) || This.stopDisplayingOnSwitch)
 

@@ -1,16 +1,18 @@
 #Requires AutoHotkey v2.0
 
-VERSION := "1.3"
+VERSION := "1.4"
 
 class UpdaterStatus {
     __New() {
         this.Gui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", "Updating")
-        this.Text := this.Gui.Add("Text", "w300", "Starting...")
-        this.Gui.Show("AutoSize")
+        this.ProgressBar := this.Gui.Add("Progress", "w300 h20")
+        this.Text := this.Gui.Add("Text", "h100 w300", "Starting...`n")
+        this.Gui.Show("Autosize")
     }
 
-    SetStatus(text) {
-        this.Text.Value := text
+    UpdateStatus(text) {
+        this.ProgressBar.Value += 20
+        this.Text.Value .= text "`n"
     }
 
     Close() {
@@ -22,7 +24,7 @@ A_TrayMenu.Delete()
 A_TrayMenu.Add("Exit", (*) => ExitApp())
 
 status := UpdaterStatus()
-status.SetStatus("Getting last version...")
+status.UpdateStatus("Getting last version...")
 
 try {
     oldScriptPath := A_Args[1]
@@ -30,7 +32,7 @@ try {
     SplitPath(oldScriptPath, &name, &dir)
     if dir = ""
         oldScriptPath := A_ScriptDir "\" name
-    
+
     newTag := A_Args[2]
 }
 catch { ; If started without arguments we parse updates and get latest release version
@@ -82,7 +84,7 @@ newScriptName := "EVE-X-Preview-v" newTag ".exe"
 oldNewScriptName := "EVE-X-Preview-Old.exe"
 
 try {
-    status.SetStatus("Changing name of old version...")
+    status.UpdateStatus("Renaming old version...")
     if FileExist(oldScriptName) { ; Renaming old script to different name
         FileMove(oldScriptName, oldNewScriptName, true)
         if !FileExist(oldNewScriptName) ; If not renamed
@@ -94,25 +96,26 @@ try {
         FileDelete(newScriptName)
 
     exeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/EVE-X-Preview.exe"
-    status.SetStatus("Downloading new version...")
+    status.UpdateStatus("Downloading new version...")
     Download(exeUrl, newScriptName) ; Download file from GitHub
 
     ; Checking if new version downloaded
     if !FileExist(newScriptName)
         Throw Error("Error downloading new version!")
 
-    status.SetStatus("Updating...")
+    status.UpdateStatus("Renaming new version...")
     FileMove(newScriptName, oldScriptName, true) ; Renaming new script to old name
 
-    if FileExist(oldNewScriptName) { ; Deleting old script
+    status.UpdateStatus("Deleting old version...")
+    if FileExist(oldNewScriptName) ; Deleting old script
         FileDelete(oldNewScriptName)
-    }
         
-    status.SetStatus("Done!")
+    status.UpdateStatus("Done! Launching " oldScriptName "!")
     Run(oldScriptName)
+    Sleep 1500
 }
 catch Error as e {
-    MsgBox("An error occurred while trying to update the application:`n" e.Message "`nIF program stops working properly, redownload it from github!")
+    MsgBox("An error occurred while trying to update the program:`n" e.Message "`nIf program stops working properly, redownload it from github!")
 }
 finally {
     status.Close()

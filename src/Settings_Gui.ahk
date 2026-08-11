@@ -1774,7 +1774,7 @@
             }
 
             updaterExeName := "EVE-X-Preview-Updater.exe"
-            updaterExePath := A_ScriptDir "\" updaterExeName
+            updaterExePath := A_Temp "\" updaterExeName
             updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
 
             if FileExist(updaterExePath)
