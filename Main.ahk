@@ -8,6 +8,7 @@
 #Include "src/TrayMenu.ahk"
 #Include "src/Propertys.ahk"
 #Include "src/Settings_Gui.ahk"
+#Include "src/LocalChatMonitor.ahk"
 
 if !IsSet(__EVE_X_PREVIEW_TESTING__)
     __EVE_X_PREVIEW_TESTING__ := false
@@ -26,7 +27,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.0.9
+    ;@Ahk2Exe-Let U_version = 1.6.0.10
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus

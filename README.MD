@@ -201,6 +201,7 @@ This group controls how thumbnails look.
 * Inactive Client Border Color (Hex/RGB): border color for inactive clients.
 * Thumbnail Background Color (Hex/RGB): background color used when thumbnail content is not available.
 * Minimum Thumbnail Size (px): minimum allowed thumbnail size.
+* Custom names: enter character names in the left column and displayed names on matching lines in the right column. A blank replacement keeps the original name. Import from Launched appends logged-in characters without duplicating existing entries. Changes apply when settings close and follow the selected Thumbnails Visuals profile; hotkeys and character matching still use the original names.
 
 ### Thumbnail Visibility
 
@@ -235,12 +236,14 @@ Use this group to assign per-character colors.
 This feature does not violate the EULA or Terms of Service, but it is neither endorsed nor supported by CCP. Use it at your own risk.
 Performance impact increases with the number of characters tracked at the same time.
 
-* Game Logs Monitoring Enabled: turns log monitoring on or off.
-* Game Logs Directory: path to the EVE log folder.
+* Game Logs Monitoring Enabled: turns combat/event log monitoring on or off.
+* Track Current System (Local Chat): follows Local chat system-change announcements and keeps the current system at the bottom of the thumbnail, with event text above it. Defaults to off and works independently of combat monitoring and focused-window event suppression. It shares the monitoring interval and selected-character filter; the thumbnail text overlay must be enabled to display it.
+* Chat Logs (blank = auto): optionally select your Chatlogs folder. Automatic detection checks beside the configured Gamelogs folder, then Documents/logs/Chatlogs and Documents/EVE/logs/Chatlogs. The newest Local session is matched by its Listener header, including when tracking starts after login. Changes apply when settings close.
+* Game Logs (blank = auto): optionally select your Gamelogs folder. Like Chat Logs, a blank field detects the sibling of the other configured log folder, then Documents/logs/Gamelogs and Documents/EVE/logs/Gamelogs. Automatic paths are resolved without filling in either settings field.
 * Monitoring Interval (ms): polling interval.
 * Event Priority if Several Incoming: chooses whether the first or last event wins.
 * Supress for Focused Window: suppresses events for the active window.
-* Show Event Text: shows event text in the UI.
+* Show Event Text: shows a separate event message at the bottom inside the thumbnail (above the system name when tracking is enabled), using the thumbnail text font, color, and margins. The character name stays at the top.
 * Flash Border: flashes the border on an event.
 * Stop Displaying Event on Switch: stops showing the event after switching.
 * Event Display Duration (ms): how long the event remains visible.
@@ -254,8 +257,8 @@ Monitored events for Game Logs Monitoring feature.
 Enabling more events reduces performance. The effect becomes larger as more characters are tracked.
 
 * Stopped Shooting
-* Under Attack By Player
-* Under Attack By NPC
+* Under Attack By Player: the Ignore player smartbomb damage option excludes Smartbomb hits by default; turn it off to include them. The adjacent Neuts checkbox also includes incoming energy neutralization from players, identified by the red GJ amount in the log. Outgoing neutralization is ignored.
+* Under Attack By NPC: the adjacent Neuts checkbox also includes incoming energy neutralization from NPCs. Both Neuts options default to off and require their parent attack event to be enabled.
 * Engaged With Faction BS NPC
 * Engaged With Officer NPC
 * Engaged With Capital NPC

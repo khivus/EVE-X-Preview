@@ -62,6 +62,7 @@
                 "QuickGroup": {"lmb": 0, "rmb": 1, "shift": 1, "ctrl": 0}
             },
             "Thumbnails Visuals": {
+                "CustomThumbnailNames": {"Characters": "", "Names": ""},
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
@@ -170,6 +171,8 @@
             },
             "Game Logs Monitoring": {
                 "gameLogsMonitoringEnabled": 0,
+                "systemTrackingEnabled": 0,
+                "chatLogsDirectory": "",
                 "monitoringInterval": 1000,
                 "gameLogsDirectory": "",
                 "charsIds": {},
@@ -184,8 +187,8 @@
                 "flashBorderInterval": 300,
                 "shootingInterval": 10000,
                 "monitoredEvents": {
-                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000"},
-                    "underAttackByNPC": {"enabled": 0, "color": "ff8800"},
+                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000", "includeNeutralization": 0, "ignoreSmartbombDamage": 1},
+                    "underAttackByNPC": {"enabled": 0, "color": "ff8800", "includeNeutralization": 0},
                     "engagedWithFactionBSNPC": {"enabled": 0, "color": "11470d"},
                     "engagedWithOfficerNPC": {"enabled": 0, "color": "340e73"},
                     "engagedWithCapitalNPC": {"enabled": 0, "color": "ffd700"},

@@ -10,7 +10,11 @@ class Propertys extends TrayMenu {
         set {
             if This.ThumbWindows.HasProp(hwnd) {
                 newtext := Value
-                This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(newtext)
+                if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
+                    This.updateThumbnailEventText("", hwnd)
+                    This.updateThumbnailSystemText("", hwnd)
+                }
+                This.updateThumbnailText(newtext, hwnd)
                 This.ThumbWindows.%hwnd%["Window"].Title := newtext
             }
         }
@@ -264,6 +268,16 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"] := Trim(value, "`n ")
     }
+    CustomThumbnailNames {
+        get {
+            visuals := This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]
+            if !visuals.Has("CustomThumbnailNames")
+                visuals["CustomThumbnailNames"] := Map("Characters", "", "Names", "")
+            return visuals["CustomThumbnailNames"]
+        }
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["CustomThumbnailNames"] := value
+    }
+
     ThumbnailTextSize {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"] := Trim(value, "`n ")
@@ -715,6 +729,16 @@ class Propertys extends TrayMenu {
     gameLogsMonitoringEnabled {
         get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
+    }
+
+    systemTrackingEnabled {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("systemTrackingEnabled", 0)
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["systemTrackingEnabled"] := value
+    }
+
+    chatLogsDirectory {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("chatLogsDirectory", "")
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["chatLogsDirectory"] := value
     }
 
     monitoringInterval {

@@ -1015,6 +1015,52 @@
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp+{}", smallEditW + This.baseGrid + 1, This.editOffset), "height:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 44, This.editOffset, smallEditW) " vThumbnailMinimumSizeheight", This.ThumbnailMinimumSize["height"])
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Custom names: one pair per line; blank keeps original.")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Character Name:")
+        nameChars := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h112", This.contentGap, This.editExW) " -Wrap vThumbnailNameCharacters", This.CustomThumbnailNames["Characters"])
+        arr.Push nameChars
+        importNames := This.MainFrame.Add("Button", Format("xp yp+{} w{}", 112 + This.baseGrid, This.editExW), "Import from Launched")
+        arr.Push importNames
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys", This.editExW + This.contentGap), "Displayed Name:")
+        nameValues := This.MainFrame.Add("Edit", Format("xp yp+{} w{} h112", This.contentGap, This.editExW) " -Wrap vThumbnailNameValues", This.CustomThumbnailNames["Names"])
+        arr.Push nameValues
+        nameChars.OnEvent("Change", SaveCustomNames)
+        nameValues.OnEvent("Change", SaveCustomNames)
+        importNames.OnEvent("Click", ImportCustomNames)
+
+        SaveCustomNames(*) {
+            This.CustomThumbnailNames := Map("Characters", nameChars.Value, "Names", nameValues.Value)
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        ImportCustomNames(*) {
+            characters := nameChars.Value
+            existing := Map()
+            existing.CaseSense := "Off"
+            for name in StrSplit(characters, "`n", "`r")
+                existing[This.CleanTitle(Trim(name))] := true
+            launched := ""
+            for hwnd in WinGetList("ahk_exe exefile.exe") {
+                name := This.CleanTitle(WinGetTitle("ahk_id " hwnd))
+                if name != "" && !existing.Has(name) {
+                    launched .= name "`n"
+                    existing[name] := true
+                }
+            }
+            if launched = ""
+                return
+            ; Append after both columns so existing line pairs never shift.
+            if characters != "" || nameValues.Value != "" {
+                rows := Max(StrSplit(characters, "`n").Length, StrSplit(nameValues.Value, "`n").Length)
+                Loop rows - StrSplit(characters, "`n").Length
+                    characters .= "`n"
+                characters .= "`n"
+            }
+            nameChars.Value := characters RTrim(Sort(launched), "`r`n")
+            SaveCustomNames()
+        }
+
         This.MainFrame["ShowThumbnailTextOverlay"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailTextColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailTextSize"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -1152,7 +1198,14 @@
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Directory:")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Track Current System (Local Chat):")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vsystemTrackingEnabled", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Chat Logs (blank = auto):")
+        arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 60 - This.baseGrid, 5, 60, 26) " vselectChatLogsDirectory", "Select")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp+{} w{}", 60 + This.baseGrid, 1, This.editW) " vchatLogsDirectory")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs (blank = auto):")
         arr.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.offsetX - 60 - This.baseGrid, 5, 60, 26) " vselectGameLogsDirectory", "Select")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp+{} w{}", 60 + This.baseGrid, 1, This.editW) " vgameLogsDirectory")
 
@@ -1184,12 +1237,15 @@
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vmonitorOnlySelectedChars", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Characters to Monitor:")
-        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editH - 40) " -Wrap vcharsToMonitor", monitoredChars)
-        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH - 40 + This.baseGrid, This.editEx2W), "Import from Launched")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{} h{}", This.offsetX - (This.editEx2W - This.editW), This.editOffset, This.editEx2W, This.editH - 104) " -Wrap vcharsToMonitor", monitoredChars)
+        ImpBtn := This.MainFrame.Add("Button", Format("xp yp+{} w{}", This.editH - 104 + This.baseGrid, This.editEx2W), "Import from Launched")
         
         arr.Push ImpBtn
 
         This.MainFrame["gameLogsMonitoringEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["systemTrackingEnabled"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["chatLogsDirectory"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["selectChatLogsDirectory"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["selectGameLogsDirectory"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["gameLogsDirectory"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["monitoringInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -1207,6 +1263,17 @@
         EventHandler(obj) {
             if obj.name = "gameLogsMonitoringEnabled"
                 This.gameLogsMonitoringEnabled := obj.value
+            else if obj.name = "systemTrackingEnabled"
+                This.systemTrackingEnabled := obj.value
+            else if obj.name = "chatLogsDirectory"
+                This.chatLogsDirectory := obj.value
+            else if obj.name = "selectChatLogsDirectory" {
+                dir := DirSelect(,, "Select Chatlogs folder.")
+                if dir = ""
+                    return
+                This.chatLogsDirectory := dir
+                This.MainFrame["chatLogsDirectory"].Value := dir
+            }
             else if obj.name = "gameLogsDirectory"
                 This.gameLogsDirectory := obj.value
             else if obj.name = "selectGameLogsDirectory" {
@@ -1296,6 +1363,11 @@
                 This.MainFrame["shootingInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
             }
 
+            if event = "underAttackByPlayer" || event = "underAttackByNPC" {
+                arr.Push This.MainFrame.Add("CheckBox", "xs+180 ys w65 vN" event, "Neuts")
+                This.MainFrame["N" event].OnEvent("Click", (obj, *) => EventHandler(obj))
+            }
+
             arr.Push This.MainFrame.Add("CheckBox", Format("xs+{} ys", This.offsetX) " vE" event, "On/Off")
             arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 60 + This.baseGrid, This.editOffset, editCW) " vC" event)
             arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", editCW + This.baseGrid, This.cPreviewSize, This.cPreviewSize,) " vPreviewC" event " Border")
@@ -1304,11 +1376,17 @@
             This.MainFrame["C" event].OnEvent("Change", (obj, *) => EventHandler(obj))
         }
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{}", This.xlGap), "Neuts: include incoming energy neutralization.")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xs yp+{} w{}", This.lGap, This.sepW) " vIgnorePlayerSmartbombDamage Checked" This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1), "Ignore player smartbomb damage")
+        This.MainFrame["IgnorePlayerSmartbombDamage"].OnEvent("Click", (obj, *) => EventHandler(obj))
+
         EventHandler(obj) {
             object := SubStr(obj.name, 1, 1)
             event := SubStr(obj.name, 2)
             if object = "E"
                 This.monitoredEvents[event]["enabled"] := obj.value
+            else if object = "N"
+                This.monitoredEvents[event]["includeNeutralization"] := obj.value
             else if object = "C" {
                 This.monitoredEvents[event]["color"] := obj.value
                 This.RedrawColorPreview(obj)
@@ -1316,6 +1394,8 @@
             else if obj.name = "shootingInterval" {
                 This.shootingInterval := obj.value
             }
+            else if obj.name = "IgnorePlayerSmartbombDamage"
+                This.monitoredEvents["underAttackByPlayer"]["ignoreSmartbombDamage"] := obj.value
 
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -2043,6 +2123,9 @@
         This.MainFrame["ShiftThumbHorizontalStep"].value := This.ShiftThumbHorizontalStep
         This.MainFrame["ShiftThumbVerticalStep"].value := This.ShiftThumbVerticalStep
 
+        This.MainFrame["ThumbnailNameCharacters"].Value := This.CustomThumbnailNames["Characters"]
+        This.MainFrame["ThumbnailNameValues"].Value := This.CustomThumbnailNames["Names"]
+
         ;Thumbnail Visibility
         This.MainFrame["Visibility_List"].Delete()
         for k, v in This.compare_openclients_with_list() {
@@ -2056,6 +2139,8 @@
 
         ; Game Logs Monitoring
         This.MainFrame["gameLogsMonitoringEnabled"].value := This.gameLogsMonitoringEnabled
+        This.MainFrame["systemTrackingEnabled"].Value := This.systemTrackingEnabled
+        This.MainFrame["chatLogsDirectory"].Value := This.chatLogsDirectory
         This.MainFrame["monitoringInterval"].value := This.monitoringInterval
         This.MainFrame["gameLogsDirectory"].value := This.gameLogsDirectory
         This.MainFrame["monitorOnlySelectedChars"].value := This.monitorOnlySelectedChars
@@ -2070,10 +2155,13 @@
         ; Monitored Events
         for event, v in This.monitoredEvents {
             This.MainFrame["E" event].value := This.monitoredEvents[event]["enabled"]
+            if event = "underAttackByPlayer" || event = "underAttackByNPC"
+                This.MainFrame["N" event].Value := v.Get("includeNeutralization", 0)
             This.MainFrame["C" event].value := This.monitoredEvents[event]["color"]
             This.RedrawColorPreview(This.MainFrame["C" event])
         }
         This.MainFrame["shootingInterval"].value := This.shootingInterval
+        This.MainFrame["IgnorePlayerSmartbombDamage"].Value := This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1)
 
         ; Non-EVE Applications
         This.MainFrame["NonEVEGroupsDDL"].Delete()

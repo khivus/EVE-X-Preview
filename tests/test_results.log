@@ -9,5 +9,23 @@ PASS: JsonMergeNoOverwrite handles object-vs-primitive mismatches
 PASS: JsonMergeNoOverwrite keeps nested arrays independent
 PASS: MigrateSettings migrates legacy global settings
 PASS: MigrateSettings fails on invalid legacy structure
+PASS: Thumbnail names preserve blank and unmatched rows
+PASS: Thumbnail aliases preserve event text and literal replacements
+PASS: Thumbnail aliases survive JSON and stay scoped to visuals profile
+PASS: Thumbnail title updates retain original window identity
+PASS: Event text is independent of the custom thumbnail name
+PASS: Event utility line stays inside resized thumbnails
+PASS: Wrapped character names take priority over event messages
+PASS: Neutralization uses independent player and NPC options
+PASS: Player smartbombs are ignored while ordinary attacks still trigger
+PASS: Neutralization options survive settings merge and JSON roundtrip
+PASS: Neutralization direction follows the amount color in paired logs
+PASS: Monitoring initializes with only attack events enabled
+PASS: Neuts checkboxes fit beside the attack labels
+PASS: Local logs match listeners and track only system announcements
+PASS: Local logs retry discovery, rotate sessions and buffer partial writes
+PASS: System and event lines stack inside thumbnails
+PASS: System tracking controls fit in Game Logs Monitoring
+PASS: Game and chat directories share automatic detection without saving paths
 
-Test summary: 11 passed, 0 failed, 11 total.
+Test summary: 29 passed, 0 failed, 29 total.

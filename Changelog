@@ -1,3 +1,45 @@
+# v1.6.0
+
+### Added
+
+* Custom thumbnail names in Thumbnails Visuals: pair character names with displayed names in two columns, with an Import from Launched button. Names are saved per profile; blank replacements keep the original name.
+* Current-system tracking from Local chat logs. The system stays at the bottom of each thumbnail, with active event text above it. Tracking is optional and works independently of combat monitoring.
+* Separate Neuts checkboxes for Under Attack By Player and Under Attack By NPC. Incoming energy neutralization is identified by the red GJ amount; outgoing neutralization is ignored. Both options default to off.
+* Ignore player smartbomb damage option in Monitored Events, enabled by default.
+* Quick Groups, with a custom color, activation hotkey, and an option to exclude their characters from other groups.
+* Hotkeys to switch to the previous EVE window, cycle through all logged-in characters, and activate the first launched character in a hotkey group.
+* Hide Thumbnail and Quick Group Resets Position options in Thumbnails Interactions.
+* Don't Close Disabled Clients and Don't Close Quick Groups Clients options.
+* Undocked from NPC Station monitored event. EVE only logs this undocking notification for NPC stations.
+
+### Improved
+
+* New profiles can copy settings from the default profile.
+* Corrupted settings recovery: prompts before backing up invalid EVE-X-Preview.json, recreating default settings, and reloading.
+* Local chat monitoring reads the latest system on startup, follows new sessions, handles partial writes and UTF-8/UTF-16 logs, and clears the displayed system on logout.
+* Update progress is shown in both settings and the updater, with an administrator-rights check before updating.
+
+### Changed
+
+* Thumbnail interactions now use configurable input combinations through OnMessage handling.
+* Event messages use a separate bottom text line instead of being appended to the character name. The line moves above the system name when tracking is enabled and uses the existing thumbnail text styling.
+* Chat Logs and Game Logs directory settings now share the same layout and automatic detection: leave either field blank or select a custom folder. Detected paths do not fill in the settings fields.
+
+### Fixed
+
+* Small thumbnails prioritize the full wrapped character name over event text. Event text is hidden when a complete line cannot fit below the name and returns when space is available.
+* Restored thumbnail scaling before first focus (#5, thanks to @ShannaAlabel).
+* Monitoring now starts when only attack events are enabled.
+* Missing game-log folders allow discovery to retry without opening a folder picker, and changing folders no longer reuses cached paths from the previous directory.
+
+### Other changes
+
+* Restore Client Positions is also available in Client Settings, in addition to the tray menu.
+* Added Max Active Window Retries and Active Window Retry Interval settings for active-window group detection.
+* Added a warning when the settings file comes from a newer configuration version than the program supports.
+* The updater now runs from the Windows TEMP folder.
+* Added automated coverage for custom names, thumbnail text layout, combat filters, Local chat tracking, and log-directory detection, plus a headless test-runner option.
+
 # v1.5.2
 
 ### Changes

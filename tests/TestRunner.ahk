@@ -59,6 +59,11 @@ class TestRunnerClass {
         this.Log("")
         this.Log(summary)
 
+        if A_Args.Length && A_Args[1] = "--headless" {
+            FileAppend(summary "`n", "*")
+            ExitApp(this.failed > 0 ? 1 : 0)
+        }
+
         if (this.failed > 0) {
             MsgBox(summary "`nSee log: " this.logPath, "Test Runner", "Icon! 4096")
             ExitApp(1)
@@ -162,5 +167,9 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 
 #Include "Example_Test.ahk"
 #Include "Json_Functions_Test.ahk"
+#Include "Thumbnail_Names_Test.ahk"
+#Include "Thumbnail_Event_Text_Test.ahk"
+#Include "Combat_Events_Test.ahk"
+#Include "System_Tracking_Test.ahk"
 
 TestRunner.RunAll()

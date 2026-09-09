@@ -282,6 +282,7 @@
 
         ; Trigger logs monitoring
         This.gameLogsMonitoring()
+        This.startSystemTracking()
 
         return This
     }
@@ -2027,29 +2028,93 @@
         return 0
     }
 
-    getFilesList() {
-        if !DirExist(This.gameLogsDirectory) {
-            MsgBox "Game logs folder not found!`nUsually it's in USERNAME\Documents\EVE\logs\Gamelogs."
-            This.gameLogsDirectory := DirSelect() ; Select directory
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-            if This.gameLogsDirectory = "" ; Cancelled
-                return
+    ResolveChatLogsDirectory() {
+        return This.ResolveLogsDirectory(This.chatLogsDirectory, This.gameLogsDirectory, "Chatlogs")
+    }
+
+    ResolveGameLogsDirectory() {
+        return This.ResolveLogsDirectory(This.gameLogsDirectory, This.chatLogsDirectory, "Gamelogs")
+    }
+
+    ResolveLogsDirectory(configured, otherConfigured, folderName) {
+        if Trim(configured) != ""
+            return Trim(configured)
+        SplitPath(RTrim(Trim(otherConfigured), "\/"), , &logsParent)
+        candidates := [A_MyDocuments "\logs\" folderName, A_MyDocuments "\EVE\logs\" folderName]
+        if logsParent != ""
+            candidates.InsertAt(1, logsParent "\" folderName)
+        for directory in candidates {
+            if DirExist(directory)
+                return directory
         }
+        return A_MyDocuments "\EVE\logs\" folderName
+    }
+
+    startSystemTracking() {
+        if !This.systemTrackingEnabled
+            return
+        This.systemLogMonitor := LocalChatMonitor(This)
+        This.systemMonitorMethod := ObjBindMethod(This, "monitorCharacterSystems")
+        This.systemMonitorExit := ObjBindMethod(This, "stopSystemTracking")
+        OnExit(This.systemMonitorExit)
+        SetTimer(This.systemMonitorMethod, Max(250, This.monitoringInterval))
+        This.monitorCharacterSystems()
+    }
+
+    stopSystemTracking(*) {
+        if This.HasOwnProp("systemMonitorMethod")
+            SetTimer(This.systemMonitorMethod, 0)
+        if This.HasOwnProp("systemLogMonitor")
+            This.systemLogMonitor.Close()
+        if This.HasOwnProp("systemMonitorExit")
+            OnExit(This.systemMonitorExit, 0)
+    }
+
+    monitorCharacterSystems() {
+        active := Map()
+        for hwnd in WinGetList(This.EVEExe) {
+            try title := WinGetTitle(hwnd)
+            catch
+                continue
+            if title = "EVE"
+                continue
+            if This.monitorOnlySelectedChars {
+                selected := false
+                for name in This.charsToMonitor {
+                    if name = title {
+                        selected := true
+                        break
+                    }
+                }
+                if !selected
+                    continue
+            }
+            active[title] := hwnd
+        }
+        This.systemLogMonitor.Poll(active)
+    }
+
+    getFilesList() {
+        directory := This.ResolveGameLogsDirectory()
+        if !DirExist(directory)
+            return []
 
         ; Optimized files count check
         static filesCount := 0
         static oldFilesList := []
+        static cachedDirectory := ""
         newFilesCount := 0
 
         files := []
-        Loop Files, This.gameLogsDirectory "\*.*" {
+        Loop Files, directory "\*.*" {
             files.Push({name: A_LoopFileName, time: A_LoopFileTimeModified})
             newFilesCount++
         }
-        if newFilesCount = filesCount
+        if directory = cachedDirectory && newFilesCount = filesCount
             return oldFilesList
         else
             filesCount := newFilesCount
+        cachedDirectory := directory
 
         ; comparator: return <0 if a < b, 0 if equal, >0 if a > b
         ; for descending (newest first) we invert the usual order
@@ -2061,7 +2126,7 @@
         ; build newline string or process in order
         fileList := []
         for file in files {
-            fileList.Push(This.gameLogsDirectory "\" file.name)
+            fileList.Push(directory "\" file.name)
         }
         oldFilesList := fileList
         return fileList
@@ -2075,11 +2140,6 @@
         ; Third is character ID 10 digits: CCCCCCCCCC
         ; If character didn't logged in there is structure like:
         ; YYYYMMDD_XXXXXX.txt with same first 2 line explained before
-
-        if This.gameLogsDirectory = "" {
-            This.gameLogsDirectory := "C:\Users\" A_UserName "\Documents\EVE\logs\Gamelogs"
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        }
 
         This.monitoredChars := Map()
         This.waitingMonitoringChars := Map()
@@ -2338,12 +2398,12 @@
                 }
             }
         }
-        if !This.enabledMonitoredEvents.Count ; If dont enabled
-            return
-
         This.checkNPCs := false
         if This.checkFactionNPCs || This.checkOfficerNPCs || This.checkCapitalNPCs || This.checkGeneralNPCs
             This.checkNPCs := true
+
+        if !This.enabledMonitoredEvents.Count && !This.checkNPCs
+            return
 
         activeCharsToMonitor := Map() ; Must be active/logged in and in list of monitored
         if This.monitorOnlySelectedChars {
@@ -2410,6 +2470,9 @@
     }
 
     startLogMonitoring(charName, charId) {
+        ; Failed discovery must allow the window watcher to schedule a retry.
+        if This.waitingMonitoringChars.Has(charName)
+            This.waitingMonitoringChars.Delete(charName)
         if !This.gameLogsMonitoringEnabled
             return
 
@@ -2564,7 +2627,7 @@
             }
         }
         if This.showEventText {
-            This.updateThumbnailText(charName . "`n" This.monitoredEventsTexts[event], hwnd)
+            This.updateThumbnailEventText(This.monitoredEventsTexts[event], hwnd)
         }
         This.eventMethods[charName] := ObjBindMethod(This, "endEvent", charName, hwnd)
         SetTimer(This.eventMethods[charName], -This.eventDisplayDuration)
@@ -2594,20 +2657,50 @@
             if This.QuickGroupEnabled && this.QuickGroupChars.Has(hwnd)
                 This.toggleColorBorder(hwnd, charName, 1, This.QuickGroupColor)
         }
-        if This.showEventText {
-            This.updateThumbnailText(charName, hwnd)
+        This.updateThumbnailEventText("", hwnd)
+    }
+
+    GetThumbnailDisplayText(title) {
+        ; Only replace the character line; game-log event text stays intact.
+        lineEnd := InStr(title, "`n")
+        character := This.CleanTitle(lineEnd ? RTrim(SubStr(title, 1, lineEnd - 1), "`r") : title)
+        suffix := lineEnd ? SubStr(title, lineEnd) : ""
+        replacements := This.CustomThumbnailNames
+        names := StrSplit(replacements["Names"], "`n", "`r")
+        for index, source in StrSplit(replacements["Characters"], "`n", "`r") {
+            source := This.CleanTitle(Trim(source))
+            if source != "" && source = character && index <= names.Length && names[index] != ""
+                return names[index] suffix
         }
+        return character suffix
     }
 
     updateThumbnailText(title, hwnd) {
-        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(title)
+        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.GetThumbnailDisplayText(title)
+        This.RefreshThumbnailTextLayout(This.ThumbWindows.%hwnd%["TextOverlay"])
     }
 
     processNPCCheck(charName, line) {
         if !This.checkNPCs || (This.monitoredChars[charName]["event"] != "" && This.monitoredChars[charName]["event"] != "stoppedShooting")
             return
 
-        if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
+        neutralizedAt := InStr(line, "energy neutralized")
+        if neutralizedAt {
+            ; Incoming neutralization has a red GJ amount; outgoing uses 0xff7fffff.
+            if !RegExMatch(SubStr(line, 1, neutralizedAt - 1), "i)<color=(0x[0-9a-f]{8})>\s*<b>[\d., ]+\s+GJ</b>", &amount)
+                || amount[1] != "0xffe57f7f"
+                return
+            ; Detect with a substring; remove markup only to identify the source.
+            source := Trim(RegExReplace(SubStr(line, neutralizedAt + StrLen("energy neutralized")), "<[^>]*>", ""))
+            if source = ""
+                return
+            moduleAt := InStr(source, " - ")
+            target := moduleAt ? Trim(SubStr(source, 1, moduleAt - 1)) : source
+            fromOrTo := "from"
+        } else if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
+            fromOrTo := m[1]
+            target := m[2]
+        } else if RegExMatch(line, "i)\bCombat\s+\d+(?:[.,]\d+)?\s+(from|to)\s+(.+?)\s+-\s+", &m) {
             fromOrTo := m[1]
             target := m[2]
         } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
@@ -2622,9 +2715,18 @@
         kind := This.ClassifyTarget(target)
         event := ""
 
+        if neutralizedAt {
+            event := kind = "player" ? "underAttackByPlayer" : "underAttackByNPC"
+            enabled := kind = "player" ? This.playerEngagmentEnabled : This.anyNPCEngagmentEnabled
+            if enabled && This.monitoredEvents[event].Get("includeNeutralization", 0)
+                This.monitoredChars[charName]["event"] := event
+            return
+        }
+
         switch kind {
             case "player":
                 if This.playerEngagmentEnabled && fromOrTo = "from"
+                    && !(This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1) && InStr(line, "Smartbomb"))
                     event := "underAttackByPlayer"
 
             case "npc":

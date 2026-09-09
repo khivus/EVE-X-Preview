@@ -83,9 +83,7 @@ Class ThumbWindow extends Propertys {
             }
         }
 
-        ThumbTitle := ThumbObj["TextOverlay"].Add("Text", "vOverlayText w" This.ThumbnailStartLocation["width"] " h" This.ThumbnailStartLocation["height"], This.CleanTitle(Win_Title))
-        ;Sets a Color for the Text Control to make it also invisible, same as background color
-        ThumbTitle.Opt("+Background040101")
+        This.AddThumbnailTextControls(ThumbObj["TextOverlay"], Win_Title, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
 
         ThumbObj["TextOverlay"].BackColor := "040101" ;Sets a Color for the Text Control to make it also invisible, same as background color
         WinSetTransColor("040101")
@@ -158,6 +156,82 @@ Class ThumbWindow extends Propertys {
 
         GUI_Close_Button(*) {
             return
+        }
+    }
+
+    AddThumbnailTextControls(overlay, title, width, height) {
+        overlay.Add("Text", "vOverlayText +0x80 Background040101", This.GetThumbnailDisplayText(title))
+        ; Inherit the overlay font/color; keep a single utility line inside its bottom edge.
+        eventText := overlay.Add("Text", "vEventText x0 y0 w1 r1 +0x4080 Background040101", "") ; SS_ENDELLIPSIS | SS_NOPREFIX
+        eventText.GetPos(, , , &lineHeight)
+        overlay.EventTextHeight := lineHeight
+        overlay.SystemTrackingEnabled := This.systemTrackingEnabled
+        systemText := overlay.Add("Text", "vSystemText x0 y0 w1 r1 +0x4080 Background040101", "")
+        systemText.Visible := overlay.SystemTrackingEnabled
+        overlay.OnEvent("Size", ObjBindMethod(This, "LayoutThumbnailText"))
+        This.LayoutThumbnailText(overlay, 0, width, height)
+    }
+
+    LayoutThumbnailText(overlay, minMax, width, height) {
+        if minMax = -1
+            return
+        overlay.TextLayoutWidth := width
+        overlay.TextLayoutHeight := height
+        marginX := Min(Max(0, overlay.MarginX), width / 2)
+        marginY := Min(Max(0, overlay.MarginY), height / 2)
+        textWidth := Max(0, width - 2 * marginX)
+        available := Max(0, height - 2 * marginY)
+        ; Reserve the wrapped name first. Utility lines are shown only when a
+        ; complete line fits below it, with the system kept at the bottom.
+        nameHeight := Min(available, This.MeasureThumbnailNameHeight(overlay, textWidth))
+        remaining := Max(0, available - nameHeight)
+        systemHeight := overlay.SystemTrackingEnabled && remaining >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
+        systemY := height - marginY - systemHeight
+        eventHeight := remaining - systemHeight >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
+        eventY := systemY - eventHeight
+        overlay["OverlayText"].Move(marginX, marginY, textWidth, Max(0, eventY - marginY))
+        overlay["EventText"].Move(marginX, eventY, textWidth, eventHeight)
+        overlay["SystemText"].Move(marginX, systemY, textWidth, systemHeight)
+        overlay["EventText"].Visible := eventHeight > 0
+        overlay["SystemText"].Visible := systemHeight > 0
+    }
+
+    MeasureThumbnailNameHeight(overlay, width) {
+        control := overlay["OverlayText"]
+        if width <= 0 || control.Text = ""
+            return 0
+        scale := A_ScreenDPI / 96
+        rect := Buffer(16, 0)
+        NumPut("Int", Max(1, Round(width * scale)), rect, 8)
+        dc := DllCall("GetDC", "Ptr", control.Hwnd, "Ptr")
+        font := SendMessage(0x31, 0, 0, control) ; WM_GETFONT
+        previousFont := DllCall("SelectObject", "Ptr", dc, "Ptr", font, "Ptr")
+        try {
+            ; DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX matches the name control.
+            DllCall("DrawTextW", "Ptr", dc, "Str", control.Text, "Int", -1, "Ptr", rect, "UInt", 0xC10)
+            return Ceil(NumGet(rect, 12, "Int") / scale)
+        } finally {
+            DllCall("SelectObject", "Ptr", dc, "Ptr", previousFont)
+            DllCall("ReleaseDC", "Ptr", control.Hwnd, "Ptr", dc)
+        }
+    }
+
+    RefreshThumbnailTextLayout(overlay) {
+        if overlay.HasOwnProp("TextLayoutWidth")
+            This.LayoutThumbnailText(overlay, 0, overlay.TextLayoutWidth, overlay.TextLayoutHeight)
+    }
+
+    updateThumbnailEventText(text, hwnd) {
+        ; An event timer can outlive the client and its thumbnail.
+        if This.ThumbWindows.HasProp(hwnd)
+            This.ThumbWindows.%hwnd%["TextOverlay"]["EventText"].Text := text
+    }
+
+    updateThumbnailSystemText(text, hwnd) {
+        if This.ThumbWindows.HasProp(hwnd) {
+            control := This.ThumbWindows.%hwnd%["TextOverlay"]["SystemText"]
+            if control.Text != text
+                control.Text := text
         }
     }
 
