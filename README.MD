@@ -256,6 +256,8 @@ Performance impact increases with the number of characters tracked at the same t
 Monitored events for Game Logs Monitoring feature.
 Enabling more events reduces performance. The effect becomes larger as more characters are tracked.
 
+General NPC recognition matches full English names from a bundled EVE Ref dataset, ignoring case. Player names containing NPC name fragments no longer match. The faction, officer and capital events retain their separate lists and priority. See [NPC data and refresh instructions](src/data/README.md) for coverage and maintenance.
+
 * Stopped Shooting
 * Under Attack By Player: the Ignore player smartbomb damage option excludes Smartbomb hits by default; turn it off to include them. The adjacent Neuts checkbox also includes incoming energy neutralization from players, identified by the red GJ amount in the log. Outgoing neutralization is ignored.
 * Under Attack By NPC: the adjacent Neuts checkbox also includes incoming energy neutralization from NPCs. Both Neuts options default to off and require their parent attack event to be enabled.

@@ -170,6 +170,7 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 #Include "Thumbnail_Names_Test.ahk"
 #Include "Thumbnail_Event_Text_Test.ahk"
 #Include "Combat_Events_Test.ahk"
+#Include "NPC_Database_Test.ahk"
 #Include "System_Tracking_Test.ahk"
 
 TestRunner.RunAll()

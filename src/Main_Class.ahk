@@ -1,4 +1,4 @@
-﻿Class Main_Class extends ThumbWindow {
+Class Main_Class extends ThumbWindow {
     Static  WM_DESTROY := 0x02,
             WM_SIZE := 0x05,
             WM_NCCALCSIZE := 0x83,
@@ -2150,201 +2150,10 @@
         if !This.gameLogsMonitoringEnabled || (!This.flashBorderEnabled && !This.showEventText) ; When events displaying disabled, don't initiate monitoring
             return
 
-        ; Thanks to @CJKondur to having this list
-        ; Comprehensive list of all EVE Online NPC naming prefixes.
-        ; Used by PVE mode to filter NPC damage from attack alerts.
-        ; CCP blocks players from using faction names in character creation.
-        This.generalNPCPatterns := [
-            ; --- Pirate Factions ---
-            "Guristas",
-            "Sansha", "Sansha's",
-            "Blood Raider",
-            "Angel Cartel",
-            "Serpentis",
-            "Mordu's Legion", "Mordu's",
-            ; --- Pirate Named Variants (Faction-specific hull prefixes) ---
-            ; Angel Cartel
-            "Gistii", "Gistum", "Gistior", "Gistatis", "Gist",
-            ; Blood Raiders
-            "Corpii", "Corpum", "Corpior", "Corpatis", "Corpus",
-            ; Guristas
-            "Pithi", "Pithum", "Pithior", "Pithatis", "Pith",
-            ; Sansha's Nation
-            "Centii", "Centum", "Centior", "Centatis", "Centus",
-            ; Serpentis
-            "Coreli", "Corelum", "Corelior", "Corelatis", "Core ",
-            ; --- Empire Factions ---
-            "Amarr Navy", "Amarr",
-            "Caldari Navy", "Caldari",
-            "Gallente Navy", "Gallente",
-            "Minmatar Fleet", "Minmatar",
-            "Imperial Navy",
-            "State",
-            "Federation Navy", "Federation",
-            "Republic Fleet", "Republic",
-            "CONCORD",
-            ; --- Rogue Drones ---
-            "Rogue",
-            ; Drone hull suffixes used as prefixes in some contexts
-            "Infester", "Render", "Raider", "Strain",
-            "Decimator", "Sunder", "Nuker",
-            "Predator", "Hunter", "Destructor",
-            ; --- Sleepers ---
-            "Sleepless", "Awakened", "Emergent",
-            ; --- Triglavian ---
-            "Starving", "Renewing", "Blinding",
-            "Harrowing", "Ghosting", "Tangling",
-            "Raznaborg", "Vedmak", "Vila",
-            "Zorya",
-            ; --- Drifter ---
-            "Artemis", "Apollo", "Hikanta", "Drifter",
-            "Tyrannos",
-            ; --- EDENCOM ---
-            "EDENCOM",
-            ; --- Triglavian Invasion NPCs ---
-            "Anchoring", "Liminal",
-            ; --- Sentry Guns & Structures ---
-            "Sentry", "Sentry Gun",
-            "Territorial",
-            ; --- FOB / Diamond NPCs ---
-            "Forward Operating",
-            ; --- Mercenary NPCs ---
-            "Mercenary",
-            ; --- Thukker ---
-            "Thukker",
-            ; --- Sisters of EVE ---
-            "Sisters of",
-            ; --- ORE ---
-            "ORE",
-            ; --- Faction Warfare NPCs ---
-            "Navy",
-            ; NPC name suffixes (for rogue drones: "Infester Alvi", etc.)
-            ; Drone name suffixes (these appear as full names)
-            "Alvi", 
-            "Alvus", 
-            "Alvatis", 
-            "Alvior"
-        ]
-
-        factionNPCs := [ ; NPCs to trigger engagedWithFactionBSNPC event
-            "Domination Cherubim",
-            "Domination Commander",
-            "Domination General",
-            "Domination Malakim",
-            "Domination Nephilim",
-            "Domination Saint",
-            "Domination Seraphim",
-            "Domination Throne",
-            "Domination War General",
-            "Domination Warlord",
-            "Dark Blood Apostle",
-            "Dark Blood Archbishop",
-            "Dark Blood Archon",
-            "Dark Blood Cardinal",
-            "Dark Blood Harbinger",
-            "Dark Blood Monsignor",
-            "Dark Blood Oracle",
-            "Dark Blood Patriarch",
-            "Dark Blood Pope",
-            "Dark Blood Prophet",
-            "Dread Guristas Conquistador",
-            "Dread Guristas Destroyer",
-            "Dread Guristas Dismantler",
-            "Dread Guristas Eliminator",
-            "Dread Guristas Eradicator",
-            "Dread Guristas Exterminator",
-            "Dread Guristas Extinguisher",
-            "Dread Guristas Massacrer",
-            "Dread Guristas Obliterator",
-            "Dread Guristas Usurper",
-            "Sentient Alvus Controller",
-            "Sentient Alvus Creator",
-            "Sentient Alvus Queen",
-            "Sentient Alvus Ruler",
-            "Sentient Domination Alvus",
-            "Sentient Matriarch Alvus",
-            "Sentient Patriarch Alvus",
-            "Sentient Spearhead Alvus",
-            "Sentient Supreme Alvus Parasite",
-            "Sentient Swarm Preserver Alvus",
-            "True Sansha's Beast Lord",
-            "True Sansha's Dark Lord",
-            "True Sansha's Dread Lord",
-            "True Sansha's Lord",
-            "True Sansha's Mutant Lord",
-            "True Sansha's Overlord",
-            "True Sansha's Plague Lord",
-            "True Sansha's Savage Lord",
-            "True Sansha's Slave Lord",
-            "True Sansha's Tyrant",
-            "Shadow Serpentis Admiral",
-            "Shadow Serpentis Baron",
-            "Shadow Serpentis Commodore",
-            "Shadow Serpentis Flotilla Admiral",
-            "Shadow Serpentis Grand Admiral",
-            "Shadow Serpentis High Admiral",
-            "Shadow Serpentis Lord Admiral",
-            "Shadow Serpentis Port Admiral",
-            "Shadow Serpentis Rear Admiral",
-            "Shadow Serpentis Vice Admiral"
-        ]
-        This.factionNPCs := Map()
-        for npc in factionNPCs
-            This.factionNPCs[npc] := true
-
-        officerNPCs := [ ; NPCs to trigger engagedWithOfficerNPC event
-            "Gotan Kreiss",
-            "Hakim Stormare",
-            "Mizuro Cybon",
-            "Tobias Kruzhor",
-            "Ahremen Arkah",
-            "Draclira Merlonne",
-            "Raysere Giant",
-            "Tairei Namazoth",
-            "Estamel Tharchon",
-            "Kaikka Peunato",
-            "Thon Eney",
-            "Vepas Minimala",
-            "Unit D-34343",
-            "Unit F-435454",
-            "Unit P-343554",
-            "Unit W-634",
-            "Brokara Ryver",
-            "Chelm Soran",
-            "Selynne Mardakar",
-            "Vizan Ankonin",
-            "Brynn Jerdola",
-            "Cormack Vaaja",
-            "Setele Schellan",
-            "Tuvan Orth"
-        ]
-        This.officerNPCs := Map()
-        for npc in officerNPCs
-            This.officerNPCs[npc] := true
-
-        capitalNPCs := [ ; NPCs to trigger engagedWithCapitalNPC event
-            "Domination Titan",
-            "Dark Blood Titan",
-            "Shadow Serpentis Titan",
-            "Angel Dreadnought",
-            "Domination Dreadnought",
-            "Blood Dreadnought",
-            "Dark Blood Dreadnought",
-            "Dread Guristas Dreadnought",
-            "Guristas Dreadnought",
-            "Sansha's Dreadnought",
-            "True Sansha's Dreadnought",
-            "Serpentis Dreadnought",
-            "Shadow Serpentis Dreadnought",
-            "Infested Carrier",
-            "Sentient Infested Carrier",
-            "Sentient Infested Supercarrier",
-            "True Sansha's Supercarrier",
-            "Dread Guristas Titan"
-        ]
-        This.capitalNPCs := Map()
-        for npc in capitalNPCs
-            This.capitalNPCs[npc] := true
+        This.generalNPCs := NPCDatabase.General()
+        This.factionNPCs := NPCDatabase.Faction()
+        This.officerNPCs := NPCDatabase.Officer()
+        This.capitalNPCs := NPCDatabase.Capital()
 
         eventPatterns := Map(
             ; "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
@@ -2691,11 +2500,16 @@
                 || amount[1] != "0xffe57f7f"
                 return
             ; Detect with a substring; remove markup only to identify the source.
-            source := Trim(RegExReplace(SubStr(line, neutralizedAt + StrLen("energy neutralized")), "<[^>]*>", ""))
+            sourceMarkup := SubStr(line, neutralizedAt + StrLen("energy neutralized"))
+            source := Trim(RegExReplace(sourceMarkup, "<[^>]*>", ""))
             if source = ""
                 return
             moduleAt := InStr(source, " - ")
             target := moduleAt ? Trim(SubStr(source, 1, moduleAt - 1)) : source
+            ; Neut logs contain both hull and pilot/entity names. Match the
+            ; actual entity name, retaining corporation/alliance tags for players.
+            if !InStr(target, "[") && RegExMatch(sourceMarkup, "i)<color=0xFF40FF40><b>([^<]+)</b>", &entity)
+                target := entity[1]
             fromOrTo := "from"
         } else if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
             fromOrTo := m[1]
@@ -2703,10 +2517,10 @@
         } else if RegExMatch(line, "i)\bCombat\s+\d+(?:[.,]\d+)?\s+(from|to)\s+(.+?)\s+-\s+", &m) {
             fromOrTo := m[1]
             target := m[2]
-        } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
+        } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "i)\(combat\)\s+(.+?) misses you completely", &m) { ; Missed you
             fromOrTo := "from"
             target := m[1]
-        } else if RegExMatch(line, "Your .+? misses (.+?) completely", &m) { ; You missed target
+        } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "Your .+? misses (.+?) completely", &m) { ; You missed target
             fromOrTo := "to"
             target := m[1]
         } else
@@ -2760,16 +2574,13 @@
     }
 
     isGeneralNPC(target) {
-        for pat in This.generalNPCPatterns {
-            if InStr(target, pat)
-                return true
-        }
-        return false
+        return This.generalNPCs.Has(target)
     }
     
     ClassifyTarget(target) {
-        ; Early player catch. All players not in NPC have alli and/or corp tag
-        if InStr(target, "[")
+        target := Trim(target)
+        ; Tagged players stay players; some actual NPC names start with [AIR].
+        if InStr(target, "[") && !This.generalNPCs.Has(target)
             return "player"
 
         if This.checkFactionNPCs && This.isExact(This.factionNPCs, target)

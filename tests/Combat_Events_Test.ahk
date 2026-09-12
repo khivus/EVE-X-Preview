@@ -8,7 +8,10 @@ class CombatEventsFixture extends ThumbnailNamesFixture {
         this.checkFactionNPCs := false
         this.checkOfficerNPCs := false
         this.checkCapitalNPCs := false
-        this.generalNPCPatterns := ["Guristas"]
+        this.generalNPCs := NPCDatabase.General()
+        this.factionNPCs := NPCDatabase.Faction()
+        this.officerNPCs := NPCDatabase.Officer()
+        this.capitalNPCs := NPCDatabase.Capital()
         this.playerEngagmentEnabled := true
         this.anyNPCEngagmentEnabled := true
         this.monitoredChars := Map("Pilot", Map("event", ""))

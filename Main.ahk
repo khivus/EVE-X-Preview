@@ -3,6 +3,7 @@
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
 #Include "Lib/LiveThumb.ahk"
+#Include "src/NPCDatabase.ahk"
 #Include "src/Main_Class.ahk"
 #Include "src/ThumbWindow.ahk"
 #Include "src/TrayMenu.ahk"
@@ -27,7 +28,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.0.10
+    ;@Ahk2Exe-Let U_version = 1.6.0.11
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus

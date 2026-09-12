@@ -14,6 +14,7 @@
 
 ### Improved
 
+* Expanded general NPC recognition with 6,855 distinct English names from EVE Ref's Entity dataset, covering 7,386 entity types. Name maps are initialized once and reused without runtime downloads.
 * New profiles can copy settings from the default profile.
 * Corrupted settings recovery: prompts before backing up invalid EVE-X-Preview.json, recreating default settings, and reloading.
 * Local chat monitoring reads the latest system on startup, follows new sessions, handles partial writes and UTF-8/UTF-16 logs, and clears the displayed system on logout.
@@ -21,12 +22,15 @@
 
 ### Changed
 
+* General NPC detection now uses exact, case-insensitive Map lookups instead of matching name fragments. Faction, officer and capital lists retain their existing names and event priority.
 * Thumbnail interactions now use configurable input combinations through OnMessage handling.
 * Event messages use a separate bottom text line instead of being appended to the character name. The line moves above the system name when tracking is enabled and uses the existing thumbnail text styling.
 * Chat Logs and Game Logs directory settings now share the same layout and automatic detection: leave either field blank or select a custom folder. Detected paths do not fill in the settings fields.
 
 ### Fixed
 
+* Player names containing NPC name fragments no longer trigger NPC classification.
+* Combat-log parsing extracts the entity name from neutralization messages containing both hull and name fields, and correctly identifies targets in missed-shot messages with formatting tags.
 * Small thumbnails prioritize the full wrapped character name over event text. Event text is hidden when a complete line cannot fit below the name and returns when space is available.
 * Restored thumbnail scaling before first focus (#5, thanks to @ShannaAlabel).
 * Monitoring now starts when only attack events are enabled.
@@ -34,6 +38,8 @@
 
 ### Other changes
 
+* Moved NPC data into a dedicated NPCDatabase module with a generated name dataset, a PowerShell refresh script and maintenance instructions.
+* Added regression coverage for exact NPC matching, player-name collisions, special-event priority, shared maps and combat-log parsing.
 * Restore Client Positions is also available in Client Settings, in addition to the tray menu.
 * Added Max Active Window Retries and Active Window Retry Interval settings for active-window group detection.
 * Added a warning when the settings file comes from a newer configuration version than the program supports.
