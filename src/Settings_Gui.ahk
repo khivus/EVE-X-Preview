@@ -1,4 +1,30 @@
-﻿Class Settings_Gui {
+﻿#Include "UpdateChecker.ahk"
+
+Class Settings_Gui {
+
+    CheckForUpdates() {
+        This.updateChecker.Start(true)
+        SetTimer(This.updateUiTimer, 200)
+        This.RefreshUpdateStatus()
+    }
+
+    RefreshUpdateStatus() {
+        ready := This.HasOwnProp("updateChecker")
+        checker := ready ? This.updateChecker : {releaseTag: "", preReleaseTag: "", busy: false, status: "Not checked yet."}
+        This.latestReleaseTag := checker.releaseTag
+        This.latestPreReleaseTag := checker.preReleaseTag
+        newer := UpdateChecker.IsNewer(checker.releaseTag, This.programVersion)
+        This.updateNotice.Value := newer ? "Update available: v" checker.releaseTag "`nSee About to install." : ""
+        This.MainFrame["latestReleaseVersion"].Value := checker.releaseTag != "" ? "v" checker.releaseTag : "unknown"
+        This.MainFrame["latestPreReleaseVersion"].Value := checker.preReleaseTag != "" ? "v" checker.preReleaseTag : "unknown"
+        This.MainFrame["UpdateStatus"].Value := checker.status = "Updates checked." ? (newer ? "Update available." : "No newer stable release.") : checker.status
+        This.MainFrame["checkUpdatesBtn"].Enabled := !checker.busy
+        ; Manual installs allow downgrades; only the notice requires a newer stable release.
+        This.MainFrame["updateToReleaseBtn"].Enabled := checker.releaseTag != "" && VerCompare(checker.releaseTag, This.programVersion) != 0 && !checker.busy
+        This.MainFrame["updateToPreReleaseBtn"].Enabled := checker.preReleaseTag != "" && VerCompare(checker.preReleaseTag, This.programVersion) != 0 && !checker.busy
+        if This.HasOwnProp("updateUiTimer") && !checker.busy
+            SetTimer(This.updateUiTimer, 0)
+    }
 
     MainGui() {
         ;if settings got chnaged which require a restart to apply
@@ -35,6 +61,7 @@
         This.S_Gui.OnEvent("Close", (*) => GuiDestroy())
 
         GuiDestroy(*) {
+            SetTimer(This.updateUiTimer, 0)
             This.S_Gui.Destroy()
             if (This.NeedRestart)
                 Reload()
@@ -43,6 +70,12 @@
         This.S_Gui.Show(Format("w{} h{} Center", This.guiWidth, This.guiHeight))
         This.Sidebar.Show(Format("x{} y{} w{} h{}", 0, 0, This.sidebarW, This.guiHeight))
         This.MainFrame.Show(Format("x{} y{} w{} h{}", This.sidebarW, 0, This.contentW - 10, This.guiHeight - 10))
+        if !This.HasOwnProp("updateChecker")
+            This.updateChecker := UpdateChecker()
+        This.updateChecker.Start()
+        This.updateUiTimer := ObjBindMethod(This, "RefreshUpdateStatus")
+        SetTimer(This.updateUiTimer, 200)
+        This.RefreshUpdateStatus()
     }
 
     SetState() {
@@ -124,6 +157,8 @@
                 btn := This.Sidebar.Add("Button", Format("xp yp+{} w{} h{}", This.btnH + This.baseGrid, This.sidebarInnerW, This.btnH), btn_text)
             btn.OnEvent("Click", (Obj, *) => This.SettingsGroup_Handler(Obj))
         }
+
+        This.updateNotice := This.Sidebar.Add("Text", Format("x{} y{} w{} h40 c007040", This.contentGap, This.guiHeight - 44, This.sidebarInnerW), "")
 
         This.SelectProfile_DDL.Choose(This.LastUsedProfile)
         This.SelectProfile_DDL.OnEvent("Change", (obj,*) => This._Button_Load(Obj))
@@ -1790,8 +1825,15 @@
     About_Ctrl() {
         arr := []
 
-        try
-            This.programVersion := FileGetVersion(A_ScriptName)
+        try {
+            if A_IsCompiled
+                This.programVersion := FileGetVersion(A_ScriptFullPath)
+            else {
+                if !RegExMatch(FileRead(A_ScriptDir "\Main.ahk"), "U_version = ([\d.]+)", &versionMatch)
+                    throw Error("Source version missing")
+                This.programVersion := versionMatch[1]
+            }
+        }
         catch
             This.programVersion := "1.0.0.0"
 
@@ -1811,13 +1853,13 @@
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX), "v" This.programVersion)
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Release:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestReleaseVersion", "unknown          ") ; This spaces is stupid because ahk cuts text after update if initial text is shorter than updated text
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w260", offsetX) " vlatestReleaseVersion", "unknown")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Latest Pre-Release:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vlatestPreReleaseVersion", "unknown          ")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w260", offsetX) " vlatestPreReleaseVersion", "unknown")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Update Status:")
-        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", offsetX) " vUpdateStatus", "Waiting action...                      ")
+        arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w260 h24", offsetX) " vUpdateStatus", "Not checked yet.")
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
 
@@ -1831,62 +1873,13 @@
 
         arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 130 - This.contentGap, This.guiHeight - 30 - This.contentGap, 130) " vfunnyBtn", "Funny" . (This.ThisThat ? "!" : "?"))
 
-        This.MainFrame["checkUpdatesBtn"].OnEvent("Click", (obj, *) => checkForNewUpdate())
+        This.MainFrame["checkUpdatesBtn"].OnEvent("Click", (obj, *) => This.CheckForUpdates())
         This.MainFrame["updateToReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("false"))
         This.MainFrame["updateToPreReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("true"))
         This.MainFrame["helpBtn"].OnEvent("Click", (obj, *) => helpButtonHandler())
         This.MainFrame["reportBugBtn"].OnEvent("Click", (obj, *) => reportBugButtonHandler())
         This.MainFrame["debugModeBtn"].OnEvent("Click", (obj, *) => debugModeHandler())
         This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
-
-        checkForNewUpdate() {
-            This.MainFrame["UpdateStatus"].Value := "Checking GitHub..."
-            try {
-                ; Getting json of latest release
-                apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases"
-                whr := ComObject("WinHttp.WinHttpRequest.5.1")
-                whr.Open("GET", apiUrl)
-                whr.SetRequestHeader("User-Agent", "AHK")
-                whr.Send()
-                whr.WaitForResponse()
-                json_ans := whr.ResponseText
-            }
-            catch {
-                MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
-                return
-            }
-
-            ; Finding tag of latest release
-            pattern := '"tag_name":\s*"v?V?([^"]+)",[\s\S]*?"prerelease":\s*(true|false),'
-            pos := 1
-            while matchPos := RegExMatch(json_ans, pattern, &match, pos) {
-                tag := match[1]
-                preRelease := match[2]
-
-                if preRelease = "false" && This.latestReleaseTag = ""
-                    This.latestReleaseTag := tag
-                else if preRelease = "true" && This.latestPreReleaseTag = ""
-                    This.latestPreReleaseTag := tag
-
-                if This.latestReleaseTag != "" && This.latestPreReleaseTag != ""
-                    break
-
-                pos := matchPos + match.Len ; Advance past this match
-            }
-
-            if This.latestReleaseTag != "" {
-                This.MainFrame["latestReleaseVersion"].Value := "v" This.latestReleaseTag
-                if VerCompare(This.latestReleaseTag, This.programVersion) != 0
-                    This.MainFrame["updateToReleaseBtn"].Enabled := 1
-            }
-
-            if This.latestPreReleaseTag != "" {
-                This.MainFrame["latestPreReleaseVersion"].Value := "v" This.latestPreReleaseTag
-                ; if VerCompare(This.latestPreReleaseTag, This.programVersion) != 0
-                This.MainFrame["updateToPreReleaseBtn"].Enabled := 1 ; Enabled all the time for testing purposes
-            }
-            This.MainFrame["UpdateStatus"].Value := "Updates checked."
-        }
 
         processUpdateApp(preRelease?) {
             if !IsSet(preRelease)
@@ -2271,8 +2264,7 @@
         This.enableCtrlsInGroupsSettings(0)
         This.enableCtrlsInNonEVEGroupsSettings(0)
 
-        This.MainFrame["updateToReleaseBtn"].Enabled := 0
-        This.MainFrame["updateToPreReleaseBtn"].Enabled := 0
+        This.RefreshUpdateStatus()
 
         This.MainFrame["InactiveClientBorderthickness"].Enabled := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderColor"].Enabled := This.ShowAllColoredBorders

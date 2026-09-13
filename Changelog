@@ -2,6 +2,7 @@
 
 ### Added
 
+* Automatic background update checks when Settings opens, with a sidebar notice only for newer stable releases. Pre-releases remain available for manual installation in About.
 * Incoming and outgoing DPS monitoring with independent thresholds and an adjustable rolling average (default 10 seconds). It shares the game-log reader, monitoring interval and character selection, and works without event alerts enabled.
 * Optional incoming EM/thermal/kinetic/explosive damage estimates from bundled drone, missile, fighter and smartbomb profiles, with unknown damage shown separately.
 * Custom thumbnail names in Thumbnails Visuals: pair character names with displayed names in two columns, with an Import from Launched button. Names are saved per profile; blank replacements keep the original name.
@@ -16,6 +17,7 @@
 
 ### Improved
 
+* Update checks no longer block the application while waiting for GitHub. Results are cached for five minutes; Check Updates bypasses the cache. Checks time out and report connection errors in About without a popup.
 * Expanded general NPC recognition with 6,855 distinct English names from EVE Ref's Entity dataset, covering 7,386 entity types. Name maps are initialized once and reused without runtime downloads.
 * New profiles can copy settings from the default profile.
 * Corrupted settings recovery: prompts before backing up invalid EVE-X-Preview.json, recreating default settings, and reloading.
@@ -24,6 +26,7 @@
 
 ### Changed
 
+* Release and pre-release installation buttons allow both upgrades and downgrades, and are disabled when the target version equals the installed version, no target is available, or a check is running.
 * General NPC detection now uses exact, case-insensitive Map lookups instead of matching name fragments. Faction, officer and capital lists retain their existing names and event priority.
 * Thumbnail interactions now use configurable input combinations through OnMessage handling.
 * Event messages use a separate bottom text line instead of being appended to the character name. The line moves above the system name when tracking is enabled and uses the existing thumbnail text styling.
@@ -31,6 +34,8 @@
 
 ### Fixed
 
+* Check Updates is disabled during an active check, and duplicate requests are suppressed.
+* Source builds read the application version for update comparisons instead of falling back to version 1.0.0.0.
 * Player names containing NPC name fragments no longer trigger NPC classification.
 * Combat-log parsing extracts the entity name from neutralization messages containing both hull and name fields, and correctly identifies targets in missed-shot messages with formatting tags.
 * Small thumbnails prioritize the full wrapped character name over event text. Event text is hidden when a complete line cannot fit below the name and returns when space is available.
@@ -40,6 +45,7 @@
 
 ### Other changes
 
+* Added automated update-check coverage for stable-release filtering, version comparison, caching, duplicate requests, timeouts and HTTP errors.
 * Moved NPC data into a dedicated NPCDatabase module with a generated name dataset, a PowerShell refresh script and maintenance instructions.
 * Added regression coverage for exact NPC matching, player-name collisions, special-event priority, shared maps and combat-log parsing.
 * Restore Client Positions is also available in Client Settings, in addition to the tray menu.
