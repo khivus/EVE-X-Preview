@@ -13,6 +13,7 @@ class Propertys extends TrayMenu {
                 if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
                     This.updateThumbnailEventText("", hwnd)
                     This.updateThumbnailSystemText("", hwnd)
+                    This.updateThumbnailDPSText("", hwnd)
                 }
                 This.updateThumbnailText(newtext, hwnd)
                 This.ThumbWindows.%hwnd%["Window"].Title := newtext
@@ -80,6 +81,7 @@ class Propertys extends TrayMenu {
         This.ProfileCustomColors := This.ComboGroups["Custom Colors"] ? "Default" : This.LastUsedProfile
         This.ProfileGameLogsMonitoring := This.ComboGroups["Game Logs Monitoring"] ? "Default" : This.LastUsedProfile
         This.ProfileMonitoredEvents := This.ComboGroups["Monitored Events"] ? "Default" : This.LastUsedProfile
+        This.ProfileDPSMonitoring := This.ComboGroups["DPS Monitoring"] ? "Default" : This.LastUsedProfile
         This.ProfileTrayMenuSettings := This.ComboGroups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.ComboGroups["Other"] ? "Default" : This.LastUsedProfile
         This.ProfileHotkeysGroups := This.ComboGroups["Hotkey Groups"] ? "Default" : This.LastUsedProfile
@@ -809,6 +811,11 @@ class Propertys extends TrayMenu {
     shootingInterval {
         get => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"]
         set => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"] := value
+    }
+
+    dpsMonitoring {
+        get => This._JSON["_Profiles"][This.ProfileDPSMonitoring]["DPS Monitoring"]
+        set => This._JSON["_Profiles"][This.ProfileDPSMonitoring]["DPS Monitoring"] := value
     }
 
     _Hotkey_Delete(*) {

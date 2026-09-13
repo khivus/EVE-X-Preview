@@ -23,6 +23,7 @@
         This.ThumbnailVisibility_Ctrl()
         This.GameLogsMonitoring_Ctrl()
         This.MonitoredEvents_Ctrl()
+        This.DPSMonitoring_Ctrl()
         This.NonEVEApps_Ctrl()
         This.TrayMenuSettings_Ctrl()
         This.Other_Ctrl()
@@ -56,6 +57,7 @@
             "Custom Colors",
             "Game Logs Monitoring",
             "Monitored Events",
+            "DPS Monitoring",
             "Non-EVE Applications",
             "Tray Menu Settings",
             "Other",
@@ -1406,6 +1408,62 @@
             v.Visible := 0
     }
 
+    DPSMonitoring_Ctrl() {
+        arr := []
+
+        This.MainFrame.SetFont("s12 w700 q5")
+        arr.Push This.MainFrame.Add("Text", Format("x{} y{}", This.contentGap, This.contentGap), "DPS Monitoring")
+        This.MainFrame.SetFont("s11 w400")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
+
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} r3 Section", This.lGap, This.sepW), "Calculates incoming and outgoing DPS from game log files.`nPerformance impact increases with the number of`ncharacters monitored simultaneously.")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.lGap * 3), "Incoming DPS Enabled:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vincomingDPSEnabled", "On/Off")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Incoming DPS Threshold:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vincomingDPSThreshold")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Incoming Damage Types (%):")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vshowIncomingDPSResistances", "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Outgoing DPS Enabled:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " voutgoingDPSEnabled", "On/Off")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Outgoing DPS Threshold:")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " voutgoingDPSThreshold")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Average Window (seconds):")
+        arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vdpsAverageSeconds")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} r5", This.xlGap, This.sepW), "Average window: 1-3600 seconds (default 10).`nThresholds set the minimum DPS shown (0 = no minimum).`nUses the Game Logs Monitoring interval and character list.`nTypes: drones, missiles, fighters and smartbombs.`nPercentages are estimates; ? means unknown damage.")
+
+        for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"] {
+            This.MainFrame[name].Value := This.dpsMonitoring[name]
+            This.MainFrame[name].OnEvent(InStr(name, "Threshold") || name = "dpsAverageSeconds" ? "Change" : "Click", (obj, *) => EventHandler(obj))
+            if InStr(name, "Threshold") || name = "dpsAverageSeconds"
+                This.MainFrame[name].OnEvent("LoseFocus", (obj, *) => obj.Value := This.dpsMonitoring[obj.Name])
+        }
+
+        EventHandler(obj) {
+            value := obj.Value
+            if obj.Name = "dpsAverageSeconds" {
+                if !RegExMatch(value, "^\d+$") || value < 1 || value > 3600
+                    return
+                value := value + 0
+            }
+            if InStr(obj.Name, "Threshold") {
+                if !RegExMatch(value, "^\d+(\.\d+)?$")
+                    return
+                value := value + 0
+            }
+            This.dpsMonitoring[obj.Name] := value
+            This.NeedRestart := 1
+            SetTimer(This.Save_Settings_Delay_Timer, -200)
+        }
+
+        This.MainFrame.Group["DPS Monitoring"] := arr
+        for k, v in This.MainFrame.Group["DPS Monitoring"]
+            v.Visible := 0
+    }
+
     NonEVEApps_Ctrl() {
         This.MainFrame.Group["Non-EVE Applications"] := [], arr := []
 
@@ -1621,6 +1679,7 @@
             "Game Logs Monitoring",
             "Non-EVE Applications",
             "Monitored Events",
+            "DPS Monitoring",
             "Tray Menu Settings",
             "Other"
         ]
@@ -2162,6 +2221,10 @@
         }
         This.MainFrame["shootingInterval"].value := This.shootingInterval
         This.MainFrame["IgnorePlayerSmartbombDamage"].Value := This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1)
+
+        ; DPS Monitoring
+        for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"]
+            This.MainFrame[name].Value := This.dpsMonitoring[name]
 
         ; Non-EVE Applications
         This.MainFrame["NonEVEGroupsDDL"].Delete()

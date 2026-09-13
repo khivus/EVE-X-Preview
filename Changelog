@@ -2,6 +2,8 @@
 
 ### Added
 
+* Incoming and outgoing DPS monitoring with independent thresholds and an adjustable rolling average (default 10 seconds). It shares the game-log reader, monitoring interval and character selection, and works without event alerts enabled.
+* Optional incoming EM/thermal/kinetic/explosive damage estimates from bundled drone, missile, fighter and smartbomb profiles, with unknown damage shown separately.
 * Custom thumbnail names in Thumbnails Visuals: pair character names with displayed names in two columns, with an Import from Launched button. Names are saved per profile; blank replacements keep the original name.
 * Current-system tracking from Local chat logs. The system stays at the bottom of each thumbnail, with active event text above it. Tracking is optional and works independently of combat monitoring.
 * Separate Neuts checkboxes for Under Attack By Player and Under Attack By NPC. Incoming energy neutralization is identified by the red GJ amount; outgoing neutralization is ignored. Both options default to off.

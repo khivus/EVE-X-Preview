@@ -165,6 +165,9 @@ Class ThumbWindow extends Propertys {
         eventText := overlay.Add("Text", "vEventText x0 y0 w1 r1 +0x4080 Background040101", "") ; SS_ENDELLIPSIS | SS_NOPREFIX
         eventText.GetPos(, , , &lineHeight)
         overlay.EventTextHeight := lineHeight
+        overlay.Add("Text", "vDPSText x0 y0 w1 r1 +0x4080 Background040101", "")
+        overlay.Add("Text", "vDPSDamageText x0 y0 w1 r1 +0x4080 Background040101", "")
+        overlay.DPSTextHeight := lineHeight
         overlay.SystemTrackingEnabled := This.systemTrackingEnabled
         systemText := overlay.Add("Text", "vSystemText x0 y0 w1 r1 +0x4080 Background040101", "")
         systemText.Visible := overlay.SystemTrackingEnabled
@@ -187,9 +190,21 @@ Class ThumbWindow extends Propertys {
         remaining := Max(0, available - nameHeight)
         systemHeight := overlay.SystemTrackingEnabled && remaining >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
         systemY := height - marginY - systemHeight
-        eventHeight := remaining - systemHeight >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
+        remaining := Max(0, remaining - systemHeight)
+        ; Active DPS takes the next utility line. Reserving an event line first
+        ; hid incoming DPS entirely on compact thumbnails, even at threshold 0.
+        dpsHeight := overlay["DPSText"].Text != "" && remaining >= overlay.DPSTextHeight ? overlay.DPSTextHeight : 0
+        eventHeight := overlay["EventText"].Text != "" && remaining - dpsHeight >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
         eventY := systemY - eventHeight
-        overlay["OverlayText"].Move(marginX, marginY, textWidth, Max(0, eventY - marginY))
+        remaining := Max(0, remaining - eventHeight)
+        damageHeight := dpsHeight && overlay["DPSDamageText"].Text != "" && remaining - dpsHeight >= overlay.DPSTextHeight ? overlay.DPSTextHeight : 0
+        damageY := eventY - damageHeight
+        dpsY := damageY - dpsHeight
+        overlay["OverlayText"].Move(marginX, marginY, textWidth, Max(0, dpsY - marginY))
+        overlay["DPSText"].Move(marginX, dpsY, textWidth, dpsHeight)
+        overlay["DPSDamageText"].Move(marginX, damageY, textWidth, damageHeight)
+        overlay["DPSText"].Visible := dpsHeight > 0
+        overlay["DPSDamageText"].Visible := damageHeight > 0
         overlay["EventText"].Move(marginX, eventY, textWidth, eventHeight)
         overlay["SystemText"].Move(marginX, systemY, textWidth, systemHeight)
         overlay["EventText"].Visible := eventHeight > 0
@@ -223,8 +238,30 @@ Class ThumbWindow extends Propertys {
 
     updateThumbnailEventText(text, hwnd) {
         ; An event timer can outlive the client and its thumbnail.
-        if This.ThumbWindows.HasProp(hwnd)
-            This.ThumbWindows.%hwnd%["TextOverlay"]["EventText"].Text := text
+        if This.ThumbWindows.HasProp(hwnd) {
+            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+            previous := overlay["EventText"].Text
+            if previous = text
+                return
+            overlay["EventText"].Text := text
+            if (previous = "") != (text = "")
+                This.RefreshThumbnailTextLayout(overlay)
+        }
+    }
+
+    updateThumbnailDPSText(text, hwnd, damageText := "") {
+        if !This.ThumbWindows.HasProp(hwnd)
+            return
+        overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+        if !overlay.HasOwnProp("DPSTextHeight")
+            return
+        if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
+            return
+        relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
+        overlay["DPSText"].Text := text
+        overlay["DPSDamageText"].Text := damageText
+        if relayout
+            This.RefreshThumbnailTextLayout(overlay)
     }
 
     updateThumbnailSystemText(text, hwnd) {
@@ -626,7 +663,16 @@ Class ThumbWindow extends Propertys {
     }
 
     flashBorder(title) {
+        previousCritical := A_IsCritical
         Critical
+        try {
+            This.DrawFlashingBorder(title)
+        } finally {
+            Critical(previousCritical)
+        }
+    }
+
+    DrawFlashingBorder(title) {
         if !This.flashMethod.Has(title)
             return
 

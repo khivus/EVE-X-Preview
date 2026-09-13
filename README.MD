@@ -1,4 +1,4 @@
-﻿## If you found a bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join the Discord server](https://discord.gg/d9EzgUXnT6).
+## If you found a bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join the Discord server](https://discord.gg/d9EzgUXnT6).
 
 <p align="center">
 <img width="702" height="738" alt="Image" src="https://github.com/user-attachments/assets/40e1f9ea-7555-4d7d-b91d-7c42c66e791b" />
@@ -275,6 +275,18 @@ General NPC recognition matches full English names from a bundled EVE Ref datase
 * Crystal Broke
 * Mining Stopped
 * Mining Bay Is Full
+
+### DPS Monitoring
+
+Enable **Game Logs Monitoring**, then enable incoming DPS, outgoing DPS, or both in **DPS Monitoring**. DPS shares the game-log directory, monitoring interval, and selected-character list. It works with event text and flashing borders disabled. The thumbnail text overlay must be enabled to see the values.
+
+Set **Average Window (seconds)** to choose the rolling averaging period for both directions (1-3600 seconds, default **10**). Each value is the damage recorded during that window divided by its duration, preserving the spacing of the log's timestamps. For artillery firing every 17 seconds, a 20-second or longer window keeps the previous volley included between shots. The live window aligns to newly appended combat records and advances using elapsed time, so a difference between Windows UTC and EVE's clock does not discard hits. Thresholds are the minimum DPS to display for each direction; 0 means no minimum. A value below its threshold or with no recent damage is hidden. Old log contents are skipped when monitoring starts. Neutralization, repairs, misses, and other notifications do not count as damage. Event-specific NPC/player and smartbomb filters do not filter DPS.
+
+**Incoming Damage Types (%)** estimates the EM, thermal, kinetic, and explosive mix only for drones, missiles (including rockets and torpedoes), fighters, and smartbombs. Missiles use their weapon-family names: Mjolnir = EM, Inferno = thermal, Scourge = kinetic, and Nova = explosive. Smartbombs use EMP = EM, Plasma = thermal, Graviton = kinetic, Proton = explosive, and Multispectrum = equal parts of all four. Drones, fighters, and smartbomb naming exceptions use exact names in the log. The bundled [EVE Ref data](https://docs.everef.net/datasets/reference-data) includes mixed-damage profiles. The display uses `?` for the percentage of damage with an unknown type. Other weapons still count toward total incoming DPS but remain unknown in the damage mix. Percentages include unknown damage in the denominator. They weight each known weapon's base damage mix by its recorded hit damage, so they are estimates, not measured post-resistance percentages or the ship's resistances. The existing saved setting key `showIncomingDPSResistances` is retained for compatibility.
+
+DPS and the optional damage mix each occupy one line above event/system text: `DPS: In: 123 | Out: 456` and `% EM 25 Th 75`. Displayed DPS is rounded to whole numbers; calculations and thresholds retain full precision. Damage types that round to 0% are omitted, including unknown damage (`?`). The character name keeps priority and the system stays at the bottom. Active DPS takes priority over event text on compact thumbnails; the percentage breakdown appears when there is enough room. Empty event text reserves no line. Focus suppression hides DPS while the client is active but continues counting its damage, so switching focus does not create gaps. Event expiry and event switching do not clear DPS.
+
+Monitoring reads only appended, complete lines through the existing reader and timer. DPS is updated before event visuals, and alert updates are batched once per character per poll while preserving first/last event priority. Per-second totals keep memory bounded; damage profiles are shared and loaded only when the optional damage mix is enabled. No network access is used while monitoring, and unchanged display text is not rewritten.
 
 ### Non-EVE Applications
 

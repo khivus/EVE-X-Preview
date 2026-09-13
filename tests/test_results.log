@@ -22,10 +22,35 @@ PASS: Neutralization options survive settings merge and JSON roundtrip
 PASS: Neutralization direction follows the amount color in paired logs
 PASS: Monitoring initializes with only attack events enabled
 PASS: Neuts checkboxes fit beside the attack labels
+PASS: NPC database matches complete names without player substring collisions
+PASS: Special NPC maps retain priority and fall back to general classification
+PASS: NPC maps are shared across monitoring instances
+PASS: Exact NPC names classify damage and missed shots in combat logs
 PASS: Local logs match listeners and track only system announcements
 PASS: Local logs retry discovery, rotate sessions and buffer partial writes
 PASS: System and event lines stack inside thumbnails
 PASS: System tracking controls fit in Game Logs Monitoring
 PASS: Game and chat directories share automatic detection without saving paths
+PASS: Reported red incoming hits calculate DPS with damage percentages enabled
+PASS: DPS uses compact whole numbers and omits zero damage percentages
+PASS: DPS sums damage by log time and expires during idle periods
+PASS: Configurable DPS window retains slow volleys and scales both rates
+PASS: Live DPS tolerates server clock offsets and expires using elapsed time
+PASS: Default live reader accepts the observed future log timestamps
+PASS: Live reader tolerates empty reads and preserves unfinished lines
+PASS: DPS ignores neuts repairs misses notifications and tackle
+PASS: DPS thresholds apply to each rate and respect direction switches
+PASS: Smartbomb families retain mixed damage and the named exception
+PASS: Missile damage families cover variants without matching attacker names
+PASS: Incoming damage mix combines known ammo drones and unknown damage
+PASS: Live DPS reader shares settings buffers partial writes and handles truncation
+PASS: DPS preserves event processing and does not lose suppressed damage
+PASS: DPS display preserves names events and systems when resized
+PASS: Incoming DPS remains visible at the reported compact thumbnail size
+PASS: DPS settings migrate inherit profiles and fit their panel
+PASS: Game log discovery refreshes when a file is replaced at the same count
+PASS: Incoming DPS is drawn before batched alerts with first and last priority
+PASS: Flashing borders restore the caller's critical state
+PASS: Damage percentages have no marker or unused event row below them
 
-Test summary: 29 passed, 0 failed, 29 total.
+Test summary: 54 passed, 0 failed, 54 total.

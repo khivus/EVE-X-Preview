@@ -3,6 +3,7 @@ class CombatEventsFixture extends ThumbnailNamesFixture {
         super.__New()
         this._JSON := JSON.Load(default_JSON)
         this.ProfileMonitoredEvents := "Default"
+        this.ProfileDPSMonitoring := "Default"
         this.checkNPCs := true
         this.checkGeneralNPCs := true
         this.checkFactionNPCs := false

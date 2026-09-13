@@ -369,7 +369,7 @@ Class Main_Class extends ThumbWindow {
                                                 This.ThumbWindows.%hwnd%)
                         }
 
-                        if This.monitoringInitialized && WinList.%hwnd%.Title != "EVE" && !This.monitoredChars.Has(WinList.%hwnd%.Title) && !This.waitingMonitoringChars.Has(WinList.%hwnd%.Title) { ; Check if for some reason char isn't monitored and add it to monitoring list
+                        if This.monitoringInitialized && WinList.%hwnd%.Title != "EVE" && !This.monitoredChars.Has(WinList.%hwnd%.Title) && !This.waitingMonitoringChars.Has(WinList.%hwnd%.Title) && This.IsGameLogCharacterSelected(WinList.%hwnd%.Title) { ; Check if for some reason char isn't monitored and add it to monitoring list
                             ; ToolTip "Adding new -> " WinList.%hwnd%.Title
                             ; SetTimer () => ToolTip(), -1000
                             This.waitingMonitoringChars[WinList.%hwnd%.Title] := ObjBindMethod(This, "startLogMonitoring", WinList.%hwnd%.Title, This.charsIds.Has(WinList.%hwnd%.Title) ? This.charsIds[WinList.%hwnd%.Title] : 0)
@@ -2099,21 +2099,24 @@ Class Main_Class extends ThumbWindow {
         if !DirExist(directory)
             return []
 
-        ; Optimized files count check
-        static filesCount := 0
+        ; Reuse sorting only when file identities and modification times match.
+        ; A rotation can replace a file without changing the directory count.
+        static fileTimes := Map()
         static oldFilesList := []
         static cachedDirectory := ""
-        newFilesCount := 0
+        newFileTimes := Map()
+        changed := directory != cachedDirectory
 
         files := []
         Loop Files, directory "\*.*" {
             files.Push({name: A_LoopFileName, time: A_LoopFileTimeModified})
-            newFilesCount++
+            newFileTimes[A_LoopFileName] := A_LoopFileTimeModified
+            if fileTimes.Get(A_LoopFileName, "") != A_LoopFileTimeModified
+                changed := true
         }
-        if directory = cachedDirectory && newFilesCount = filesCount
+        if !changed && newFileTimes.Count = fileTimes.Count
             return oldFilesList
-        else
-            filesCount := newFilesCount
+        fileTimes := newFileTimes
         cachedDirectory := directory
 
         ; comparator: return <0 if a < b, 0 if equal, >0 if a > b
@@ -2147,13 +2150,10 @@ Class Main_Class extends ThumbWindow {
         This.flashMethod := Map()
         This.eventMethods := Map()
 
-        if !This.gameLogsMonitoringEnabled || (!This.flashBorderEnabled && !This.showEventText) ; When events displaying disabled, don't initiate monitoring
+        This.dpsMonitoringEnabled := This.dpsMonitoring["incomingDPSEnabled"] || This.dpsMonitoring["outgoingDPSEnabled"]
+        This.eventMonitoringEnabled := This.flashBorderEnabled || This.showEventText
+        if !This.gameLogsMonitoringEnabled || (!This.eventMonitoringEnabled && !This.dpsMonitoringEnabled)
             return
-
-        This.generalNPCs := NPCDatabase.General()
-        This.factionNPCs := NPCDatabase.Faction()
-        This.officerNPCs := NPCDatabase.Officer()
-        This.capitalNPCs := NPCDatabase.Capital()
 
         eventPatterns := Map(
             ; "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
@@ -2186,7 +2186,7 @@ Class Main_Class extends ThumbWindow {
         This.checkedNPCs := Map()
         This.enabledMonitoredEvents := Map() ; To check only enabled events
         for event, v in This.monitoredEvents {
-            if v["enabled"] {
+            if This.eventMonitoringEnabled && v["enabled"] {
                 if event = "engagedWithFactionBSNPC"
                     This.checkFactionNPCs := true
                 else if event = "engagedWithOfficerNPC"
@@ -2210,21 +2210,28 @@ Class Main_Class extends ThumbWindow {
         This.checkNPCs := false
         if This.checkFactionNPCs || This.checkOfficerNPCs || This.checkCapitalNPCs || This.checkGeneralNPCs
             This.checkNPCs := true
+        if This.checkNPCs {
+            This.generalNPCs := NPCDatabase.General()
+            This.factionNPCs := NPCDatabase.Faction()
+            This.officerNPCs := NPCDatabase.Officer()
+            This.capitalNPCs := NPCDatabase.Capital()
+        }
 
-        if !This.enabledMonitoredEvents.Count && !This.checkNPCs
+        if !This.enabledMonitoredEvents.Count && !This.checkNPCs && !This.dpsMonitoringEnabled
             return
+        This.eventMonitoringEnabled := This.enabledMonitoredEvents.Count || This.checkNPCs
 
         activeCharsToMonitor := Map() ; Must be active/logged in and in list of monitored
         if This.monitorOnlySelectedChars {
             for char in This.charsToMonitor {
-                if WinExist(char) {
+                if WinExist(char " " This.EVEExe) {
+                    activeCharsToMonitor[char] := 0
                     for charName, id in This.charsIds {
                         if char = charName {
                             activeCharsToMonitor[char] := id
                             break
                         }
                     }
-                    activeCharsToMonitor[char] := 0
                 }
             }
         }
@@ -2239,14 +2246,14 @@ Class Main_Class extends ThumbWindow {
                     title := WinGetTitle(hwnd)
                     if title = "EVE" ; In character selection screen
                         continue
-    
+
+                    activeCharsToMonitor[title] := 0
                     for charName, id in This.charsIds {
                         if title = charName {
                             activeCharsToMonitor[title] := id
                             break
                         }
                     }
-                    activeCharsToMonitor[title] := 0
                 }
             }
         }
@@ -2266,7 +2273,9 @@ Class Main_Class extends ThumbWindow {
     }
 
     getCharNameFromFile(fileName) {
-        file := FileOpen(fileName, "r", "UTF-8")        
+        try file := FileOpen(fileName, "r", "UTF-8")
+        catch
+            return "" ; A log may be removed between discovery and opening it.
         if !file
             return
         Loop 3 {
@@ -2278,11 +2287,22 @@ Class Main_Class extends ThumbWindow {
         return This.AntiCleanTitle(charName)
     }
 
+    IsGameLogCharacterSelected(charName) {
+        if !This.monitorOnlySelectedChars
+            return true
+        character := This.CleanTitle(charName)
+        for selected in This.charsToMonitor {
+            if This.CleanTitle(selected) = character
+                return true
+        }
+        return false
+    }
+
     startLogMonitoring(charName, charId) {
         ; Failed discovery must allow the window watcher to schedule a retry.
         if This.waitingMonitoringChars.Has(charName)
             This.waitingMonitoringChars.Delete(charName)
-        if !This.gameLogsMonitoringEnabled
+        if !This.gameLogsMonitoringEnabled || !This.IsGameLogCharacterSelected(charName)
             return
 
         filesListSorted := This.getFilesList()
@@ -2292,7 +2312,8 @@ Class Main_Class extends ThumbWindow {
         foundFile := 0
         for fileName in filesListSorted { ; Finding char names in headers
 
-            fileNameData := StrSplit(fileName, "_")
+            SplitPath(fileName, &baseName)
+            fileNameData := StrSplit(baseName, "_")
             if !fileNameData.Has(3) ; in character selection screen
                 continue
             fileCharId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
@@ -2315,14 +2336,17 @@ Class Main_Class extends ThumbWindow {
         if !foundFile
             return
 
-        file := FileOpen(foundFile, "r", "UTF-8")
+        try file := FileOpen(foundFile, "r", "UTF-8")
+        catch
+            return ; Retry discovery if the game replaced the file meanwhile.
         if !file
             return
         size := file.Length
-        file.Seek(-1, 2)
-        file.ReadLine()
+        file.Seek(0, 2) ; Start at EOF; historical combat must not appear as live DPS.
 
-        This.monitoredChars[charName] := Map("fileName", foundFile, "file", file, "size", size, "launchTime", A_TickCount, "fileUpdated", false)
+        This.monitoredChars[charName] := Map("fileName", foundFile, "file", file, "size", size, "pending", "", "launchTime", A_TickCount, "fileUpdated", false)
+        if This.dpsMonitoringEnabled
+            This.monitoredChars[charName]["dps"] := DPSMeter(This.dpsMonitoring)
 
         if This.waitingMonitoringChars.Has(charName)
             This.waitingMonitoringChars.Delete(charName)
@@ -2336,43 +2360,80 @@ Class Main_Class extends ThumbWindow {
             return
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
+        for hwnd, thumb in This.ThumbWindows.OwnProps() {
+            if thumb["Window"].Title = charName
+                This.updateThumbnailDPSText("", hwnd)
+        }
 
         This.debugToolTipText .= "Stopped monitoring: " . charName . "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     }
 
     monitorAllChars() {
-        for charName in This.monitoredChars
+        for charName in This.monitoredChars.Clone()
             This.monitorChanges(charName)
     }
 
-    monitorChanges(charName) {
+    monitorChanges(charName, now := 0) {
+        if !This.monitoredChars.Has(charName)
+            return
         fileObj := This.monitoredChars[charName]["file"]
-        if !This.monitoredChars.Has(charName) || !IsObject(fileObj) || !WinExist(charName " ahk_exe exefile.exe") {
+        hwnd := WinExist(charName " " This.EVEExe)
+        if !IsObject(fileObj) || !hwnd || !This.IsGameLogCharacterSelected(charName) {
             This.stopLogMonitoring(charName)
             return
         }
 
         tick := A_TickCount
+        reader := This.monitoredChars[charName]
+        suppressDisplay := (This.supressForFocused || This.HideThumbForActiveWin) && WinActive("ahk_id " hwnd)
         size := This.monitoredChars[charName]["file"].Length
         if size = This.monitoredChars[charName]["size"] {
+            if reader.Has("dps")
+                This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
             if !This.monitoredChars[charName]["fileUpdated"] && tick - This.monitoredChars[charName]["launchTime"] > 30000 { ; if there is no changes for some time, try find new file
                 This.stopLogMonitoring(charName)
             }
             return
         }
+        if size < reader["size"] {
+            fileObj.Seek(0)
+            reader["pending"] := ""
+            if reader.Has("dps")
+                reader["dps"] := DPSMeter(This.dpsMonitoring)
+        }
         This.monitoredChars[charName]["size"] := size
         This.monitoredChars[charName]["fileUpdated"] := True
 
-        if (This.supressForFocused || This.HideThumbForActiveWin) && WinActive(charName " ahk_exe exefile.exe") { ; Skipping event check if thumb active and supressForFocused or HideThumbForActiveWin enabled
-            while !This.monitoredChars[charName]["file"].AtEOF
-                This.monitoredChars[charName]["file"].ReadLine()
-            return
+        suppressEvents := !This.eventMonitoringEnabled || suppressDisplay
+        This.ReadGameLogUpdates(charName, suppressEvents, now, hwnd, suppressDisplay)
+    }
+
+    RefreshCharacterDPS(meter, hwnd, now, suppressDisplay) {
+        if !now
+            now := meter.LogSecond()
+        text := meter.Text(now) ; Expire quiet damage even when display is suppressed.
+        This.updateThumbnailDPSText(suppressDisplay ? "" : text, hwnd, suppressDisplay ? "" : meter.damageText)
+    }
+
+    ReadGameLogUpdates(charName, suppressEvents, now := 0, hwnd := 0, suppressDisplay := false) {
+        reader := This.monitoredChars[charName]
+        lines := StrSplit(reader.Get("pending", "") reader["file"].Read(), "`n", "`r")
+        reader["pending"] := lines.Length ? lines.Pop() : "" ; Wait for the writer to finish the last line.
+        if reader.Has("dps") {
+            if now {
+                for line in lines
+                    reader["dps"].AddLine(line, now)
+            } else
+                reader["dps"].AddBatch(lines)
+            if hwnd
+                This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
         }
+        if suppressEvents
+            return
 
-        while !This.monitoredChars[charName]["file"].AtEOF {
-            line := This.monitoredChars[charName]["file"].ReadLine()
-
+        pendingEvent := "", shootingObserved := false
+        for line in lines {
             if line = ""
                 continue
 
@@ -2381,14 +2442,7 @@ Class Main_Class extends ThumbWindow {
                 if This.monitoredChars[charName]["event"] != ""
                     break
                 if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
-                    if This.shootingChars.Has(charName) {
-                        SetTimer(This.shootingChars[charName], 0)
-                        This.shootingChars.Delete(charName)
-                    }
-
-                    This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
-                    SetTimer(This.shootingChars[charName], -This.shootingInterval)
-
+                    shootingObserved := true
                     This.monitoredChars[charName]["event"] := e
                 }
                 else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
@@ -2397,6 +2451,20 @@ Class Main_Class extends ThumbWindow {
             }
             This.processNPCCheck(charName, line) ; checking npcs if any event enabled
 
+            event := reader["event"]
+            if event != "" && event != "stoppedShooting" && (pendingEvent = "" || This.lastEventPriority)
+                pendingEvent := event
+        }
+        ; Repeated hits need one visual alert update per poll, not a border
+        ; teardown/rebuild for every line. Preserve the first/last event setting.
+        if shootingObserved {
+            if This.shootingChars.Has(charName)
+                SetTimer(This.shootingChars[charName], 0)
+            This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
+            SetTimer(This.shootingChars[charName], -This.shootingInterval)
+        }
+        if pendingEvent != "" {
+            reader["event"] := pendingEvent
             This.handleEventActivation(charName)
         }
     }

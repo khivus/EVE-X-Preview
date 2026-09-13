@@ -140,6 +140,7 @@
                     "Custom Colors": 0,
                     "Game Logs Monitoring": 0,
                     "Monitored Events": 0,
+                    "DPS Monitoring": 0,
                     "Tray Menu Settings": 0,
                     "Other": 0,
                     "Hotkey Groups": 0,
@@ -168,6 +169,14 @@
                 "title": ["Titel"], 
                 "hotkey": ["*^!Tab"]
                 }
+            },
+            "DPS Monitoring": {
+                "dpsAverageSeconds": 10,
+                "incomingDPSEnabled": 0,
+                "incomingDPSThreshold": 0,
+                "showIncomingDPSResistances": 0,
+                "outgoingDPSEnabled": 0,
+                "outgoingDPSThreshold": 0
             },
             "Game Logs Monitoring": {
                 "gameLogsMonitoringEnabled": 0,
