@@ -131,6 +131,17 @@ class NPCDatabase {
         names := Map()
         names.CaseSense := "Off"
         NPCGeneralNames.AddTo(names)
+        ; FOB logs use faction + type name instead of the static diamond name.
+        ; Build complete aliases once, retaining exact matching during combat.
+        aliases := []
+        for name in names {
+            if SubStr(name, 1, 2) != Chr(0x2666) " "
+                continue
+            for prefix in ["Blood Raiders ", "Guristas "]
+                aliases.Push(prefix SubStr(name, 3))
+        }
+        for name in aliases
+            names[name] := true
         ; Preserve recognition when a special event is disabled, even if a name
         ; from the curated lists is absent from a future reference snapshot.
         for special in [this.Faction(), this.Officer(), this.Capital()]

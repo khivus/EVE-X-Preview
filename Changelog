@@ -34,6 +34,7 @@
 
 ### Fixed
 
+* Fixed FOB NPCs being classified as players when combat logs use Blood Raiders <ship> names instead of diamond-prefixed type names. Added exact aliases for known diamond NPC types, including support for the Guristas <ship> form.
 * Check Updates is disabled during an active check, and duplicate requests are suppressed.
 * Source builds read the application version for update comparisons instead of falling back to version 1.0.0.0.
 * Player names containing NPC name fragments no longer trigger NPC classification.

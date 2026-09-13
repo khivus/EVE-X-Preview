@@ -8,6 +8,8 @@ The generated header records the source build timestamp, input SHA256 and counts
 
 The AHK files are included in the application and compiled executable. Maps are created once on first use and shared across monitoring restarts. Combat checks use `Map.Has()` with no name-list scan, disk access or network request. Treat the shared maps as read-only. General matching ignores case; the special maps retain their previous case-sensitive behavior. Tagged player names do not match, except that complete reference names such as `[AIR] Incursus` remain valid NPCs. A player with exactly the same untagged name as an NPC cannot be distinguished by a name lookup alone.
 
+FOB display aliases are built once from the bundled diamond-prefixed types: `Blood Raiders <type>` and `Guristas <type>`. Blood Raiders follows the reported combat-log naming; the Guristas form is supported provisionally pending a captured log. Only complete aliases of known diamond types match, not arbitrary faction-prefixed names or bare hull names. The original diamond names remain supported, and regenerating the dataset preserves this alias rule.
+
 ## Refreshing
 
 Requirements: Windows PowerShell 5.1 or later and 7-Zip. From the repository root:

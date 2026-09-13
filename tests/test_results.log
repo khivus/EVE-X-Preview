@@ -23,6 +23,7 @@ PASS: Neutralization direction follows the amount color in paired logs
 PASS: Monitoring initializes with only attack events enabled
 PASS: Neuts checkboxes fit beside the attack labels
 PASS: NPC database matches complete names without player substring collisions
+PASS: FOB display names match known diamond NPC types exactly
 PASS: Special NPC maps retain priority and fall back to general classification
 PASS: NPC maps are shared across monitoring instances
 PASS: Exact NPC names classify damage and missed shots in combat logs
@@ -52,5 +53,8 @@ PASS: Game log discovery refreshes when a file is replaced at the same count
 PASS: Incoming DPS is drawn before batched alerts with first and last priority
 PASS: Flashing borders restore the caller's critical state
 PASS: Damage percentages have no marker or unused event row below them
+PASS: Updates exclude drafts and pre-releases from stable notifications
+PASS: Update checks complete asynchronously and cache with manual retry
+PASS: Update HTTP errors recover without clearing a known stable update
 
-Test summary: 54 passed, 0 failed, 54 total.
+Test summary: 58 passed, 0 failed, 58 total.
