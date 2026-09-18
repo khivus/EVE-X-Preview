@@ -7,8 +7,12 @@ class UpdateChecker {
     status := "Not checked yet."
 
     Start(force := false) {
-        if this.busy || (!force && this.checkedAt && A_TickCount - this.checkedAt < 300000)
+        if this.busy || (!force && this.checkedAt && A_TickCount - this.checkedAt < 300000) {
+            ProgramLog.Add("Update check skipped: " (this.busy ? "already running" : "cached result"))
             return
+        }
+        ProgramLog.Add("Update check started; manual=" force)
+        this.reportedResponses := Map()
         this.busy := true
         this.status := "Checking GitHub..."
         this.startedAt := A_TickCount
@@ -18,12 +22,14 @@ class UpdateChecker {
             this.preRequest := this.Request("https://api.github.com/repos/khivus/EVE-X-Preview/releases?per_page=30")
             this.pollTimer := ObjBindMethod(this, "Poll")
             SetTimer(this.pollTimer, 100)
-        } catch {
+        } catch as err {
+            ProgramLog.Error(err, "Starting update check")
             this.Finish("Could not check. Try again.")
         }
     }
 
     Request(url) {
+        ProgramLog.Add("Update request GET " url)
         request := ComObject("WinHttp.WinHttpRequest.5.1")
         request.SetTimeouts(3000, 3000, 5000, 5000)
         request.Open("GET", url, true)
@@ -36,21 +42,24 @@ class UpdateChecker {
     Poll() {
         try {
             if A_TickCount - this.startedAt > 15000 {
+                ProgramLog.Add("Update check timed out after " (A_TickCount - this.startedAt) "ms", "WARN")
                 this.Finish("Check timed out. Try again.")
                 return
             }
             if !this.releaseRequest.WaitForResponse(0)
                 return
+            this.LogResponse("stable", this.releaseRequest.Status)
             if this.releaseRequest.Status = 404
                 tag := ""
             else if this.releaseRequest.Status = 200
                 tag := UpdateChecker.ReleaseTag(JSON.Load(this.releaseRequest.ResponseText))
             else
-                throw Error("GitHub request failed")
+                throw Error("GitHub stable request failed; HTTP " this.releaseRequest.Status)
             this.releaseTag := tag
             ; Failure of the optional pre-release lookup must not hide a stable update.
             if !this.preRequest.WaitForResponse(0)
                 return
+            this.LogResponse("pre-release", this.preRequest.Status)
             this.preReleaseTag := ""
             if this.preRequest.Status = 200 {
                 releases := JSON.Load(this.preRequest.ResponseText)
@@ -64,12 +73,21 @@ class UpdateChecker {
                 }
             }
             this.Finish("Updates checked.")
-        } catch {
+        } catch as err {
+            ProgramLog.Error(err, "Polling update check")
             this.Finish("Could not check. Try again.")
         }
     }
 
+    LogResponse(channel, status) {
+        if !this.reportedResponses.Has(channel) {
+            this.reportedResponses[channel] := true
+            ProgramLog.Add("Update response " channel "; HTTP " status, status = 200 || status = 404 ? "INFO" : "WARN")
+        }
+    }
+
     Finish(status) {
+        ProgramLog.Add("Update check finished: " status "; stable=" this.releaseTag "; pre-release=" this.preReleaseTag)
         if this.HasOwnProp("pollTimer")
             SetTimer(this.pollTimer, 0)
         for name in ["releaseRequest", "preRequest"] {

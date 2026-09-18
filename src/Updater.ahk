@@ -1,6 +1,14 @@
 #Requires AutoHotkey v2.0
+#Include "ProgramLog.ahk"
 
-VERSION := "1.4"
+VERSION := "1.5"
+ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
+ProgramLog.Add("Standalone updater version=" VERSION)
+OnError(UpdaterError)
+UpdaterError(err, mode) {
+    try ProgramLog.Error(err, "Unhandled updater " mode)
+    return 0
+}
 
 class UpdaterStatus {
     __New() {
@@ -11,6 +19,8 @@ class UpdaterStatus {
     }
 
     UpdateStatus(text) {
+        ProgramLog.Add("Updater: " text)
+        ProgramLog.Flush()
         this.ProgressBar.Value += 20
         this.Text.Value .= text "`n"
     }
@@ -34,8 +44,10 @@ try {
         oldScriptPath := A_ScriptDir "\" name
 
     newTag := A_Args[2]
+    ProgramLog.Add("Updater arguments; destination=" oldScriptPath "; target=" newTag)
 }
 catch { ; If started without arguments we parse updates and get latest release version
+    ProgramLog.Add("Updater started without complete arguments; looking up latest release")
     oldScriptPath := A_ScriptDir "\EVE-X-Preview.exe"
 
     try {
@@ -46,9 +58,13 @@ catch { ; If started without arguments we parse updates and get latest release v
         whr.SetRequestHeader("User-Agent", "AHK")
         whr.Send()
         whr.WaitForResponse()
+        ProgramLog.Add("Updater release lookup; HTTP " whr.Status)
+        if whr.Status != 200
+            throw Error("GitHub release lookup HTTP " whr.Status)
         json_ans := whr.ResponseText
     }
-    catch {
+    catch as err {
+        ProgramLog.Error(err, "Updater release lookup")
         MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
         return
     }
@@ -71,12 +87,16 @@ catch { ; If started without arguments we parse updates and get latest release v
 
     if latestReleaseTag != ''
         newTag := latestReleaseTag
-    else
+    else {
+        ProgramLog.Add("Updater found no stable release; exiting", "WARN")
+        ProgramLog.Flush()
         ExitApp
+    }
 }
 
 SplitPath(oldScriptPath, &oldScriptName, &oldScriptDir)
 SetWorkingDir(oldScriptDir)
+ProgramLog.Add("Updater working directory=" oldScriptDir "; target=" newTag)
 Sleep 500 ; Wait some time berfore doing anything
 
 ; Downloading file and running
@@ -87,6 +107,7 @@ try {
     status.UpdateStatus("Renaming old version...")
     if FileExist(oldScriptName) { ; Renaming old script to different name
         FileMove(oldScriptName, oldNewScriptName, true)
+        ProgramLog.Add("Updater backup created: " oldNewScriptName)
         if !FileExist(oldNewScriptName) ; If not renamed
             Throw Error("Error renaming old script!")
     }
@@ -97,14 +118,18 @@ try {
 
     exeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/EVE-X-Preview.exe"
     status.UpdateStatus("Downloading new version...")
+    ProgramLog.Add("Updater download URL=" exeUrl)
+    ProgramLog.Flush()
     Download(exeUrl, newScriptName) ; Download file from GitHub
 
     ; Checking if new version downloaded
     if !FileExist(newScriptName)
         Throw Error("Error downloading new version!")
+    ProgramLog.Add("Updater executable downloaded; bytes=" FileGetSize(newScriptName))
 
     status.UpdateStatus("Renaming new version...")
     FileMove(newScriptName, oldScriptName, true) ; Renaming new script to old name
+    ProgramLog.Add("Updater executable replaced: " oldScriptName)
 
     status.UpdateStatus("Deleting old version...")
     if FileExist(oldNewScriptName) ; Deleting old script
@@ -112,9 +137,12 @@ try {
         
     status.UpdateStatus("Done! Launching " oldScriptName "!")
     Run(oldScriptName)
+    ProgramLog.Add("Updater relaunch requested successfully")
+    ProgramLog.Flush()
     Sleep 1500
 }
 catch Error as e {
+    ProgramLog.Error(e, "Installing app update")
     MsgBox("An error occurred while trying to update the program:`n" e.Message "`nIf program stops working properly, redownload it from github!")
 }
 finally {

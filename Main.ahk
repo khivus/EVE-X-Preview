@@ -3,6 +3,8 @@
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
 #Include "Lib/LiveThumb.ahk"
+#Include "src/ProgramLog.ahk"
+#Include "src/PreviewStartupQueue.ahk"
 #Include "src/NPCDatabase.ahk"
 #Include "src/DPSMeter.ahk"
 #Include "src/Main_Class.ahk"
@@ -29,7 +31,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.0.14
+    ;@Ahk2Exe-Let U_version = 1.6.0.15
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -49,6 +51,9 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     ; Catch all unhandled Errors to prevent the Script from stopping 
     OnError(Error_Handler)
+    ProgramLog.Init()
+    OnMessage(0x007E, ObjBindMethod(ProgramLog, "DisplayChanged")) ; WM_DISPLAYCHANGE
+    OnMessage(0x031E, ObjBindMethod(ProgramLog, "DisplayChanged")) ; WM_DWMCOMPOSITIONCHANGED
 
     Call := Main_Class()
 }
@@ -56,6 +61,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
 ; Improved settings loader
 Load_JSON() {
+    ProgramLog.Add("Loading settings from " A_WorkingDir "\EVE-X-Preview.json")
     defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
     userPath    := "EVE-X-Preview.json"
     tmpPath     := "EVE-X-Preview.tmp.json"
@@ -69,6 +75,7 @@ Load_JSON() {
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
+        ProgramLog.Add("Settings missing; creating defaults")
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
         return JSON.Load(FileRead(userPath))
     }
@@ -85,6 +92,7 @@ Load_JSON() {
         uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
 
         if (uver != dver) {
+            ProgramLog.Add("Migrating settings " uver " -> " dver "; backup=" backupPath)
             ; Create a timestamped backup of the existing file before merge
             FileMove(userPath, backupPath, true)
             ; Migrate in-place (implement logic inside MigrateSettings)
@@ -105,15 +113,20 @@ Load_JSON() {
         FileMove(tmpPath, userPath, true)
 
     } catch Error as e {
+        ProgramLog.Error(e, "Loading or migrating settings")
         MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
         value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")
-        if (value = "No")
+        if (value = "No") {
+            ProgramLog.Add("Settings recovery declined; exiting")
             ExitApp()
+        }
+        ProgramLog.Add("Settings recovery accepted; backup=" backupPath)
 
         ; backup the corrupted file (if not already moved)
         try FileMove(userPath, backupPath, true)
-        catch {
+        catch as backupError {
+            ProgramLog.Error(backupError, "Backing up settings during recovery")
             MsgBox "Error while trying to backup corrupted settings file: " e.Message "`nIf this message persists, remove corrupted file manually.`nReloading the program."
             Reload
         }
@@ -122,12 +135,14 @@ Load_JSON() {
             FileAppend(JSON.Dump(DJSON, , "    "), userPath)
             _JSON := JSON.Load(FileRead(userPath))
         }
-        catch {
+        catch as recoveryError {
+            ProgramLog.Error(recoveryError, "Recreating settings during recovery")
             MsgBox "Error while trying to create new settings file: " e.Message "`nReloading the program."
             Reload
         }
     }
 
+    ProgramLog.Add("Settings loaded")
     return _JSON
 }
 
@@ -484,6 +499,7 @@ MigrateSettings(userObj, uver, dver) {
 
 ; Hanles unmanaged Errors
 Error_Handler(Thrown, Mode) {
+    try ProgramLog.Error(Thrown, "Unhandled " Mode)
     ; There we try to get right layout of keyboard
     if Thrown.Message == "Invalid key name." {
         if !hwnd := WinActive("A") {

@@ -2,6 +2,13 @@
 
 ### Added
 
+* Always-on bounded program diagnostics, with Show Log and Export Log in About, rotating disk logs, and automatic snapshots on script and DWM errors.
+* Pause/Resume Live Previews in About. Pausing unregisters DWM thumbnails while retaining existing hotkeys; resuming respects the selected creation speed.
+* Optional Slow Thumbnail Creation in Other, above Switch Language to English on Error. Disabled by default; changing it applies immediately without requiring a restart.
+* Diagnostics for settings recovery, activation results, display notifications, runtime DWM/window activity, update checks, and updater download/replacement/relaunch steps.
+
+* Separate Misses options beside Neuts on the compact Player attack and NPC attack rows, enabled by default.
+
 * Automatic background update checks when Settings opens, with a sidebar notice only for newer stable releases. Pre-releases remain available for manual installation in About.
 * Incoming and outgoing DPS monitoring with independent thresholds and an adjustable rolling average (default 10 seconds). It shares the game-log reader, monitoring interval and character selection, and works without event alerts enabled.
 * Optional incoming EM/thermal/kinetic/explosive damage estimates from bundled drone, missile, fighter and smartbomb profiles, with unknown damage shown separately.
@@ -16,6 +23,9 @@
 * Undocked from NPC Station monitored event. EVE only logs this undocking notification for NPC stations.
 
 ### Improved
+
+* With Slow Thumbnail Creation enabled, preview startup and restart wait three seconds, require stable nonzero source dimensions for 500 ms, and process one queued source every 150 ms. Disabled mode creates all ready previews in the current poll. Both modes back off after failures and stop after three attempts.
+* Thumbnail updates skip unchanged geometry and visibility, and startup no longer repeatedly shows every existing preview when adding a new one.
 
 * Update checks no longer block the application while waiting for GitHub. Results are cached for five minutes; Check Updates bypasses the cache. Checks time out and report connection errors in About without a popup.
 * Expanded general NPC recognition with 6,855 distinct English names from EVE Ref's Entity dataset, covering 7,386 entity types. Name maps are initialized once and reused without runtime downloads.
@@ -33,6 +43,17 @@
 * Chat Logs and Game Logs directory settings now share the same layout and automatic detection: leave either field blank or select a custom folder. Detected paths do not fill in the settings fields.
 
 ### Fixed
+
+* Foreground polling tolerates missing or closed windows during focus changes, clears stale process information, and avoids duplicate diagnostics for already logged timer/message errors.
+
+* Show Log now creates its text control before loading the snapshot, preventing "Can't create control" errors with large diagnostic logs.
+
+* Corrected the DWM visibility/client-area structure offsets, validated DWM results, and released partial thumbnail resources on failures and shutdown.
+
+* Group switching skips active-window retry delays unless a recent activation into that group is still awaiting focus. Preserved logout titles no longer replace the actual foreground window handle.
+
+* Blood Raiders Stronghold is now recognized by its combat-log name, so its neutralizers use the NPC attack option.
+* Neuts options now recognize incoming Nosferatu drains (`energy drained to`), including signed GJ amounts, while ignoring capacitor gained (`energy drained from`).
 
 * Fixed FOB NPCs being classified as players when combat logs use Blood Raiders <ship> names instead of diamond-prefixed type names. Added exact aliases for known diamond NPC types, including support for the Guristas <ship> form.
 * Check Updates is disabled during an active check, and duplicate requests are suppressed.

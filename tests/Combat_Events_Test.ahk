@@ -57,6 +57,40 @@ CombatNeutralizationTest() {
     AssertEqual("warpDisrupted", app.monitoredChars["Pilot"]["event"], "An existing event keeps its priority.")
 }
 
+TestRunner.Register("Blood Raiders Stronghold neutralization uses NPC settings", CombatBloodStrongholdTest)
+CombatBloodStrongholdTest() {
+    app := CombatEventsFixture()
+    line := '[ 2026.09.01 09:55:56 ] (combat) <color=0xffe57f7f><b>613 GJ</b><color=0x77ffffff><font size=10> energy neutralized </font><b><color=0xffffffff><color=0xFF40FFFF><b>Blood Raiders Stronghold</b></color> <color=0xFF40FF40><b>Blood Raiders Stronghold</b></color> </b><color=0x77ffffff><font size=10> - Standup Heavy Energy Neutralizer I</font>'
+    app.monitoredEvents["underAttackByPlayer"]["includeNeutralization"] := 1
+    AssertEqual("", app.Check(line), "The stronghold must not trigger the player option.")
+    app.monitoredEvents["underAttackByNPC"]["includeNeutralization"] := 1
+    AssertEqual("underAttackByNPC", app.Check(line))
+    AssertEqual("npc", app.ClassifyTarget("blood raiders stronghold"))
+    AssertEqual("player", app.ClassifyTarget("Blood Raiders Stronghold[CORP]"))
+    AssertEqual("player", app.ClassifyTarget("Blood Raiders Stronghold Pilot"))
+    app.anyNPCEngagmentEnabled := false
+    AssertEqual("", app.Check(line))
+}
+
+TestRunner.Register("Nosferatu capacitor loss uses the neutralization option", CombatNosferatuTest)
+CombatNosferatuTest() {
+    app := CombatEventsFixture()
+    incoming := '[ 2026.09.08 20:48:33 ] (combat) <color=0xffe57f7f><b>-9 GJ</b><color=0x77ffffff><font size=10> energy drained to </font><b><color=0xffffffff><color=0xFF40FFFF><b>Drekavac</b></color> <color=0xFF40FF40><b>Di9i9</b></color> <color=0xFFFFFF40>[B0MJ]</color></b><color=0x77ffffff><font size=10> - Small Ghoul Compact Energy Nosferatu</font>'
+    outgoing := '[ 2025.03.01 21:16:55 ] (combat) <color=0xff7fffff><b>+7 GJ</b><color=0x77ffffff><font size=10> energy drained from </font><b><color=0xffffffff><color=0xFF40FFFF><b>Praxis</b></color> <color=0xFF40FF40><b>ArchvAngel</b></color> [PNCHA][.RU]</b><color=0x77ffffff><font size=10> - Small Energy Nosferatu II</font>'
+    AssertEqual("", app.Check(incoming))
+    app.monitoredEvents["underAttackByNPC"]["includeNeutralization"] := 1
+    AssertEqual("", app.Check(incoming), "The NPC option must not enable player drains.")
+    app.monitoredEvents["underAttackByPlayer"]["includeNeutralization"] := 1
+    AssertEqual("underAttackByPlayer", app.Check(incoming))
+    AssertEqual("underAttackByPlayer", app.Check(StrReplace(incoming, "-9 GJ", "-0 GJ")))
+    AssertEqual("", app.Check(outgoing))
+    AssertEqual("", app.Check(StrReplace(outgoing, "0xff7fffff", "0xffe57f7f")))
+    AssertEqual("", app.Check(StrReplace(incoming, "0xffe57f7f", "0xff7fffff")))
+    AssertEqual("", app.Check(StrReplace(incoming, "<color=0xffe57f7f>", "")))
+    app.playerEngagmentEnabled := false
+    AssertEqual("", app.Check(incoming))
+}
+
 TestRunner.Register("Player smartbombs are ignored while ordinary attacks still trigger", CombatSmartbombTest)
 CombatSmartbombTest() {
     app := CombatEventsFixture()
@@ -133,7 +167,50 @@ CombatOnlyMonitoringTest() {
     }
 }
 
-TestRunner.Register("Neuts checkboxes fit beside the attack labels", CombatOptionsLayoutTest)
+TestRunner.Register("Incoming misses use independent player and NPC options", CombatMissOptionsTest)
+CombatMissOptionsTest() {
+    app := CombatEventsFixture()
+    player := '[ 2026.09.18 20:00:00 ] (combat) <b>Test Pilot[CORP](Rifter)</b> misses you completely'
+    npc := '[ 2026.09.18 20:00:00 ] (combat) <b>Angel Warlord</b> misses you completely'
+    AssertEqual("underAttackByPlayer", app.Check(player))
+    AssertEqual("underAttackByNPC", app.Check(npc))
+    app.monitoredEvents["underAttackByPlayer"]["includeMisses"] := 0
+    AssertEqual("", app.Check(player))
+    AssertEqual("underAttackByNPC", app.Check(npc))
+    app.monitoredEvents["underAttackByNPC"]["includeMisses"] := 0
+    AssertEqual("", app.Check(npc))
+    AssertEqual("underAttackByPlayer", app.Check('20:00:00 Combat 100 from Test Pilot[CORP](Rifter) - Autocannon - Hits'))
+    AssertEqual("underAttackByNPC", app.Check('20:00:00 Combat 100 from Angel Warlord - Autocannon - Hits'))
+    app.monitoredEvents["underAttackByPlayer"]["includeMisses"] := 1
+    AssertEqual("underAttackByPlayer", app.Check(player))
+    AssertEqual("", app.Check(npc))
+    app.monitoredEvents["underAttackByNPC"]["includeMisses"] := 1
+    app.playerEngagmentEnabled := false
+    app.anyNPCEngagmentEnabled := false
+    AssertEqual("", app.Check(player))
+    AssertEqual("", app.Check(npc))
+    app.playerEngagmentEnabled := true
+    app.anyNPCEngagmentEnabled := true
+    for event in ["underAttackByPlayer", "underAttackByNPC"]
+        app.monitoredEvents[event].Delete("includeMisses")
+    AssertEqual("underAttackByPlayer", app.Check(player), "Old profiles retain incoming miss alerts.")
+    AssertEqual("underAttackByNPC", app.Check(npc))
+    AssertEqual("", app.Check('[ 2026.09.18 20:00:00 ] (combat) Your Autocannon misses Angel Warlord completely'))
+    app.monitoredEvents["underAttackByNPC"]["includeMisses"] := 0
+    app.checkFactionNPCs := true
+    AssertEqual("engagedWithFactionBSNPC", app.Check(StrReplace(npc, "Angel Warlord", "Domination Warlord")))
+    app.monitoredEvents["underAttackByPlayer"]["includeMisses"] := 0
+    app._JSON := JsonMergeNoOverwrite(JSON.Load(default_JSON), JSON.Load(JSON.Dump(app._JSON)))
+    for event in ["underAttackByPlayer", "underAttackByNPC"] {
+        AssertEqual(0, app.monitoredEvents[event]["includeMisses"], "Disabled miss options survive saving and merging.")
+        app.monitoredEvents[event].Delete("includeMisses")
+    }
+    app._JSON := JsonMergeNoOverwrite(JSON.Load(default_JSON), app._JSON)
+    for event in ["underAttackByPlayer", "underAttackByNPC"]
+        AssertEqual(1, app.monitoredEvents[event]["includeMisses"])
+}
+
+TestRunner.Register("Attack option controls fit the settings panel", CombatOptionsLayoutTest)
 CombatOptionsLayoutTest() {
     app := CombatEventsFixture()
     app.SetState()
@@ -143,14 +220,20 @@ CombatOptionsLayoutTest() {
         app.MonitoredEvents_Ctrl()
         for event in ["underAttackByPlayer", "underAttackByNPC"] {
             app.MainFrame["N" event].GetPos(&nx, &ny, &nw, &nh)
+            app.MainFrame["M" event].GetPos(&mx, &my, &mw)
             app.MainFrame["E" event].GetPos(&ex, &ey)
-            AssertTrue(nx + nw <= ex && ny = ey, "Neuts must fit before the main event checkbox.")
+            AssertTrue(nx + nw <= mx && ny = my, "Misses must fit beside Neuts on the attack row.")
+            AssertTrue(mx + mw <= ex && my = ey, "Misses must fit before the main event checkbox.")
+            label := event = "underAttackByPlayer" ? "Player attack:" : "NPC attack:"
+            labelFound := false
             for control in app.MainFrame.Group["Monitored Events"] {
-                if control.Text = app.monitoredEventsTexts[event] ":" {
+                if control.Text = label {
+                    labelFound := true
                     control.GetPos(&lx, &ly, &lw)
                     AssertTrue(lx + lw <= nx && ly = ny, "Neuts must sit beside, without overlapping, its event label.")
                 }
             }
+            AssertTrue(labelFound, "The compact attack label must be present.")
         }
         for control in app.MainFrame.Group["Monitored Events"] {
             control.GetPos(&x, &y, &w, &h)

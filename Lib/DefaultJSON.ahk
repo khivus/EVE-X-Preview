@@ -129,6 +129,7 @@
                 }
             },
             "Other": {
+                "SlowThumbnailCreation": 0,
                 "SwitchLangOnErr": 0,
                 "Global_Groups": {
                     "Client Settings": 0,
@@ -196,8 +197,8 @@
                 "flashBorderInterval": 300,
                 "shootingInterval": 10000,
                 "monitoredEvents": {
-                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000", "includeNeutralization": 0, "ignoreSmartbombDamage": 1},
-                    "underAttackByNPC": {"enabled": 0, "color": "ff8800", "includeNeutralization": 0},
+                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000", "includeNeutralization": 0, "ignoreSmartbombDamage": 1, "includeMisses": 1},
+                    "underAttackByNPC": {"enabled": 0, "color": "ff8800", "includeNeutralization": 0, "includeMisses": 1},
                     "engagedWithFactionBSNPC": {"enabled": 0, "color": "11470d"},
                     "engagedWithOfficerNPC": {"enabled": 0, "color": "340e73"},
                     "engagedWithCapitalNPC": {"enabled": 0, "color": "ffd700"},

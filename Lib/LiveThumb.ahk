@@ -104,8 +104,9 @@ Class LiveThumb
                         Destination:            4,
                         Source:                 20,
                         Opacity:                36,
-                        Visible:                37,
-                        SourceClientAreaOnly:   41      }
+                        Visible:                40,
+                        SourceClientAreaOnly:   44      }
+    THUMB_ID := 0
          
           
     ; Name .........: __New - PRIVATE CONSTRUCTOR
@@ -119,17 +120,21 @@ Class LiveThumb
         If ( !LiveThumb.DLL_MODULE )
             LiveThumb.DLL_MODULE := DllCall("LoadLibrary", "Str","dwmapi.dll", "Ptr")
 
-        LiveThumb.OBJ_COUNTER += 1
-
         ; Register a thumbnail to get an ID.
-        If ( DllCall( "dwmapi.dll\DwmRegisterThumbnail"
+        hr := DllCall( "dwmapi.dll\DwmRegisterThumbnail"
                     , "Ptr",  hDest
                     , "Ptr",  hSource
                     , "Ptr*", &phThumb := 0
-                    , "UPtr" ) )
-            Return False
+                    , "Int" )
+        if hr {
+            err := Error("DwmRegisterThumbnail failed " Format("0x{:08X}", hr & 0xFFFFFFFF),, "source=" hSource " destination=" hDest)
+            ProgramLog.Error(err, "DWM registration")
+            throw err
+        }
                  
         this.THUMB_ID := phThumb
+        LiveThumb.OBJ_COUNTER += 1
+        ProgramLog.Add("DWM registered source=" hSource " destination=" hDest " active=" LiveThumb.OBJ_COUNTER)
         this.THUMB_UPDATED := False
         this.THUMB_PENDING_UPDATE := True
 
@@ -146,17 +151,19 @@ Class LiveThumb
     ; Description ..: Unregister the thumbnail and deallocate memory.
     __Delete( )
     {
-        ; Unregister thumbnail ID.
-        If ( this.THUMB_ID )
-            DllCall( "dwmapi.dll\DwmUnregisterThumbnail"
-                   , "Ptr", this.THUMB_ID )  
-            
-        ; If it's last instantiated object, free the library.
-        If ( LiveThumb.DLL_MODULE && !(LiveThumb.OBJ_COUNTER -= 1) )
-        {
-            DllCall("FreeLibrary", "Ptr",LiveThumb.DLL_MODULE)
-            LiveThumb.DLL_MODULE := 0
-        }
+        this.Close()
+    }
+
+    Close() {
+        if !this.THUMB_ID
+            return
+        id := this.THUMB_ID
+        this.THUMB_ID := 0
+        hr := DllCall("dwmapi\DwmUnregisterThumbnail", "Ptr", id, "Int")
+        LiveThumb.OBJ_COUNTER -= 1
+        if hr
+            ProgramLog.Error(Error("DwmUnregisterThumbnail " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM cleanup")
+        ProgramLog.Add("DWM unregistered id=" id " active=" LiveThumb.OBJ_COUNTER)
     }
 
     __Get(aName, Params) {
@@ -170,10 +177,12 @@ Class LiveThumb
     QuerySourceSize( )
     {
         SIZE := Buffer(8,0)
-        If ( DllCall( "dwmapi.dll\DwmQueryThumbnailSourceSize" 
+        hr := DllCall( "dwmapi.dll\DwmQueryThumbnailSourceSize"
                     , "Ptr", this.THUMB_ID
                     , "Ptr", SIZE
-                    , "UPtr" ) ) {
+                    , "Int" )
+        if hr {
+            ProgramLog.Error(Error("DwmQueryThumbnailSourceSize " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM source size")
             SIZE := Buffer(0)                
             Return False 
         }
@@ -189,18 +198,28 @@ Class LiveThumb
     ; Return .......: True on success - False on error.
     Update( )
     {
+        if !this.THUMB_ID
+            return false
+        if !this.THUMB_PENDING_UPDATE
+            return true
         ; If no update is pending, return false.
         ; If ( !this.THUMB_PENDING_UPDATE )
         ;     Return False
 
         ; Update properties.
-        If ( DllCall( "dwmapi.dll\DwmUpdateThumbnailProperties"
+        hr := DllCall( "dwmapi.dll\DwmUpdateThumbnailProperties"
                     , "Ptr", this.THUMB_ID
                     , "Ptr", this.THUMB_UPD_PROP_PTR
-                    , "UPtr" ) )
-            Return False
+                    , "Int" )
+        if hr {
+            err := Error("DwmUpdateThumbnailProperties " Format("0x{:08X}", hr & 0xFFFFFFFF))
+            ProgramLog.Error(err, "DWM update id=" this.THUMB_ID)
+            this.Close()
+            throw err
+        }
         
         ; Flag as updated and copy memory so that we can use this portion to track active properties with getters.
+        ProgramLog.Count("DWM-updates")
         this.THUMB_UPDATED := True
         DllCall( "NtDll.dll\RtlCopyMemory"
                , "Ptr",  this.THUMB_ACT_PROP_PTR
@@ -236,7 +255,16 @@ Class LiveThumb
             Return arrRet
         }
         Set {
+            if this.THUMB_UPDATED {
+                same := true
+                loop 4
+                    if NumGet(this.THUMB_UPD_PROP_PTR, 4 * A_Index, "Int") != value[A_Index]
+                        same := false
+                if same
+                    return
+            }
             This.SetDwFlags("Destination")
+            ProgramLog.Count("DWM-destination-changes")
             Loop 4
                 NumPut("Int", value[A_Index], this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Destination * A_Index)
         }
@@ -257,7 +285,16 @@ Class LiveThumb
             Return arrRet   
         }
         Set {
+            if this.THUMB_UPDATED {
+                same := true
+                loop 4
+                    if NumGet(this.THUMB_UPD_PROP_PTR, 20 + 4 * (A_Index - 1), "Int") != value[A_Index]
+                        same := false
+                if same
+                    return
+            }
             This.SetDwFlags("Source")
+            ProgramLog.Count("DWM-source-changes")
             Loop 4
                 NumPut("Int", value[A_Index], this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Source + 4*(A_Index-1))
         }
@@ -275,6 +312,8 @@ Class LiveThumb
             Return NumGet(this.THUMB_ACT_PROP_PTR, LiveThumb.DTP_OFFSETS.Opacity, "UChar")
         }
         Set {
+            if this.THUMB_UPDATED && NumGet(this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Opacity, "UChar") = value
+                return
             This.SetDwFlags("Opacity")
             NumPut("UChar", value, this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Opacity)
         }
@@ -292,7 +331,10 @@ Class LiveThumb
             Return NumGet(this.THUMB_ACT_PROP_PTR, LiveThumb.DTP_OFFSETS.Visible, "Int")
         }
         Set {
+            if this.THUMB_UPDATED && NumGet(this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Visible, "Int") = value
+                return
             This.SetDwFlags("Visible")
+            ProgramLog.Count("DWM-visibility-changes")
             NumPut("Int", value, this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.Visible)
         }
     }
@@ -309,6 +351,8 @@ Class LiveThumb
             Return NumGet(this.THUMB_ACT_PROP_PTR, LiveThumb.DTP_OFFSETS.SourceClientAreaOnly, "Int")
         }
         Set {
+            if this.THUMB_UPDATED && NumGet(this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.SourceClientAreaOnly, "Int") = value
+                return
             This.SetDwFlags("SourceClientAreaOnly")
             NumPut("Uint", value, this.THUMB_UPD_PROP_PTR, LiveThumb.DTP_OFFSETS.SourceClientAreaOnly)
         }
@@ -327,4 +371,3 @@ Class LiveThumb
             }
     }
 }
-

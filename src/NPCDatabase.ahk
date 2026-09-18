@@ -149,6 +149,7 @@ class NPCDatabase {
                 names[name] := true
         ; Display-name alias observed in combat logs (see Combat_Events_Test).
         names["Guristas Pirates Stronghold"] := true
+        names["Blood Raiders Stronghold"] := true
         return names
     }
 

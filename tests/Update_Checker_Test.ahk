@@ -41,6 +41,8 @@ UpdateLifecycleTest() {
     try {
         checker.Start()
         checker.Start(true)
+        AssertTrue(InStr(ProgramLog.Text, "Update check started; manual=0"))
+        AssertTrue(InStr(ProgramLog.Text, "already running"))
         AssertEqual(2, checker.requests.Length, "Duplicate requests must be suppressed")
         checker.Poll()
         AssertTrue(checker.busy)
@@ -50,6 +52,8 @@ UpdateLifecycleTest() {
         AssertFalse(checker.busy)
         AssertEqual("1.6.0.14", checker.releaseTag)
         AssertEqual("2.0", checker.preReleaseTag)
+        AssertTrue(InStr(ProgramLog.Text, "Update response stable; HTTP 200"))
+        AssertTrue(InStr(ProgramLog.Text, "stable=1.6.0.14; pre-release=2.0"))
         checker.Start()
         AssertEqual(2, checker.requests.Length)
         checker.Start(true)
@@ -59,6 +63,7 @@ UpdateLifecycleTest() {
         AssertFalse(checker.busy)
         AssertTrue(checker.requests[3].aborted)
         AssertEqual("Check timed out. Try again.", checker.status)
+        AssertTrue(InStr(ProgramLog.Text, "Update check timed out"))
     } finally {
         checker.Finish("Done")
     }
@@ -76,6 +81,7 @@ UpdateFailureTest() {
         AssertFalse(checker.busy)
         AssertEqual("Could not check. Try again.", checker.status)
         AssertEqual("1.6.0.14", checker.releaseTag)
+        AssertTrue(InStr(ProgramLog.Text, "HTTP 403"))
     } finally {
         checker.Finish("Done")
     }

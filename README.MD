@@ -139,6 +139,7 @@ Settings in this group:
 * Disable Char in Group (Shift+Click): lets you disable a character in a group with Shift+Click.
 * Disabled Thumbnail Color (Hex/RGB): color used for disabled thumbnails.
 * Groups Hold Delay (ms): delay used when holding group actions. Minimum is 75 ms.
+* Max Active Window Retries / Active Window Retry Interval (ms): bound focus checks only when a recent activation request targets a member of the requested group. Switching from another group or application normally skips these waits. Requests expire after 250 ms and are cleared when focus is observed, moves elsewhere, or the retry budget runs out. Set retries to 1 to disable waiting.
 * Add/Delete Groups: create or remove groups.
 * Select Group: choose the group to edit.
 * Forwards Hotkey: hotkey for moving forward through the group.
@@ -259,8 +260,9 @@ Enabling more events reduces performance. The effect becomes larger as more char
 General NPC recognition matches full English names from a bundled EVE Ref dataset, ignoring case. Player names containing NPC name fragments no longer match. The faction, officer and capital events retain their separate lists and priority. See [NPC data and refresh instructions](src/data/README.md) for coverage and maintenance.
 
 * Stopped Shooting
-* Under Attack By Player: the Ignore player smartbomb damage option excludes Smartbomb hits by default; turn it off to include them. The adjacent Neuts checkbox also includes incoming energy neutralization from players, identified by the red GJ amount in the log. Outgoing neutralization is ignored.
-* Under Attack By NPC: the adjacent Neuts checkbox also includes incoming energy neutralization from NPCs. Both Neuts options default to off and require their parent attack event to be enabled.
+* Under Attack By Player: the Ignore player smartbomb damage option excludes Smartbomb hits by default; turn it off to include them. The adjacent Neuts checkbox also includes incoming energy neutralization and Nosferatu drains from players, identified by the red GJ amount in the log. Nosferatu logs use `energy drained to` for capacitor lost and `energy drained from` for capacitor gained; only capacitor loss triggers an alert. Outgoing neutralization is ignored.
+* Under Attack By NPC: the adjacent Neuts checkbox also includes incoming energy neutralization and Nosferatu drains from NPCs. Both Neuts options default to off and require their parent attack event to be enabled.
+* The Misses checkboxes beside Neuts on the Player attack and NPC attack rows independently control whether shots that miss you trigger the corresponding Under Attack event. Both default to on, preserving existing behavior. Disabling them still allows damaging hits and enabled Neuts alerts; faction, officer and capital engagement alerts keep their existing behavior.
 * Engaged With Faction BS NPC
 * Engaged With Officer NPC
 * Engaged With Capital NPC
@@ -319,6 +321,7 @@ Choose which entries appear in the tray menu.
 
 ### Other
 
+* Slow Thumbnail Creation: off by default, including existing profiles. Off creates ready previews immediately without startup or spacing delays. On waits three seconds, requires stable source dimensions for 500 ms, and spaces queued previews by 150 ms to reduce startup GPU pressure. Applies immediately to queued previews and controls startup, new clients, and resume after pausing.
 * Switch Language to English on Error: switches the Windows language to English if hotkey assigning error occurs.
 * Update all thumbnails size to default size: use this button to update every thumbnail size to the current default size.
 
@@ -348,6 +351,19 @@ Buttons:
 * Update to Pre-Release: after update checking can use for update/downgrade to latest pre-release version.
 * Help: opens this README page.
 * Report Bug: opens [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) page.
+* Show Log: shows a snapshot of the current session's program events, even with Debug Mode off.
+* Export Log: saves that event history to a chosen `.log` file.
+* Pause Live Previews / Resume Live Previews: temporarily unregisters live DWM thumbnails and hides their overlays without removing existing hotkeys or group membership. Resume uses the Slow Thumbnail Creation option in Other. Pause is session-only and resets on restart.
+
+Program diagnostics are kept in `ProgramLog.Text` (up to 256 Ki characters) and written every two seconds to `%LOCALAPPDATA%\EVE-X-Preview\Logs\current.log`. The disk log rotates at approximately 1 MiB into `previous.log`. Startup registration attempts are flushed before touching DWM. Errors reaching the script error handler, DWM failures, and logged runtime errors automatically export an `error-*.log` snapshot; snapshots are limited to one per ten seconds and the newest ten files. Logs can contain character/window names and local paths. Nothing is uploaded automatically.
+
+Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions, back off after failed startup attempts, and stop after three failures per source; Pause then Resume resets the queue. Unchanged geometry and visibility do not cause redundant DWM updates.
+
+Diagnostics also record settings load/save/recovery, activation requests and focus results, Windows display-change notifications, and ten-second summaries of DWM geometry/visibility updates and window show commands, with GDI/USER handle counts. These summaries describe the program's operations, not the compositor's frame rate or GPU utilization; display notifications alone do not confirm a driver reset.
+
+Update logs include automatic/manual checks, cache/duplicate skips, HTTP results, selected versions, timeouts, download results, cancellation, and handoff to the updater. The standalone updater writes replacement and relaunch steps to `%LOCALAPPDATA%\EVE-X-Preview\Logs\Updater`. This requires rebuilding and shipping the updated updater executable with the release; older published updater binaries will not contain the new logging.
+
+These measures reduce startup bursts, including restarting Preview while clients are launching. They cannot guarantee recovery from a graphics-driver or DWM crash: those may never raise a script error. Preserve `current.log`/`previous.log` and collect Windows Event Viewer or Reliability Monitor details for the same time when reporting a blackout.
 
 ### EVE-X-Preview
 

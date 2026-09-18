@@ -738,6 +738,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["systemTrackingEnabled"] := value
     }
 
+    SlowThumbnailCreation {
+        get => This._JSON["_Profiles"][This.ProfileOther]["Other"].Get("SlowThumbnailCreation", 0)
+        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SlowThumbnailCreation"] := value
+    }
+
     chatLogsDirectory {
         get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("chatLogsDirectory", "")
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["chatLogsDirectory"] := value

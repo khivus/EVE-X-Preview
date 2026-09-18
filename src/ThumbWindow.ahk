@@ -4,6 +4,7 @@
 Class ThumbWindow extends Propertys {   
     Create_Thumbnail(Win_Hwnd, Win_Title) {
         ThumbObj := Map()
+        try {
         
         ThumbObj["Window"] := Gui("+Owner +LastFound -Caption +ToolWindow +E0x08000000 " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop") , Win_Title) ;WS_EX_NOACTIVATE -> +E0x08000000
         ThumbObj["Window"].OnEvent("Close", GUI_Close_Button)
@@ -19,10 +20,12 @@ Class ThumbWindow extends Propertys {
         }
         
         ;Enable Shadow 
-        DllCall("Dwmapi\DwmExtendFrameIntoClientArea",
+        hr := DllCall("Dwmapi\DwmExtendFrameIntoClientArea",
                 "Ptr", ThumbObj["Window"].Hwnd,	; HWND hWnd
                 "Ptr", This.margins,	; MARGINS *pMarInset
                 )   
+        if hr
+            ProgramLog.Error(Error("DwmExtendFrameIntoClientArea " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM shadow")
  
 
         ;Set The Opacity who is set in the JSON File, its important to set this on the MainWindow and not on the Thumbnail itself
@@ -39,16 +42,7 @@ Class ThumbWindow extends Propertys {
 
         ;#### Register Thumbnail
         ; gets the EVE Window sizes
-        WinGetClientPos(, , &W, &H, "ahk_id " Win_Hwnd)
-
-        ; These values for the Thumbnails should not be touched
-        ThumbObj["Thumbnail"] := LiveThumb(Win_Hwnd, ThumbObj["Window"].Hwnd)
-        ThumbObj["Thumbnail"].Source := [0, 0, W, H]
-        ThumbObj["Thumbnail"].Destination := [0, 0, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"]]
-        ThumbObj["Thumbnail"].SourceClientAreaOnly := True
-        ThumbObj["Thumbnail"].Visible := True
-        ThumbObj["Thumbnail"].Opacity := 255
-        ThumbObj["Thumbnail"].Update()
+        This.AttachLivePreview(ThumbObj, Win_Hwnd)
 
 
         ;#### Create the Thumbnail TextOverlay
@@ -153,9 +147,41 @@ Class ThumbWindow extends Propertys {
         ThumbObj["Border"].Show("w" size.w " h" size.h " x" size.x " y" size.y "NoActivate Hide")
 
         return ThumbObj
+        } catch as err {
+            ; Do not leave GUI/DWM resources behind after a partial creation.
+            for key, obj in ThumbObj {
+                try {
+                    if key = "Thumbnail"
+                        obj.Close()
+                    else
+                        obj.Destroy()
+                }
+            }
+            throw err
+        }
 
         GUI_Close_Button(*) {
             return
+        }
+    }
+
+    AttachLivePreview(thumb, hwnd) {
+        WinGetClientPos(,, &w, &h, "ahk_id " hwnd)
+        if w <= 0 || h <= 0
+            throw Error("Preview source has no drawable client area",, hwnd)
+        WinGetPos(,, &tw, &th, thumb["Window"].Hwnd)
+        live := LiveThumb(hwnd, thumb["Window"].Hwnd)
+        try {
+            live.Source := [0, 0, w, h]
+            live.Destination := [0, 0, tw, th]
+            live.SourceClientAreaOnly := true
+            live.Visible := true
+            live.Opacity := 255
+            live.Update()
+            thumb["Thumbnail"] := live
+        } catch as err {
+            live.Close()
+            throw err
         }
     }
 
@@ -469,6 +495,16 @@ Class ThumbWindow extends Propertys {
     }
 
     ShowThumb(EVEWindowHwnd, HideOrShow) {
+        if !This.ThumbWindows.HasProp(EVEWindowHwnd)
+            return
+        thumb := This.ThumbWindows.%EVEWindowHwnd%
+        if This.livePreviewsPaused || !thumb["Thumbnail"].THUMB_ID
+            HideOrShow := "Hide"
+        ; Avoid repeated Show/Hide calls while the requested visibility is unchanged.
+        visible := HideOrShow = "Show" && !This.HideThumbnails
+        if thumb["Window"].HasOwnProp("PreviewShown") && thumb["Window"].PreviewShown = visible
+            && !!DllCall("IsWindowVisible", "Ptr", thumb["Window"].Hwnd) = visible
+            return
         try
             title := WinGetTitle("Ahk_Id " EVEWindowHwnd)
         catch {
@@ -478,6 +514,10 @@ Class ThumbWindow extends Propertys {
 
         if This.Thumbnail_visibility.Has(title)
             return
+        if thumb["Thumbnail"].THUMB_ID {
+            thumb["Thumbnail"].Visible := visible
+            thumb["Thumbnail"].Update()
+        }
 
         if HideOrShow = "Show" && !This.HideThumbnails {
             for k, v in This.ThumbWindows.%EVEWindowHwnd% {
@@ -516,6 +556,8 @@ Class ThumbWindow extends Propertys {
                 v.Show("Hide")
             }
         }
+        thumb["Window"].PreviewShown := visible
+        ProgramLog.Count(visible ? "preview-shows" : "preview-hides")
     }
 
     ShowHideAllThumbnails(ShowOrHide) {
@@ -525,6 +567,8 @@ Class ThumbWindow extends Propertys {
     }
 
     Update_Thumb(AllOrOne := true, ThumbHwnd?) {
+        if This.livePreviewsPaused
+            return
         try {
             If (AllOrOne && !IsSet(ThumbHwnd)) {
                 for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
@@ -533,6 +577,8 @@ Class ThumbWindow extends Propertys {
                     Obj := ThumbObj["Window"]
                     WinGetPos(, , &TWidth, &THeight, Obj.Hwnd)
                     WinGetClientPos(, , &EWidth, &EHeight, "Ahk_Id " EvEHwnd)
+                    if EWidth <= 0 || EHeight <= 0 || TWidth <= 0 || THeight <= 0
+                        continue
                     ThumbObj["Thumbnail"].Source      := [0, 0, EWidth, EHeight]
                     ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
                     ThumbObj["Thumbnail"].Update()
@@ -545,6 +591,8 @@ Class ThumbWindow extends Propertys {
                         return
                     WinGetPos(, , &TWidth, &THeight, ThumbHwnd)
                     WinGetClientPos(, , &EWidth, &EHeight, "Ahk_Id " eveHwnd)
+                    if EWidth <= 0 || EHeight <= 0 || TWidth <= 0 || THeight <= 0
+                        return
                     ThumbObj := This.ThumbWindows.%eveHwnd%
                     ThumbObj["Thumbnail"].Source := [0, 0, EWidth, EHeight]
                     ThumbObj["Thumbnail"].Destination := [0, 0, TWidth, THeight]
@@ -553,11 +601,15 @@ Class ThumbWindow extends Propertys {
             }
         }
         catch Error as e {
+            ProgramLog.Error(e, "Update_Thumb")
+            This.previewQueue.nextAt := A_TickCount + 5000
             This.debugToolTip("Error in Update_Thumb: " e.Message " at line " e.Line " in function " e.What)
         }
     }
 
     ShowActiveBorder(EVEHwnd) {
+        if This.livePreviewsPaused
+            return
         if This.HideThumbnails || !EVEHwnd || !This.ThumbWindows.HasOwnProp(EVEHwnd)
             return
 
@@ -643,6 +695,8 @@ Class ThumbWindow extends Propertys {
     }
 
     activateBorder(hwnd, title) {
+        if This.livePreviewsPaused
+            return
         if This.Thumbnail_visibility.Has(title) || !This.ShowClientHighlightBorder || This.HidedThumbs.Has(hwnd)
             return
 
@@ -663,6 +717,8 @@ Class ThumbWindow extends Propertys {
     }
 
     flashBorder(title) {
+        if This.livePreviewsPaused
+            return
         previousCritical := A_IsCritical
         Critical
         try {
@@ -714,6 +770,8 @@ Class ThumbWindow extends Propertys {
     }
 
     toggleColorBorder(hwnd, title, enable := 1, color := "ff0000") {
+        if This.livePreviewsPaused
+            return
         if This.HidedThumbs.Has(hwnd)
             return
         thumb := This.getThumb(hwnd)

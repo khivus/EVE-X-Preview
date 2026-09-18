@@ -27,6 +27,7 @@ Class Settings_Gui {
     }
 
     MainGui() {
+        ProgramLog.Add("Settings opened")
         ;if settings got chnaged which require a restart to apply
         This.NeedRestart := 0
 
@@ -61,6 +62,7 @@ Class Settings_Gui {
         This.S_Gui.OnEvent("Close", (*) => GuiDestroy())
 
         GuiDestroy(*) {
+            ProgramLog.Add("Settings closed; restart required=" This.NeedRestart)
             SetTimer(This.updateUiTimer, 0)
             This.S_Gui.Destroy()
             if (This.NeedRestart)
@@ -1393,7 +1395,8 @@ Class Settings_Gui {
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
 
         for event in monitoredEventsOrder {
-            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), This.monitoredEventsTexts[event] . (event = "stoppedShooting" ? " (Interval ms):" : ":"))
+            label := event = "underAttackByPlayer" ? "Player attack" : event = "underAttackByNPC" ? "NPC attack" : This.monitoredEventsTexts[event]
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), label . (event = "stoppedShooting" ? " (Interval ms):" : ":"))
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX - 50 - This.baseGrid, This.editOffset, 50) " vshootingInterval")
@@ -1401,8 +1404,10 @@ Class Settings_Gui {
             }
 
             if event = "underAttackByPlayer" || event = "underAttackByNPC" {
-                arr.Push This.MainFrame.Add("CheckBox", "xs+180 ys w65 vN" event, "Neuts")
+                arr.Push This.MainFrame.Add("CheckBox", "xs+110 ys w65 vN" event, "Neuts")
                 This.MainFrame["N" event].OnEvent("Click", (obj, *) => EventHandler(obj))
+                arr.Push This.MainFrame.Add("CheckBox", "xs+180 ys w65 vM" event, "Misses")
+                This.MainFrame["M" event].OnEvent("Click", (obj, *) => EventHandler(obj))
             }
 
             arr.Push This.MainFrame.Add("CheckBox", Format("xs+{} ys", This.offsetX) " vE" event, "On/Off")
@@ -1413,7 +1418,7 @@ Class Settings_Gui {
             This.MainFrame["C" event].OnEvent("Change", (obj, *) => EventHandler(obj))
         }
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{}", This.xlGap), "Neuts: include incoming energy neutralization.")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{}", This.xlGap), "Neuts: include incoming neutralization and Nosferatu drains.")
         arr.Push This.MainFrame.Add("CheckBox", Format("xs yp+{} w{}", This.lGap, This.sepW) " vIgnorePlayerSmartbombDamage Checked" This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1), "Ignore player smartbomb damage")
         This.MainFrame["IgnorePlayerSmartbombDamage"].OnEvent("Click", (obj, *) => EventHandler(obj))
 
@@ -1424,6 +1429,8 @@ Class Settings_Gui {
                 This.monitoredEvents[event]["enabled"] := obj.value
             else if object = "N"
                 This.monitoredEvents[event]["includeNeutralization"] := obj.value
+            else if object = "M"
+                This.monitoredEvents[event]["includeMisses"] := obj.value
             else if object = "C" {
                 This.monitoredEvents[event]["color"] := obj.value
                 This.RedrawColorPreview(obj)
@@ -1724,7 +1731,10 @@ Class Settings_Gui {
         This.MainFrame.SetFont("s11 w400")
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Switch Language to English on Error:")
+        Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Slow Thumbnail Creation:")
+        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSlowThumbnailCreation Checked" This.SlowThumbnailCreation, "On/Off")
+        This.MainFrame["SlowThumbnailCreation"].ToolTip := "Off: create ready previews immediately. On: wait 3 seconds, then stagger previews to reduce startup GPU pressure."
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Switch Language to English on Error:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
 
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} h2 +0x10", This.xlGap, This.sepW))
@@ -1743,13 +1753,19 @@ Class Settings_Gui {
         Other.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vUpdateThumbnails", "Update All Thumbnails")
 
         This.MainFrame["SwitchLangOnErr"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
+        This.MainFrame["SlowThumbnailCreation"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateGls"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateThumbnails"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
 
         cOther_EventHandler(obj) {
             need_reload := 0
 
-            if (obj.name = "SwitchLangOnErr") {
+            if obj.name = "SlowThumbnailCreation" {
+                This.SlowThumbnailCreation := obj.value
+                This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+                ProgramLog.Add("Slow thumbnail creation=" This.SlowThumbnailCreation)
+            }
+            else if (obj.name = "SwitchLangOnErr") {
                 This.SwitchLangOnErr := obj.value
             }
             else if (obj.name = "UpdateGls") {
@@ -1765,7 +1781,8 @@ Class Settings_Gui {
                 This.Update_All_Thumbnails()
                 need_reload := 1
             }
-            This.NeedRestart := 1
+            if obj.name != "SlowThumbnailCreation"
+                This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             if need_reload {
                 Sleep(250)
@@ -1868,6 +1885,15 @@ Class Settings_Gui {
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.captBtnH + This.contentGap) " vhelpBtn", "Help")
         arr.Push This.MainFrame.Add("Button", Format("xp+{} yp Section", 48 + This.baseGrid) " vreportBugBtn", "Report Bug")
+        arr.Push This.MainFrame.Add("Text", Format("x{} yp+40 w{}", This.contentGap, This.sepW), "Program events are logged even when Debug Mode is off.")
+        arr.Push This.MainFrame.Add("Button", Format("x{} yp+28 w130", This.contentGap) " vshowProgramLogBtn", "Show Log")
+        arr.Push This.MainFrame.Add("Button", "xp+138 yp w130 vexportProgramLogBtn", "Export Log")
+        arr.Push This.MainFrame.Add("Button", Format("x{} yp+36 w200", This.contentGap) " vpausePreviewsBtn", This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews")
+        arr.Push This.MainFrame.Add("Text", Format("x{} yp+32 w{} r2", This.contentGap, This.sepW), "Pause live previews when needed; hotkeys stay available. Creation speed is controlled in Other.")
+        arr.Push This.MainFrame.Add("Text", Format("x{} yp+48 w{} r2", This.contentGap, This.sepW), "Automatic logs: %LOCALAPPDATA%\EVE-X-Preview\Logs`nScript errors automatically export a diagnostic snapshot.")
+        This.MainFrame["showProgramLogBtn"].OnEvent("Click", (*) => ProgramLog.Show())
+        This.MainFrame["exportProgramLogBtn"].OnEvent("Click", (*) => ProgramLog.ExportDialog())
+        This.MainFrame["pausePreviewsBtn"].OnEvent("Click", ObjBindMethod(This, "ToggleLivePreviews"))
 
         arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 130 - This.contentGap, This.guiHeight - 65 - This.contentGap, 130) " vdebugModeBtn", "Debug Mode: " . (This.DebugMode ? "On" : "Off"))
 
@@ -1893,6 +1919,9 @@ Class Settings_Gui {
             else
                 return
 
+            ProgramLog.Add("App update requested; current=" This.programVersion "; target=" newTag "; pre-release=" preRelease "; admin=" A_IsAdmin)
+            ProgramLog.Flush()
+
             SetWorkingDir(A_ScriptDir)
 
             if !A_IsAdmin {
@@ -1900,6 +1929,7 @@ Class Settings_Gui {
                     "Updater might need admin rights to run!`n`n"
                     "Do you want to try update without admin rights?", "Warning!", "YesNo")
                 if ans = "No" {
+                    ProgramLog.Add("App update cancelled at administrator prompt")
                     This.MainFrame["UpdateStatus"].Value := "Updater not started."
                     return
                 }
@@ -1909,28 +1939,44 @@ Class Settings_Gui {
             updaterExePath := A_Temp "\" updaterExeName
             updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
 
+            try {
             if FileExist(updaterExePath)
                 FileDelete(updaterExePath)
 
             This.MainFrame["UpdateStatus"].Value := "Downloading Updater..."
+            ProgramLog.Add("Downloading updater: " updaterExeUrl)
+            ProgramLog.Flush()
             Download(updaterExeUrl, updaterExePath) ; Download file from GitHub to temp folder
 
             if !FileExist(updaterExePath)
                 Throw Error("Could not download EVE-X-Preview-Updater.exe!")
+            ProgramLog.Add("Updater downloaded; bytes=" FileGetSize(updaterExePath) "; path=" updaterExePath)
+            } catch as err {
+                ProgramLog.Error(err, "Updater download")
+                This.MainFrame["UpdateStatus"].Value := "Updater download failed."
+                MsgBox("Failed to download updater:`n" err.Message)
+                return
+            }
             
             Critical
             This.MainFrame["UpdateStatus"].Value := "Starting Updater..."
             This.First_Start_After_Update := 1 ; For showing update message
-            This.SaveJsonToFile()
 
             try {
+                This.SaveJsonToFile()
+                ProgramLog.Add("Update settings saved; launching elevated updater; target=" newTag)
+                ProgramLog.Flush()
                 Run '*RunAs "' updaterExePath '" "' A_ScriptFullPath '" "' newTag '"'
             }
             catch Error as e {
+                ProgramLog.Error(e, "Updater handoff")
+                This.MainFrame["UpdateStatus"].Value := "Updater launch failed."
                 MsgBox("Failed to start updater:`n" e.Message)
                 Critical false
                 return
             }
+            ProgramLog.Add("Updater launched; exiting app for replacement")
+            ProgramLog.Flush()
             ExitApp
         }
 
@@ -2028,7 +2074,7 @@ Class Settings_Gui {
                     if k != group || !enab
                         continue
                     if group = "Other" {
-                        Loop 4
+                        Loop 6
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkeys Settings" {
@@ -2207,8 +2253,10 @@ Class Settings_Gui {
         ; Monitored Events
         for event, v in This.monitoredEvents {
             This.MainFrame["E" event].value := This.monitoredEvents[event]["enabled"]
-            if event = "underAttackByPlayer" || event = "underAttackByNPC"
+            if event = "underAttackByPlayer" || event = "underAttackByNPC" {
                 This.MainFrame["N" event].Value := v.Get("includeNeutralization", 0)
+                This.MainFrame["M" event].Value := v.Get("includeMisses", 1)
+            }
             This.MainFrame["C" event].value := This.monitoredEvents[event]["color"]
             This.RedrawColorPreview(This.MainFrame["C" event])
         }
@@ -2241,6 +2289,7 @@ Class Settings_Gui {
 
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
+        This.MainFrame["SlowThumbnailCreation"].Value := This.SlowThumbnailCreation
 
         for group in This.GlobalGroupsOrder {
             group_ := StrReplace(group, A_Space, "_")

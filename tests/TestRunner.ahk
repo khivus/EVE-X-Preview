@@ -174,5 +174,7 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 #Include "System_Tracking_Test.ahk"
 #Include "DPS_Monitoring_Test.ahk"
 #Include "Update_Checker_Test.ahk"
+#Include "Group_Activation_Test.ahk"
+#Include "Preview_Diagnostics_Test.ahk"
 
 TestRunner.RunAll()

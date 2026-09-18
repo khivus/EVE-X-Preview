@@ -17,11 +17,14 @@ PASS: Event text is independent of the custom thumbnail name
 PASS: Event utility line stays inside resized thumbnails
 PASS: Wrapped character names take priority over event messages
 PASS: Neutralization uses independent player and NPC options
+PASS: Blood Raiders Stronghold neutralization uses NPC settings
+PASS: Nosferatu capacitor loss uses the neutralization option
 PASS: Player smartbombs are ignored while ordinary attacks still trigger
 PASS: Neutralization options survive settings merge and JSON roundtrip
 PASS: Neutralization direction follows the amount color in paired logs
 PASS: Monitoring initializes with only attack events enabled
-PASS: Neuts checkboxes fit beside the attack labels
+PASS: Incoming misses use independent player and NPC options
+PASS: Attack option controls fit the settings panel
 PASS: NPC database matches complete names without player substring collisions
 PASS: FOB display names match known diamond NPC types exactly
 PASS: Special NPC maps retain priority and fall back to general classification
@@ -56,5 +59,16 @@ PASS: Damage percentages have no marker or unused event row below them
 PASS: Updates exclude drafts and pre-releases from stable notifications
 PASS: Update checks complete asynchronously and cache with manual retry
 PASS: Update HTTP errors recover without clearing a known stable update
+PASS: Foreground polling recovers from missing and closed windows
+PASS: Group lookup waits only for a relevant pending activation
+PASS: Preview startup waits for stable sources and spaces registrations
+PASS: Live DWM wrapper uses aligned fields and releases registrations
+PASS: Program events persist with debug disabled and errors export snapshots
+PASS: Log viewer opens a full buffer without truncation
+PASS: About exposes diagnostics and preview pause within the panel
+PASS: Fast previews have no startup waits and slow mode persists
+PASS: Fast mode creates all ready previews in one polling pass
+PASS: Runtime diagnostic counters aggregate and reset without per-frame logs
+PASS: Preview lifecycle cleans partial failures and resumes paused registrations
 
-Test summary: 58 passed, 0 failed, 58 total.
+Test summary: 72 passed, 0 failed, 72 total.

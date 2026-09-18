@@ -18,6 +18,7 @@ Class Main_Class extends ThumbWindow {
     ;! This key is for the internal Hotkey to bring the Window in forgeround 
     ;! it is possible this key needs to be changed if Windows updates and changes the unused virtual keys 
     static virtualKey := "vk0xE8"
+    pendingEVEActivation := 0
 
     LISTENERS := [
         Main_Class.WM_LBUTTONDOWN,
@@ -38,6 +39,23 @@ Class Main_Class extends ThumbWindow {
     EventHooks := Map() 
     ThumbWindows := {}
     ThumbHwnd_EvEHwnd := Map()
+    previewQueue := PreviewStartupQueue()
+    livePreviewsPaused := false
+    _debugToolTipText := ""
+    debugToolTipText {
+        get => This._debugToolTipText
+        set {
+            previous := This._debugToolTipText
+            This._debugToolTipText := value
+            if value != "" {
+                addition := SubStr(value, 1, StrLen(previous)) = previous ? SubStr(value, StrLen(previous) + 1) : value
+                if RegExMatch(addition, "i)^(?:Error\b|\w+: Error\b)")
+                    ProgramLog.Error(Error(addition), "Program event")
+                else
+                    ProgramLog.Add(addition)
+            }
+        }
+    }
 
     __New() { 
 
@@ -265,7 +283,10 @@ Class Main_Class extends ThumbWindow {
         This.CheckforActiveWindow := ObjBindMethod(This, "HideOnLostFocusTimer")
 
         ;The Main Timer who checks for new EVE Windows or closes Windows 
+        This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), 50)
+        OnExit(ObjBindMethod(This, "CloseLivePreviews"))
         
         ;Timer property to remove Thumbnails for closed EVE windows 
         This.DestroyThumbnails := ObjBindMethod(This, "EvEWindowDestroy")
@@ -321,6 +342,14 @@ Class Main_Class extends ThumbWindow {
 
 
     HandleMainTimer() {
+        if This.HasOwnProp("previewTimerBusy") && This.previewTimerBusy
+            return
+        This.previewTimerBusy := true
+        try This.PollMainWindows()
+        finally This.previewTimerBusy := false
+    }
+
+    PollMainWindows() {
         ; if This.ProfActive ; Profiling
         static __t1 := 0
         __t0 := A_TickCount
@@ -345,11 +374,7 @@ Class Main_Class extends ThumbWindow {
                     WinList.%hwnd% := { Title: WinGetTitle(hwnd) }
 
                     if !This.ThumbWindows.HasProp(hwnd) {
-                        This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                        if (!This.HideThumbnailsOnLostFocus) {
-                            This.ShowThumb(hwnd, "Show")
-                        }                      
-                        HideShowToggle := 1
+                        This.QueuePreview(hwnd, WinList.%hwnd%.title)
                     }
                     else { ; This change improved performance by ~15-17%
                         ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
@@ -390,16 +415,18 @@ Class Main_Class extends ThumbWindow {
                     }
                 }
             }
-            catch {
-                This.debugToolTipText .= "Error in Main Timer EVE Window Check`n"
+            catch as err {
+                ProgramLog.Error(err, "Main timer window check")
+                This._debugToolTipText .= "Error in Main Timer EVE Window Check`n"
                 SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             }
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-                Ahwnd := WinExist("A")
-                if Ahwnd != LastActiveHWND
-                    activeExe := WinGetProcessName("A")
+                foreground := This._GetForegroundInfo(LastActiveHWND, activeExe)
+                Ahwnd := foreground.hwnd
+                activeExe := foreground.exe
+                This._ObserveEVEActivation(Ahwnd)
                 activeWinTracked := 0
                 if This.allTrackedApps.Has(activeExe) {
                     activeWinTracked := 1
@@ -409,7 +436,7 @@ Class Main_Class extends ThumbWindow {
                     SetTimer(This.CheckforActiveWindow, -500)
                     HideShowToggle := 1
                 }
-                else if activeWinTracked {
+                else if activeWinTracked && This.ThumbWindows.HasProp(Ahwnd) && !This.livePreviewsPaused {
                     if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
 
@@ -439,11 +466,14 @@ Class Main_Class extends ThumbWindow {
                 }
                 LastActiveHWND := Ahwnd
             }
-            catch {
-                This.debugToolTipText .= "Error in Main Timer Active Window Check`n"
+            catch as err {
+                ProgramLog.Error(err, "Main timer foreground check")
+                This._debugToolTipText .= "Error in Main Timer Active Window Check`n"
                 SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             }
         }
+
+        This.ProcessPreviewQueue(WinList)
 
         ; Check if a Thumbnail exist without EVE Window. if so destroy the Thumbnail and free memory
         if ( This.DestroyThumbnailsToggle ) {
@@ -691,36 +721,76 @@ Class Main_Class extends ThumbWindow {
             return !This.DisabledChars.Has(hwnd)
     }
 
-    ; Tries to find active window in group, with brief retry on lag
+    ; Retry only for a recent activation into this group that has not focused yet.
     ; arr: can be either array of titles or hwnds
     _GetCurrentGroupIndex(arr) {
         loop This.MaxActiveWindowRetries {
-            try {
-                if This.PreserveHotkeysOnLogout {
-                    title := This.ThumbWindows.%WinExist("A")%["Window"].OldTitle
-                    hwnd := WinGetID(title " ahk_exe exefile.exe")
-                } else {
-                    hwnd := WinExist("A")
-                    title := WinGetTitle("ahk_id " hwnd)
-                }
+            hwnd := This._GetForegroundHwnd()
+            pending := This._ObserveEVEActivation(hwnd)
+            ; A pending request within this group takes precedence over the old
+            ; foreground member, otherwise a second press could select it again.
+            if !IsObject(pending) || This._FindGroupWindowIndex(arr, pending.hwnd) = -1
+                return This._FindGroupWindowIndex(arr, hwnd)
+            if A_Index >= This.MaxActiveWindowRetries
+                break
+            Sleep Min(This.ActiveWindowRetryInterval, Max(1, pending.expires - A_TickCount))
+        }
+        ; The wait budget expired: use the actual foreground, never an assumed focus.
+        hwnd := This._GetForegroundHwnd()
+        This._ObserveEVEActivation(hwnd)
+        This.pendingEVEActivation := 0
+        return This._FindGroupWindowIndex(arr, hwnd)
+    }
 
-                for ind, item in arr {
-                    ; Support both titles and hwnds
-                    if IsInteger(item) {
-                        if item = hwnd
-                            return ind
-                    } else {
-                        if item = title
-                            return ind
-                    }
-                }
-            }
-            ; Window not in group yet — only retry if lag is plausible
-            ; (i.e. we just activated an EVE window and it hasn't focused yet)
-            if A_Index < This.MaxActiveWindowRetries
-                Sleep This.ActiveWindowRetryInterval
+    _GetForegroundHwnd() {
+        return DllCall("GetForegroundWindow", "Ptr")
+    }
+
+    _GetForegroundInfo(previousHwnd, previousExe) {
+        hwnd := This._GetForegroundHwnd()
+        if !hwnd
+            return {hwnd: 0, exe: ""}
+        if hwnd = previousHwnd && previousExe != ""
+            return {hwnd: hwnd, exe: previousExe}
+        try
+            return {hwnd: hwnd, exe: WinGetProcessName("ahk_id " hwnd)}
+        catch TargetError {
+            ; Focus can disappear, or the captured window can close during this poll.
+            ; Clear the cache so the next poll retries, without aborting queue cleanup.
+            return {hwnd: 0, exe: ""}
+        }
+    }
+
+    _FindGroupWindowIndex(arr, hwnd) {
+        if !hwnd
+            return -1
+        title := ""
+        try {
+            title := WinGetTitle("ahk_id " hwnd)
+            if This.PreserveHotkeysOnLogout && This.ThumbWindows.HasProp(hwnd)
+                title := This.ThumbWindows.%hwnd%["Window"].OldTitle
+        }
+        for ind, item in arr {
+            if IsInteger(item) ? item = hwnd : (title != "" && item = title)
+                return ind
         }
         return -1
+    }
+
+    _ObserveEVEActivation(hwnd) {
+        pending := This.pendingEVEActivation
+        if !IsObject(pending)
+            return 0
+        ; Focus on a third window means the user/OS moved elsewhere. A zero
+        ; foreground HWND can occur transiently during an activation.
+        if hwnd = pending.hwnd || (hwnd && hwnd != pending.source)
+            || A_TickCount >= pending.expires || !WinExist("ahk_id " pending.hwnd) {
+            ProgramLog.Add("Activation " (hwnd = pending.hwnd ? "focus confirmed" : "pending request cleared")
+                "; target=" pending.hwnd "; foreground=" hwnd)
+            This.pendingEVEActivation := 0
+            return 0
+        }
+        return pending
     }
 
     hitThis() {
@@ -1003,26 +1073,12 @@ Class Main_Class extends ThumbWindow {
 
         This.SetThumbnailText[hwnd] := title
         ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
-        This.RestoreClientPossitions(hwnd, title)
-
         if (This.ThumbnailPositions.Has(title)) {
             This.EvEWindowDestroy(hwnd, title)
-            This.EVE_WIN_Created(hwnd,title)
-            rect := This.ThumbnailPositions[title]  
-            This.ShowThumb(hwnd, "Hide")              
-            This.ThumbMove( rect["x"],
-                            rect["y"],
-                            rect["width"],
-                            rect["height"],
-                            This.ThumbWindows.%hwnd% )
-
-            This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd) 
-            This.Update_Thumb(false, This.ThumbWindows.%hwnd%["Window"].Hwnd)
-            if (!This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)) {
-                for k, v in This.ThumbWindows.OwnProps()
-                    This.ShowThumb(k, "Show")
-            }
+            This.QueuePreview(hwnd, title)
         }
+        else
+            This.RestoreClientPossitions(hwnd, title)
         This.DeleteFromQuickGroup(hwnd)
         This.DeleteFromDisabled(hwnd)
         This.BorderActive := 0
@@ -1184,8 +1240,9 @@ Class Main_Class extends ThumbWindow {
                     This.DeleteFromQuickGroup(hwndEVE)
             }
         }
-        catch {
-            This.debugToolTipText .= "Error OnMessage Listener`n"
+        catch as err {
+            ProgramLog.Error(err, "Window message handler")
+            This._debugToolTipText .= "Error OnMessage Listener`n"
             SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         }
     }
@@ -1237,16 +1294,97 @@ Class Main_Class extends ThumbWindow {
     }
 
     ; Creates a new thumbnail if a new window got created
+    QueuePreview(hwnd, title) {
+        if This.livePreviewsPaused
+            return
+        try {
+            WinGetClientPos(,, &w, &h, "ahk_id " hwnd)
+            if !This.previewQueue.items.Has(hwnd)
+                ProgramLog.Add("Preview queued hwnd=" hwnd " title=" title " size=" w "x" h)
+            This.previewQueue.Observe(hwnd, title, w, h)
+        }
+    }
+
+    ProcessPreviewQueue(winList) {
+        present := Map()
+        for hwnd in winList {
+            present[hwnd] := true
+            if This.ThumbWindows.HasProp(hwnd) && !This.ThumbWindows.%hwnd%["Thumbnail"].THUMB_ID
+                try This.QueuePreview(hwnd, WinGetTitle("ahk_id " hwnd))
+        }
+        for hwnd in This.previewQueue.items.Clone()
+            if !present.Has(hwnd)
+                This.previewQueue.Remove(hwnd)
+        if This.livePreviewsPaused
+            return
+        loop (This.previewQueue.slow ? 1 : This.previewQueue.items.Count) {
+            if !(hwnd := This.previewQueue.Next())
+                break
+            This.ProcessQueuedPreview(hwnd)
+        }
+    }
+
+    ProcessQueuedPreview(hwnd) {
+        try {
+            title := WinGetTitle("ahk_id " hwnd)
+            ProgramLog.Add("Preview startup hwnd=" hwnd " title=" title " queued=" This.previewQueue.items.Count)
+            ProgramLog.Flush()
+            item := This.previewQueue.items[hwnd]
+            if !This.ThumbWindows.HasProp(hwnd) && This.TrackClientPossitions && This.ClientPossitions.Has(title)
+                && !item.HasOwnProp("positionRestored") {
+                This.RestoreClientPossitions(hwnd, title)
+                item.positionRestored := true
+                item.stableAt := A_TickCount
+                if This.previewQueue.slow
+                    return ; Let the resized source settle before registering with DWM.
+            }
+            if This.ThumbWindows.HasProp(hwnd)
+                This.AttachLivePreview(This.ThumbWindows.%hwnd%, hwnd)
+            else
+                This.EVE_WIN_Created(hwnd, title)
+            if !This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)
+                This.ShowThumb(hwnd, "Show")
+            This.previewQueue.Remove(hwnd)
+            ProgramLog.Add("Preview ready hwnd=" hwnd " live=" LiveThumb.OBJ_COUNTER)
+        } catch as err {
+            This.previewQueue.Failed(hwnd)
+            This.previewQueue.nextAt := A_TickCount + 5000
+            if This.previewQueue.items.Has(hwnd)
+                ProgramLog.Add("Preview retry hwnd=" hwnd " failures=" This.previewQueue.items[hwnd].failures "; retries stop at 3", "WARN")
+            ProgramLog.Error(err, "Preview startup deferred hwnd=" hwnd)
+        }
+    }
+
+    ToggleLivePreviews(*) {
+        This.livePreviewsPaused := !This.livePreviewsPaused
+        ProgramLog.Add("Live previews " (This.livePreviewsPaused ? "paused" : "resumed"))
+        This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        if This.livePreviewsPaused {
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                thumb["Thumbnail"].Close()
+                This.ShowThumb(hwnd, "Hide")
+            }
+        }
+        ProgramLog.Flush()
+        try This.MainFrame["pausePreviewsBtn"].Text := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+    }
+
+    CloseLivePreviews(reason, code) {
+        for hwnd, thumb in This.ThumbWindows.OwnProps()
+            try thumb["Thumbnail"].Close()
+        ProgramLog.Add("Live previews released on " reason)
+        ProgramLog.Flush()
+    }
+
     EVE_WIN_Created(Win_Hwnd, Win_Title) {
         This.debugToolTipText .= "Creating thumbnail for " Win_Title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
-        ; Moves the Window to the saved possition if any are stored 
-        This.RestoreClientPossitions(Win_Hwnd, Win_Title)        
+        ; Saved client geometry is restored by the queue before the stability wait.
         
         ;Creates the Thumbnail and stores the EVE Hwnd in the array
         If This.ThumbWindows.HasProp(Win_Hwnd)
             return
-
+        try {
         This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
         This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
         This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
@@ -1270,8 +1408,7 @@ Class Main_Class extends ThumbWindow {
             This.BorderSize(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, This.ThumbWindows.%Win_Hwnd%["Border"].Hwnd)
             This.Update_Thumb(false, This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
             If ((This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) || (!This.HideThumbnailsOnLostFocus)) {
-                for k, v in This.ThumbWindows.OwnProps()
-                    This.ShowThumb(k, "Show")
+                This.ShowThumb(Win_Hwnd, "Show")
             }
         }
         else {
@@ -1281,6 +1418,23 @@ Class Main_Class extends ThumbWindow {
         This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails
         This.RegisterNonEVEHotkeys()
         This.RegisterHotkeys(Win_Title)
+        } catch as err {
+            This.DisposePreview(Win_Hwnd)
+            throw err
+        }
+    }
+
+    DisposePreview(hwnd) {
+        if !This.ThumbWindows.HasProp(hwnd)
+            return
+        thumb := This.ThumbWindows.%hwnd%
+        thumb["Thumbnail"].Close()
+        if This.ThumbHwnd_EvEHwnd.Has(thumb["Window"].Hwnd)
+            This.ThumbHwnd_EvEHwnd.Delete(thumb["Window"].Hwnd)
+        for key, obj in thumb
+            if key != "Thumbnail"
+                try obj.Destroy()
+        This.ThumbWindows.DeleteProp(hwnd)
     }
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
@@ -1404,13 +1558,7 @@ Class Main_Class extends ThumbWindow {
             This.DeleteFromQuickGroup(hwnd)
             This.DeleteFromDisabled(hwnd)
 
-            for k, v in This.ThumbWindows.%hwnd% {
-                if (k = "Thumbnail")
-                    continue
-                v.Destroy()
-                ;This.ThumbWindows.%Win_Hwnd%.Delete()
-            }
-            This.ThumbWindows.DeleteProp(hwnd)
+            This.DisposePreview(hwnd)
             if This.monitoringInitialized && IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
                 This.stopLogMonitoring(WinTitle)
             if This.HidedThumbs.Has(hwnd)
@@ -1425,12 +1573,7 @@ Class Main_Class extends ThumbWindow {
                 This.DeleteFromDisabled(Win_Hwnd)
 
                 title := This.ThumbWindows.%Win_Hwnd%["Window"].Title
-                for k, v in This.ThumbWindows.Clone().%Win_Hwnd% {
-                    if (k = "Thumbnail")
-                        continue
-                    v.Destroy()
-                }
-                This.ThumbWindows.DeleteProp(Win_Hwnd)
+                This.DisposePreview(Win_Hwnd)
                 if This.monitoringInitialized && This.monitoredChars.Has(title)
                     This.stopLogMonitoring(title)
                 if This.HidedThumbs.Has(Win_Hwnd)
@@ -1456,8 +1599,15 @@ Class Main_Class extends ThumbWindow {
             return
         }
         ; return when the user tries to bring a window to foreground which is already in foreground 
-        if (WinActive("Ahk_id " hwnd))
-            return
+        if (WinActive("Ahk_id " hwnd)) {
+            This.pendingEVEActivation := 0
+            return true
+        }
+
+        ; A request is not proof of foreground focus. Keep only a short-lived
+        ; candidate; the group lookup still uses its configured retry budget.
+        This.pendingEVEActivation := {hwnd: hwnd, source: This._GetForegroundHwnd(), expires: A_TickCount + 250}
+        ProgramLog.Add("Activation requested; target=" hwnd "; source=" This.pendingEVEActivation.source)
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
             if This.AlwaysMaximize || (This.TrackClientPossitions && This.ClientPossitions.Has(title) && This.ClientPossitions[title]["IsMaximized"]) {
@@ -1488,7 +1638,8 @@ Class Main_Class extends ThumbWindow {
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
-        return true ; succsessful activation
+        This._ObserveEVEActivation(This._GetForegroundHwnd())
+        return true ; Activation requested; foreground focus may still be pending.
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1503,7 +1654,8 @@ Class Main_Class extends ThumbWindow {
             if (This.AlwaysMaximize && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0) || ( This.TrackClientPossitions && This.ClientPossitions[WinGetTitle("Ahk_id " This.ActivateHwnd)]["IsMaximized"] && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0 )
                 This.ShowWindowAsync(This.ActivateHwnd, 3)
         }       
-        Return 
+        This._ObserveEVEActivation(This._GetForegroundHwnd())
+        Return
     }
 
     ; Minimize All windows after Activting one with the exception of Titels in the DontMinimize Wintitels
@@ -1804,6 +1956,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     ActivateNonEVE(exe, title, *) {
+        This.pendingEVEActivation := 0
         criteria := "ahk_exe " exe
         if title != ""
             criteria := title . " " . criteria
@@ -1873,7 +2026,11 @@ Class Main_Class extends ThumbWindow {
 
 
     ShowWindowAsync(hWnd, nCmdShow := 9) {
-        DllCall("ShowWindowAsync", "UInt", hWnd, "UInt", nCmdShow)
+        ProgramLog.Count("window-show-command-" nCmdShow)
+        result := DllCall("ShowWindowAsync", "Ptr", hWnd, "Int", nCmdShow)
+        if !result
+            ProgramLog.Add("ShowWindowAsync failed; hwnd=" hWnd "; command=" nCmdShow "; lastError=" A_LastError, "WARN")
+        return result
     }
     GetActiveWindow() {
         Return DllCall("GetActiveWindow", "Ptr")
@@ -1911,12 +2068,14 @@ Class Main_Class extends ThumbWindow {
     }
 
     SaveJsonToFile() {
+        ProgramLog.Add("Saving settings; profile=" This.LastUsedProfile)
         time := A_Now
         if FileExist("EVE-X-Preview.json")
             FileMove("EVE-X-Preview.json", "EVE-X-Preview-Backup-" time ".json", 1) ; Backup old file with timestamp
         FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json") ; Save new file
         if FileExist("EVE-X-Preview-Backup-" time ".json")
             FileDelete("EVE-X-Preview-Backup-" time ".json") ; Delete backup after saving
+        ProgramLog.Add("Settings saved")
     }
 
     ; Thanks to SKAN
@@ -2561,14 +2720,23 @@ Class Main_Class extends ThumbWindow {
         if !This.checkNPCs || (This.monitoredChars[charName]["event"] != "" && This.monitoredChars[charName]["event"] != "stoppedShooting")
             return
 
-        neutralizedAt := InStr(line, "energy neutralized")
+        missedYou := false
+        energyText := "energy neutralized"
+        neutralizedAt := InStr(line, energyText)
+        if !neutralizedAt {
+            ; Nosferatu logs describe capacitor flow: to = loss, from = gain.
+            if InStr(line, "energy drained from")
+                return
+            energyText := "energy drained to"
+            neutralizedAt := InStr(line, energyText)
+        }
         if neutralizedAt {
-            ; Incoming neutralization has a red GJ amount; outgoing uses 0xff7fffff.
-            if !RegExMatch(SubStr(line, 1, neutralizedAt - 1), "i)<color=(0x[0-9a-f]{8})>\s*<b>[\d., ]+\s+GJ</b>", &amount)
+            ; Incoming capacitor loss has a red GJ amount; outgoing uses 0xff7fffff.
+            if !RegExMatch(SubStr(line, 1, neutralizedAt - 1), "i)<color=(0x[0-9a-f]{8})>\s*<b>[+-]?[\d., ]+\s+GJ</b>", &amount)
                 || amount[1] != "0xffe57f7f"
                 return
             ; Detect with a substring; remove markup only to identify the source.
-            sourceMarkup := SubStr(line, neutralizedAt + StrLen("energy neutralized"))
+            sourceMarkup := SubStr(line, neutralizedAt + StrLen(energyText))
             source := Trim(RegExReplace(sourceMarkup, "<[^>]*>", ""))
             if source = ""
                 return
@@ -2586,6 +2754,7 @@ Class Main_Class extends ThumbWindow {
             fromOrTo := m[1]
             target := m[2]
         } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "i)\(combat\)\s+(.+?) misses you completely", &m) { ; Missed you
+            missedYou := true
             fromOrTo := "from"
             target := m[1]
         } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "Your .+? misses (.+?) completely", &m) { ; You missed target
@@ -2608,11 +2777,13 @@ Class Main_Class extends ThumbWindow {
         switch kind {
             case "player":
                 if This.playerEngagmentEnabled && fromOrTo = "from"
+                    && (!missedYou || This.monitoredEvents["underAttackByPlayer"].Get("includeMisses", 1))
                     && !(This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1) && InStr(line, "Smartbomb"))
                     event := "underAttackByPlayer"
 
             case "npc":
                 if This.anyNPCEngagmentEnabled && fromOrTo = "from"
+                    && (!missedYou || This.monitoredEvents["underAttackByNPC"].Get("includeMisses", 1))
                     event := "underAttackByNPC"
 
             case "faction":
@@ -2667,7 +2838,9 @@ Class Main_Class extends ThumbWindow {
     }
 
     ; Debug tooltip method called from timers
-    debugToolTip() {
+    debugToolTip(message := "") {
+        if message != ""
+            This.debugToolTipText .= message "`n"
         if !This.debugToolTipText
             return
 
