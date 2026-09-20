@@ -1348,9 +1348,8 @@ Class Main_Class extends ThumbWindow {
             ProgramLog.Add("Preview ready hwnd=" hwnd " live=" LiveThumb.OBJ_COUNTER)
         } catch as err {
             This.previewQueue.Failed(hwnd)
-            This.previewQueue.nextAt := A_TickCount + 5000
             if This.previewQueue.items.Has(hwnd)
-                ProgramLog.Add("Preview retry hwnd=" hwnd " failures=" This.previewQueue.items[hwnd].failures "; retries stop at 3", "WARN")
+                ProgramLog.Add("Preview retry hwnd=" hwnd " backoff step=" This.previewQueue.items[hwnd].failures "; delay capped at 30 seconds", "WARN")
             ProgramLog.Error(err, "Preview startup deferred hwnd=" hwnd)
         }
     }
@@ -1545,42 +1544,45 @@ Class Main_Class extends ThumbWindow {
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
     EvEWindowDestroy(hwnd?, WinTitle?) {
-        if IsSet(WinTitle)
-            This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
-        else if IsSet(hwnd)
-            This.debugToolTipText .= "Destroying thumbnail for hwnd " hwnd "`n"
-         else
-            This.debugToolTipText .= "Destroying thumbnail for unknown window`n"
+        try {
+            if IsSet(WinTitle)
+                This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
+            else if IsSet(hwnd)
+                This.debugToolTipText .= "Destroying thumbnail for hwnd " hwnd "`n"
+            else
+                This.debugToolTipText .= "Destroying thumbnail for unknown window`n"
 
-        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
-        if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
-            This.DeleteFromQuickGroup(hwnd)
-            This.DeleteFromDisabled(hwnd)
-
-            This.DisposePreview(hwnd)
-            if This.monitoringInitialized && IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
-                This.stopLogMonitoring(WinTitle)
-            if This.HidedThumbs.Has(hwnd)
-                This.HidedThumbs.Delete(hwnd)
-            This.DestroyThumbnailsToggle := 1
-            Return
-        }
-        ;If a EVE Windows get destroyed 
-        for Win_Hwnd, v in This.ThumbWindows.Clone().OwnProps() {
-            if (!WinExist("Ahk_Id " Win_Hwnd)) {
-                This.DeleteFromQuickGroup(Win_Hwnd)
-                This.DeleteFromDisabled(Win_Hwnd)
-
-                title := This.ThumbWindows.%Win_Hwnd%["Window"].Title
-                This.DisposePreview(Win_Hwnd)
-                if This.monitoringInitialized && This.monitoredChars.Has(title)
-                    This.stopLogMonitoring(title)
-                if This.HidedThumbs.Has(Win_Hwnd)
-                    This.HidedThumbs.Delete(Win_Hwnd)
+            if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
+                This.CleanupClosedPreview(hwnd)
+                Return
             }
+            ; A failed cleanup must not prevent other closed clients from being removed.
+            for Win_Hwnd, v in This.ThumbWindows.Clone().OwnProps() {
+                if (!WinExist("Ahk_Id " Win_Hwnd)) {
+                    try This.CleanupClosedPreview(Win_Hwnd)
+                    catch as err
+                        ProgramLog.Error(err, "Closed preview cleanup hwnd=" Win_Hwnd)
+                }
+            }
+        } finally {
+            This.DestroyThumbnailsToggle := 1
         }
-        This.DestroyThumbnailsToggle := 1
+    }
+
+    CleanupClosedPreview(hwnd) {
+        hwnd := Integer(hwnd) ; OwnProps yields strings; interaction/group maps use numeric HWNDs.
+        title := This.ThumbWindows.%hwnd%["Window"].Title
+        ; Do not redraw borders or query a closed client while removing groups.
+        This.DisposePreview(hwnd)
+        for entries in [This.QuickGroupChars, This.DisabledChars, This.HidedThumbs]
+            if entries.Has(hwnd)
+                entries.Delete(hwnd)
+        This.previewQueue.Remove(hwnd)
+        This.BorderActive := 0
+        if This.monitoringInitialized && This.monitoredChars.Has(title)
+            This.stopLogMonitoring(title)
     }
     
     ActivateEVEWindow(hwnd?, title?) {   
@@ -2478,6 +2480,8 @@ Class Main_Class extends ThumbWindow {
             fileCharId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
 
             if charId != fileCharId {
+                if charId != 0
+                    continue ; A known ID needs no header reads from other characters' logs.
                 fileCharName := This.getCharNameFromFile(fileName)
                 if !fileCharName || fileCharName != charName
                     continue
@@ -2577,6 +2581,17 @@ Class Main_Class extends ThumbWindow {
 
     ReadGameLogUpdates(charName, suppressEvents, now := 0, hwnd := 0, suppressDisplay := false) {
         reader := This.monitoredChars[charName]
+        ; After a stalled poll, retain only a bounded recent tail. Seeking is
+        ; byte-based; discard the first fragment, including any split UTF-8.
+        file := reader["file"]
+        maxBacklog := 262144
+        if file.Length - file.Pos > maxBacklog {
+            file.Seek(-maxBacklog, 2)
+            reader["pending"] := ""
+            file.ReadLine()
+            if reader.Has("dps")
+                reader["dps"] := DPSMeter(This.dpsMonitoring)
+        }
         lines := StrSplit(reader.Get("pending", "") reader["file"].Read(), "`n", "`r")
         reader["pending"] := lines.Length ? lines.Pop() : "" ; Wait for the writer to finish the last line.
         if reader.Has("dps") {

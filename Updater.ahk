@@ -1,5 +1,5 @@
 #Requires AutoHotkey v2.0
-#Include "ProgramLog.ahk"
+#Include "src/ProgramLog.ahk"
 
 VERSION := "1.5"
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")

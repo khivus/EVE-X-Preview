@@ -17,7 +17,13 @@ PreviewQueueTest() {
     AssertEqual(0, q.Next(18599))
     AssertEqual(12, q.Next(18600))
     q.Failed(12, 18600)
-    AssertEqual(0, q.Next(999999), "Three failures stop automatic retry storms.")
+    AssertEqual(0, q.Next(33599))
+    AssertEqual(12, q.Next(33600), "Recovery continues after three failures.")
+    Loop 10
+        q.Failed(12, 33600)
+    AssertEqual(63600, q.items[12].retryAt, "Retry delay is capped at 30 seconds.")
+    AssertEqual(6, q.items[12].failures)
+    q.Remove(12)
     q.Observe(13, "empty", 0, 0, 0)
     AssertEqual(0, q.Next(999999))
     q.Remove(12)
@@ -187,6 +193,107 @@ class PreviewLifecycleFixture extends CombatEventsFixture {
         if this.failOverlay
             throw Error("Injected overlay failure")
         super.AddThumbnailTextControls(args*)
+    }
+}
+
+class PreviewCloseFixture extends PreviewLifecycleFixture {
+    failCloseHwnd := 0
+    failCreateHwnd := 0
+    DisposePreview(hwnd) {
+        if hwnd = this.failCloseHwnd
+            throw Error("Injected cleanup failure")
+        super.DisposePreview(hwnd)
+    }
+    EVE_WIN_Created(hwnd, title) {
+        if hwnd = this.failCreateHwnd
+            throw Error("Injected registration failure")
+        super.EVE_WIN_Created(hwnd, title)
+    }
+    ActivateEVEWindow(hwnd?, title?) {
+        this.clicked := hwnd
+    }
+}
+
+TestRunner.Register("Client cleanup isolates failures and preserves surviving previews and clicks", PreviewCloseIsolationTest)
+PreviewCloseIsolationTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := PreviewCloseFixture()
+    first := Gui(), second := Gui(), survivor := Gui()
+    firstHwnd := first.Hwnd, secondHwnd := second.Hwnd, liveHwnd := survivor.Hwnd
+    baseline := LiveThumb.OBJ_COUNTER
+    try {
+        for source in [first, second, survivor] {
+            source.Show("Hide w160 h100")
+            app.EVE_WIN_Created(source.Hwnd, "Close test " source.Hwnd)
+        }
+        firstPreview := app.ThumbWindows.%firstHwnd%["Window"].Hwnd
+        secondPreview := app.ThumbWindows.%secondHwnd%["Window"].Hwnd
+        live := app.ThumbWindows.%liveHwnd%["Thumbnail"]
+        liveId := live.THUMB_ID
+        app.QuickGroupChars[firstHwnd] := "Closed pilot"
+        app.DisabledChars[firstHwnd] := "Closed pilot"
+        app.HidedThumbs[firstHwnd] := "Closed pilot"
+        first.Destroy(), second.Destroy()
+        app.failCloseHwnd := firstHwnd
+        app.DestroyThumbnailsToggle := 0
+        AssertThrows(() => app.EvEWindowDestroy(firstHwnd), "Injected cleanup failure")
+        AssertEqual(1, app.DestroyThumbnailsToggle, "Explicit cleanup failures must release the gate.")
+        app.DestroyThumbnailsToggle := 0
+        app.EvEWindowDestroy()
+        AssertEqual(1, app.DestroyThumbnailsToggle)
+        AssertTrue(app.ThumbWindows.HasProp(firstHwnd), "Failed disposal remains available for retry.")
+        AssertFalse(app.ThumbWindows.HasProp(secondHwnd), "One failure must not block another closed client.")
+        AssertFalse(app.ThumbHwnd_EvEHwnd.Has(secondPreview))
+        app.failCloseHwnd := 0
+        app.EvEWindowDestroy()
+        AssertFalse(app.ThumbWindows.HasProp(firstHwnd))
+        AssertFalse(app.ThumbHwnd_EvEHwnd.Has(firstPreview))
+        AssertEqual(0, app.QuickGroupChars.Count)
+        AssertEqual(0, app.DisabledChars.Count)
+        AssertEqual(0, app.HidedThumbs.Count)
+        AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER)
+        AssertEqual(liveId, live.THUMB_ID)
+        live.Opacity := 254
+        AssertTrue(live.Update(), "Closing other sources must not invalidate the surviving registration.")
+        app.ThumbnailsInteractionsMap := Map(1, "ActivateThumbnail")
+        app._OnMessage(1, 0, 0x201, app.ThumbWindows.%liveHwnd%["Window"].Hwnd)
+        AssertEqual(liveHwnd, app.clicked)
+    } finally {
+        app.failCloseHwnd := 0
+        for hwnd in [firstHwnd, secondHwnd, liveHwnd]
+            app.DisposePreview(hwnd)
+        SetTimer(app.debugToolTipMethod, 0)
+        first.Destroy(), second.Destroy(), survivor.Destroy()
+        DetectHiddenWindows(oldHidden)
+    }
+}
+
+TestRunner.Register("One preview registration failure does not delay other ready previews", PreviewRecoveryIsolationTest)
+PreviewRecoveryIsolationTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := PreviewCloseFixture()
+    app.previewQueue := PreviewStartupQueue()
+    first := Gui(), second := Gui()
+    try {
+        first.Show("Hide w160 h100"), second.Show("Hide w160 h100")
+        app.failCreateHwnd := first.Hwnd
+        app.QueuePreview(first.Hwnd, "Failing source")
+        app.QueuePreview(second.Hwnd, "Healthy source")
+        app.ProcessPreviewQueue([first.Hwnd, second.Hwnd])
+        AssertTrue(app.ThumbWindows.HasProp(second.Hwnd), "Healthy previews start in the same poll.")
+        AssertEqual(1, app.previewQueue.items[first.Hwnd].failures)
+        app.failCreateHwnd := 0
+        app.previewQueue.items[first.Hwnd].retryAt := 0
+        app.ProcessPreviewQueue([first.Hwnd, second.Hwnd])
+        AssertTrue(app.ThumbWindows.HasProp(first.Hwnd))
+        AssertEqual(0, app.previewQueue.items.Count)
+    } finally {
+        app.DisposePreview(first.Hwnd), app.DisposePreview(second.Hwnd)
+        SetTimer(app.debugToolTipMethod, 0)
+        first.Destroy(), second.Destroy()
+        DetectHiddenWindows(oldHidden)
     }
 }
 

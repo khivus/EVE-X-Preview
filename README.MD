@@ -357,7 +357,7 @@ Buttons:
 
 Program diagnostics are kept in `ProgramLog.Text` (up to 256 Ki characters) and written every two seconds to `%LOCALAPPDATA%\EVE-X-Preview\Logs\current.log`. The disk log rotates at approximately 1 MiB into `previous.log`. Startup registration attempts are flushed before touching DWM. Errors reaching the script error handler, DWM failures, and logged runtime errors automatically export an `error-*.log` snapshot; snapshots are limited to one per ten seconds and the newest ten files. Logs can contain character/window names and local paths. Nothing is uploaded automatically.
 
-Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions, back off after failed startup attempts, and stop after three failures per source; Pause then Resume resets the queue. Unchanged geometry and visibility do not cause redundant DWM updates.
+Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry failed sources independently, with increasing delays capped at 30 seconds. Recovery continues until successful or the client closes; Pause then Resume resets the queue. Unchanged geometry and visibility do not cause redundant DWM updates.
 
 Diagnostics also record settings load/save/recovery, activation requests and focus results, Windows display-change notifications, and ten-second summaries of DWM geometry/visibility updates and window show commands, with GDI/USER handle counts. These summaries describe the program's operations, not the compositor's frame rate or GPU utilization; display notifications alone do not confirm a driver reset.
 
@@ -369,4 +369,4 @@ These measures reduce startup bursts, including restarting Preview while clients
 
 * Created by [gonzo83](https://github.com/g0nzo83/EVE-X-Preview)
 * Forked and maintained by [khivus](https://github.com/khivus)
-* Credits to [mrmjstc](https://github.com/mrmjstc/eve-apm-preview) and [CJKondur](https://github.com/CJKondur/EVE-MultiPreview)
+* Credits to [mrmjstc](https://github.com/mrmjstc/eve-maj-preview) and [CJKondur](https://github.com/CJKondur/EVE-MultiPreview)

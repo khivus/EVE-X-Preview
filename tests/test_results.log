@@ -53,6 +53,8 @@ PASS: DPS display preserves names events and systems when resized
 PASS: Incoming DPS remains visible at the reported compact thumbnail size
 PASS: DPS settings migrate inherit profiles and fit their panel
 PASS: Game log discovery refreshes when a file is replaced at the same count
+PASS: Known character IDs skip unrelated game log headers
+PASS: Large game logs start at EOF and stalled readers skip old backlogs
 PASS: Incoming DPS is drawn before batched alerts with first and last priority
 PASS: Flashing borders restore the caller's critical state
 PASS: Damage percentages have no marker or unused event row below them
@@ -66,9 +68,11 @@ PASS: Live DWM wrapper uses aligned fields and releases registrations
 PASS: Program events persist with debug disabled and errors export snapshots
 PASS: Log viewer opens a full buffer without truncation
 PASS: About exposes diagnostics and preview pause within the panel
+PASS: Client cleanup isolates failures and preserves surviving previews and clicks
+PASS: One preview registration failure does not delay other ready previews
 PASS: Fast previews have no startup waits and slow mode persists
 PASS: Fast mode creates all ready previews in one polling pass
 PASS: Runtime diagnostic counters aggregate and reset without per-frame logs
 PASS: Preview lifecycle cleans partial failures and resumes paused registrations
 
-Test summary: 72 passed, 0 failed, 72 total.
+Test summary: 76 passed, 0 failed, 76 total.

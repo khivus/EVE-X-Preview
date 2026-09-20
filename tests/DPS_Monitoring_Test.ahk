@@ -520,6 +520,61 @@ class DPSAlertOrderFixture extends DPSLogFixture {
     }
 }
 
+class DPSKnownIdFixture extends DPSLogFixture {
+    getCharNameFromFile(*) {
+        throw Error("Known character IDs must not open unrelated log headers.")
+    }
+}
+
+TestRunner.Register("Known character IDs skip unrelated game log headers", DPSKnownIdDiscoveryTest)
+DPSKnownIdDiscoveryTest() {
+    app := DPSKnownIdFixture()
+    try {
+        target := app.WriteLog("20260912_000000_12345.txt", "")
+        other := app.WriteLog("20260912_000001_67890.txt", "")
+        FileSetTime("20260912000000", target, "M")
+        FileSetTime("20260912000001", other, "M")
+        app.startLogMonitoring(app.character, 12345)
+        AssertEqual(target, app.monitoredChars[app.character]["fileName"])
+    } finally {
+        app.Cleanup()
+    }
+}
+
+TestRunner.Register("Large game logs start at EOF and stalled readers skip old backlogs", DPSLargeLogTest)
+DPSLargeLogTest() {
+    app := DPSLogFixture()
+    now := DPSMeter.CurrentSecond()
+    try {
+        path := app.WriteLog("20260912_000000_12345.txt", DPSLine(now, 9999))
+        writer := FileOpen(path, "a", "UTF-8")
+        writer.Length := 32 * 1024 * 1024
+        writer.Close()
+        app.startLogMonitoring(app.character, 12345)
+        reader := app.monitoredChars[app.character]
+        AssertEqual(FileGetSize(path), reader["file"].Pos, "Attachment must seek past all history.")
+        app.ReadGameLogUpdates(app.character, true, now)
+        AssertEqual(0, reader["dps"].buckets.Count)
+        app.Append(path, DPSLine(now, 100))
+        app.ReadGameLogUpdates(app.character, true, now)
+        AssertEqual(10, reader["dps"].Rates(now).incoming)
+        reader["pending"] := "unfinished old record"
+        padding := ""
+        Loop 1024
+            padding .= "old backlog padding "
+        Loop 32
+            app.Append(path, padding)
+        app.Append(path, "`r`n" DPSLine(now, 1000, "to"))
+        app.ReadGameLogUpdates(app.character, true, now)
+        AssertEqual(0, reader["dps"].Rates(now).incoming, "Discarded backlogs must reset previous totals.")
+        AssertEqual(100, reader["dps"].Rates(now).outgoing, "The latest complete hit must still count.")
+        AssertEqual("", reader["pending"])
+        AssertEqual(FileGetSize(path), reader["file"].Pos)
+    } finally {
+        app.Cleanup()
+    }
+}
+
 TestRunner.Register("Incoming DPS is drawn before batched alerts with first and last priority", DPSBeforeAlertsTest)
 DPSBeforeAlertsTest() {
     app := DPSAlertOrderFixture()
