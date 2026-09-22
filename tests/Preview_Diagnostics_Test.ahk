@@ -72,6 +72,42 @@ LiveThumbnailTest() {
     }
 }
 
+TestRunner.Register("DWM cleanup tolerates closed windows but reports unexpected invalid handles", LiveThumbnailClosedWindowTest)
+LiveThumbnailClosedWindowTest() {
+    baseline := LiveThumb.OBJ_COUNTER
+    for closedWindow in ["source", "destination", "neither"] {
+        src := Gui(), dst := Gui(), live := 0
+        try {
+            src.Show("Hide w160 h100")
+            dst.Show("Hide w80 h50")
+            live := LiveThumb(src.Hwnd, dst.Hwnd)
+            if closedWindow = "source"
+                src.Destroy()
+            else if closedWindow = "destination"
+                dst.Destroy()
+            else {
+                ; Invalidate only the registration, leaving both windows alive.
+                AssertEqual(0, DllCall("dwmapi\DwmUnregisterThumbnail", "Ptr", live.THUMB_ID, "Int"))
+            }
+            logStart := StrLen(ProgramLog.Text)
+            live.Close()
+            addedLog := SubStr(ProgramLog.Text, logStart + 1)
+            if closedWindow = "neither"
+                AssertTrue(InStr(addedLog, "[ERROR] DWM cleanup"), "Unexpected invalid handles must remain visible.")
+            else
+                AssertFalse(InStr(addedLog, "[ERROR]"), "Closing a window must not report a cleanup error.")
+            live.Close()
+            AssertEqual(0, live.THUMB_ID)
+            AssertEqual(baseline, LiveThumb.OBJ_COUNTER, "Repeated cleanup must release the count only once.")
+        } finally {
+            if IsObject(live)
+                live.Close()
+            src.Destroy()
+            dst.Destroy()
+        }
+    }
+}
+
 TestRunner.Register("Program events persist with debug disabled and errors export snapshots", ProgramLogTest)
 ProgramLogTest() {
     directory := A_Temp "\EVE-X-Preview-test-" A_TickCount

@@ -133,6 +133,8 @@ Class LiveThumb
         }
                  
         this.THUMB_ID := phThumb
+        this.SourceHwnd := hSource
+        this.DestinationHwnd := hDest
         LiveThumb.OBJ_COUNTER += 1
         ProgramLog.Add("DWM registered source=" hSource " destination=" hDest " active=" LiveThumb.OBJ_COUNTER)
         this.THUMB_UPDATED := False
@@ -161,9 +163,14 @@ Class LiveThumb
         this.THUMB_ID := 0
         hr := DllCall("dwmapi\DwmUnregisterThumbnail", "Ptr", id, "Int")
         LiveThumb.OBJ_COUNTER -= 1
-        if hr
+        ; Closing either window can invalidate the DWM registration before our poll.
+        releasedWithWindow := (hr & 0xFFFFFFFF) = 0x80070057
+            && (!DllCall("IsWindow", "Ptr", this.SourceHwnd, "Int")
+                || !DllCall("IsWindow", "Ptr", this.DestinationHwnd, "Int"))
+        if hr && !releasedWithWindow
             ProgramLog.Error(Error("DwmUnregisterThumbnail " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM cleanup")
-        ProgramLog.Add("DWM unregistered id=" id " active=" LiveThumb.OBJ_COUNTER)
+        ProgramLog.Add("DWM cleanup id=" id " active=" LiveThumb.OBJ_COUNTER
+            " result=" (releasedWithWindow ? "window already closed" : Format("0x{:08X}", hr & 0xFFFFFFFF)))
     }
 
     __Get(aName, Params) {

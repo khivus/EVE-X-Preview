@@ -2426,7 +2426,7 @@ Class Main_Class extends ThumbWindow {
             timer -= 1000 ; Adding offset for each char to avoid lags if there is a lot of them
         }
 
-        This.debugToolTipText .= "Initialized log monitoring for chars:`n" This.StrJoin("`n", activeCharsToMonitor) "`n`nWaiting for chars to update logs...`n"
+        This.debugToolTipText .= "Initialized log monitoring for " activeCharsToMonitor.count " chars."
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         This.monitoringInitialized := 1
         This.monitorMethod := ObjBindMethod(This, "monitorAllChars")

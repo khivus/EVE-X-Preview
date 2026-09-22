@@ -65,6 +65,7 @@ PASS: Foreground polling recovers from missing and closed windows
 PASS: Group lookup waits only for a relevant pending activation
 PASS: Preview startup waits for stable sources and spaces registrations
 PASS: Live DWM wrapper uses aligned fields and releases registrations
+PASS: DWM cleanup tolerates closed windows but reports unexpected invalid handles
 PASS: Program events persist with debug disabled and errors export snapshots
 PASS: Log viewer opens a full buffer without truncation
 PASS: About exposes diagnostics and preview pause within the panel
@@ -75,4 +76,4 @@ PASS: Fast mode creates all ready previews in one polling pass
 PASS: Runtime diagnostic counters aggregate and reset without per-frame logs
 PASS: Preview lifecycle cleans partial failures and resumes paused registrations
 
-Test summary: 76 passed, 0 failed, 76 total.
+Test summary: 77 passed, 0 failed, 77 total.

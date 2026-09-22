@@ -39,6 +39,7 @@
 * Chat Logs and Game Logs directory settings now share the same layout and automatic detection: leave either field blank or select a custom folder. Detected paths do not fill in the settings fields.
 
 ### Fixed
+* Closing a client no longer reports an invalid DWM thumbnail handle as an error when its source or destination window has already closed. Unexpected unregister failures remain logged.
 * Client-close cleanup continues for other clients after an individual failure and always re-enables future cleanup. Closed previews are removed from interaction and group maps without redrawing their borders.
 * Foreground polling tolerates missing or closed windows during focus changes, clears stale process information, and avoids duplicate diagnostics for already logged timer/message errors.
 * Show Log now creates its text control before loading the snapshot, preventing "Can't create control" errors with large diagnostic logs.
