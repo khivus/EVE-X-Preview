@@ -223,7 +223,27 @@ Class Main_Class extends ThumbWindow {
                 Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
         }
 
-        HotIf() ; Reset hotif
+        HotIf() ; These application controls also work when no EVE window is open.
+        if (This.ToggleLivePreviewsHotkey != "") {
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1"
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Pause/Resume Live Previews - Hotkey")
+            }
+            else
+                Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1"
+        }
+        if (This.Exit_Program_Hotkey != "") {
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey This.Exit_Program_Hotkey, (*) => ExitApp(), "S1"
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Exit EVE-X-Preview - Hotkey")
+            }
+            else
+                Hotkey This.Exit_Program_Hotkey, (*) => ExitApp(), "S1"
+        }
 
         ; ##############################
         ; Global vars and funcs/timers registration
@@ -240,6 +260,7 @@ Class Main_Class extends ThumbWindow {
         ; Map of Disabled and Quickgroup chars
         This.DisabledChars := Map()
         This.QuickGroupChars := Map()
+        This.QuickGroupOrder := []
 
         ; Inited monitoring check
         This.monitoringInitialized := 0
@@ -862,31 +883,14 @@ Class Main_Class extends ThumbWindow {
         if !This.QuickGroupEnabled || !This.QuickGroupChars.Count
             return
 
-        ; Build array for quick group
-        sortStr := ""
-
         for hwnd, title in This.QuickGroupChars {
             if !WinExist("ahk_id " hwnd) { ; Additional check for closed windows
                 This.DeleteFromQuickGroup(hwnd)
-                continue
             }
-            sortStr .= title "|" hwnd "`n"
         }
-
-        ; Sort by title, and use HWND as a fallback when titles are equal.
-        sortStr := Sort(sortStr, "D`n", (a, b, *) => (
-            cmp := StrCompare(StrSplit(a, "|")[1], StrSplit(b, "|")[1], true),
-            cmp != 0 ? cmp : StrSplit(a, "|")[2] - StrSplit(b, "|")[2]
-        ))
-
-        ; Extract sorted HWNDs.
-        arr := []
-
-        for line in StrSplit(RTrim(sortStr, "`n"), "`n")
-            arr.Push(StrSplit(line, "|")[2])
-
-        This.debugToolTipText .= "Quick Group triggered:`n" sortStr "`n"
-        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+        arr := This.GetQuickGroupWindowOrder()
+        if !arr.Length
+            return
 
         ; Derive from active window, reset to start if not found
         currentIndex := This._GetCurrentGroupIndex(arr)
@@ -900,6 +904,30 @@ Class Main_Class extends ThumbWindow {
         This.ResetPosAfterQuickGroupTrigger := This.QuickGroupResetsPosition
 
         try This.ActivateEVEWindow(arr[index])
+    }
+
+    GetQuickGroupWindowOrder() {
+        if This.QuickGroupSortOrder != "Name" {
+            ordered := []
+            for hwnd in This.QuickGroupOrder
+                if This.QuickGroupChars.Has(hwnd)
+                    ordered.Push(hwnd)
+            return ordered
+        }
+
+        ; Preserve the previous name order, with HWND as the tie breaker.
+        sortStr := ""
+        for hwnd, title in This.QuickGroupChars
+            sortStr .= title "|" hwnd "`n"
+        sortStr := Sort(sortStr, "D`n", (a, b, *) => (
+            cmp := StrCompare(StrSplit(a, "|")[1], StrSplit(b, "|")[1], true),
+            cmp != 0 ? cmp : StrSplit(a, "|")[2] - StrSplit(b, "|")[2]
+        ))
+        ordered := []
+        for line in StrSplit(RTrim(sortStr, "`n"), "`n")
+            if line != ""
+                ordered.Push(Integer(StrSplit(line, "|")[2]))
+        return ordered
     }
 
     SwitchToPrevWin(*) {
@@ -1256,6 +1284,7 @@ Class Main_Class extends ThumbWindow {
         }
 
         This.QuickGroupChars[hwnd] := title
+        This.QuickGroupOrder.Push(hwnd)
         This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
     }
 
@@ -1264,10 +1293,20 @@ Class Main_Class extends ThumbWindow {
             return
 
         title := This.QuickGroupChars[hwnd]
-        This.QuickGroupChars.Delete(hwnd)
+        This.RemoveQuickGroupWindow(hwnd)
         This.toggleColorBorder(hwnd, title, 0)
         if WinActive("ahk_id " hwnd)
             This.BorderActive := 0
+    }
+
+    RemoveQuickGroupWindow(hwnd) {
+        This.QuickGroupChars.Delete(hwnd)
+        for index, member in This.QuickGroupOrder {
+            if member = hwnd {
+                This.QuickGroupOrder.RemoveAt(index)
+                break
+            }
+        }
     }
 
     AddToDisabled(hwnd, title) {
@@ -1275,7 +1314,7 @@ Class Main_Class extends ThumbWindow {
             return
 
         if This.QuickGroupChars.Has(hwnd) { ; Overrides Quickgroup -> DisabledChars
-            This.QuickGroupChars.Delete(hwnd)
+            This.RemoveQuickGroupWindow(hwnd)
         }
 
         This.DisabledChars[hwnd] := title
@@ -1576,7 +1615,9 @@ Class Main_Class extends ThumbWindow {
         title := This.ThumbWindows.%hwnd%["Window"].Title
         ; Do not redraw borders or query a closed client while removing groups.
         This.DisposePreview(hwnd)
-        for entries in [This.QuickGroupChars, This.DisabledChars, This.HidedThumbs]
+        if This.QuickGroupChars.Has(hwnd)
+            This.RemoveQuickGroupWindow(hwnd)
+        for entries in [This.DisabledChars, This.HidedThumbs]
             if entries.Has(hwnd)
                 entries.Delete(hwnd)
         This.previewQueue.Remove(hwnd)

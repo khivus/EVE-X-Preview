@@ -111,6 +111,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupHotkey"] := value
     }
 
+    QuickGroupSortOrder {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupSortOrder"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupSortOrder"] := value
+    }
+
     QuickGroupIgnoredInOtherGroups {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
@@ -600,6 +605,16 @@ class Propertys extends TrayMenu {
     Reload_Program_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"] := value
+    }
+
+    ToggleLivePreviewsHotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ToggleLivePreviewsHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ToggleLivePreviewsHotkey"] := value
+    }
+
+    Exit_Program_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Exit_Program_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Exit_Program_Hotkey"] := value
     }
 
     GroupsHoldDelay {

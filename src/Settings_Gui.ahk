@@ -569,6 +569,8 @@ Class Settings_Gui {
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Hide Thumbnails - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vHideThumbnailsHotkey", This.HideThumbnailsHotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Pause/Resume Live Previews - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vToggleLivePreviewsHotkey", This.ToggleLivePreviewsHotkey)
         ; captBtn2 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn2
 
@@ -607,6 +609,8 @@ Class Settings_Gui {
 
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Reload EVE-X-Preview - Hotkey:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vReload_Program_Hotkey", This.Reload_Program_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Exit EVE-X-Preview - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vExit_Program_Hotkey", This.Exit_Program_Hotkey)
         ; captBtn7 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn7
 
@@ -623,6 +627,7 @@ Class Settings_Gui {
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["ToggleLivePreviewsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["ClickThroughHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Hotkey_Scoope"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["SwitchToPreviousWindow_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -633,6 +638,7 @@ Class Settings_Gui {
         This.MainFrame["Close_Active_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Close_All_EVE_Win_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["Reload_Program_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["Exit_Program_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         HKCharList.OnEvent("Change", (obj, *) => EventHandler(obj))
         HKKeylist.OnEvent("Change", (obj, *) => EventHandler(obj))
         ImpBtn.OnEvent("Click", (*) => This.ImportNamesFromThumbs(HKCharList))
@@ -654,6 +660,9 @@ Class Settings_Gui {
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.name = "ToggleLivePreviewsHotkey") {
+                This.ToggleLivePreviewsHotkey := Trim(obj.value, "`n ")
             }
             else if (obj.name = "ClickThroughHotkey") {
                 This.ClickThroughHotkey := Trim(obj.value, "`n ")
@@ -684,6 +693,9 @@ Class Settings_Gui {
             }
             else if (obj.name = "Reload_Program_Hotkey") {
                 This.Reload_Program_Hotkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.name = "Exit_Program_Hotkey") {
+                This.Exit_Program_Hotkey := Trim(obj.value, "`n ")
             }
             This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -771,6 +783,9 @@ Class Settings_Gui {
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group - Hotkey:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vQuickGroupHotkey -Wrap")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group Sort Order:")
+        arr.Push This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vQuickGroupSortOrder Choose" (This.QuickGroupSortOrder = "Name" ? 2 : 1), ["Added order", "Name"])
+
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group Color (Hex/RGB):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editC) " vQuickGroupColor -Wrap")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp w{} h{}", This.editC + This.baseGrid, This.cPreviewSize, This.cPreviewSize) " vPreviewQuickGroupColor Border")
@@ -786,6 +801,7 @@ Class Settings_Gui {
 
         This.MainFrame["DisableFromGroupsColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupHotkey"].OnEvent("Change", (obj, *) => EventHandler(obj))
+        This.MainFrame["QuickGroupSortOrder"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupIgnoredInOtherGroups"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupResetsPosition"].OnEvent("Click", (obj, *) => EventHandler(obj))
@@ -801,6 +817,9 @@ Class Settings_Gui {
             if obj.name = "DisableFromGroupsColor" || obj.name = "QuickGroupColor" {
                 This.%obj.name% := obj.value
                 This.RedrawColorPreview(obj)
+            }
+            else if obj.name = "QuickGroupSortOrder" {
+                This.QuickGroupSortOrder := obj.Text
             }
             else if obj.name = "QuickGroupHotkey" || obj.name = "QuickGroupIgnoredInOtherGroups" || obj.name = "QuickGroupResetsPosition" || obj.name = "DontCloseDisabledClients" || obj.name = "DontCloseQuickGroupClients" {
                 This.%obj.name% := obj.value
@@ -2078,7 +2097,7 @@ Class Settings_Gui {
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkeys Settings" {
-                        Loop 25
+                        Loop 29
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkey Groups" {
@@ -2140,6 +2159,7 @@ Class Settings_Gui {
         ;Hotkeys
         This.MainFrame["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
         This.MainFrame["HideThumbnailsHotkey"].value := This.HideThumbnailsHotkey
+        This.MainFrame["ToggleLivePreviewsHotkey"].value := This.ToggleLivePreviewsHotkey
         This.MainFrame["ClickThroughHotkey"].value := This.ClickThroughHotkey
         This.MainFrame["Hotkey_Scoope"].value := (This.Global_Hotkeys ? 1 : 2)
         This.MainFrame["SwitchToPreviousWindow_Hotkey"].value := This.SwitchToPreviousWindow_Hotkey
@@ -2150,6 +2170,7 @@ Class Settings_Gui {
         This.MainFrame["Close_Active_EVE_Win_Hotkey"].value := This.Close_Active_EVE_Win_Hotkey
         This.MainFrame["Close_All_EVE_Win_Hotkey"].value := This.Close_All_EVE_Win_Hotkey
         This.MainFrame["Reload_Program_Hotkey"].value := This.Reload_Program_Hotkey
+        This.MainFrame["Exit_Program_Hotkey"].value := This.Exit_Program_Hotkey
 
         Charlist := "", Hklist := ""
         for index, value in This._Hotkeys {
@@ -2174,6 +2195,7 @@ Class Settings_Gui {
         This.MainFrame["QuickGroupColor"].value := This.QuickGroupColor
         This.RedrawColorPreview(This.MainFrame["QuickGroupColor"])
         This.MainFrame["QuickGroupHotkey"].value := This.QuickGroupHotkey
+        This.MainFrame["QuickGroupSortOrder"].value := This.QuickGroupSortOrder = "Name" ? 2 : 1
         This.MainFrame["QuickGroupIgnoredInOtherGroups"].value := This.QuickGroupIgnoredInOtherGroups
         This.MainFrame["QuickGroupResetsPosition"].value := This.QuickGroupResetsPosition
         This.MainFrame["DontCloseDisabledClients"].value := This.DontCloseDisabledClients

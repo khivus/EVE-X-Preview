@@ -96,6 +96,8 @@
                 "Close_Active_EVE_Win_Hotkey": "",
                 "Close_All_EVE_Win_Hotkey": "",
                 "Reload_Program_Hotkey": "",
+                "ToggleLivePreviewsHotkey": "",
+                "Exit_Program_Hotkey": "",
                 "CharacterHotkeys": [
                     {"Example Name1":"1"},
                     {"Example Name2":"ctrl & 1"},
@@ -110,6 +112,7 @@
                 "dynamicGroupsColor": "ff0000",
                 "QuickGroupColor": "72efdd",
                 "QuickGroupHotkey": "",
+                "QuickGroupSortOrder": "Added order",
                 "QuickGroupIgnoredInOtherGroups": 1,
                 "QuickGroupResetsPosition": 1,
                 "DontCloseDisabledClients": 0,

@@ -24,6 +24,39 @@ class GroupActivationFixture extends ThumbnailNamesFixture {
     }
 }
 
+class QuickGroupOrderFixture extends GroupActivationFixture {
+    __New() {
+        super.__New()
+        this.ProfileThumbnailsInteractions := "Default"
+        this.QuickGroupEnabled := true
+        this.QuickGroupChars := Map()
+        this.QuickGroupOrder := []
+        this.DisabledChars := Map()
+        this.BorderActive := 0
+    }
+    toggleColorBorder(*) {
+    }
+}
+
+TestRunner.Register("Quick Group cycles in added order or name order", QuickGroupOrderTest)
+QuickGroupOrderTest() {
+    app := QuickGroupOrderFixture()
+    AssertEqual("Added order", app.QuickGroupSortOrder)
+    app.AddToQuickGroup(1003, "Zelda")
+    app.AddToQuickGroup(1001, "Alice")
+    app.AddToQuickGroup(1002, "Alice")
+    AssertEqual([1003, 1001, 1002], app.GetQuickGroupWindowOrder())
+    app.QuickGroupSortOrder := "Name"
+    AssertEqual([1001, 1002, 1003], app.GetQuickGroupWindowOrder())
+    app.DeleteFromQuickGroup(1001)
+    app.AddToQuickGroup(1001, "Alice")
+    app.QuickGroupSortOrder := "Added order"
+    AssertEqual([1003, 1002, 1001], app.GetQuickGroupWindowOrder(), "Readded windows belong at the end.")
+    app.DisabledFromGroupsEnabled := true
+    app.AddToDisabled(1002, "Alice")
+    AssertEqual([1003, 1001], app.GetQuickGroupWindowOrder(), "Disabling a member removes it from Quick Group order.")
+}
+
 TestRunner.Register("Foreground polling recovers from missing and closed windows", ForegroundPollingTest)
 ForegroundPollingTest() {
     previousDetectHidden := A_DetectHiddenWindows

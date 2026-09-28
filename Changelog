@@ -1,6 +1,8 @@
 # v1.6.0
 
 ### Added
+* Quick Group sorting by added order (default) or character name, selectable in Thumbnails Interactions.
+* Configurable hotkeys to pause/resume live previews using the About button action and to exit EVE-X-Preview.
 * Always-on bounded program diagnostics, with Show Log and Export Log in About, rotating disk logs, and automatic snapshots on script and DWM errors.
 * Pause/Resume Live Previews in About. Pausing unregisters DWM thumbnails while retaining existing hotkeys; resuming respects the selected creation speed.
 * Optional Slow Thumbnail Creation in Other, above Switch Language to English on Error. Disabled by default; changing it applies immediately without requiring a restart.

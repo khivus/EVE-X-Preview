@@ -152,6 +152,7 @@ This group controls global hotkeys and client actions.
 
 * Suspend All Hotkeys - Hotkey: pauses all hotkeys.
 * Hide Thumbnails Hotkey: toggles thumbnail visibility.
+* Pause/Resume Live Previews - Hotkey: releases live thumbnails and restores them on the next press, as with the About button.
 * Click Through Thumbnails - Hotkey: toggles click-through mode.
 * Hotkey Activation Scope: chooses between global hotkeys or hotkeys active only when an EVE window is focused.
 * Cycle Login Screens - Hotkey: cycles through login-screen windows.
@@ -159,8 +160,13 @@ This group controls global hotkeys and client actions.
 * Close Active EVE Window - Hotkey: closes the currently active EVE window.
 * Close All EVE Windows - Hotkey: closes all EVE windows.
 * Reload EVE-X-Preview - Hotkey: reloads the program.
+* Exit EVE-X-Preview - Hotkey: closes the program.
 * Character Name: character bound to the hotkey entry.
 * Hotkeys: hotkeys assigned to the character.
+
+### Thumbnails Interactions
+
+Quick Group Sort Order chooses how the Quick Group hotkey cycles through selected windows. Added order (the default) follows the order windows were added to Quick Group; Name cycles alphabetically by character name. Removing and adding a window again places it at the end of added order.
 
 ### Thumbnails Behavior
 

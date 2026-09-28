@@ -214,6 +214,7 @@ class PreviewLifecycleFixture extends CombatEventsFixture {
         this.HidedThumbs := Map()
         this.DisabledChars := Map()
         this.QuickGroupChars := Map()
+        this.QuickGroupOrder := []
         this.TrackClientPossitions := false
         this.HideThumbnailsOnLostFocus := true
         this.EVEExe := "ahk_exe nonexistent-preview-test.exe"
@@ -268,6 +269,7 @@ PreviewCloseIsolationTest() {
         live := app.ThumbWindows.%liveHwnd%["Thumbnail"]
         liveId := live.THUMB_ID
         app.QuickGroupChars[firstHwnd] := "Closed pilot"
+        app.QuickGroupOrder.Push(firstHwnd)
         app.DisabledChars[firstHwnd] := "Closed pilot"
         app.HidedThumbs[firstHwnd] := "Closed pilot"
         first.Destroy(), second.Destroy()
@@ -286,6 +288,7 @@ PreviewCloseIsolationTest() {
         AssertFalse(app.ThumbWindows.HasProp(firstHwnd))
         AssertFalse(app.ThumbHwnd_EvEHwnd.Has(firstPreview))
         AssertEqual(0, app.QuickGroupChars.Count)
+        AssertEqual(0, app.QuickGroupOrder.Length)
         AssertEqual(0, app.DisabledChars.Count)
         AssertEqual(0, app.HidedThumbs.Count)
         AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER)
