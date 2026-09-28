@@ -12,7 +12,7 @@ UpdaterError(err, mode) {
 
 class UpdaterStatus {
     __New() {
-        this.Gui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", "Updating")
+        this.Gui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", "Updater v" VERSION)
         this.ProgressBar := this.Gui.Add("Progress", "w300 h20")
         this.Text := this.Gui.Add("Text", "h100 w300", "Starting...`n")
         this.Gui.Show("Autosize")
