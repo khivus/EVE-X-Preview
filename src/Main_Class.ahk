@@ -104,7 +104,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Suspend All Hotkeys - Hotkey" )
             }
             else
-                Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.Suspend_Hotkeys_Hotkey, (*) => This.Suspend_Hotkeys(), "S1", "Suspend hotkeys")
         }
 
         ; Register Hotkey for Hide Thumbnails if the user has is Set
@@ -117,7 +117,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Hide Thumbnails - Hotkey" )
             }
             else
-                Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.HideThumbnailsHotkey, (*) => This.ShowHideThumbnails(), "S1", "Hide thumbnails")
         }
 
         ; Register Hotkey for Click Through if the user has is Set
@@ -130,7 +130,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Click Through Thumbnails - Hotkey" )
             }
             else
-                Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.ClickThroughHotkey, (*) => This.Toggle_ClickThrough(), "S1", "Click through thumbnails")
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
@@ -147,7 +147,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Switch to Previous Window - Hotkey")
             }
             else
-                Hotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "P1", "Previous window")
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
@@ -164,7 +164,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Every Logged in Window - Hotkey")
             }
             else
-                Hotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "P1", "Cycle logged in windows")
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
@@ -181,7 +181,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Login Screens - Hotkey")
             }
             else
-                Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "P1", "Cycle login screens")
         }
 
         ; Register Hotkey for Close Active EVE Window Hotkey if user set
@@ -194,7 +194,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close Active EVE Window - Hotkey")
             }
             else
-                Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"), "P1", "Close active EVE window")
         }
 
         ; Register Hotkey for Close All EVE Windows Hotkey if user set
@@ -207,7 +207,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close All EVE Windows - Hotkey")
             }
             else
-                Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"), "P1", "Close all EVE windows")
         }
 
         ; Register Hotkey for Reload EVE-X-Preview Hotkey if user set
@@ -220,7 +220,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Reload EVE-X-Preview - Hotkey")
             }
             else
-                Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => Reload(), "S1", "Reload program")
         }
 
         HotIf() ; These application controls also work when no EVE window is open.
@@ -232,7 +232,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Pause/Resume Live Previews - Hotkey")
             }
             else
-                Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1", "Toggle live previews")
         }
         if (This.Exit_Program_Hotkey != "") {
             if !This.SwitchLangOnErr {
@@ -242,7 +242,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Exit EVE-X-Preview - Hotkey")
             }
             else
-                Hotkey This.Exit_Program_Hotkey, (*) => ExitApp(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => ExitApp(), "S1", "Exit program")
         }
 
         ; ##############################
@@ -327,6 +327,38 @@ Class Main_Class extends ThumbWindow {
         This.startSystemTracking()
 
         return This
+    }
+
+    RegisterHotkeyWithLanguageRetry(keyName, callback, options, context) {
+        try {
+            Hotkey(keyName, callback, options)
+            return true
+        } catch ValueError as firstError {
+            if firstError.Message != "Invalid key name."
+                throw firstError
+            if This.TrySwitchKeyboardToEnglish() {
+                try {
+                    Hotkey(keyName, callback, options)
+                    return true
+                } catch ValueError as retryError {
+                    firstError := retryError
+                }
+            }
+            ProgramLog.Error(firstError, "Hotkey registration: " context "; profile=" This.LastUsedProfile "; key=" keyName)
+            return false
+        }
+    }
+
+    TrySwitchKeyboardToEnglish() {
+        hkl := DllCall("LoadKeyboardLayoutW", "Str", "00000409", "UInt", 1, "Ptr")
+        if !hkl
+            return false
+        hwnd := WinActive("A")
+        if hwnd {
+            try PostMessage(0x50, 0, hkl, , hwnd) ; WM_INPUTLANGCHANGEREQUEST
+        }
+        Sleep(50)
+        return true
     }
 
 
@@ -589,7 +621,7 @@ Class Main_Class extends ThumbWindow {
                 MsgBox(e.Message ": --> " e.Extra " <-- in Hotkey Settings - " This.LastUsedProfile " Hotkeys")
         } 
         else
-            Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1"
+            This.RegisterHotkeyWithLanguageRetry(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1", "Activate " title)
     }    
 
     ;Register the Hotkeys for cycle Groups if any set
@@ -628,7 +660,7 @@ Class Main_Class extends ThumbWindow {
                         MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - " k "  - " direction)
                 }
                 else
-                    Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
+                    This.RegisterHotkeyWithLanguageRetry(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1", "Hotkey group " k " " direction)
             }
 
             if v["FirstCharHotkey"] != "" && v["Characters"].Length > 0 {
@@ -639,7 +671,7 @@ Class Main_Class extends ThumbWindow {
                         MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - First Active Character Hotkey")
                 }
                 else
-                    Hotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1")
+                    This.RegisterHotkeyWithLanguageRetry(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1", "First character in hotkey group " k)
             }
 
             index += 1
@@ -873,7 +905,7 @@ Class Main_Class extends ThumbWindow {
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnails Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
         }
         else
-            Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
+            This.RegisterHotkeyWithLanguageRetry(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1", "Quick group")
     }
 
     ; Cycle through QuickGroup
@@ -1877,7 +1909,7 @@ Class Main_Class extends ThumbWindow {
                         MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " Non-EVE Hotkey Groups")
                 }
                 else
-                    Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
+                    This.RegisterHotkeyWithLanguageRetry(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1", "Non-EVE hotkey group " direction)
             }
             index += 1
             directions := Map()
@@ -1984,7 +2016,7 @@ Class Main_Class extends ThumbWindow {
                     MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " - Non-EVE Hotkeys")
             }
             else
-                Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1")
+                This.RegisterHotkeyWithLanguageRetry(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1", "Non-EVE application")
         }
     }
 
@@ -2110,15 +2142,20 @@ Class Main_Class extends ThumbWindow {
         return "EVE - " title
     }
 
-    SaveJsonToFile() {
-        ProgramLog.Add("Saving settings; profile=" This.LastUsedProfile)
-        time := A_Now
-        if FileExist("EVE-X-Preview.json")
-            FileMove("EVE-X-Preview.json", "EVE-X-Preview-Backup-" time ".json", 1) ; Backup old file with timestamp
-        FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json") ; Save new file
-        if FileExist("EVE-X-Preview-Backup-" time ".json")
-            FileDelete("EVE-X-Preview-Backup-" time ".json") ; Delete backup after saving
-        ProgramLog.Add("Settings saved")
+    SaveJsonToFile(savePath := "EVE-X-Preview.json") {
+        previousCritical := A_IsCritical
+        Critical
+        tempPath := savePath ".save.tmp"
+        try {
+            ProgramLog.Add("Saving settings; profile=" This.LastUsedProfile)
+            if FileExist(tempPath)
+                FileDelete(tempPath)
+            FileAppend(JSON.Dump(This._JSON, , "    "), tempPath)
+            FileMove(tempPath, savePath, 1)
+            ProgramLog.Add("Settings saved")
+        } finally {
+            Critical(previousCritical)
+        }
     }
 
     ; Thanks to SKAN

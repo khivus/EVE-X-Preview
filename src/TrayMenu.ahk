@@ -159,10 +159,17 @@ Class TrayMenu extends Settings_Gui {
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (This.Profiles.Has(ItemName)) {
-                ; Change the lastUsedProfile to the Profile name, save it to Json file and reload the script with the new Settings
-                This.LastUsedProfile := ItemName
-                This.SaveJsonToFile()
-                Sleep(500)
+                ; Keep the selection and save together while login timers are active.
+                previousCritical := A_IsCritical
+                Critical
+                try {
+                    SetTimer(This.Save_Settings_Delay_Timer, 0)
+                    ProgramLog.Add("Tray profile switch requested; from=" This.LastUsedProfile "; to=" ItemName)
+                    This.LastUsedProfile := ItemName
+                    This.SaveJsonToFile()
+                } finally {
+                    Critical(previousCritical)
+                }
                 Reload()
             }
             Else if (ItemName = "Open") {
