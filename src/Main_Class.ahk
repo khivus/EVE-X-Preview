@@ -1,4 +1,4 @@
-﻿Class Main_Class extends ThumbWindow {
+Class Main_Class extends ThumbWindow {
     Static  WM_DESTROY := 0x02,
             WM_SIZE := 0x05,
             WM_NCCALCSIZE := 0x83,
@@ -18,6 +18,7 @@
     ;! This key is for the internal Hotkey to bring the Window in forgeround 
     ;! it is possible this key needs to be changed if Windows updates and changes the unused virtual keys 
     static virtualKey := "vk0xE8"
+    pendingEVEActivation := 0
 
     LISTENERS := [
         Main_Class.WM_LBUTTONDOWN,
@@ -38,6 +39,23 @@
     EventHooks := Map() 
     ThumbWindows := {}
     ThumbHwnd_EvEHwnd := Map()
+    previewQueue := PreviewStartupQueue()
+    livePreviewsPaused := false
+    _debugToolTipText := ""
+    debugToolTipText {
+        get => This._debugToolTipText
+        set {
+            previous := This._debugToolTipText
+            This._debugToolTipText := value
+            if value != "" {
+                addition := SubStr(value, 1, StrLen(previous)) = previous ? SubStr(value, StrLen(previous) + 1) : value
+                if RegExMatch(addition, "i)^(?:Error\b|\w+: Error\b)")
+                    ProgramLog.Error(Error(addition), "Program event")
+                else
+                    ProgramLog.Add(addition)
+            }
+        }
+    }
 
     __New() { 
 
@@ -57,11 +75,17 @@
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
         if This.First_Start_After_Update { ; Display message after succsessful update
-            Sleep 500 ; Let updater time to close
+            Sleep 3000 ; Let updater time to close
             SetWorkingDir(A_ScriptDir)
-            updaterExe := "EVE-X-Preview-Updater.exe" ; Delete updater exe if still exists
-            if FileExist(updaterExe)
-                FileDelete(updaterExe)
+            
+            ; Check for both old and new updater locations
+            updaterExeName := "EVE-X-Preview-Updater.exe"
+            updaterExePath := A_Temp "\" updaterExeName
+
+            if FileExist(updaterExeName)
+                FileDelete(updaterExeName)
+            if FileExist(updaterExePath)
+                FileDelete(updaterExePath)
 
             This.First_Start_After_Update := 0
             SetTimer(This.Save_Settings_Delay_Timer, -200)
@@ -80,7 +104,7 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Suspend All Hotkeys - Hotkey" )
             }
             else
-                Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.Suspend_Hotkeys_Hotkey, (*) => This.Suspend_Hotkeys(), "S1", "Suspend hotkeys")
         }
 
         ; Register Hotkey for Hide Thumbnails if the user has is Set
@@ -93,7 +117,7 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Hide Thumbnails - Hotkey" )
             }
             else
-                Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.HideThumbnailsHotkey, (*) => This.ShowHideThumbnails(), "S1", "Hide thumbnails")
         }
 
         ; Register Hotkey for Click Through if the user has is Set
@@ -106,7 +130,41 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Click Through Thumbnails - Hotkey" )
             }
             else
-                Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.ClickThroughHotkey, (*) => This.Toggle_ClickThrough(), "S1", "Click through thumbnails")
+        }
+
+        ; Register Hotkey for Login Screen Cycle Hotkey if user set
+        if (This.SwitchToPreviousWindow_Hotkey != "") {
+            if This.Global_Hotkeys
+                HotIf (*) => WinExist(This.EVEExe)
+            else
+                HotIf (*) => WinActive(This.EVEExe)
+            
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"),"P1" )
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Switch to Previous Window - Hotkey")
+            }
+            else
+                This.RegisterHotkeyWithLanguageRetry(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "P1", "Previous window")
+        }
+
+        ; Register Hotkey for Login Screen Cycle Hotkey if user set
+        if (This.CycleEveryLoggedIn_Hotkey != "") {
+            if This.Global_Hotkeys
+                HotIf (*) => WinExist(This.EVEExe)
+            else
+                HotIf (*) => WinActive(This.EVEExe)
+            
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"),"P1" )
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Every Logged in Window - Hotkey")
+            }
+            else
+                This.RegisterHotkeyWithLanguageRetry(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "P1", "Cycle logged in windows")
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
@@ -123,7 +181,7 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Login Screens - Hotkey")
             }
             else
-                Hotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "P1", "Cycle login screens")
         }
 
         ; Register Hotkey for Close Active EVE Window Hotkey if user set
@@ -136,7 +194,7 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close Active EVE Window - Hotkey")
             }
             else
-                Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"), "P1", "Close active EVE window")
         }
 
         ; Register Hotkey for Close All EVE Windows Hotkey if user set
@@ -149,7 +207,7 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Close All EVE Windows - Hotkey")
             }
             else
-                Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
+                This.RegisterHotkeyWithLanguageRetry(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"), "P1", "Close all EVE windows")
         }
 
         ; Register Hotkey for Reload EVE-X-Preview Hotkey if user set
@@ -162,10 +220,36 @@
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Reload EVE-X-Preview - Hotkey")
             }
             else
-                Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
+                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => Reload(), "S1", "Reload program")
         }
 
-        HotIf() ; Reset hotif
+        HotIf() ; These application controls also work when no EVE window is open.
+        if (This.ToggleLivePreviewsHotkey != "") {
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1"
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Pause/Resume Live Previews - Hotkey")
+            }
+            else
+                This.RegisterHotkeyWithLanguageRetry(This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1", "Toggle live previews")
+        }
+        if (This.Exit_Program_Hotkey != "") {
+            if !This.SwitchLangOnErr {
+                try
+                    Hotkey This.Exit_Program_Hotkey, (*) => ExitApp(), "S1"
+                catch ValueError as e
+                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Exit EVE-X-Preview - Hotkey")
+            }
+            else
+                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => ExitApp(), "S1", "Exit program")
+        }
+
+        ; ##############################
+        ; Global vars and funcs/timers registration
+
+        This.cycleTick := 0
+        This.WinActivationHistory := []
 
         ; Profiling
         This.ProfActive := false
@@ -173,8 +257,10 @@
         if ProfEnabled
             This.StartProfiling()
 
-        ; Map of ignored chars in hotkey groups
-        This.ignoredChars := Map()
+        ; Map of Disabled and Quickgroup chars
+        This.DisabledChars := Map()
+        This.QuickGroupChars := Map()
+        This.QuickGroupOrder := []
 
         ; Inited monitoring check
         This.monitoringInitialized := 0
@@ -207,6 +293,9 @@
         This.margins := Buffer(16, 0)
         NumPut("Int", 0, This.margins)
         
+        ; Build Interaction Map for OnMessage listener
+        This.BuildThumbnailsInteractionsMap()
+
         ;Register all messages wich are inside LISTENERS
         for i, message in this.LISTENERS
             OnMessage(message, ObjBindMethod(This, "_OnMessage"))
@@ -215,21 +304,61 @@
         This.CheckforActiveWindow := ObjBindMethod(This, "HideOnLostFocusTimer")
 
         ;The Main Timer who checks for new EVE Windows or closes Windows 
+        This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), 50)
+        OnExit(ObjBindMethod(This, "CloseLivePreviews"))
         
         ;Timer property to remove Thumbnails for closed EVE windows 
         This.DestroyThumbnails := ObjBindMethod(This, "EvEWindowDestroy")
         This.DestroyThumbnailsToggle := 1
         
-        ;Register the Hotkeys for cycle groups 
+        ;Register the Hotkeys for cycle groups
         This.Register_Hotkey_Groups()
+        if This.CycleEveryLoggedIn_Hotkey != "" {
+            This.HotkGroups.Push("")
+            This.HotkGroupsInds.Push(0)
+        }
         This.RegisterNonEVEGroups()
         This.BorderActive := 0
 
         ; Trigger logs monitoring
         This.gameLogsMonitoring()
+        This.startSystemTracking()
 
         return This
+    }
+
+    RegisterHotkeyWithLanguageRetry(keyName, callback, options, context) {
+        try {
+            Hotkey(keyName, callback, options)
+            return true
+        } catch ValueError as firstError {
+            if firstError.Message != "Invalid key name."
+                throw firstError
+            if This.TrySwitchKeyboardToEnglish() {
+                try {
+                    Hotkey(keyName, callback, options)
+                    return true
+                } catch ValueError as retryError {
+                    firstError := retryError
+                }
+            }
+            ProgramLog.Error(firstError, "Hotkey registration: " context "; profile=" This.LastUsedProfile "; key=" keyName)
+            return false
+        }
+    }
+
+    TrySwitchKeyboardToEnglish() {
+        hkl := DllCall("LoadKeyboardLayoutW", "Str", "00000409", "UInt", 1, "Ptr")
+        if !hkl
+            return false
+        hwnd := WinActive("A")
+        if hwnd {
+            try PostMessage(0x50, 0, hkl, , hwnd) ; WM_INPUTLANGCHANGEREQUEST
+        }
+        Sleep(50)
+        return true
     }
 
 
@@ -266,6 +395,14 @@
 
 
     HandleMainTimer() {
+        if This.HasOwnProp("previewTimerBusy") && This.previewTimerBusy
+            return
+        This.previewTimerBusy := true
+        try This.PollMainWindows()
+        finally This.previewTimerBusy := false
+    }
+
+    PollMainWindows() {
         ; if This.ProfActive ; Profiling
         static __t1 := 0
         __t0 := A_TickCount
@@ -290,11 +427,7 @@
                     WinList.%hwnd% := { Title: WinGetTitle(hwnd) }
 
                     if !This.ThumbWindows.HasProp(hwnd) {
-                        This.EVE_WIN_Created(hwnd, WinList.%hwnd%.title)
-                        if (!This.HideThumbnailsOnLostFocus) {
-                            This.ShowThumb(hwnd, "Show")
-                        }                      
-                        HideShowToggle := 1
+                        This.QueuePreview(hwnd, WinList.%hwnd%.title)
                     }
                     else { ; This change improved performance by ~15-17%
                         ; Writes character name to OldTitle if PreserveHotkeysOnLogout enabled
@@ -314,7 +447,7 @@
                                                 This.ThumbWindows.%hwnd%)
                         }
 
-                        if This.monitoringInitialized && WinList.%hwnd%.Title != "EVE" && !This.monitoredChars.Has(WinList.%hwnd%.Title) && !This.waitingMonitoringChars.Has(WinList.%hwnd%.Title) { ; Check if for some reason char isn't monitored and add it to monitoring list
+                        if This.monitoringInitialized && WinList.%hwnd%.Title != "EVE" && !This.monitoredChars.Has(WinList.%hwnd%.Title) && !This.waitingMonitoringChars.Has(WinList.%hwnd%.Title) && This.IsGameLogCharacterSelected(WinList.%hwnd%.Title) { ; Check if for some reason char isn't monitored and add it to monitoring list
                             ; ToolTip "Adding new -> " WinList.%hwnd%.Title
                             ; SetTimer () => ToolTip(), -1000
                             This.waitingMonitoringChars[WinList.%hwnd%.Title] := ObjBindMethod(This, "startLogMonitoring", WinList.%hwnd%.Title, This.charsIds.Has(WinList.%hwnd%.Title) ? This.charsIds[WinList.%hwnd%.Title] : 0)
@@ -335,16 +468,18 @@
                     }
                 }
             }
-            catch {
-                This.debugToolTipText .= "Error in Main Timer EVE Window Check`n"
+            catch as err {
+                ProgramLog.Error(err, "Main timer window check")
+                This._debugToolTipText .= "Error in Main Timer EVE Window Check`n"
                 SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             }
 
             try {
                 ;if HideThumbnailsOnLostFocus is selectet check if a eve window is still in foreground, runs a timer once with a delay to prevent stuck thumbnails
-                Ahwnd := WinExist("A")
-                if Ahwnd != LastActiveHWND
-                    activeExe := WinGetProcessName("A")
+                foreground := This._GetForegroundInfo(LastActiveHWND, activeExe)
+                Ahwnd := foreground.hwnd
+                activeExe := foreground.exe
+                This._ObserveEVEActivation(Ahwnd)
                 activeWinTracked := 0
                 if This.allTrackedApps.Has(activeExe) {
                     activeWinTracked := 1
@@ -354,7 +489,7 @@
                     SetTimer(This.CheckforActiveWindow, -500)
                     HideShowToggle := 1
                 }
-                else if activeWinTracked {
+                else if activeWinTracked && This.ThumbWindows.HasProp(Ahwnd) && !This.livePreviewsPaused {
                     if This.HideThumbForActiveWin && !HideShowToggle {
                         This.ShowThumb(Ahwnd, "Hide")
 
@@ -384,11 +519,14 @@
                 }
                 LastActiveHWND := Ahwnd
             }
-            catch {
-                This.debugToolTipText .= "Error in Main Timer Active Window Check`n"
+            catch as err {
+                ProgramLog.Error(err, "Main timer foreground check")
+                This._debugToolTipText .= "Error in Main Timer Active Window Check`n"
                 SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             }
         }
+
+        This.ProcessPreviewQueue(WinList)
 
         ; Check if a Thumbnail exist without EVE Window. if so destroy the Thumbnail and free memory
         if ( This.DestroyThumbnailsToggle ) {
@@ -452,10 +590,21 @@
         return false
     }
 
+    ; Returns 1 if within hold delay window, 0 if delay has elapsed and resets the timer
+    IsWithinCycleHoldDelay() {
+        tick := A_TickCount
+        if tick - This.cycleTick < This.GroupsHoldDelay
+            return 1
+        This.cycleTick := tick
+        return 0
+    }
+
     ;Register set Hotkeys by the user in settings
-    RegisterHotkeys(title, EvE_hwnd) {
+    RegisterHotkeys(title) {
         if !This._Hotkeys[title]
             return
+        
+        SelectedHotkey := This._Hotkeys[title]
 
         This.debugToolTipText .= "Registering hotkeys for " title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
@@ -467,12 +616,12 @@
     
         if !This.SwitchLangOnErr {
             try
-                Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+                Hotkey SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1"
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in Hotkey Settings - " This.LastUsedProfile " Hotkeys")
         } 
         else
-            Hotkey This._Hotkeys[title], (*) => This.ActivateEVEWindow(,,title, 1), "P1"
+            This.RegisterHotkeyWithLanguageRetry(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "P1", "Activate " title)
     }    
 
     ;Register the Hotkeys for cycle Groups if any set
@@ -503,7 +652,7 @@
                 keys["BackwardsHotkey"] := v["BackwardsHotkey"]
 
             HotIf ObjBindMethod(This, method, This.HotkGroups[index])
-            for direction, key in keys
+            for direction, key in keys {
                 if !This.SwitchLangOnErr {
                     try
                         Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
@@ -511,27 +660,60 @@
                         MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - " k "  - " direction)
                 }
                 else
-                    Hotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1")
+                    This.RegisterHotkeyWithLanguageRetry(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "P1", "Hotkey group " k " " direction)
+            }
+
+            if v["FirstCharHotkey"] != "" && v["Characters"].Length > 0 {
+                if !This.SwitchLangOnErr {
+                    try
+                        Hotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1")
+                    catch ValueError as e
+                        MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - First Active Character Hotkey")
+                }
+                else
+                    This.RegisterHotkeyWithLanguageRetry(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "P1", "First character in hotkey group " k)
+            }
 
             index += 1
             keys := Map()
         }
     }
 
+    ActivateFirstActiveCharInGroup(ArrInd, *) {
+        arr := This.HotkGroups[ArrInd]
+        length := arr.Length
+
+        found := false
+        loop length {
+            hwndEVE := WinExist(arr[A_Index] " ahk_exe exefile.exe")
+            if hwndEVE && This.IsWinAllowed(hwndEVE) {
+                found := true
+                break
+            }
+        }
+
+        ; Reset flag, because we activating first window
+        if This.ResetPosAfterQuickGroupTrigger
+            This.ResetPosAfterQuickGroupTrigger := false
+
+        if found && This.IsWinAllowed(hwndEVE)
+            try This.ActivateEVEWindow(hwndEVE) 
+    }
+
     ; The method to make it possible to cycle throw the EVE Windows. Used with the Hotkey Groups
     Cycle_Hotkey_Groups(ArrInd, direction, *) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
 
         arr := This.HotkGroups[ArrInd]
         length := arr.Length
 
-        if This.KeepGroupsPositions {
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
             ; Trust stored index always — no re-sync ever
             index := This.HotkGroupsInds[ArrInd]
+        } else if This.ResetPosAfterQuickGroupTrigger {
+            index := 0
+            This.ResetPosAfterQuickGroupTrigger := false
         } else {
             ; Derive from active window, reset to start if not found
             currentIndex := This._GetCurrentGroupIndex(arr)
@@ -545,10 +727,10 @@
 
         Loop length { ; Using loop len instead of while to avoid infinite while
             hwndEVE := WinExist(arr[index] " ahk_exe exefile.exe")
-            if hwndEVE && !This.ignoredChars.Has(hwndEVE)
+            if hwndEVE && This.IsWinAllowed(hwndEVE)
                 break
             else if hwndTemp := This.hasMathcingOldTitle(arr[index]) {
-                if !This.ignoredChars.Has(hwndTemp) {
+                if This.IsWinAllowed(hwndEVE) {
                     hwndEVE := hwndTemp
                     break
                 }
@@ -557,15 +739,17 @@
             index := DirectionHandler(direction, index, length)
         }
 
-        if This.ignoredChars.Has(hwndEVE) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(hwndEVE) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateEVEWindow(hwndEVE,,)
+        activated := false
+        try activated := This.ActivateEVEWindow(hwndEVE)
 
-        ; Only persist index when KeepGroupsPositions is on
-        if This.KeepGroupsPositions
+        ; Only persist index when KeepGroupsPositions or KeepPosAfterQuickGroupTrigger is on
+        if activated && (This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger) {
+            This.KeepPosAfterQuickGroupTrigger := false
             This.HotkGroupsInds[ArrInd] := index
+        }
 
         ; Get index by specified direction
         DirectionHandler(direction, index, length) {
@@ -583,30 +767,87 @@
         }
     }
 
-    ; Tries to find active window in group, with brief retry on lag
-    _GetCurrentGroupIndex(arr, maxAttempts := 3, interval := 25) {
-        loop maxAttempts {
-            try {
-                if This.PreserveHotkeysOnLogout
-                    title := This.ThumbWindows.%WinExist("A")%["Window"].OldTitle
-                else
-                    title := WinGetTitle("A")
+    IsWinAllowed(hwnd) {
+        if This.QuickGroupIgnoredInOtherGroups
+            return !This.DisabledChars.Has(hwnd) && !This.QuickGroupChars.Has(hwnd)
+        else
+            return !This.DisabledChars.Has(hwnd)
+    }
 
-                for ind, name in arr {
-                    if name = title
-                        return ind
-                }
-            }
-            ; Window not in group yet — only retry if lag is plausible
-            ; (i.e. we just activated an EVE window and it hasn't focused yet)
-            if A_Index < maxAttempts
-                Sleep interval
+    ; Retry only for a recent activation into this group that has not focused yet.
+    ; arr: can be either array of titles or hwnds
+    _GetCurrentGroupIndex(arr) {
+        loop This.MaxActiveWindowRetries {
+            hwnd := This._GetForegroundHwnd()
+            pending := This._ObserveEVEActivation(hwnd)
+            ; A pending request within this group takes precedence over the old
+            ; foreground member, otherwise a second press could select it again.
+            if !IsObject(pending) || This._FindGroupWindowIndex(arr, pending.hwnd) = -1
+                return This._FindGroupWindowIndex(arr, hwnd)
+            if A_Index >= This.MaxActiveWindowRetries
+                break
+            Sleep Min(This.ActiveWindowRetryInterval, Max(1, pending.expires - A_TickCount))
+        }
+        ; The wait budget expired: use the actual foreground, never an assumed focus.
+        hwnd := This._GetForegroundHwnd()
+        This._ObserveEVEActivation(hwnd)
+        This.pendingEVEActivation := 0
+        return This._FindGroupWindowIndex(arr, hwnd)
+    }
+
+    _GetForegroundHwnd() {
+        return DllCall("GetForegroundWindow", "Ptr")
+    }
+
+    _GetForegroundInfo(previousHwnd, previousExe) {
+        hwnd := This._GetForegroundHwnd()
+        if !hwnd
+            return {hwnd: 0, exe: ""}
+        if hwnd = previousHwnd && previousExe != ""
+            return {hwnd: hwnd, exe: previousExe}
+        try
+            return {hwnd: hwnd, exe: WinGetProcessName("ahk_id " hwnd)}
+        catch TargetError {
+            ; Focus can disappear, or the captured window can close during this poll.
+            ; Clear the cache so the next poll retries, without aborting queue cleanup.
+            return {hwnd: 0, exe: ""}
+        }
+    }
+
+    _FindGroupWindowIndex(arr, hwnd) {
+        if !hwnd
+            return -1
+        title := ""
+        try {
+            title := WinGetTitle("ahk_id " hwnd)
+            if This.PreserveHotkeysOnLogout && This.ThumbWindows.HasProp(hwnd)
+                title := This.ThumbWindows.%hwnd%["Window"].OldTitle
+        }
+        for ind, item in arr {
+            if IsInteger(item) ? item = hwnd : (title != "" && item = title)
+                return ind
         }
         return -1
     }
 
+    _ObserveEVEActivation(hwnd) {
+        pending := This.pendingEVEActivation
+        if !IsObject(pending)
+            return 0
+        ; Focus on a third window means the user/OS moved elsewhere. A zero
+        ; foreground HWND can occur transiently during an activation.
+        if hwnd = pending.hwnd || (hwnd && hwnd != pending.source)
+            || A_TickCount >= pending.expires || !WinExist("ahk_id " pending.hwnd) {
+            ProgramLog.Add("Activation " (hwnd = pending.hwnd ? "focus confirmed" : "pending request cleared")
+                "; target=" pending.hwnd "; foreground=" hwnd)
+            This.pendingEVEActivation := 0
+            return 0
+        }
+        return pending
+    }
+
     hitThis() {
-        if not This.ThisThat
+        if !This.ThisThat || This.debugMode
             return
 
         static counter := 0
@@ -647,14 +888,121 @@
         return
     }
 
+    ; Register QuickGroup Hotkey
+    RegisterQuickGroup() {
+        if !This.QuickGroupEnabled || !This.QuickGroupHotkey
+            return
+
+        if This.Global_Hotkeys
+            HotIf (*) => WinExist(This.EVEExe)
+        else
+            HotIf (*) => WinActive(This.EVEExe)
+        
+        if !This.SwitchLangOnErr {
+            try
+                Hotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1")
+            catch ValueError as e
+                MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnails Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
+        }
+        else
+            This.RegisterHotkeyWithLanguageRetry(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "P1", "Quick group")
+    }
+
+    ; Cycle through QuickGroup
+    CycleQuickGroup(*) {
+        if This.IsWithinCycleHoldDelay()
+            return
+        if !This.QuickGroupEnabled || !This.QuickGroupChars.Count
+            return
+
+        for hwnd, title in This.QuickGroupChars {
+            if !WinExist("ahk_id " hwnd) { ; Additional check for closed windows
+                This.DeleteFromQuickGroup(hwnd)
+            }
+        }
+        arr := This.GetQuickGroupWindowOrder()
+        if !arr.Length
+            return
+
+        ; Derive from active window, reset to start if not found
+        currentIndex := This._GetCurrentGroupIndex(arr)
+        index := currentIndex = -1 ? 0 : currentIndex
+
+        index += 1
+        if index > arr.Length
+            index := 1
+
+        This.KeepPosAfterQuickGroupTrigger := !This.QuickGroupResetsPosition
+        This.ResetPosAfterQuickGroupTrigger := This.QuickGroupResetsPosition
+
+        try This.ActivateEVEWindow(arr[index])
+    }
+
+    GetQuickGroupWindowOrder() {
+        if This.QuickGroupSortOrder != "Name" {
+            ordered := []
+            for hwnd in This.QuickGroupOrder
+                if This.QuickGroupChars.Has(hwnd)
+                    ordered.Push(hwnd)
+            return ordered
+        }
+
+        ; Preserve the previous name order, with HWND as the tie breaker.
+        sortStr := ""
+        for hwnd, title in This.QuickGroupChars
+            sortStr .= title "|" hwnd "`n"
+        sortStr := Sort(sortStr, "D`n", (a, b, *) => (
+            cmp := StrCompare(StrSplit(a, "|")[1], StrSplit(b, "|")[1], true),
+            cmp != 0 ? cmp : StrSplit(a, "|")[2] - StrSplit(b, "|")[2]
+        ))
+        ordered := []
+        for line in StrSplit(RTrim(sortStr, "`n"), "`n")
+            if line != ""
+                ordered.Push(Integer(StrSplit(line, "|")[2]))
+        return ordered
+    }
+
+    SwitchToPrevWin(*) {
+        if This.SwitchToPreviousWindow_Hotkey = "" || This.WinActivationHistory.Length < 2 || This.IsWithinCycleHoldDelay()
+            return
+
+        index := This.WinActivationHistory.Length
+        if WinActive("ahk_id " This.WinActivationHistory[index]) ; Prevents stuck when arr can't update in time
+            index -= 1
+
+        try This.ActivateEVEWindow(This.WinActivationHistory[index])
+    }
+
+    CycleEveryLoggedInWin(*) {
+        if This.CycleEveryLoggedIn_Hotkey = ""
+            return
+
+        hwnds := WinGetList("ahk_exe exefile.exe")
+        
+        if !hwnds.Length
+            return
+        
+        strTitles := ""
+        for hwnd in hwnds {
+            title := WinGetTitle(hwnd)
+            if title != "EVE"
+                strTitles .= title "`n"
+        }
+        titles := StrSplit(Trim(Sort(strTitles), "`n"), "`n")
+
+        index := This.HotkGroups.Length
+        This.HotkGroups[index] := titles
+
+        ; Reusing existing function to do all checks
+        This.Cycle_Hotkey_Groups(index, "ForwardsHotkey")
+    }
+
     ; Cycle windows on Character selection screen
     Cycle_Login_Windows(*) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
 
+        static lastWinHwnd := 0
         LoginWins := []
         loginHWNDs := WinGetList("EVE ahk_exe exefile.exe")
 
@@ -671,50 +1019,65 @@
 
             LoginWins.Push(Map("hwnd", hwnd, "CreationTime", CreationTime))
         }
+        LoginWins := This.CustomSort(LoginWins, "CreationTime") ; Sort array by creation time
+        
+        ; Write cleaner version of array of sorted hwnds
+        arr := []
+        for win in LoginWins {
+            if !This.IsWinAllowed(win["hwnd"])
+                continue
+            arr.Push(win["hwnd"])
+        }
 
-        if !LoginWins.Length
+        arrLen := arr.Length
+
+        if !arrLen
             return
-
-        if LoginWins.Length = 1 {
-            if This.ignoredChars.Has(LoginWins[1]["hwnd"])
-                return
-
-            try
-                This.ActivateEVEWindow(LoginWins[1]["hwnd"],,)
+        else if arrLen = 1 {
+            activated := false
+            try activated := This.ActivateEVEWindow(arr[1])
+            if activated
+                lastWinHwnd := arr[1]
             return
         }
 
-        if (LoginWins.Length > 1 ) {
-            LoginWins := This.CustomSort(LoginWins, "CreationTime")
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger { ; Trying to keep position if needed
+            searchHwnd := lastWinHwnd
+        } else if This.ResetPosAfterQuickGroupTrigger { ; Reset position if needed
+            searchHwnd := 0
+            This.ResetPosAfterQuickGroupTrigger := false
+        } else { ; Checking from active win
+            searchHwnd := WinExist("A")
         }
 
-        currentIndex := 0
-        currentHWND := WinExist("A")
-        for i, Win in LoginWins {
-            if currentHWND == Win["hwnd"] {
-                currentIndex := i
+        index := 0
+        for i, hwnd in arr {
+            if searchHwnd = hwnd {
+                index := i
                 break
             }
         }
 
-        currentIndex += 1
-        if currentIndex > LoginWins.Length
-            currentIndex := 1
+        index += 1
+        if index > arrLen
+            index := 1
 
-        Loop LoginWins.Length {
-            if !This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"])
+        Loop arrLen {
+            if This.IsWinAllowed(arr[index])
                 break
 
-            currentIndex += 1
-            if currentIndex > LoginWins.Length
-                currentIndex := 1
+            index += 1
+            if index > arrLen
+                index := 1
         }
 
-        if This.ignoredChars.Has(LoginWins[currentIndex]["hwnd"]) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(arr[index]) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateEVEWindow(LoginWins[currentIndex]["hwnd"],,)
+        activated := false
+        try activated := This.ActivateEVEWindow(arr[index])
+        if activated
+            lastWinHwnd := arr[index]
     }
 
     ; Close Active EVE Client 
@@ -762,36 +1125,24 @@
 
     ;This function updates the Thumbnails and hotkeys if the user switches Charakters in the character selection screen 
     EVENameChange(hwnd, title) {
+        if !This.ThumbWindows.HasProp(hwnd)
+            return
+
         This.debugToolTipText .= "Name changed for: " title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
-        if (This.ThumbWindows.HasProp(hwnd)) {
-            This.SetThumbnailText[hwnd] := title
-            ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
-            This.RestoreClientPossitions(hwnd, title)
 
-            if (This.ThumbnailPositions.Has(title)) {
-                This.EvEWindowDestroy(hwnd, title)
-                This.EVE_WIN_Created(hwnd,title)
-                rect := This.ThumbnailPositions[title]  
-                This.ShowThumb(hwnd, "Hide")              
-                This.ThumbMove( rect["x"],
-                                rect["y"],
-                                rect["width"],
-                                rect["height"],
-                                This.ThumbWindows.%hwnd% )
-
-                This.BorderSize(This.ThumbWindows.%hwnd%["Window"].Hwnd, This.ThumbWindows.%hwnd%["Border"].Hwnd) 
-                This.Update_Thumb(false)
-                if (!This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)) {
-                    for k, v in This.ThumbWindows.OwnProps()
-                        This.ShowThumb(k, "Show")
-                }
-            }
-            if This.dynamicGroupsEnabled && This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, title)
-            This.BorderActive := 0
-            This.RegisterHotkeys(title, hwnd)
+        This.SetThumbnailText[hwnd] := title
+        ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
+        if (This.ThumbnailPositions.Has(title)) {
+            This.EvEWindowDestroy(hwnd, title)
+            This.QueuePreview(hwnd, title)
         }
+        else
+            This.RestoreClientPossitions(hwnd, title)
+        This.DeleteFromQuickGroup(hwnd)
+        This.DeleteFromDisabled(hwnd)
+        This.BorderActive := 0
+        This.RegisterHotkeys(title)
     }
 
     ; Toggle click through mode on all thumbnail windows
@@ -828,80 +1179,282 @@
         }
     }
 
-    ;#### Gets Called after receiveing a mesage from the Listeners
-    ;#### Handels Window Border, Resize, Activation 
-    _OnMessage(wparam, lparam, msg, hwnd) {
-        If (This.ThumbHwnd_EvEHwnd.Has(hwnd)  ) {            
-            ; Move the Window with right mouse button 
-            If (msg == Main_Class.WM_RBUTTONDOWN) {
-                while (GetKeyState("RButton")) {
-                    if !(GetKeyState("LButton")) {
-                        try {
-                            This.Mouse_DragMove(wparam, lparam, msg, hwnd)
-                            This.Window_Snap(hwnd, This.ThumbWindows)
-                        }
-                    }
-                    else {
-                        try
-                            This.Mouse_ResizeThumb(wparam, lparam, msg, hwnd)
-
-                    }
-                }
-
-                if This.AutoSaveThumbnailPositions ; Positions autosave
-                    This.Save_ThumbnailPossitions
-                
-                return 0
+    ; Builds a map of Thumbnails Interactions Actions to their corresponding numbers
+    ; We can access needed interaction by using the wparam number
+    BuildThumbnailsInteractionsMap() {
+        This.DisabledFromGroupsEnabled := false
+        This.QuickGroupEnabled := false
+        This.KeepPosAfterQuickGroupTrigger := false
+        This.ResetPosAfterQuickGroupTrigger := false
+        This.ThumbnailsInteractionsMap := Map()
+        This.HidedThumbs := Map()
+        for action, value in This.ThumbnailsInteractions {
+            combination := 0
+            for k, v in value {
+                if k = "lmb"
+                    combination += v * 1
+                else if k = "rmb"
+                    combination += v * 2
+                else if k = "shift"
+                    combination += v * 4
+                else if k = "ctrl"
+                    combination += v * 8
             }
+            if !combination
+                continue
+            if This.ThumbnailsInteractionsMap.Has(combination) {
+                ToolTip "Duplicated value for Thumbnails Interactions Action: " action
+                SetTimer () => ToolTip(), -3000
+                continue
+            }
+            This.ThumbnailsInteractionsMap[combination] := action
 
-            ; Wparam -  9 Ctrl+Lclick
-            ;           5 Shift+Lclick
-            ;           13 Shift+ctrl+click
-            Else If (msg == Main_Class.WM_LBUTTONDOWN) {
-                ;Activates the EVE Window by clicking on the Thumbnail 
-                if (wparam = 1) {
-                    try { ; Probably fix for bug
-                        if !(WinActive(This.ThumbHwnd_EvEHwnd[hwnd])) {
-                            This.ActivateEVEWindow(hwnd)
-                        }
-                    }
-                }
-                ; Ctrl+Lbutton, Minimizes the Window on whose thumbnail the user clicks
-                else if (wparam = 9) { 
-                    ; Minimize
-                    if (!GetKeyState("RButton"))
-                        PostMessage 0x0112, 0xF020, , , This.ThumbHwnd_EvEHwnd[hwnd]
-                } ; Shift+Click and feature enabled
-                else if wparam = 5 && This.dynamicGroupsEnabled {
-                    hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
-                    title := This.ThumbWindows.%hwndEVE%["Window"].Title
-                    if !This.ignoredChars.Has(hwndEVE) {
-                        This.ignoredChars[hwndEVE] := true
-                        This.toggleColorBorder(hwndEVE, title)
-                    }
-                    else {
-                        This.ignoredChars.Delete(hwndEVE)
-                        This.toggleColorBorder(hwndEVE, title, false)
-                        if WinActive("ahk_id " hwndEVE)
-                            This.BorderActive := 0
-                    }
-                }
-                return 0
-            }   
+            ; Activate flags for Thumbnails Interactions Actions
+            if action = "DisableFromGroups"
+                This.DisabledFromGroupsEnabled := true
+            else if action = "QuickGroup" {
+                This.QuickGroupEnabled := true
+                This.RegisterQuickGroup()
+            }
         }
     }
 
+    ; All usable wparam combinations = 12 
+    ; 1 - Left Click
+    ; 2 - Right Click
+    ; 3 - Left + Right Click
+    ; 5 - Left Click + Shift
+    ; 6 - Right Click + Shift
+    ; 7 - Left + Right Click + Shift
+    ; 9 - Left Click + Ctrl
+    ; 10 - Right Click + Ctrl
+    ; 11 - Left + Right Click + Ctrl
+    ; 13 - Left Click + Shift + Ctrl
+    ; 14 - Right Click + Shift + Ctrl
+    ; 15 - Left + Right Click + Shift + Ctrl
+    
+    ; Gets Called after receiveing a mesage from the Listeners
+    ; Handels Window Border, Resize, Activation 
+    _OnMessage(wparam, lparam, msg, hwnd) {
+        if !This.ThumbHwnd_EvEHwnd.Has(hwnd) || !This.ThumbnailsInteractionsMap.Has(wparam) ; If the hwnd is not a thumbnail or the action is not set 
+            return
+
+        action := This.ThumbnailsInteractionsMap[wparam]
+        hwndEVE := This.ThumbHwnd_EvEHwnd[hwnd]
+        title := This.ThumbWindows.%hwndEVE%["Window"].Title
+
+        This.debugToolTipText .= "Thumbnail action: " action " for: " title "`n"
+        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+
+        try {
+            if action = "ActivateThumbnail" {
+                This.ActivateEveWindow(hwndEVE)
+            }
+            else if action = "MoveThumbnail" {
+                This.Mouse_DragMove(hwnd) ; Moves one thumbnail
+                This.Window_Snap(hwnd, This.ThumbWindows)
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
+            }
+            else if action = "ResizeThumbnail" {
+                This.Mouse_ResizeThumb(hwnd) ; Resizes one thumbnail
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
+            }
+            else if action = "MoveAllThumbnails" {
+                This.Mouse_DragMove(hwnd, 1) ; Moves all thumbnails
+                This.Window_Snap(hwnd, This.ThumbWindows)
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
+            }
+            else if action = "ResizeAllThumbnails" {
+                This.Mouse_ResizeThumb(hwnd, 1) ; Resizes all thumbnails
+                if This.AutoSaveThumbnailPositions
+                    This.Save_ThumbnailPossitions()
+            }
+            else if action = "HideThumbnail" {
+                ; temp := This.Thumbnail_visibility
+                ; temp[title] := 1
+                ; This.Thumbnail_visibility := temp
+                ; SetTimer(This.Save_Settings_Delay_Timer, -200)
+                This.HidedThumbs[hwndEVE] := title
+                This.ShowThumb(hwndEVE, "Hide")
+            }
+            else if action = "MinimizeClient" {
+                if (!GetKeyState("RButton"))
+                    PostMessage 0x0112, 0xF020, , , hwndEVE
+            }
+            else if action = "CloseClient" {
+                WinClose("ahk_id " hwndEVE " ahk_exe exefile.exe")
+            }
+            else if action = "DisableFromGroups" && This.DisabledFromGroupsEnabled {
+                if !This.DisabledChars.Has(hwndEVE)
+                    This.AddToDisabled(hwndEVE, title)
+                else
+                    This.DeleteFromDisabled(hwndEVE)
+            }
+            else if action = "QuickGroup" && This.QuickGroupEnabled {
+                if !This.QuickGroupChars.Has(hwndEVE)
+                    This.AddToQuickGroup(hwndEVE, title)
+                else
+                    This.DeleteFromQuickGroup(hwndEVE)
+            }
+        }
+        catch as err {
+            ProgramLog.Error(err, "Window message handler")
+            This._debugToolTipText .= "Error OnMessage Listener`n"
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+        }
+    }
+
+    AddToQuickGroup(hwnd, title) {
+        if !This.QuickGroupEnabled || This.QuickGroupChars.Has(hwnd)
+            return
+
+        if This.DisabledChars.Has(hwnd) { ; Overrides DisabledChars -> Quickgroup
+            This.DisabledChars.Delete(hwnd)
+        }
+
+        This.QuickGroupChars[hwnd] := title
+        This.QuickGroupOrder.Push(hwnd)
+        This.toggleColorBorder(hwnd, title, 1, This.QuickGroupColor)
+    }
+
+    DeleteFromQuickGroup(hwnd) {
+        if !This.QuickGroupEnabled || !This.QuickGroupChars.Has(hwnd)
+            return
+
+        title := This.QuickGroupChars[hwnd]
+        This.RemoveQuickGroupWindow(hwnd)
+        This.toggleColorBorder(hwnd, title, 0)
+        if WinActive("ahk_id " hwnd)
+            This.BorderActive := 0
+    }
+
+    RemoveQuickGroupWindow(hwnd) {
+        This.QuickGroupChars.Delete(hwnd)
+        for index, member in This.QuickGroupOrder {
+            if member = hwnd {
+                This.QuickGroupOrder.RemoveAt(index)
+                break
+            }
+        }
+    }
+
+    AddToDisabled(hwnd, title) {
+        if !This.DisabledFromGroupsEnabled || This.DisabledChars.Has(hwnd)
+            return
+
+        if This.QuickGroupChars.Has(hwnd) { ; Overrides Quickgroup -> DisabledChars
+            This.RemoveQuickGroupWindow(hwnd)
+        }
+
+        This.DisabledChars[hwnd] := title
+        This.toggleColorBorder(hwnd, title, 1, This.DisableFromGroupsColor)
+    }
+
+    DeleteFromDisabled(hwnd) {
+        if !This.DisabledFromGroupsEnabled || !This.DisabledChars.Has(hwnd)
+            return
+
+        title := This.DisabledChars[hwnd]
+        This.DisabledChars.Delete(hwnd)
+        This.toggleColorBorder(hwnd, title, 0)
+        if WinActive("ahk_id " hwnd)
+            This.BorderActive := 0
+    }
+
     ; Creates a new thumbnail if a new window got created
+    QueuePreview(hwnd, title) {
+        if This.livePreviewsPaused
+            return
+        try {
+            WinGetClientPos(,, &w, &h, "ahk_id " hwnd)
+            if !This.previewQueue.items.Has(hwnd)
+                ProgramLog.Add("Preview queued hwnd=" hwnd " title=" title " size=" w "x" h)
+            This.previewQueue.Observe(hwnd, title, w, h)
+        }
+    }
+
+    ProcessPreviewQueue(winList) {
+        present := Map()
+        for hwnd in winList {
+            present[hwnd] := true
+            if This.ThumbWindows.HasProp(hwnd) && !This.ThumbWindows.%hwnd%["Thumbnail"].THUMB_ID
+                try This.QueuePreview(hwnd, WinGetTitle("ahk_id " hwnd))
+        }
+        for hwnd in This.previewQueue.items.Clone()
+            if !present.Has(hwnd)
+                This.previewQueue.Remove(hwnd)
+        if This.livePreviewsPaused
+            return
+        loop (This.previewQueue.slow ? 1 : This.previewQueue.items.Count) {
+            if !(hwnd := This.previewQueue.Next())
+                break
+            This.ProcessQueuedPreview(hwnd)
+        }
+    }
+
+    ProcessQueuedPreview(hwnd) {
+        try {
+            title := WinGetTitle("ahk_id " hwnd)
+            ProgramLog.Add("Preview startup hwnd=" hwnd " title=" title " queued=" This.previewQueue.items.Count)
+            ProgramLog.Flush()
+            item := This.previewQueue.items[hwnd]
+            if !This.ThumbWindows.HasProp(hwnd) && This.TrackClientPossitions && This.ClientPossitions.Has(title)
+                && !item.HasOwnProp("positionRestored") {
+                This.RestoreClientPossitions(hwnd, title)
+                item.positionRestored := true
+                item.stableAt := A_TickCount
+                if This.previewQueue.slow
+                    return ; Let the resized source settle before registering with DWM.
+            }
+            if This.ThumbWindows.HasProp(hwnd)
+                This.AttachLivePreview(This.ThumbWindows.%hwnd%, hwnd)
+            else
+                This.EVE_WIN_Created(hwnd, title)
+            if !This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)
+                This.ShowThumb(hwnd, "Show")
+            This.previewQueue.Remove(hwnd)
+            ProgramLog.Add("Preview ready hwnd=" hwnd " live=" LiveThumb.OBJ_COUNTER)
+        } catch as err {
+            This.previewQueue.Failed(hwnd)
+            if This.previewQueue.items.Has(hwnd)
+                ProgramLog.Add("Preview retry hwnd=" hwnd " backoff step=" This.previewQueue.items[hwnd].failures "; delay capped at 30 seconds", "WARN")
+            ProgramLog.Error(err, "Preview startup deferred hwnd=" hwnd)
+        }
+    }
+
+    ToggleLivePreviews(*) {
+        This.livePreviewsPaused := !This.livePreviewsPaused
+        ProgramLog.Add("Live previews " (This.livePreviewsPaused ? "paused" : "resumed"))
+        This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        if This.livePreviewsPaused {
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                thumb["Thumbnail"].Close()
+                This.ShowThumb(hwnd, "Hide")
+            }
+        }
+        ProgramLog.Flush()
+        try This.MainFrame["pausePreviewsBtn"].Text := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+    }
+
+    CloseLivePreviews(reason, code) {
+        for hwnd, thumb in This.ThumbWindows.OwnProps()
+            try thumb["Thumbnail"].Close()
+        ProgramLog.Add("Live previews released on " reason)
+        ProgramLog.Flush()
+    }
+
     EVE_WIN_Created(Win_Hwnd, Win_Title) {
         This.debugToolTipText .= "Creating thumbnail for " Win_Title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
-        ; Moves the Window to the saved possition if any are stored 
-        This.RestoreClientPossitions(Win_Hwnd, Win_Title)        
+        ; Saved client geometry is restored by the queue before the stability wait.
         
         ;Creates the Thumbnail and stores the EVE Hwnd in the array
         If This.ThumbWindows.HasProp(Win_Hwnd)
             return
-
+        try {
         This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
         This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
         This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
@@ -923,10 +1476,9 @@
                             This.ThumbWindows.%Win_Hwnd% )
 
             This.BorderSize(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, This.ThumbWindows.%Win_Hwnd%["Border"].Hwnd)
-            This.Update_Thumb(false)
+            This.Update_Thumb(false, This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
             If ((This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) || (!This.HideThumbnailsOnLostFocus)) {
-                for k, v in This.ThumbWindows.OwnProps()
-                    This.ShowThumb(k, "Show")
+                This.ShowThumb(Win_Hwnd, "Show")
             }
         }
         else {
@@ -935,7 +1487,24 @@
 
         This.ThumbClickThrough(This.ThumbWindows.%Win_Hwnd%) ; If click through active, enable for new thumbnails
         This.RegisterNonEVEHotkeys()
-        This.RegisterHotkeys(Win_Title, Win_Hwnd)
+        This.RegisterHotkeys(Win_Title)
+        } catch as err {
+            This.DisposePreview(Win_Hwnd)
+            throw err
+        }
+    }
+
+    DisposePreview(hwnd) {
+        if !This.ThumbWindows.HasProp(hwnd)
+            return
+        thumb := This.ThumbWindows.%hwnd%
+        thumb["Thumbnail"].Close()
+        if This.ThumbHwnd_EvEHwnd.Has(thumb["Window"].Hwnd)
+            This.ThumbHwnd_EvEHwnd.Delete(thumb["Window"].Hwnd)
+        for key, obj in thumb
+            if key != "Thumbnail"
+                try obj.Destroy()
+        This.ThumbWindows.DeleteProp(hwnd)
     }
 
     ; if ShiftThumbsForLoginScreen enabled we try to shift thumbnail using user settings
@@ -1046,46 +1615,50 @@
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
     EvEWindowDestroy(hwnd?, WinTitle?) {
-        if IsSet(WinTitle)
-            This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
-        else if IsSet(hwnd)
-            This.debugToolTipText .= "Destroying thumbnail for hwnd " hwnd "`n"
-         else
-            This.debugToolTipText .= "Destroying thumbnail for unknown window`n"
+        try {
+            if IsSet(WinTitle)
+                This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
+            else if IsSet(hwnd)
+                This.debugToolTipText .= "Destroying thumbnail for hwnd " hwnd "`n"
+            else
+                This.debugToolTipText .= "Destroying thumbnail for unknown window`n"
 
-        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
-        if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
-            for k, v in This.ThumbWindows.%hwnd% {
-                if (k = "Thumbnail")
-                    continue
-                v.Destroy()
-                ;This.ThumbWindows.%Win_Hwnd%.Delete()
+            if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
+                This.CleanupClosedPreview(hwnd)
+                Return
             }
-            This.ThumbWindows.DeleteProp(hwnd)
-            if This.monitoringInitialized && IsSet(WinTitle) && This.monitoredChars.Has(WinTitle)
-                This.stopLogMonitoring(WinTitle)
-            This.DestroyThumbnailsToggle := 1
-            Return
-        }
-        ;If a EVE Windows get destroyed 
-        for Win_Hwnd,v in This.ThumbWindows.Clone().OwnProps() {
-            if (!WinExist("Ahk_Id " Win_Hwnd)) {
-                title := This.ThumbWindows.%Win_Hwnd%["Window"].Title
-                for k, v in This.ThumbWindows.Clone().%Win_Hwnd% {
-                    if (k = "Thumbnail")
-                        continue
-                    v.Destroy()
+            ; A failed cleanup must not prevent other closed clients from being removed.
+            for Win_Hwnd, v in This.ThumbWindows.Clone().OwnProps() {
+                if (!WinExist("Ahk_Id " Win_Hwnd)) {
+                    try This.CleanupClosedPreview(Win_Hwnd)
+                    catch as err
+                        ProgramLog.Error(err, "Closed preview cleanup hwnd=" Win_Hwnd)
                 }
-                This.ThumbWindows.DeleteProp(Win_Hwnd)
-                if This.monitoringInitialized && This.monitoredChars.Has(title)
-                    This.stopLogMonitoring(title)
             }
+        } finally {
+            This.DestroyThumbnailsToggle := 1
         }
-        This.DestroyThumbnailsToggle := 1
+    }
+
+    CleanupClosedPreview(hwnd) {
+        hwnd := Integer(hwnd) ; OwnProps yields strings; interaction/group maps use numeric HWNDs.
+        title := This.ThumbWindows.%hwnd%["Window"].Title
+        ; Do not redraw borders or query a closed client while removing groups.
+        This.DisposePreview(hwnd)
+        if This.QuickGroupChars.Has(hwnd)
+            This.RemoveQuickGroupWindow(hwnd)
+        for entries in [This.DisabledChars, This.HidedThumbs]
+            if entries.Has(hwnd)
+                entries.Delete(hwnd)
+        This.previewQueue.Remove(hwnd)
+        This.BorderActive := 0
+        if This.monitoringInitialized && This.monitoredChars.Has(title)
+            This.stopLogMonitoring(title)
     }
     
-    ActivateEVEWindow(hwnd?, ThisHotkey?, title?, direct?) {   
+    ActivateEVEWindow(hwnd?, title?) {   
         ; If the user clicks the Thumbnail then hwnd stores the Thumbnail Hwnd. Here the Hwnd gets changed to the contiguous EVE window hwnd
         if (IsSet(hwnd) && This.ThumbHwnd_EvEHwnd.Has(hwnd)) {
             hwnd := WinExist(This.ThumbHwnd_EvEHwnd[hwnd])
@@ -1100,9 +1673,16 @@
             SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
             return
         }
-        ;return when the user tries to bring a window to foreground which is already in foreground 
-        if (WinActive("Ahk_id " hwnd))
-            Return
+        ; return when the user tries to bring a window to foreground which is already in foreground 
+        if (WinActive("Ahk_id " hwnd)) {
+            This.pendingEVEActivation := 0
+            return true
+        }
+
+        ; A request is not proof of foreground focus. Keep only a short-lived
+        ; candidate; the group lookup still uses its configured retry budget.
+        This.pendingEVEActivation := {hwnd: hwnd, source: This._GetForegroundHwnd(), expires: A_TickCount + 250}
+        ProgramLog.Add("Activation requested; target=" hwnd "; source=" This.pendingEVEActivation.source)
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
             if This.AlwaysMaximize || (This.TrackClientPossitions && This.ClientPossitions.Has(title) && This.ClientPossitions[title]["IsMaximized"]) {
@@ -1120,8 +1700,11 @@
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
-        ; if IsSet(direct) && direct { ; Might need later
-        ; }
+        if !This.WinActivationHistory.Length || This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd {
+            This.WinActivationHistory.Push(hwnd)
+            if This.WinActivationHistory.Length > 1000 ; Reset while retaining the active window
+                This.WinActivationHistory := [hwnd]
+        }
 
         This.hitThis()
 
@@ -1130,6 +1713,8 @@
             This.wHwnd := hwnd
             SetTimer(This.timer, -This.MinimizeDelay)
         }
+        This._ObserveEVEActivation(This._GetForegroundHwnd())
+        return true ; Activation requested; foreground focus may still be pending.
     }
 
     ;The function for the Internal Hotkey to bring a not minimized window in foreground 
@@ -1144,7 +1729,8 @@
             if (This.AlwaysMaximize && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0) || ( This.TrackClientPossitions && This.ClientPossitions[WinGetTitle("Ahk_id " This.ActivateHwnd)]["IsMaximized"] && WinGetMinMax("ahk_id " This.ActivateHwnd) = 0 )
                 This.ShowWindowAsync(This.ActivateHwnd, 3)
         }       
-        Return 
+        This._ObserveEVEActivation(This._GetForegroundHwnd())
+        Return
     }
 
     ; Minimize All windows after Activting one with the exception of Titels in the DontMinimize Wintitels
@@ -1323,7 +1909,7 @@
                         MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " Non-EVE Hotkey Groups")
                 }
                 else
-                    Hotkey(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1")
+                    This.RegisterHotkeyWithLanguageRetry(directions[direction], ObjBindMethod(This, "CycleNonEVEGroups", index, direction), "P1", "Non-EVE hotkey group " direction)
             }
             index += 1
             directions := Map()
@@ -1343,17 +1929,21 @@
     }
 
     CycleNonEVEGroups(groupIndex, direction, *) {
-        static tick, prevTick := 0
-        tick := A_TickCount
-        if tick - prevTick < This.GroupsHoldDelay
+        if This.IsWithinCycleHoldDelay()
             return
-        prevTick := tick
-
+        
+        static index := 0
         group := This.NonEVEGroupsL[groupIndex]
-        index := This.NonEVEGroupsInds[groupIndex]
+        ; index := This.NonEVEGroupsInds[groupIndex]
         length := group["exe"].Length
 
-        if !This.KeepGroupsPositions {
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
+            ; Trust stored index always — no re-sync ever
+            index := This.NonEVEGroupsInds[groupIndex]
+        } else if This.ResetPosAfterQuickGroupTrigger {
+            index := 0
+            This.ResetPosAfterQuickGroupTrigger := false
+        } else {
             try {
                 exec := WinGetProcessName("A")
                 title := WinGetTitle("A")
@@ -1370,19 +1960,22 @@
 
         loop length {
             hwnd := This.OnWinExist_(group["exe"][index], group["title"][index])
-            if hwnd && !This.ignoredChars.Has(hwnd)
+            if hwnd && This.IsWinAllowed(hwnd)
                 break
 
             index := DirectionHandler(direction, index, length)
         }
 
-        if This.ignoredChars.Has(hwnd) ; Last check if loop leaked window there
+        if !This.IsWinAllowed(hwnd) ; Last check if loop leaked window there
             return
 
-        try
-            This.ActivateNonEVE(group["exe"][index], group["title"][index])
+        try This.ActivateNonEVE(group["exe"][index], group["title"][index])
 
-        This.NonEVEGroupsInds[groupIndex] := index
+        ; Only persist index when KeepGroupsPositions or KeepPosAfterQuickGroupTrigger is on
+        if This.KeepGroupsPositions || This.KeepPosAfterQuickGroupTrigger {
+            This.KeepPosAfterQuickGroupTrigger := false
+            This.NonEVEGroupsInds[groupIndex] := index
+        }
 
         ; Get new index by specified direction
         DirectionHandler(direction, index, length) {
@@ -1418,12 +2011,12 @@
             HotIf ObjBindMethod(This, "OnWinExist_", apps["exe"][i], apps["title"][i])
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
+                    Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1")
                 catch ValueError as e
                     MsgBox(e.Message " --> " e.Extra " <-- in Non-EVE Applications - " This.LastUsedProfile " - Non-EVE Hotkeys")
             }
             else
-                Hotkey(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i], 1), "P1")
+                This.RegisterHotkeyWithLanguageRetry(apps["hotkey"][i], ObjBindMethod(This, "ActivateNonEVE", apps["exe"][i], apps["title"][i]), "P1", "Non-EVE application")
         }
     }
 
@@ -1437,13 +2030,12 @@
         return WinExist("ahk_exe " exe)
     }
 
-    ActivateNonEVE(exe, title, direct?, *) {
+    ActivateNonEVE(exe, title, *) {
+        This.pendingEVEActivation := 0
         criteria := "ahk_exe " exe
         if title != ""
             criteria := title . " " . criteria
     
-        ; if IsSet(direct) && direct
-
         hwnd := WinExist(criteria)
         if !hwnd || WinActive("Ahk_id " hwnd)
             return
@@ -1509,7 +2101,11 @@
 
 
     ShowWindowAsync(hWnd, nCmdShow := 9) {
-        DllCall("ShowWindowAsync", "UInt", hWnd, "UInt", nCmdShow)
+        ProgramLog.Count("window-show-command-" nCmdShow)
+        result := DllCall("ShowWindowAsync", "Ptr", hWnd, "Int", nCmdShow)
+        if !result
+            ProgramLog.Add("ShowWindowAsync failed; hwnd=" hWnd "; command=" nCmdShow "; lastError=" A_LastError, "WARN")
+        return result
     }
     GetActiveWindow() {
         Return DllCall("GetActiveWindow", "Ptr")
@@ -1546,13 +2142,20 @@
         return "EVE - " title
     }
 
-    SaveJsonToFile() {
-        time := A_Now
-        if FileExist("EVE-X-Preview.json")
-            FileMove("EVE-X-Preview.json", "EVE-X-Preview-Backup-" time ".json", 1) ; Backup old file with timestamp
-        FileAppend(JSON.Dump(This._JSON, , "    "), "EVE-X-Preview.json") ; Save new file
-        if FileExist("EVE-X-Preview-Backup-" time ".json")
-            FileDelete("EVE-X-Preview-Backup-" time ".json") ; Delete backup after saving
+    SaveJsonToFile(savePath := "EVE-X-Preview.json") {
+        previousCritical := A_IsCritical
+        Critical
+        tempPath := savePath ".save.tmp"
+        try {
+            ProgramLog.Add("Saving settings; profile=" This.LastUsedProfile)
+            if FileExist(tempPath)
+                FileDelete(tempPath)
+            FileAppend(JSON.Dump(This._JSON, , "    "), tempPath)
+            FileMove(tempPath, savePath, 1)
+            ProgramLog.Add("Settings saved")
+        } finally {
+            Critical(previousCritical)
+        }
     }
 
     ; Thanks to SKAN
@@ -1643,42 +2246,117 @@
     }
 
     DontCloseWIn(WinTitle) {
-        if !(WinTitle = "EVE") {
-            for k in This.DontCloseClients {
-                value := k
-                if value == WinTitle
+        for k in This.DontCloseClients {
+            if k = WinTitle
+                return 1
+        }
+        if (WinTitle = "EVE" && This.DontCloseOnLoginScreen)
+            return 1
+        if This.DontCloseDisabledClients {
+            for k, v in This.DisabledChars {
+                if v = WinTitle
                     return 1
             }
         }
-        else if (WinTitle = "EVE" && This.DontCloseOnLoginScreen) {
-            return 1
+        if This.DontCloseQuickGroupClients {
+            for k, v in This.QuickGroupChars {
+                if v = WinTitle
+                    return 1
+            }
         }
         return 0
     }
 
-    getFilesList() {
-        if !DirExist(This.gameLogsDirectory) {
-            MsgBox "Game logs folder not found!`nUsually it's in USERNAME\Documents\EVE\logs\Gamelogs."
-            This.gameLogsDirectory := DirSelect() ; Select directory
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-            if This.gameLogsDirectory = "" ; Cancelled
-                return
-        }
+    ResolveChatLogsDirectory() {
+        return This.ResolveLogsDirectory(This.chatLogsDirectory, This.gameLogsDirectory, "Chatlogs")
+    }
 
-        ; Optimized files count check
-        static filesCount := 0
+    ResolveGameLogsDirectory() {
+        return This.ResolveLogsDirectory(This.gameLogsDirectory, This.chatLogsDirectory, "Gamelogs")
+    }
+
+    ResolveLogsDirectory(configured, otherConfigured, folderName) {
+        if Trim(configured) != ""
+            return Trim(configured)
+        SplitPath(RTrim(Trim(otherConfigured), "\/"), , &logsParent)
+        candidates := [A_MyDocuments "\logs\" folderName, A_MyDocuments "\EVE\logs\" folderName]
+        if logsParent != ""
+            candidates.InsertAt(1, logsParent "\" folderName)
+        for directory in candidates {
+            if DirExist(directory)
+                return directory
+        }
+        return A_MyDocuments "\EVE\logs\" folderName
+    }
+
+    startSystemTracking() {
+        if !This.systemTrackingEnabled
+            return
+        This.systemLogMonitor := LocalChatMonitor(This)
+        This.systemMonitorMethod := ObjBindMethod(This, "monitorCharacterSystems")
+        This.systemMonitorExit := ObjBindMethod(This, "stopSystemTracking")
+        OnExit(This.systemMonitorExit)
+        SetTimer(This.systemMonitorMethod, Max(250, This.monitoringInterval))
+        This.monitorCharacterSystems()
+    }
+
+    stopSystemTracking(*) {
+        if This.HasOwnProp("systemMonitorMethod")
+            SetTimer(This.systemMonitorMethod, 0)
+        if This.HasOwnProp("systemLogMonitor")
+            This.systemLogMonitor.Close()
+        if This.HasOwnProp("systemMonitorExit")
+            OnExit(This.systemMonitorExit, 0)
+    }
+
+    monitorCharacterSystems() {
+        active := Map()
+        for hwnd in WinGetList(This.EVEExe) {
+            try title := WinGetTitle(hwnd)
+            catch
+                continue
+            if title = "EVE"
+                continue
+            if This.monitorOnlySelectedChars {
+                selected := false
+                for name in This.charsToMonitor {
+                    if name = title {
+                        selected := true
+                        break
+                    }
+                }
+                if !selected
+                    continue
+            }
+            active[title] := hwnd
+        }
+        This.systemLogMonitor.Poll(active)
+    }
+
+    getFilesList() {
+        directory := This.ResolveGameLogsDirectory()
+        if !DirExist(directory)
+            return []
+
+        ; Reuse sorting only when file identities and modification times match.
+        ; A rotation can replace a file without changing the directory count.
+        static fileTimes := Map()
         static oldFilesList := []
-        newFilesCount := 0
+        static cachedDirectory := ""
+        newFileTimes := Map()
+        changed := directory != cachedDirectory
 
         files := []
-        Loop Files, This.gameLogsDirectory "\*.*" {
+        Loop Files, directory "\*.*" {
             files.Push({name: A_LoopFileName, time: A_LoopFileTimeModified})
-            newFilesCount++
+            newFileTimes[A_LoopFileName] := A_LoopFileTimeModified
+            if fileTimes.Get(A_LoopFileName, "") != A_LoopFileTimeModified
+                changed := true
         }
-        if newFilesCount = filesCount
+        if !changed && newFileTimes.Count = fileTimes.Count
             return oldFilesList
-        else
-            filesCount := newFilesCount
+        fileTimes := newFileTimes
+        cachedDirectory := directory
 
         ; comparator: return <0 if a < b, 0 if equal, >0 if a > b
         ; for descending (newest first) we invert the usual order
@@ -1690,7 +2368,7 @@
         ; build newline string or process in order
         fileList := []
         for file in files {
-            fileList.Push(This.gameLogsDirectory "\" file.name)
+            fileList.Push(directory "\" file.name)
         }
         oldFilesList := fileList
         return fileList
@@ -1705,215 +2383,16 @@
         ; If character didn't logged in there is structure like:
         ; YYYYMMDD_XXXXXX.txt with same first 2 line explained before
 
-        if This.gameLogsDirectory = "" {
-            This.gameLogsDirectory := "C:\Users\" A_UserName "\Documents\EVE\logs\Gamelogs"
-            SetTimer(This.Save_Settings_Delay_Timer, -200)
-        }
-
         This.monitoredChars := Map()
         This.waitingMonitoringChars := Map()
         This.shootingChars := Map()
         This.flashMethod := Map()
         This.eventMethods := Map()
 
-        if !This.gameLogsMonitoringEnabled || (!This.flashBorderEnabled && !This.showEventText) ; When events displaying disabled, don't initiate monitoring
+        This.dpsMonitoringEnabled := This.dpsMonitoring["incomingDPSEnabled"] || This.dpsMonitoring["outgoingDPSEnabled"]
+        This.eventMonitoringEnabled := This.flashBorderEnabled || This.showEventText
+        if !This.gameLogsMonitoringEnabled || (!This.eventMonitoringEnabled && !This.dpsMonitoringEnabled)
             return
-
-        ; Thanks to @CJKondur to having this list
-        ; Comprehensive list of all EVE Online NPC naming prefixes.
-        ; Used by PVE mode to filter NPC damage from attack alerts.
-        ; CCP blocks players from using faction names in character creation.
-        This.generalNPCPatterns := [
-            ; --- Pirate Factions ---
-            "Guristas",
-            "Sansha", "Sansha's",
-            "Blood Raider",
-            "Angel Cartel",
-            "Serpentis",
-            "Mordu's Legion", "Mordu's",
-            ; --- Pirate Named Variants (Faction-specific hull prefixes) ---
-            ; Angel Cartel
-            "Gistii", "Gistum", "Gistior", "Gistatis", "Gist",
-            ; Blood Raiders
-            "Corpii", "Corpum", "Corpior", "Corpatis", "Corpus",
-            ; Guristas
-            "Pithi", "Pithum", "Pithior", "Pithatis", "Pith",
-            ; Sansha's Nation
-            "Centii", "Centum", "Centior", "Centatis", "Centus",
-            ; Serpentis
-            "Coreli", "Corelum", "Corelior", "Corelatis", "Core ",
-            ; --- Empire Factions ---
-            "Amarr Navy", "Amarr",
-            "Caldari Navy", "Caldari",
-            "Gallente Navy", "Gallente",
-            "Minmatar Fleet", "Minmatar",
-            "Imperial Navy",
-            "State",
-            "Federation Navy", "Federation",
-            "Republic Fleet", "Republic",
-            "CONCORD",
-            ; --- Rogue Drones ---
-            "Rogue",
-            ; Drone hull suffixes used as prefixes in some contexts
-            "Infester", "Render", "Raider", "Strain",
-            "Decimator", "Sunder", "Nuker",
-            "Predator", "Hunter", "Destructor",
-            ; --- Sleepers ---
-            "Sleepless", "Awakened", "Emergent",
-            ; --- Triglavian ---
-            "Starving", "Renewing", "Blinding",
-            "Harrowing", "Ghosting", "Tangling",
-            "Raznaborg", "Vedmak", "Vila",
-            "Zorya",
-            ; --- Drifter ---
-            "Artemis", "Apollo", "Hikanta", "Drifter",
-            "Tyrannos",
-            ; --- EDENCOM ---
-            "EDENCOM",
-            ; --- Triglavian Invasion NPCs ---
-            "Anchoring", "Liminal",
-            ; --- Sentry Guns & Structures ---
-            "Sentry", "Sentry Gun",
-            "Territorial",
-            ; --- FOB / Diamond NPCs ---
-            "Forward Operating",
-            ; --- Mercenary NPCs ---
-            "Mercenary",
-            ; --- Thukker ---
-            "Thukker",
-            ; --- Sisters of EVE ---
-            "Sisters of",
-            ; --- ORE ---
-            "ORE",
-            ; --- Faction Warfare NPCs ---
-            "Navy",
-            ; NPC name suffixes (for rogue drones: "Infester Alvi", etc.)
-            ; Drone name suffixes (these appear as full names)
-            "Alvi", 
-            "Alvus", 
-            "Alvatis", 
-            "Alvior"
-        ]
-
-        factionNPCs := [ ; NPCs to trigger engagedWithFactionBSNPC event
-            "Domination Cherubim",
-            "Domination Commander",
-            "Domination General",
-            "Domination Malakim",
-            "Domination Nephilim",
-            "Domination Saint",
-            "Domination Seraphim",
-            "Domination Throne",
-            "Domination War General",
-            "Domination Warlord",
-            "Dark Blood Apostle",
-            "Dark Blood Archbishop",
-            "Dark Blood Archon",
-            "Dark Blood Cardinal",
-            "Dark Blood Harbinger",
-            "Dark Blood Monsignor",
-            "Dark Blood Oracle",
-            "Dark Blood Patriarch",
-            "Dark Blood Pope",
-            "Dark Blood Prophet",
-            "Dread Guristas Conquistador",
-            "Dread Guristas Destroyer",
-            "Dread Guristas Dismantler",
-            "Dread Guristas Eliminator",
-            "Dread Guristas Eradicator",
-            "Dread Guristas Exterminator",
-            "Dread Guristas Extinguisher",
-            "Dread Guristas Massacrer",
-            "Dread Guristas Obliterator",
-            "Dread Guristas Usurper",
-            "Sentient Alvus Controller",
-            "Sentient Alvus Creator",
-            "Sentient Alvus Queen",
-            "Sentient Alvus Ruler",
-            "Sentient Domination Alvus",
-            "Sentient Matriarch Alvus",
-            "Sentient Patriarch Alvus",
-            "Sentient Spearhead Alvus",
-            "Sentient Supreme Alvus Parasite",
-            "Sentient Swarm Preserver Alvus",
-            "True Sansha's Beast Lord",
-            "True Sansha's Dark Lord",
-            "True Sansha's Dread Lord",
-            "True Sansha's Lord",
-            "True Sansha's Mutant Lord",
-            "True Sansha's Overlord",
-            "True Sansha's Plague Lord",
-            "True Sansha's Savage Lord",
-            "True Sansha's Slave Lord",
-            "True Sansha's Tyrant",
-            "Shadow Serpentis Admiral",
-            "Shadow Serpentis Baron",
-            "Shadow Serpentis Commodore",
-            "Shadow Serpentis Flotilla Admiral",
-            "Shadow Serpentis Grand Admiral",
-            "Shadow Serpentis High Admiral",
-            "Shadow Serpentis Lord Admiral",
-            "Shadow Serpentis Port Admiral",
-            "Shadow Serpentis Rear Admiral",
-            "Shadow Serpentis Vice Admiral"
-        ]
-        This.factionNPCs := Map()
-        for npc in factionNPCs
-            This.factionNPCs[npc] := true
-
-        officerNPCs := [ ; NPCs to trigger engagedWithOfficerNPC event
-            "Gotan Kreiss",
-            "Hakim Stormare",
-            "Mizuro Cybon",
-            "Tobias Kruzhor",
-            "Ahremen Arkah",
-            "Draclira Merlonne",
-            "Raysere Giant",
-            "Tairei Namazoth",
-            "Estamel Tharchon",
-            "Kaikka Peunato",
-            "Thon Eney",
-            "Vepas Minimala",
-            "Unit D-34343",
-            "Unit F-435454",
-            "Unit P-343554",
-            "Unit W-634",
-            "Brokara Ryver",
-            "Chelm Soran",
-            "Selynne Mardakar",
-            "Vizan Ankonin",
-            "Brynn Jerdola",
-            "Cormack Vaaja",
-            "Setele Schellan",
-            "Tuvan Orth"
-        ]
-        This.officerNPCs := Map()
-        for npc in officerNPCs
-            This.officerNPCs[npc] := true
-
-        capitalNPCs := [ ; NPCs to trigger engagedWithCapitalNPC event
-            "Domination Titan",
-            "Dark Blood Titan",
-            "Shadow Serpentis Titan",
-            "Angel Dreadnought",
-            "Domination Dreadnought",
-            "Blood Dreadnought",
-            "Dark Blood Dreadnought",
-            "Dread Guristas Dreadnought",
-            "Guristas Dreadnought",
-            "Sansha's Dreadnought",
-            "True Sansha's Dreadnought",
-            "Serpentis Dreadnought",
-            "Shadow Serpentis Dreadnought",
-            "Infested Carrier",
-            "Sentient Infested Carrier",
-            "Sentient Infested Supercarrier",
-            "True Sansha's Supercarrier",
-            "Dread Guristas Titan"
-        ]
-        This.capitalNPCs := Map()
-        for npc in capitalNPCs
-            This.capitalNPCs[npc] := true
 
         eventPatterns := Map(
             ; "underAttackByPlayer", Map("pattern", "", "needRegex", 1, "checkNPC", 1),
@@ -1932,7 +2411,8 @@
             "crystalBroke",Map("pattern", "deactivates due to the destruction", "needRegex", 0),
             "miningStopped", Map("pattern", "pale shadow of its former glory", "needRegex", 0),
             "miningBayIsFull", Map("pattern", "has completed operations", "needRegex", 0),
-            "stoppedShooting", Map("pattern", "123456789abcdefg", "needRegex", 0) ; Placeholder pattern
+            "stoppedShooting", Map("pattern", "123456789abcdefg", "needRegex", 0), ; Placeholder pattern
+            "undockedFromNPCStation", Map("pattern", "Undocking from", "needRegex", 0)
         )
 
         This.checkFactionNPCs := false
@@ -1945,7 +2425,7 @@
         This.checkedNPCs := Map()
         This.enabledMonitoredEvents := Map() ; To check only enabled events
         for event, v in This.monitoredEvents {
-            if v["enabled"] {
+            if This.eventMonitoringEnabled && v["enabled"] {
                 if event = "engagedWithFactionBSNPC"
                     This.checkFactionNPCs := true
                 else if event = "engagedWithOfficerNPC"
@@ -1966,24 +2446,31 @@
                 }
             }
         }
-        if !This.enabledMonitoredEvents.Count ; If dont enabled
-            return
-
         This.checkNPCs := false
         if This.checkFactionNPCs || This.checkOfficerNPCs || This.checkCapitalNPCs || This.checkGeneralNPCs
             This.checkNPCs := true
+        if This.checkNPCs {
+            This.generalNPCs := NPCDatabase.General()
+            This.factionNPCs := NPCDatabase.Faction()
+            This.officerNPCs := NPCDatabase.Officer()
+            This.capitalNPCs := NPCDatabase.Capital()
+        }
+
+        if !This.enabledMonitoredEvents.Count && !This.checkNPCs && !This.dpsMonitoringEnabled
+            return
+        This.eventMonitoringEnabled := This.enabledMonitoredEvents.Count || This.checkNPCs
 
         activeCharsToMonitor := Map() ; Must be active/logged in and in list of monitored
         if This.monitorOnlySelectedChars {
             for char in This.charsToMonitor {
-                if WinExist(char) {
+                if WinExist(char " " This.EVEExe) {
+                    activeCharsToMonitor[char] := 0
                     for charName, id in This.charsIds {
                         if char = charName {
                             activeCharsToMonitor[char] := id
                             break
                         }
                     }
-                    activeCharsToMonitor[char] := 0
                 }
             }
         }
@@ -1998,14 +2485,14 @@
                     title := WinGetTitle(hwnd)
                     if title = "EVE" ; In character selection screen
                         continue
-    
+
+                    activeCharsToMonitor[title] := 0
                     for charName, id in This.charsIds {
                         if title = charName {
                             activeCharsToMonitor[title] := id
                             break
                         }
                     }
-                    activeCharsToMonitor[title] := 0
                 }
             }
         }
@@ -2017,7 +2504,7 @@
             timer -= 1000 ; Adding offset for each char to avoid lags if there is a lot of them
         }
 
-        This.debugToolTipText .= "Initialized log monitoring for chars:`n" This.StrJoin("`n", activeCharsToMonitor) "`n`nWaiting for chars to update logs...`n"
+        This.debugToolTipText .= "Initialized log monitoring for " activeCharsToMonitor.count " chars."
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
         This.monitoringInitialized := 1
         This.monitorMethod := ObjBindMethod(This, "monitorAllChars")
@@ -2025,7 +2512,9 @@
     }
 
     getCharNameFromFile(fileName) {
-        file := FileOpen(fileName, "r", "UTF-8")        
+        try file := FileOpen(fileName, "r", "UTF-8")
+        catch
+            return "" ; A log may be removed between discovery and opening it.
         if !file
             return
         Loop 3 {
@@ -2037,8 +2526,22 @@
         return This.AntiCleanTitle(charName)
     }
 
+    IsGameLogCharacterSelected(charName) {
+        if !This.monitorOnlySelectedChars
+            return true
+        character := This.CleanTitle(charName)
+        for selected in This.charsToMonitor {
+            if This.CleanTitle(selected) = character
+                return true
+        }
+        return false
+    }
+
     startLogMonitoring(charName, charId) {
-        if !This.gameLogsMonitoringEnabled
+        ; Failed discovery must allow the window watcher to schedule a retry.
+        if This.waitingMonitoringChars.Has(charName)
+            This.waitingMonitoringChars.Delete(charName)
+        if !This.gameLogsMonitoringEnabled || !This.IsGameLogCharacterSelected(charName)
             return
 
         filesListSorted := This.getFilesList()
@@ -2048,12 +2551,15 @@
         foundFile := 0
         for fileName in filesListSorted { ; Finding char names in headers
 
-            fileNameData := StrSplit(fileName, "_")
+            SplitPath(fileName, &baseName)
+            fileNameData := StrSplit(baseName, "_")
             if !fileNameData.Has(3) ; in character selection screen
                 continue
             fileCharId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
 
             if charId != fileCharId {
+                if charId != 0
+                    continue ; A known ID needs no header reads from other characters' logs.
                 fileCharName := This.getCharNameFromFile(fileName)
                 if !fileCharName || fileCharName != charName
                     continue
@@ -2071,14 +2577,17 @@
         if !foundFile
             return
 
-        file := FileOpen(foundFile, "r", "UTF-8")
+        try file := FileOpen(foundFile, "r", "UTF-8")
+        catch
+            return ; Retry discovery if the game replaced the file meanwhile.
         if !file
             return
         size := file.Length
-        file.Seek(-1, 2)
-        file.ReadLine()
+        file.Seek(0, 2) ; Start at EOF; historical combat must not appear as live DPS.
 
-        This.monitoredChars[charName] := Map("fileName", foundFile, "file", file, "size", size, "launchTime", A_TickCount, "fileUpdated", false)
+        This.monitoredChars[charName] := Map("fileName", foundFile, "file", file, "size", size, "pending", "", "launchTime", A_TickCount, "fileUpdated", false)
+        if This.dpsMonitoringEnabled
+            This.monitoredChars[charName]["dps"] := DPSMeter(This.dpsMonitoring)
 
         if This.waitingMonitoringChars.Has(charName)
             This.waitingMonitoringChars.Delete(charName)
@@ -2092,43 +2601,91 @@
             return
         This.monitoredChars[charName]["file"].Close() ; Closing file
         This.monitoredChars.Delete(charName)
+        for hwnd, thumb in This.ThumbWindows.OwnProps() {
+            if thumb["Window"].Title = charName
+                This.updateThumbnailDPSText("", hwnd)
+        }
 
         This.debugToolTipText .= "Stopped monitoring: " . charName . "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     }
 
     monitorAllChars() {
-        for charName in This.monitoredChars
+        for charName in This.monitoredChars.Clone()
             This.monitorChanges(charName)
     }
 
-    monitorChanges(charName) {
+    monitorChanges(charName, now := 0) {
+        if !This.monitoredChars.Has(charName)
+            return
         fileObj := This.monitoredChars[charName]["file"]
-        if !This.monitoredChars.Has(charName) || !IsObject(fileObj) || !WinExist(charName " ahk_exe exefile.exe") {
+        hwnd := WinExist(charName " " This.EVEExe)
+        if !IsObject(fileObj) || !hwnd || !This.IsGameLogCharacterSelected(charName) {
             This.stopLogMonitoring(charName)
             return
         }
 
         tick := A_TickCount
+        reader := This.monitoredChars[charName]
+        suppressDisplay := (This.supressForFocused || This.HideThumbForActiveWin) && WinActive("ahk_id " hwnd)
         size := This.monitoredChars[charName]["file"].Length
         if size = This.monitoredChars[charName]["size"] {
+            if reader.Has("dps")
+                This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
             if !This.monitoredChars[charName]["fileUpdated"] && tick - This.monitoredChars[charName]["launchTime"] > 30000 { ; if there is no changes for some time, try find new file
                 This.stopLogMonitoring(charName)
             }
             return
         }
+        if size < reader["size"] {
+            fileObj.Seek(0)
+            reader["pending"] := ""
+            if reader.Has("dps")
+                reader["dps"] := DPSMeter(This.dpsMonitoring)
+        }
         This.monitoredChars[charName]["size"] := size
         This.monitoredChars[charName]["fileUpdated"] := True
 
-        if (This.supressForFocused || This.HideThumbForActiveWin) && WinActive(charName " ahk_exe exefile.exe") { ; Skipping event check if thumb active and supressForFocused or HideThumbForActiveWin enabled
-            while !This.monitoredChars[charName]["file"].AtEOF
-                This.monitoredChars[charName]["file"].ReadLine()
-            return
+        suppressEvents := !This.eventMonitoringEnabled || suppressDisplay
+        This.ReadGameLogUpdates(charName, suppressEvents, now, hwnd, suppressDisplay)
+    }
+
+    RefreshCharacterDPS(meter, hwnd, now, suppressDisplay) {
+        if !now
+            now := meter.LogSecond()
+        text := meter.Text(now) ; Expire quiet damage even when display is suppressed.
+        This.updateThumbnailDPSText(suppressDisplay ? "" : text, hwnd, suppressDisplay ? "" : meter.damageText)
+    }
+
+    ReadGameLogUpdates(charName, suppressEvents, now := 0, hwnd := 0, suppressDisplay := false) {
+        reader := This.monitoredChars[charName]
+        ; After a stalled poll, retain only a bounded recent tail. Seeking is
+        ; byte-based; discard the first fragment, including any split UTF-8.
+        file := reader["file"]
+        maxBacklog := 262144
+        if file.Length - file.Pos > maxBacklog {
+            file.Seek(-maxBacklog, 2)
+            reader["pending"] := ""
+            file.ReadLine()
+            if reader.Has("dps")
+                reader["dps"] := DPSMeter(This.dpsMonitoring)
         }
+        lines := StrSplit(reader.Get("pending", "") reader["file"].Read(), "`n", "`r")
+        reader["pending"] := lines.Length ? lines.Pop() : "" ; Wait for the writer to finish the last line.
+        if reader.Has("dps") {
+            if now {
+                for line in lines
+                    reader["dps"].AddLine(line, now)
+            } else
+                reader["dps"].AddBatch(lines)
+            if hwnd
+                This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
+        }
+        if suppressEvents
+            return
 
-        while !This.monitoredChars[charName]["file"].AtEOF {
-            line := This.monitoredChars[charName]["file"].ReadLine()
-
+        pendingEvent := "", shootingObserved := false
+        for line in lines {
             if line = ""
                 continue
 
@@ -2137,14 +2694,7 @@
                 if This.monitoredChars[charName]["event"] != ""
                     break
                 if e = "stoppedShooting" && (RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?<color=0xff00ffff><b>\d+</b> <color=0x77ffffff><font size=\d+>to</font> <b><color=0xffffffff>", &m) || RegExMatch(line, "\s(\d+):(\d+):(\d+)\s\].+?Your .+? misses .+? completely", &m)) {
-                    if This.shootingChars.Has(charName) {
-                        SetTimer(This.shootingChars[charName], 0)
-                        This.shootingChars.Delete(charName)
-                    }
-
-                    This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
-                    SetTimer(This.shootingChars[charName], -This.shootingInterval)
-
+                    shootingObserved := true
                     This.monitoredChars[charName]["event"] := e
                 }
                 else if (!v["needRegex"] && InStr(line, v["pattern"])) || (v["needRegex"] && RegExMatch(line, v["pattern"])) {
@@ -2153,6 +2703,20 @@
             }
             This.processNPCCheck(charName, line) ; checking npcs if any event enabled
 
+            event := reader["event"]
+            if event != "" && event != "stoppedShooting" && (pendingEvent = "" || This.lastEventPriority)
+                pendingEvent := event
+        }
+        ; Repeated hits need one visual alert update per poll, not a border
+        ; teardown/rebuild for every line. Preserve the first/last event setting.
+        if shootingObserved {
+            if This.shootingChars.Has(charName)
+                SetTimer(This.shootingChars[charName], 0)
+            This.shootingChars[charName] := ObjBindMethod(This, "handleEventActivation", charName, 1)
+            SetTimer(This.shootingChars[charName], -This.shootingInterval)
+        }
+        if pendingEvent != "" {
+            reader["event"] := pendingEvent
             This.handleEventActivation(charName)
         }
     }
@@ -2192,7 +2756,7 @@
             }
         }
         if This.showEventText {
-            This.updateThumbnailText(charName . "`n" This.monitoredEventsTexts[event], hwnd)
+            This.updateThumbnailEventText(This.monitoredEventsTexts[event], hwnd)
         }
         This.eventMethods[charName] := ObjBindMethod(This, "endEvent", charName, hwnd)
         SetTimer(This.eventMethods[charName], -This.eventDisplayDuration)
@@ -2217,29 +2781,76 @@
             if This.LastActiveThumbHwnd = hwnd
                 This.BorderActive := 0
 
-            if This.ignoredChars.Has(hwnd)
-                This.toggleColorBorder(hwnd, charName)
+            if This.DisabledFromGroupsEnabled && This.DisabledChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, charName, 1, This.DisableFromGroupsColor)
+            if This.QuickGroupEnabled && this.QuickGroupChars.Has(hwnd)
+                This.toggleColorBorder(hwnd, charName, 1, This.QuickGroupColor)
         }
-        if This.showEventText {
-            This.updateThumbnailText(charName, hwnd)
+        This.updateThumbnailEventText("", hwnd)
+    }
+
+    GetThumbnailDisplayText(title) {
+        ; Only replace the character line; game-log event text stays intact.
+        lineEnd := InStr(title, "`n")
+        character := This.CleanTitle(lineEnd ? RTrim(SubStr(title, 1, lineEnd - 1), "`r") : title)
+        suffix := lineEnd ? SubStr(title, lineEnd) : ""
+        replacements := This.CustomThumbnailNames
+        names := StrSplit(replacements["Names"], "`n", "`r")
+        for index, source in StrSplit(replacements["Characters"], "`n", "`r") {
+            source := This.CleanTitle(Trim(source))
+            if source != "" && source = character && index <= names.Length && names[index] != ""
+                return names[index] suffix
         }
+        return character suffix
     }
 
     updateThumbnailText(title, hwnd) {
-        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(title)
+        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.GetThumbnailDisplayText(title)
+        This.RefreshThumbnailTextLayout(This.ThumbWindows.%hwnd%["TextOverlay"])
     }
 
     processNPCCheck(charName, line) {
         if !This.checkNPCs || (This.monitoredChars[charName]["event"] != "" && This.monitoredChars[charName]["event"] != "stoppedShooting")
             return
 
-        if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
+        missedYou := false
+        energyText := "energy neutralized"
+        neutralizedAt := InStr(line, energyText)
+        if !neutralizedAt {
+            ; Nosferatu logs describe capacitor flow: to = loss, from = gain.
+            if InStr(line, "energy drained from")
+                return
+            energyText := "energy drained to"
+            neutralizedAt := InStr(line, energyText)
+        }
+        if neutralizedAt {
+            ; Incoming capacitor loss has a red GJ amount; outgoing uses 0xff7fffff.
+            if !RegExMatch(SubStr(line, 1, neutralizedAt - 1), "i)<color=(0x[0-9a-f]{8})>\s*<b>[+-]?[\d., ]+\s+GJ</b>", &amount)
+                || amount[1] != "0xffe57f7f"
+                return
+            ; Detect with a substring; remove markup only to identify the source.
+            sourceMarkup := SubStr(line, neutralizedAt + StrLen(energyText))
+            source := Trim(RegExReplace(sourceMarkup, "<[^>]*>", ""))
+            if source = ""
+                return
+            moduleAt := InStr(source, " - ")
+            target := moduleAt ? Trim(SubStr(source, 1, moduleAt - 1)) : source
+            ; Neut logs contain both hull and pilot/entity names. Match the
+            ; actual entity name, retaining corporation/alliance tags for players.
+            if !InStr(target, "[") && RegExMatch(sourceMarkup, "i)<color=0xFF40FF40><b>([^<]+)</b>", &entity)
+                target := entity[1]
+            fromOrTo := "from"
+        } else if RegExMatch(line, "<b>\d+</b>.*?>(from|to)<.*?<b><[^>]*>([^<]+)</b>", &m) { ; Getting from or to damage is dealt and target
             fromOrTo := m[1]
             target := m[2]
-        } else if RegExMatch(line, "(combat) (.+?) misses you completely", &m) { ; Missed you
+        } else if RegExMatch(line, "i)\bCombat\s+\d+(?:[.,]\d+)?\s+(from|to)\s+(.+?)\s+-\s+", &m) {
+            fromOrTo := m[1]
+            target := m[2]
+        } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "i)\(combat\)\s+(.+?) misses you completely", &m) { ; Missed you
+            missedYou := true
             fromOrTo := "from"
             target := m[1]
-        } else if RegExMatch(line, "Your .+? misses (.+?) completely", &m) { ; You missed target
+        } else if RegExMatch(RegExReplace(line, "<[^>]*>", ""), "Your .+? misses (.+?) completely", &m) { ; You missed target
             fromOrTo := "to"
             target := m[1]
         } else
@@ -2248,13 +2859,24 @@
         kind := This.ClassifyTarget(target)
         event := ""
 
+        if neutralizedAt {
+            event := kind = "player" ? "underAttackByPlayer" : "underAttackByNPC"
+            enabled := kind = "player" ? This.playerEngagmentEnabled : This.anyNPCEngagmentEnabled
+            if enabled && This.monitoredEvents[event].Get("includeNeutralization", 0)
+                This.monitoredChars[charName]["event"] := event
+            return
+        }
+
         switch kind {
             case "player":
                 if This.playerEngagmentEnabled && fromOrTo = "from"
+                    && (!missedYou || This.monitoredEvents["underAttackByPlayer"].Get("includeMisses", 1))
+                    && !(This.monitoredEvents["underAttackByPlayer"].Get("ignoreSmartbombDamage", 1) && InStr(line, "Smartbomb"))
                     event := "underAttackByPlayer"
 
             case "npc":
                 if This.anyNPCEngagmentEnabled && fromOrTo = "from"
+                    && (!missedYou || This.monitoredEvents["underAttackByNPC"].Get("includeMisses", 1))
                     event := "underAttackByNPC"
 
             case "faction":
@@ -2284,16 +2906,13 @@
     }
 
     isGeneralNPC(target) {
-        for pat in This.generalNPCPatterns {
-            if InStr(target, pat)
-                return true
-        }
-        return false
+        return This.generalNPCs.Has(target)
     }
     
     ClassifyTarget(target) {
-        ; Early player catch. All players not in NPC have alli and/or corp tag
-        if InStr(target, "[")
+        target := Trim(target)
+        ; Tagged players stay players; some actual NPC names start with [AIR].
+        if InStr(target, "[") && !This.generalNPCs.Has(target)
             return "player"
 
         if This.checkFactionNPCs && This.isExact(This.factionNPCs, target)
@@ -2312,7 +2931,9 @@
     }
 
     ; Debug tooltip method called from timers
-    debugToolTip() {
+    debugToolTip(message := "") {
+        if message != ""
+            This.debugToolTipText .= message "`n"
         if !This.debugToolTipText
             return
 

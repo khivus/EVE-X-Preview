@@ -1,53 +1,67 @@
 ﻿#Requires AutoHotkey v2.0
 
-#Include <DefaultJSON> ; The Default Settings Values
-#Include <JSON>
-#Include <LiveThumb>
-#Include <../src/Main_Class>
-#Include <../src/ThumbWindow>
-#Include <../src/TrayMenu>
-#Include <../src/Propertys>
-#Include <../src/Settings_Gui>
+#Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
+#Include "Lib/json.ahk"
+#Include "Lib/LiveThumb.ahk"
+#Include "src/ProgramLog.ahk"
+#Include "src/PreviewStartupQueue.ahk"
+#Include "src/NPCDatabase.ahk"
+#Include "src/DPSMeter.ahk"
+#Include "src/Main_Class.ahk"
+#Include "src/ThumbWindow.ahk"
+#Include "src/TrayMenu.ahk"
+#Include "src/Propertys.ahk"
+#Include "src/Settings_Gui.ahk"
+#Include "src/LocalChatMonitor.ahk"
 
-#SingleInstance Force
-Persistent
-ListLines False
-KeyHistory 0
+if !IsSet(__EVE_X_PREVIEW_TESTING__)
+    __EVE_X_PREVIEW_TESTING__ := false
 
-; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
-SetWinDelay -1
-FileEncoding("UTF-8") ; Encoding for JSON file
+if !__EVE_X_PREVIEW_TESTING__ {
+    #SingleInstance Force
+    Persistent
+    ListLines False
+    KeyHistory 0
 
-SetTitleMatchMode 3
+    ; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
+    SetWinDelay -1
+    FileEncoding("UTF-8") ; Encoding for JSON file
 
-A_MaxHotKeysPerInterval := 10000 
+    SetTitleMatchMode 3
 
-;@Ahk2Exe-Let U_version = 1.5.2.2
-;@Ahk2Exe-SetVersion %U_version%
-;@Ahk2Exe-SetFileVersion %U_version%
-;@Ahk2Exe-SetCopyright gonzo83+khivus
-;@Ahk2Exe-SetDescription EVE-X-Preview
-;@Ahk2Exe-SetProductName EVE-X-Preview
-;@Ahk2Exe-ExeName EVE-X-Preview
+    A_MaxHotKeysPerInterval := 10000 
 
-;@Ahk2Exe-AddResource icon.ico, 160  ; Replaces 'H on blue'
-;@Ahk2Exe-AddResource icon-suspend.ico, 206  ; Replaces 'S on green'
-;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
-;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
+    ;@Ahk2Exe-Let U_version = 1.6.0.18
+    ;@Ahk2Exe-SetVersion %U_version%
+    ;@Ahk2Exe-SetFileVersion %U_version%
+    ;@Ahk2Exe-SetCopyright gonzo83+khivus
+    ;@Ahk2Exe-SetDescription EVE-X-Preview
+    ;@Ahk2Exe-SetProductName EVE-X-Preview
+    ;@Ahk2Exe-ExeName EVE-X-Preview
 
-;@Ahk2Exe-SetMainIcon icon.ico
+    ;@Ahk2Exe-AddResource icon.ico, 160  ; Replaces 'H on blue'
+    ;@Ahk2Exe-AddResource icon-suspend.ico, 206  ; Replaces 'S on green'
+    ;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
+    ;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
 
-if !(A_IsCompiled)
-    TraySetIcon("icon.ico",,true)
+    ;@Ahk2Exe-SetMainIcon icon.ico
 
-; Catch all unhandled Errors to prevent the Script from stopping 
-OnError(Error_Handler)
+    if !(A_IsCompiled)
+        TraySetIcon("icon.ico",,true)
 
-Call := Main_Class()
+    ; Catch all unhandled Errors to prevent the Script from stopping 
+    OnError(Error_Handler)
+    ProgramLog.Init()
+    OnMessage(0x007E, ObjBindMethod(ProgramLog, "DisplayChanged")) ; WM_DISPLAYCHANGE
+    OnMessage(0x031E, ObjBindMethod(ProgramLog, "DisplayChanged")) ; WM_DWMCOMPOSITIONCHANGED
+
+    Call := Main_Class()
+}
 
 
 ; Improved settings loader
 Load_JSON() {
+    ProgramLog.Add("Loading settings from " A_WorkingDir "\EVE-X-Preview.json")
     defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
     userPath    := "EVE-X-Preview.json"
     tmpPath     := "EVE-X-Preview.tmp.json"
@@ -61,6 +75,7 @@ Load_JSON() {
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
+        ProgramLog.Add("Settings missing; creating defaults")
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
         return JSON.Load(FileRead(userPath))
     }
@@ -77,6 +92,7 @@ Load_JSON() {
         uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
 
         if (uver != dver) {
+            ProgramLog.Add("Migrating settings " uver " -> " dver "; backup=" backupPath)
             ; Create a timestamped backup of the existing file before merge
             FileMove(userPath, backupPath, true)
             ; Migrate in-place (implement logic inside MigrateSettings)
@@ -84,6 +100,8 @@ Load_JSON() {
             ; ensure we set new version so merge will not re-trigger
             UJSON["settings_version"] := dver
         }
+        if uver > dver
+            MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
@@ -95,21 +113,36 @@ Load_JSON() {
         FileMove(tmpPath, userPath, true)
 
     } catch Error as e {
+        ProgramLog.Error(e, "Loading or migrating settings")
         MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
         value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")
-        if (value = "No")
+        if (value = "No") {
+            ProgramLog.Add("Settings recovery declined; exiting")
             ExitApp()
+        }
+        ProgramLog.Add("Settings recovery accepted; backup=" backupPath)
 
         ; backup the corrupted file (if not already moved)
         try FileMove(userPath, backupPath, true)
-        catch
+        catch as backupError {
+            ProgramLog.Error(backupError, "Backing up settings during recovery")
+            MsgBox "Error while trying to backup corrupted settings file: " e.Message "`nIf this message persists, remove corrupted file manually.`nReloading the program."
+            Reload
+        }
 
-        FileAppend(JSON.Dump(DJSON, , "    "), userPath)
-        _JSON := JSON.Load(FileRead(userPath))
-        return _JSON
+        try {
+            FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+            _JSON := JSON.Load(FileRead(userPath))
+        }
+        catch as recoveryError {
+            ProgramLog.Error(recoveryError, "Recreating settings during recovery")
+            MsgBox "Error while trying to create new settings file: " e.Message "`nReloading the program."
+            Reload
+        }
     }
 
+    ProgramLog.Add("Settings loaded")
     return _JSON
 }
 
@@ -145,8 +178,9 @@ IsArrayLike(obj) {
     if !IsObject(obj)
         return false
     try {
-        _ := obj.Length
-        return true
+        ; _ := obj.Length
+        ; return true
+        return Type(obj) = "Array"
     } catch {
         return false
     }
@@ -300,37 +334,39 @@ MigrateSettings(userObj, uver, dver) {
                 tv["ThumbnailMinimumSize"] := DeepClone(g["ThumbnailMinimumSize"])
 
             ; Thumbnail Settings -> Thumbnails Behavior
-            ts := prof_settings["Thumbnail Settings"]
-            if ts.Has("HideThumbnailsOnLostFocus")
-                tb["HideThumbnailsOnLostFocus"] := ts["HideThumbnailsOnLostFocus"]
-            if ts.Has("ShowThumbnailsAlwaysOnTop")
-                tb["ShowThumbnailsAlwaysOnTop"] := ts["ShowThumbnailsAlwaysOnTop"]
+            if prof_settings.Has("Thumbnail Settings") {
+                ts := prof_settings["Thumbnail Settings"]
+                if ts.Has("HideThumbnailsOnLostFocus")
+                    tb["HideThumbnailsOnLostFocus"] := ts["HideThumbnailsOnLostFocus"]
+                if ts.Has("ShowThumbnailsAlwaysOnTop")
+                    tb["ShowThumbnailsAlwaysOnTop"] := ts["ShowThumbnailsAlwaysOnTop"]
 
-            ; Thumbnail Settings -> Thumbnails Visuals
-            if ts.Has("ShowThumbnailTextOverlay")
-                tv["ShowThumbnailTextOverlay"] := ts["ShowThumbnailTextOverlay"]
-            if ts.Has("ThumbnailTextColor")
-                tv["ThumbnailTextColor"] := ts["ThumbnailTextColor"]
-            if ts.Has("ThumbnailTextSize")
-                tv["ThumbnailTextSize"] := ts["ThumbnailTextSize"]
-            if ts.Has("ThumbnailTextFont")
-                tv["ThumbnailTextFont"] := ts["ThumbnailTextFont"]
-            if ts.Has("ThumbnailTextMargins")
-                tv["ThumbnailTextMargins"] := DeepClone(ts["ThumbnailTextMargins"])
-            if ts.Has("ShowClientHighlightBorder")
-                tv["ShowClientHighlightBorder"] := ts["ShowClientHighlightBorder"]
-            if ts.Has("ClientHighligtColor")
-                tv["ClientHighligtColor"] := ts["ClientHighligtColor"]
-            if ts.Has("ClientHighligtBorderthickness")
-                tv["ClientHighligtBorderthickness"] := ts["ClientHighligtBorderthickness"]
-            if ts.Has("ThumbnailOpacity")
-                tv["ThumbnailOpacity"] := ts["ThumbnailOpacity"]
-            if ts.Has("ShowAllColoredBorders")
-                tv["ShowAllColoredBorders"] := ts["ShowAllColoredBorders"]
-            if ts.Has("InactiveClientBorderthickness")
-                tv["InactiveClientBorderthickness"] := ts["InactiveClientBorderthickness"]
-            if ts.Has("InactiveClientBorderColor")
-                tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
+                ; Thumbnail Settings -> Thumbnails Visuals
+                if ts.Has("ShowThumbnailTextOverlay")
+                    tv["ShowThumbnailTextOverlay"] := ts["ShowThumbnailTextOverlay"]
+                if ts.Has("ThumbnailTextColor")
+                    tv["ThumbnailTextColor"] := ts["ThumbnailTextColor"]
+                if ts.Has("ThumbnailTextSize")
+                    tv["ThumbnailTextSize"] := ts["ThumbnailTextSize"]
+                if ts.Has("ThumbnailTextFont")
+                    tv["ThumbnailTextFont"] := ts["ThumbnailTextFont"]
+                if ts.Has("ThumbnailTextMargins")
+                    tv["ThumbnailTextMargins"] := DeepClone(ts["ThumbnailTextMargins"])
+                if ts.Has("ShowClientHighlightBorder")
+                    tv["ShowClientHighlightBorder"] := ts["ShowClientHighlightBorder"]
+                if ts.Has("ClientHighligtColor")
+                    tv["ClientHighligtColor"] := ts["ClientHighligtColor"]
+                if ts.Has("ClientHighligtBorderthickness")
+                    tv["ClientHighligtBorderthickness"] := ts["ClientHighligtBorderthickness"]
+                if ts.Has("ThumbnailOpacity")
+                    tv["ThumbnailOpacity"] := ts["ThumbnailOpacity"]
+                if ts.Has("ShowAllColoredBorders")
+                    tv["ShowAllColoredBorders"] := ts["ShowAllColoredBorders"]
+                if ts.Has("InactiveClientBorderthickness")
+                    tv["InactiveClientBorderthickness"] := ts["InactiveClientBorderthickness"]
+                if ts.Has("InactiveClientBorderColor")
+                    tv["InactiveClientBorderColor"] := ts["InactiveClientBorderColor"]
+            }
 
             ; Hotkeys -> Hotkeys Settings
             prof_settings["Hotkeys Settings"] := Map()
@@ -439,6 +475,20 @@ MigrateSettings(userObj, uver, dver) {
             }
         }
     }
+    if (uver = "" || Integer(uver) <= 2) && Integer(dver) >= 3 { ; for v2 -> v3 migration
+        if !userObj.Has("_Profiles") || !IsObject(userObj["_Profiles"])
+            throw Error("No profiles found!")
+
+        for prof_name, prof_settings in userObj["_Profiles"] {
+            if !IsObject(prof_settings) ; if it's not an object, skip (unexpected)
+                continue
+
+            ; Updating all hotkey groups with empty "FirstCharHotkey" key
+            if prof_settings.Has("Hotkey Groups")
+                for k, v in prof_settings["Hotkey Groups"]
+                    prof_settings["Hotkey Groups"][k]["FirstCharHotkey"] := ""
+        }
+    }
 
     return userObj
 
@@ -449,6 +499,7 @@ MigrateSettings(userObj, uver, dver) {
 
 ; Hanles unmanaged Errors
 Error_Handler(Thrown, Mode) {
+    try ProgramLog.Error(Thrown, "Unhandled " Mode)
     ; There we try to get right layout of keyboard
     if Thrown.Message == "Invalid key name." {
         if !hwnd := WinActive("A") {

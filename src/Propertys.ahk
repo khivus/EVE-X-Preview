@@ -10,7 +10,12 @@ class Propertys extends TrayMenu {
         set {
             if This.ThumbWindows.HasProp(hwnd) {
                 newtext := Value
-                This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.CleanTitle(newtext)
+                if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
+                    This.updateThumbnailEventText("", hwnd)
+                    This.updateThumbnailSystemText("", hwnd)
+                    This.updateThumbnailDPSText("", hwnd)
+                }
+                This.updateThumbnailText(newtext, hwnd)
                 This.ThumbWindows.%hwnd%["Window"].Title := newtext
             }
         }
@@ -69,18 +74,67 @@ class Propertys extends TrayMenu {
 
         This.ProfileHotkeysSettings := This.ComboGroups["Hotkeys Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsBehavior := This.ComboGroups["Thumbnails Behavior"] ? "Default" : This.LastUsedProfile
+        This.ProfileThumbnailsInteractions := This.ComboGroups["Thumbnails Interactions"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailsVisuals := This.ComboGroups["Thumbnails Visuals"] ? "Default" : This.LastUsedProfile
         This.ProfileThumbnailVisibility := This.ComboGroups["Thumbnail Visibility"] ? "Default" : This.LastUsedProfile
         This.ProfileClientSettings := This.ComboGroups["Client Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileCustomColors := This.ComboGroups["Custom Colors"] ? "Default" : This.LastUsedProfile
         This.ProfileGameLogsMonitoring := This.ComboGroups["Game Logs Monitoring"] ? "Default" : This.LastUsedProfile
         This.ProfileMonitoredEvents := This.ComboGroups["Monitored Events"] ? "Default" : This.LastUsedProfile
+        This.ProfileDPSMonitoring := This.ComboGroups["DPS Monitoring"] ? "Default" : This.LastUsedProfile
         This.ProfileTrayMenuSettings := This.ComboGroups["Tray Menu Settings"] ? "Default" : This.LastUsedProfile
         This.ProfileOther := This.ComboGroups["Other"] ? "Default" : This.LastUsedProfile
         This.ProfileHotkeysGroups := This.ComboGroups["Hotkey Groups"] ? "Default" : This.LastUsedProfile
         This.ProfileNonEVEApplications := This.ComboGroups["Non-EVE Applications"] ? "Default" : This.LastUsedProfile
     }
 
+
+    ; ### Profile Thumbnails Interactions
+
+    ThumbnailsInteractions {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Thumbnails Interactions"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Thumbnails Interactions"] := value
+    }
+    
+    DisableFromGroupsColor {
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["dynamicGroupsColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
+    }
+
+    QuickGroupColor {
+        get => convertToHex(This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupColor"])
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupColor"] := convertToHex(value)
+    }
+
+    QuickGroupHotkey {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupHotkey"] := value
+    }
+
+    QuickGroupSortOrder {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupSortOrder"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupSortOrder"] := value
+    }
+
+    QuickGroupIgnoredInOtherGroups {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupIgnoredInOtherGroups"] := value
+    }
+
+    QuickGroupResetsPosition {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupResetsPosition"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["QuickGroupResetsPosition"] := value
+    }
+
+    DontCloseDisabledClients {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
+    }
+
+    DontCloseQuickGroupClients {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"]
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"] := value
+    }
 
 
     ;########################
@@ -221,6 +275,16 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextFont"] := Trim(value, "`n ")
     }
+    CustomThumbnailNames {
+        get {
+            visuals := This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]
+            if !visuals.Has("CustomThumbnailNames")
+                visuals["CustomThumbnailNames"] := Map("Characters", "", "Names", "")
+            return visuals["CustomThumbnailNames"]
+        }
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["CustomThumbnailNames"] := value
+    }
+
     ThumbnailTextSize {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["ThumbnailTextSize"] := Trim(value, "`n ")
@@ -497,6 +561,16 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"] := value
     }
+
+    SwitchToPreviousWindow_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["SwitchToPreviousWindow_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["SwitchToPreviousWindow_Hotkey"] := value
+    }
+
+    CycleEveryLoggedIn_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CycleEveryLoggedIn_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["CycleEveryLoggedIn_Hotkey"] := value
+    }
     
     Login_Screen_Cycle_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Login_Screen_Cycle_Hotkey"]
@@ -518,16 +592,6 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["KeepGroupsPositions"] := value
     }
 
-    dynamicGroupsEnabled {
-        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"]
-        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsEnabled"] := value
-    }
-
-    dynamicGroupsColor {
-        get => convertToHex(This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"])
-        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["dynamicGroupsColor"] := convertToHex(value)
-    }
-
     Close_Active_EVE_Win_Hotkey {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Close_Active_EVE_Win_Hotkey"] := value
@@ -543,9 +607,29 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Reload_Program_Hotkey"] := value
     }
 
+    ToggleLivePreviewsHotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ToggleLivePreviewsHotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["ToggleLivePreviewsHotkey"] := value
+    }
+
+    Exit_Program_Hotkey {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Exit_Program_Hotkey"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Exit_Program_Hotkey"] := value
+    }
+
     GroupsHoldDelay {
         get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"]
         set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["GroupsHoldDelay"] := value
+    }
+    
+    MaxActiveWindowRetries {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["MaxActiveWindowRetries"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["MaxActiveWindowRetries"] := value
+    }
+    
+    ActiveWindowRetryInterval {
+        get => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["ActiveWindowRetryInterval"]
+        set => This._JSON["_Profiles"][This.ProfileHotkeysGroups]["Hotkeys Settings"]["ActiveWindowRetryInterval"] := value
     }
 
     HideThumbnailsHotkey {
@@ -560,14 +644,13 @@ class Propertys extends TrayMenu {
 
     Hotkey_Groups[key?] {
         get {
-            if (IsSet(key)) {
+            if IsSet(key)
                 return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][key]
-            }
             else
                 return This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"]
         }
         set {
-            This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][Key] := Map("Characters", value, "ForwardsHotkey", "", "BackwardsHotkey", "")
+            This._JSON["_Profiles"][This.LastUsedProfile]["Hotkey Groups"][Key] := Map("Characters", value, "ForwardsHotkey", "", "BackwardsHotkey", "", "FirstCharHotkey", "")
         }
     }
 
@@ -649,6 +732,7 @@ class Propertys extends TrayMenu {
         "warpDisrupted", "Warp Disrupted",
         "decloaked", "Decloaked",
         "gateJumped", "Gate Jumped",
+        "undockedFromNPCStation", "Undocked from NPC Station",
         "convoRequest", "Convo Request",
         "fleetInvited", "Fleet Invited",
         "fleetWarped", "Fleet Warped",
@@ -662,6 +746,21 @@ class Propertys extends TrayMenu {
     gameLogsMonitoringEnabled {
         get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"]
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["gameLogsMonitoringEnabled"] := value
+    }
+
+    systemTrackingEnabled {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("systemTrackingEnabled", 0)
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["systemTrackingEnabled"] := value
+    }
+
+    SlowThumbnailCreation {
+        get => This._JSON["_Profiles"][This.ProfileOther]["Other"].Get("SlowThumbnailCreation", 0)
+        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SlowThumbnailCreation"] := value
+    }
+
+    chatLogsDirectory {
+        get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("chatLogsDirectory", "")
+        set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["chatLogsDirectory"] := value
     }
 
     monitoringInterval {
@@ -732,6 +831,11 @@ class Propertys extends TrayMenu {
     shootingInterval {
         get => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"]
         set => This._JSON["_Profiles"][This.ProfileMonitoredEvents]["Game Logs Monitoring"]["shootingInterval"] := value
+    }
+
+    dpsMonitoring {
+        get => This._JSON["_Profiles"][This.ProfileDPSMonitoring]["DPS Monitoring"]
+        set => This._JSON["_Profiles"][This.ProfileDPSMonitoring]["DPS Monitoring"] := value
     }
 
     _Hotkey_Delete(*) {
@@ -859,14 +963,16 @@ class Propertys extends TrayMenu {
             MsgBox("A profile with this name already exists")
             return
         }
-        if !(This.LastUsedProfile = "Default") {
-            Result := MsgBox("Do you want to use the current settings for the new profile?", , "YesNo")
-        }
-        else
-            Result := "No"
+        
+        Result := MsgBox("Do you want to use the current settings for the new profile?", "Copy Settings?", "YesNo")
 
-        if Result = "Yes"
+        if Result = "Yes" {
             This._JSON["_Profiles"][Obj.value] := JSON.Load(FileRead("EVE-X-Preview.json"))["_Profiles"][This.LastUsedProfile]
+
+            if This.LastUsedProfile = "Default" ; Reset global groups from default profile
+                for k, v in This._JSON["_Profiles"][Obj.value]["Other"]["Global_Groups"]
+                    This._JSON["_Profiles"][Obj.value]["Other"]["Global_Groups"][k] := 0
+        }
         else if Result = "No"
             This._JSON["_Profiles"][Obj.value] := This.default_JSON["_Profiles"]["Default"]
         else
@@ -953,18 +1059,17 @@ class Propertys extends TrayMenu {
         text := EditField.Value
         EditField.Value := ""
         charList := ""
-        for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
-            for k, v in ThumbObj {
-                if k = "Window" {
-                    if v.Title == "EVE" || v.Title == "Char Screen"
-                        continue
-                    charList .= This.CleanTitle(v.Title) . "`n"
-                }
-            }
+        eveWins := WinGetList("ahk_exe exefile.exe")
+
+        for hwnd in eveWins {
+            title := WinGetTitle("ahk_id " hwnd)
+            if title != "EVE"
+                charList .= This.CleanTitle(title) "`n"
         }
+
         sorted := Sort(charList)
         text .= sorted
-        ControlSendText(text, , EditField.Hwnd)
+        ControlSendText(text,, EditField.Hwnd)
     }
 }
 

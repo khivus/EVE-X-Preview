@@ -1,4 +1,4 @@
-﻿## If you found a bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join the Discord server](https://discord.gg/d9EzgUXnT6).
+## If you found a bug or have suggestions, you can file a [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) or [join the Discord server](https://discord.gg/d9EzgUXnT6).
 
 <p align="center">
 <img width="702" height="738" alt="Image" src="https://github.com/user-attachments/assets/40e1f9ea-7555-4d7d-b91d-7c42c66e791b" />
@@ -139,6 +139,7 @@ Settings in this group:
 * Disable Char in Group (Shift+Click): lets you disable a character in a group with Shift+Click.
 * Disabled Thumbnail Color (Hex/RGB): color used for disabled thumbnails.
 * Groups Hold Delay (ms): delay used when holding group actions. Minimum is 75 ms.
+* Max Active Window Retries / Active Window Retry Interval (ms): bound focus checks only when a recent activation request targets a member of the requested group. Switching from another group or application normally skips these waits. Requests expire after 250 ms and are cleared when focus is observed, moves elsewhere, or the retry budget runs out. Set retries to 1 to disable waiting.
 * Add/Delete Groups: create or remove groups.
 * Select Group: choose the group to edit.
 * Forwards Hotkey: hotkey for moving forward through the group.
@@ -151,6 +152,7 @@ This group controls global hotkeys and client actions.
 
 * Suspend All Hotkeys - Hotkey: pauses all hotkeys.
 * Hide Thumbnails Hotkey: toggles thumbnail visibility.
+* Pause/Resume Live Previews - Hotkey: releases live thumbnails and restores them on the next press, as with the About button.
 * Click Through Thumbnails - Hotkey: toggles click-through mode.
 * Hotkey Activation Scope: chooses between global hotkeys or hotkeys active only when an EVE window is focused.
 * Cycle Login Screens - Hotkey: cycles through login-screen windows.
@@ -158,8 +160,13 @@ This group controls global hotkeys and client actions.
 * Close Active EVE Window - Hotkey: closes the currently active EVE window.
 * Close All EVE Windows - Hotkey: closes all EVE windows.
 * Reload EVE-X-Preview - Hotkey: reloads the program.
+* Exit EVE-X-Preview - Hotkey: closes the program.
 * Character Name: character bound to the hotkey entry.
 * Hotkeys: hotkeys assigned to the character.
+
+### Thumbnails Interactions
+
+Quick Group Sort Order chooses how the Quick Group hotkey cycles through selected windows. Added order (the default) follows the order windows were added to Quick Group; Name cycles alphabetically by character name. Removing and adding a window again places it at the end of added order.
 
 ### Thumbnails Behavior
 
@@ -201,6 +208,7 @@ This group controls how thumbnails look.
 * Inactive Client Border Color (Hex/RGB): border color for inactive clients.
 * Thumbnail Background Color (Hex/RGB): background color used when thumbnail content is not available.
 * Minimum Thumbnail Size (px): minimum allowed thumbnail size.
+* Custom names: enter character names in the left column and displayed names on matching lines in the right column. A blank replacement keeps the original name. Import from Launched appends logged-in characters without duplicating existing entries. Changes apply when settings close and follow the selected Thumbnails Visuals profile; hotkeys and character matching still use the original names.
 
 ### Thumbnail Visibility
 
@@ -235,12 +243,14 @@ Use this group to assign per-character colors.
 This feature does not violate the EULA or Terms of Service, but it is neither endorsed nor supported by CCP. Use it at your own risk.
 Performance impact increases with the number of characters tracked at the same time.
 
-* Game Logs Monitoring Enabled: turns log monitoring on or off.
-* Game Logs Directory: path to the EVE log folder.
+* Game Logs Monitoring Enabled: turns combat/event log monitoring on or off.
+* Track Current System (Local Chat): follows Local chat system-change announcements and keeps the current system at the bottom of the thumbnail, with event text above it. Defaults to off and works independently of combat monitoring and focused-window event suppression. It shares the monitoring interval and selected-character filter; the thumbnail text overlay must be enabled to display it.
+* Chat Logs (blank = auto): optionally select your Chatlogs folder. Automatic detection checks beside the configured Gamelogs folder, then Documents/logs/Chatlogs and Documents/EVE/logs/Chatlogs. The newest Local session is matched by its Listener header, including when tracking starts after login. Changes apply when settings close.
+* Game Logs (blank = auto): optionally select your Gamelogs folder. Like Chat Logs, a blank field detects the sibling of the other configured log folder, then Documents/logs/Gamelogs and Documents/EVE/logs/Gamelogs. Automatic paths are resolved without filling in either settings field.
 * Monitoring Interval (ms): polling interval.
 * Event Priority if Several Incoming: chooses whether the first or last event wins.
 * Supress for Focused Window: suppresses events for the active window.
-* Show Event Text: shows event text in the UI.
+* Show Event Text: shows a separate event message at the bottom inside the thumbnail (above the system name when tracking is enabled), using the thumbnail text font, color, and margins. The character name stays at the top.
 * Flash Border: flashes the border on an event.
 * Stop Displaying Event on Switch: stops showing the event after switching.
 * Event Display Duration (ms): how long the event remains visible.
@@ -253,9 +263,12 @@ Performance impact increases with the number of characters tracked at the same t
 Monitored events for Game Logs Monitoring feature.
 Enabling more events reduces performance. The effect becomes larger as more characters are tracked.
 
+General NPC recognition matches full English names from a bundled EVE Ref dataset, ignoring case. Player names containing NPC name fragments no longer match. The faction, officer and capital events retain their separate lists and priority. See [NPC data and refresh instructions](src/data/README.md) for coverage and maintenance.
+
 * Stopped Shooting
-* Under Attack By Player
-* Under Attack By NPC
+* Under Attack By Player: the Ignore player smartbomb damage option excludes Smartbomb hits by default; turn it off to include them. The adjacent Neuts checkbox also includes incoming energy neutralization and Nosferatu drains from players, identified by the red GJ amount in the log. Nosferatu logs use `energy drained to` for capacitor lost and `energy drained from` for capacitor gained; only capacitor loss triggers an alert. Outgoing neutralization is ignored.
+* Under Attack By NPC: the adjacent Neuts checkbox also includes incoming energy neutralization and Nosferatu drains from NPCs. Both Neuts options default to off and require their parent attack event to be enabled.
+* The Misses checkboxes beside Neuts on the Player attack and NPC attack rows independently control whether shots that miss you trigger the corresponding Under Attack event. Both default to on, preserving existing behavior. Disabling them still allows damaging hits and enabled Neuts alerts; faction, officer and capital engagement alerts keep their existing behavior.
 * Engaged With Faction BS NPC
 * Engaged With Officer NPC
 * Engaged With Capital NPC
@@ -270,6 +283,18 @@ Enabling more events reduces performance. The effect becomes larger as more char
 * Crystal Broke
 * Mining Stopped
 * Mining Bay Is Full
+
+### DPS Monitoring
+
+Enable **Game Logs Monitoring**, then enable incoming DPS, outgoing DPS, or both in **DPS Monitoring**. DPS shares the game-log directory, monitoring interval, and selected-character list. It works with event text and flashing borders disabled. The thumbnail text overlay must be enabled to see the values.
+
+Set **Average Window (seconds)** to choose the rolling averaging period for both directions (1-3600 seconds, default **10**). Each value is the damage recorded during that window divided by its duration, preserving the spacing of the log's timestamps. For artillery firing every 17 seconds, a 20-second or longer window keeps the previous volley included between shots. The live window aligns to newly appended combat records and advances using elapsed time, so a difference between Windows UTC and EVE's clock does not discard hits. Thresholds are the minimum DPS to display for each direction; 0 means no minimum. A value below its threshold or with no recent damage is hidden. Old log contents are skipped when monitoring starts. Neutralization, repairs, misses, and other notifications do not count as damage. Event-specific NPC/player and smartbomb filters do not filter DPS.
+
+**Incoming Damage Types (%)** estimates the EM, thermal, kinetic, and explosive mix only for drones, missiles (including rockets and torpedoes), fighters, and smartbombs. Missiles use their weapon-family names: Mjolnir = EM, Inferno = thermal, Scourge = kinetic, and Nova = explosive. Smartbombs use EMP = EM, Plasma = thermal, Graviton = kinetic, Proton = explosive, and Multispectrum = equal parts of all four. Drones, fighters, and smartbomb naming exceptions use exact names in the log. The bundled [EVE Ref data](https://docs.everef.net/datasets/reference-data) includes mixed-damage profiles. The display uses `?` for the percentage of damage with an unknown type. Other weapons still count toward total incoming DPS but remain unknown in the damage mix. Percentages include unknown damage in the denominator. They weight each known weapon's base damage mix by its recorded hit damage, so they are estimates, not measured post-resistance percentages or the ship's resistances. The existing saved setting key `showIncomingDPSResistances` is retained for compatibility.
+
+DPS and the optional damage mix each occupy one line above event/system text: `DPS: In: 123 | Out: 456` and `% EM 25 Th 75`. Displayed DPS is rounded to whole numbers; calculations and thresholds retain full precision. Damage types that round to 0% are omitted, including unknown damage (`?`). The character name keeps priority and the system stays at the bottom. Active DPS takes priority over event text on compact thumbnails; the percentage breakdown appears when there is enough room. Empty event text reserves no line. Focus suppression hides DPS while the client is active but continues counting its damage, so switching focus does not create gaps. Event expiry and event switching do not clear DPS.
+
+Monitoring reads only appended, complete lines through the existing reader and timer. DPS is updated before event visuals, and alert updates are batched once per character per poll while preserving first/last event priority. Per-second totals keep memory bounded; damage profiles are shared and loaded only when the optional damage mix is enabled. No network access is used while monitoring, and unchanged display text is not rewritten.
 
 ### Non-EVE Applications
 
@@ -302,6 +327,7 @@ Choose which entries appear in the tray menu.
 
 ### Other
 
+* Slow Thumbnail Creation: off by default, including existing profiles. Off creates ready previews immediately without startup or spacing delays. On waits three seconds, requires stable source dimensions for 500 ms, and spaces queued previews by 150 ms to reduce startup GPU pressure. Applies immediately to queued previews and controls startup, new clients, and resume after pausing.
 * Switch Language to English on Error: switches the Windows language to English if hotkey assigning error occurs.
 * Update all thumbnails size to default size: use this button to update every thumbnail size to the current default size.
 
@@ -331,9 +357,22 @@ Buttons:
 * Update to Pre-Release: after update checking can use for update/downgrade to latest pre-release version.
 * Help: opens this README page.
 * Report Bug: opens [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) page.
+* Show Log: shows a snapshot of the current session's program events, even with Debug Mode off.
+* Export Log: saves that event history to a chosen `.log` file.
+* Pause Live Previews / Resume Live Previews: temporarily unregisters live DWM thumbnails and hides their overlays without removing existing hotkeys or group membership. Resume uses the Slow Thumbnail Creation option in Other. Pause is session-only and resets on restart.
+
+Program diagnostics are kept in `ProgramLog.Text` (up to 256 Ki characters) and written every two seconds to `%LOCALAPPDATA%\EVE-X-Preview\Logs\current.log`. The disk log rotates at approximately 1 MiB into `previous.log`. Startup registration attempts are flushed before touching DWM. Errors reaching the script error handler, DWM failures, and logged runtime errors automatically export an `error-*.log` snapshot; snapshots are limited to one per ten seconds and the newest ten files. Logs can contain character/window names and local paths. Nothing is uploaded automatically.
+
+Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry failed sources independently, with increasing delays capped at 30 seconds. Recovery continues until successful or the client closes; Pause then Resume resets the queue. Unchanged geometry and visibility do not cause redundant DWM updates.
+
+Diagnostics also record settings load/save/recovery, activation requests and focus results, Windows display-change notifications, and ten-second summaries of DWM geometry/visibility updates and window show commands, with GDI/USER handle counts. These summaries describe the program's operations, not the compositor's frame rate or GPU utilization; display notifications alone do not confirm a driver reset.
+
+Update logs include automatic/manual checks, cache/duplicate skips, HTTP results, selected versions, timeouts, download results, cancellation, and handoff to the updater. The standalone updater writes replacement and relaunch steps to `%LOCALAPPDATA%\EVE-X-Preview\Logs\Updater`. This requires rebuilding and shipping the updated updater executable with the release; older published updater binaries will not contain the new logging.
+
+These measures reduce startup bursts, including restarting Preview while clients are launching. They cannot guarantee recovery from a graphics-driver or DWM crash: those may never raise a script error. Preserve `current.log`/`previous.log` and collect Windows Event Viewer or Reliability Monitor details for the same time when reporting a blackout.
 
 ### EVE-X-Preview
 
 * Created by [gonzo83](https://github.com/g0nzo83/EVE-X-Preview)
 * Forked and maintained by [khivus](https://github.com/khivus)
-* Credits to [mrmjstc](https://github.com/mrmjstc/eve-apm-preview) and [CJKondur](https://github.com/CJKondur/EVE-MultiPreview)
+* Credits to [mrmjstc](https://github.com/mrmjstc/eve-maj-preview) and [CJKondur](https://github.com/CJKondur/EVE-MultiPreview)

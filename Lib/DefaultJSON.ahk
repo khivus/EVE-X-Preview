@@ -1,7 +1,7 @@
 ﻿default_JSON := "
 (
 {
-    "settings_version": "2",
+    "settings_version": "3",
     "LastUsedProfile": "Default",
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
@@ -49,7 +49,20 @@
                 "HideThumbnails": 0,
                 "ClickThroughActive": 0
             },
+            "Thumbnails Interactions": {
+                "ActivateThumbnail": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 0},
+                "MoveThumbnail": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 0},
+                "ResizeThumbnail": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 1},
+                "MoveAllThumbnails": {"lmb": 0, "rmb": 1, "shift": 0, "ctrl": 1},
+                "ResizeAllThumbnails": {"lmb": 1, "rmb": 1, "shift": 0, "ctrl": 0},
+                "HideThumbnail": {"lmb": 0, "rmb": 0, "shift": 0, "ctrl": 0},
+                "MinimizeClient": {"lmb": 1, "rmb": 0, "shift": 0, "ctrl": 1},
+                "CloseClient": {"lmb": 0, "rmb": 0, "shift": 0, "ctrl": 0},
+                "DisableFromGroups": {"lmb": 1, "rmb": 0, "shift": 1, "ctrl": 0},
+                "QuickGroup": {"lmb": 0, "rmb": 1, "shift": 1, "ctrl": 0}
+            },
             "Thumbnails Visuals": {
+                "CustomThumbnailNames": {"Characters": "", "Names": ""},
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
@@ -74,6 +87,8 @@
             "Hotkeys Settings": {
                 "Suspend_Hotkeys_Hotkey": "",
                 "Global_Hotkeys": 1,
+                "SwitchToPreviousWindow_Hotkey": "",
+                "CycleEveryLoggedIn_Hotkey": "",
                 "Login_Screen_Cycle_Hotkey": "",
                 "LoginScreenCycleDirection": 1,
                 "PreserveHotkeysOnLogout": 0,
@@ -81,6 +96,8 @@
                 "Close_Active_EVE_Win_Hotkey": "",
                 "Close_All_EVE_Win_Hotkey": "",
                 "Reload_Program_Hotkey": "",
+                "ToggleLivePreviewsHotkey": "",
+                "Exit_Program_Hotkey": "",
                 "CharacterHotkeys": [
                     {"Example Name1":"1"},
                     {"Example Name2":"ctrl & 1"},
@@ -88,10 +105,18 @@
                     {"Example Name4":"^XButton1 & 1"}
                 ],
                 "GroupsHoldDelay": 100,
+                "MaxActiveWindowRetries": 3,
+                "ActiveWindowRetryInterval": 25,
                 "HideThumbnailsHotkey": "",
                 "ClickThroughHotkey": "",
-                "dynamicGroupsEnabled": 0,
-                "dynamicGroupsColor": "ff0000"
+                "dynamicGroupsColor": "ff0000",
+                "QuickGroupColor": "72efdd",
+                "QuickGroupHotkey": "",
+                "QuickGroupSortOrder": "Added order",
+                "QuickGroupIgnoredInOtherGroups": 1,
+                "QuickGroupResetsPosition": 1,
+                "DontCloseDisabledClients": 0,
+                "DontCloseQuickGroupClients": 0
             },
             "Thumbnail Positions": {},
             "Client Possitions": {},
@@ -107,9 +132,11 @@
                 }
             },
             "Other": {
+                "SlowThumbnailCreation": 0,
                 "SwitchLangOnErr": 0,
                 "Global_Groups": {
                     "Client Settings": 0,
+                    "Thumbnails Interactions": 0,
                     "Thumbnails Behavior": 0,
                     "Thumbnails Visuals": 0,
                     "Hotkeys Settings": 0,
@@ -117,6 +144,7 @@
                     "Custom Colors": 0,
                     "Game Logs Monitoring": 0,
                     "Monitored Events": 0,
+                    "DPS Monitoring": 0,
                     "Tray Menu Settings": 0,
                     "Other": 0,
                     "Hotkey Groups": 0,
@@ -146,8 +174,18 @@
                 "hotkey": ["*^!Tab"]
                 }
             },
+            "DPS Monitoring": {
+                "dpsAverageSeconds": 10,
+                "incomingDPSEnabled": 0,
+                "incomingDPSThreshold": 0,
+                "showIncomingDPSResistances": 0,
+                "outgoingDPSEnabled": 0,
+                "outgoingDPSThreshold": 0
+            },
             "Game Logs Monitoring": {
                 "gameLogsMonitoringEnabled": 0,
+                "systemTrackingEnabled": 0,
+                "chatLogsDirectory": "",
                 "monitoringInterval": 1000,
                 "gameLogsDirectory": "",
                 "charsIds": {},
@@ -162,8 +200,8 @@
                 "flashBorderInterval": 300,
                 "shootingInterval": 10000,
                 "monitoredEvents": {
-                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000"},
-                    "underAttackByNPC": {"enabled": 0, "color": "ff8800"},
+                    "underAttackByPlayer": {"enabled": 0, "color": "ff0000", "includeNeutralization": 0, "ignoreSmartbombDamage": 1, "includeMisses": 1},
+                    "underAttackByNPC": {"enabled": 0, "color": "ff8800", "includeNeutralization": 0, "includeMisses": 1},
                     "engagedWithFactionBSNPC": {"enabled": 0, "color": "11470d"},
                     "engagedWithOfficerNPC": {"enabled": 0, "color": "340e73"},
                     "engagedWithCapitalNPC": {"enabled": 0, "color": "ffd700"},
@@ -178,7 +216,8 @@
                     "crystalBroke": {"enabled": 0, "color": "63f321"},
                     "miningStopped": {"enabled": 0, "color": "63f321"},
                     "miningBayIsFull": {"enabled": 0, "color": "63f321"},
-                    "stoppedShooting": {"enabled": 0, "color": "ff8800"}
+                    "stoppedShooting": {"enabled": 0, "color": "ff8800"},
+                    "undockedFromNPCStation": {"enabled": 0, "color": "2196f3"}
                 }
             }
         }
