@@ -3,6 +3,8 @@
 
 Class ThumbWindow extends Propertys {   
     Create_Thumbnail(Win_Hwnd, Win_Title) {
+        generation := This.previewGeneration
+        This.EnsureLivePreviewActive(generation)
         ThumbObj := Map()
         try {
         
@@ -20,12 +22,7 @@ Class ThumbWindow extends Propertys {
         }
         
         ;Enable Shadow 
-        hr := DllCall("Dwmapi\DwmExtendFrameIntoClientArea",
-                "Ptr", ThumbObj["Window"].Hwnd,	; HWND hWnd
-                "Ptr", This.margins,	; MARGINS *pMarInset
-                )   
-        if hr
-            ProgramLog.Error(Error("DwmExtendFrameIntoClientArea " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM shadow")
+        This.ApplyThumbnailShadow(ThumbObj["Window"].Hwnd, generation)
  
 
         ;Set The Opacity who is set in the JSON File, its important to set this on the MainWindow and not on the Thumbnail itself
@@ -146,6 +143,7 @@ Class ThumbWindow extends Propertys {
 
         ThumbObj["Border"].Show("w" size.w " h" size.h " x" size.x " y" size.y "NoActivate Hide")
 
+        This.EnsureLivePreviewActive(generation)
         return ThumbObj
         } catch as err {
             ; Do not leave GUI/DWM resources behind after a partial creation.
@@ -165,19 +163,48 @@ Class ThumbWindow extends Propertys {
         }
     }
 
+    ExtendThumbnailFrame(hwnd) {
+        return DllCall("dwmapi\DwmExtendFrameIntoClientArea", "Ptr", hwnd, "Ptr", This.margins, "Int")
+    }
+
+    ApplyThumbnailShadow(hwnd, generation) {
+        This.BeginPreviewDwmCall(generation)
+        try hr := This.ExtendThumbnailFrame(hwnd)
+        finally This.EndPreviewDwmCall()
+        if hr {
+            err := Error("DwmExtendFrameIntoClientArea " Format("0x{:08X}", hr & 0xFFFFFFFF))
+            This.PauseLivePreviewsForDwmFailure(err.Message)
+            ProgramLog.Error(err, "DWM shadow")
+            if This.AutoPauseOnDwmFailure
+                throw err
+        }
+        This.EnsureLivePreviewActive(generation)
+    }
+
+    CreateLiveThumbnail(hwnd, destination) {
+        return LiveThumb(hwnd, destination, This)
+    }
+
     AttachLivePreview(thumb, hwnd) {
+        generation := This.previewGeneration
+        This.EnsureLivePreviewActive(generation)
+        ; Retained preview windows need their frame reapplied after composition changes.
+        if thumb.Has("Thumbnail")
+            This.ApplyThumbnailShadow(thumb["Window"].Hwnd, generation)
         WinGetClientPos(,, &w, &h, "ahk_id " hwnd)
         if w <= 0 || h <= 0
             throw Error("Preview source has no drawable client area",, hwnd)
         WinGetPos(,, &tw, &th, thumb["Window"].Hwnd)
-        live := LiveThumb(hwnd, thumb["Window"].Hwnd)
+        live := This.CreateLiveThumbnail(hwnd, thumb["Window"].Hwnd)
         try {
+            This.EnsureLivePreviewActive(generation)
             live.Source := [0, 0, w, h]
             live.Destination := [0, 0, tw, th]
             live.SourceClientAreaOnly := true
             live.Visible := true
             live.Opacity := 255
             live.Update()
+            This.EnsureLivePreviewActive(generation)
             thumb["Thumbnail"] := live
         } catch as err {
             live.Close()
@@ -518,9 +545,13 @@ Class ThumbWindow extends Propertys {
             thumb["Thumbnail"].Visible := visible
             thumb["Thumbnail"].Update()
         }
+        if This.livePreviewsPaused || !thumb["Thumbnail"].THUMB_ID
+            HideOrShow := "Hide", visible := false
 
         if HideOrShow = "Show" && !This.HideThumbnails {
             for k, v in This.ThumbWindows.%EVEWindowHwnd% {
+                if This.livePreviewsPaused
+                    break
                 if (k = "Thumbnail")
                     continue
                 if (k = "Border" && !This.ShowAllColoredBorders)

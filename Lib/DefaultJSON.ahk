@@ -133,6 +133,7 @@
             },
             "Other": {
                 "SlowThumbnailCreation": 0,
+                "AutoPauseOnDwmFailure": 1,
                 "SwitchLangOnErr": 0,
                 "Global_Groups": {
                     "Client Settings": 0,

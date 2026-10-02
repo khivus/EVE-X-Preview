@@ -327,6 +327,7 @@ Choose which entries appear in the tray menu.
 
 ### Other
 
+* Auto-Pause on DWM Failure: enabled by default, including existing profiles. Automatically pauses live previews on DWM failures or Windows composition changes. Applies immediately; turn it off to keep automatic retries. An existing pause still requires manual Resume.
 * Slow Thumbnail Creation: off by default, including existing profiles. Off creates ready previews immediately without startup or spacing delays. On waits three seconds, requires stable source dimensions for 500 ms, and spaces queued previews by 150 ms to reduce startup GPU pressure. Applies immediately to queued previews and controls startup, new clients, and resume after pausing.
 * Switch Language to English on Error: switches the Windows language to English if hotkey assigning error occurs.
 * Update all thumbnails size to default size: use this button to update every thumbnail size to the current default size.
@@ -359,11 +360,11 @@ Buttons:
 * Report Bug: opens [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) page.
 * Show Log: shows a snapshot of the current session's program events, even with Debug Mode off.
 * Export Log: saves that event history to a chosen `.log` file.
-* Pause Live Previews / Resume Live Previews: temporarily unregisters live DWM thumbnails and hides their overlays without removing existing hotkeys or group membership. Resume uses the Slow Thumbnail Creation option in Other. Pause is session-only and resets on restart.
+* Pause Live Previews / Resume Live Previews: temporarily unregisters live DWM thumbnails and hides their overlays without removing existing hotkeys or group membership. With Auto-Pause on DWM Failure enabled in Other (the default), DWM failures or a Windows composition change automatically pause previews; About shows the reason. Resume manually after the display is stable, using this button or the pause/resume hotkey. Resume uses the Slow Thumbnail Creation option in Other. Pause is session-only and resets on restart.
 
 Program diagnostics are kept in `ProgramLog.Text` (up to 256 Ki characters) and written every two seconds to `%LOCALAPPDATA%\EVE-X-Preview\Logs\current.log`. The disk log rotates at approximately 1 MiB into `previous.log`. Startup registration attempts are flushed before touching DWM. Errors reaching the script error handler, DWM failures, and logged runtime errors automatically export an `error-*.log` snapshot; snapshots are limited to one per ten seconds and the newest ten files. Logs can contain character/window names and local paths. Nothing is uploaded automatically.
 
-Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry failed sources independently, with increasing delays capped at 30 seconds. Recovery continues until successful or the client closes; Pause then Resume resets the queue. Unchanged geometry and visibility do not cause redundant DWM updates.
+Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry startup failures independently, with increasing delays capped at 30 seconds. Auto-Pause on DWM Failure is enabled by default and applies immediately when changed in Other. When enabled, DWM failures stop the entire queue and require manual Resume; when disabled, failures remain logged and failed registrations retry. Disabling this setting does not resume already paused previews. Pause cancels interrupted startup attempts, waits for active DWM calls to return before cleanup, and prevents Resume during those calls. Unchanged geometry and visibility do not cause redundant DWM updates.
 
 Diagnostics also record settings load/save/recovery, activation requests and focus results, Windows display-change notifications, and ten-second summaries of DWM geometry/visibility updates and window show commands, with GDI/USER handle counts. These summaries describe the program's operations, not the compositor's frame rate or GPU utilization; display notifications alone do not confirm a driver reset.
 

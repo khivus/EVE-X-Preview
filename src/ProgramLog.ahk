@@ -9,6 +9,7 @@ class ProgramLog {
     static MaxChars := 262144
     static Activity := Map()
     static ActivityAt := A_TickCount
+    static DisplayNotificationAt := Map()
 
     static Count(event) {
         this.Activity[event] := this.Activity.Get(event, 0) + 1
@@ -33,6 +34,13 @@ class ProgramLog {
     }
 
     static DisplayChanged(wParam, lParam, msg, hwnd) {
+        ; Broadcasts reach each preview/overlay. Log the burst once, not per HWND.
+        notification := msg ":" wParam ":" lParam
+        if A_TickCount - this.DisplayNotificationAt.Get(notification, -1000) < 1000
+            return
+        if this.DisplayNotificationAt.Count >= 64
+            this.DisplayNotificationAt.Clear()
+        this.DisplayNotificationAt[notification] := A_TickCount
         this.Add("Windows display notification=" Format("0x{:X}", msg) "; bpp=" wParam
             "; size=" (lParam & 0xFFFF) "x" ((lParam >> 16) & 0xFFFF), "WARN")
         this.Flush()

@@ -41,6 +41,10 @@ Class Main_Class extends ThumbWindow {
     ThumbHwnd_EvEHwnd := Map()
     previewQueue := PreviewStartupQueue()
     livePreviewsPaused := false
+    previewGeneration := 0
+    previewDwmCalls := 0
+    releasingLivePreviews := false
+    livePreviewPauseReason := ""
     _debugToolTipText := ""
     debugToolTipText {
         get => This._debugToolTipText
@@ -305,6 +309,7 @@ Class Main_Class extends ThumbWindow {
 
         ;The Main Timer who checks for new EVE Windows or closes Windows 
         This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        OnMessage(0x031E, ObjBindMethod(This, "OnDwmCompositionChanged"))
         ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), 50)
         OnExit(ObjBindMethod(This, "CloseLivePreviews"))
@@ -1389,6 +1394,8 @@ Class Main_Class extends ThumbWindow {
         if This.livePreviewsPaused
             return
         loop (This.previewQueue.slow ? 1 : This.previewQueue.items.Count) {
+            if This.livePreviewsPaused
+                break
             if !(hwnd := This.previewQueue.Next())
                 break
             This.ProcessQueuedPreview(hwnd)
@@ -1397,6 +1404,8 @@ Class Main_Class extends ThumbWindow {
 
     ProcessQueuedPreview(hwnd) {
         try {
+            generation := This.previewGeneration
+            This.EnsureLivePreviewActive(generation)
             title := WinGetTitle("ahk_id " hwnd)
             ProgramLog.Add("Preview startup hwnd=" hwnd " title=" title " queued=" This.previewQueue.items.Count)
             ProgramLog.Flush()
@@ -1413,10 +1422,13 @@ Class Main_Class extends ThumbWindow {
                 This.AttachLivePreview(This.ThumbWindows.%hwnd%, hwnd)
             else
                 This.EVE_WIN_Created(hwnd, title)
+            This.EnsureLivePreviewActive(generation)
             if !This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)
                 This.ShowThumb(hwnd, "Show")
             This.previewQueue.Remove(hwnd)
             ProgramLog.Add("Preview ready hwnd=" hwnd " live=" LiveThumb.OBJ_COUNTER)
+        } catch PreviewInterruptedError {
+            ; Pause invalidated this attempt; do not restart it or log a failure.
         } catch as err {
             This.previewQueue.Failed(hwnd)
             if This.previewQueue.items.Has(hwnd)
@@ -1426,20 +1438,98 @@ Class Main_Class extends ThumbWindow {
     }
 
     ToggleLivePreviews(*) {
+        ; Never resume into a DWM call or cleanup that has not returned yet.
+        if This.livePreviewsPaused && (This.previewDwmCalls || This.releasingLivePreviews
+            || (This.HasOwnProp("previewTimerBusy") && This.previewTimerBusy))
+            return
+        if This.livePreviewsPaused
+            This.ReleasePausedLivePreviews()
         This.livePreviewsPaused := !This.livePreviewsPaused
+        This.previewGeneration += 1
+        This.livePreviewPauseReason := ""
         ProgramLog.Add("Live previews " (This.livePreviewsPaused ? "paused" : "resumed"))
         This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
-        if This.livePreviewsPaused {
-            for hwnd, thumb in This.ThumbWindows.OwnProps() {
-                thumb["Thumbnail"].Close()
-                This.ShowThumb(hwnd, "Hide")
-            }
-        }
+        if This.livePreviewsPaused
+            This.ReleasePausedLivePreviews()
         ProgramLog.Flush()
         try This.MainFrame["pausePreviewsBtn"].Text := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+        try This.MainFrame["livePreviewsStatus"].Text := This.LivePreviewStatus()
+    }
+
+    EnsureLivePreviewActive(generation) {
+        if This.livePreviewsPaused || generation != This.previewGeneration
+            throw PreviewInterruptedError("Live preview startup interrupted by pause")
+    }
+
+    BeginPreviewDwmCall(generation) {
+        This.EnsureLivePreviewActive(generation)
+        This.previewDwmCalls += 1
+    }
+
+    EndPreviewDwmCall() {
+        This.previewDwmCalls -= 1
+    }
+
+    OnDwmCompositionChanged(*) {
+        This.PauseLivePreviewsForDwmFailure("Windows DWM composition changed")
+    }
+
+    PauseLivePreviewsForDwmFailure(reason) {
+        if !This.AutoPauseOnDwmFailure || This.livePreviewsPaused
+            return
+        ; Latch immediately, but never make another DWM call inside its notification.
+        This.livePreviewsPaused := true
+        This.previewGeneration += 1
+        This.livePreviewPauseReason := reason
+        This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
+        ProgramLog.Add("Live previews automatically paused: " reason "; resume manually in About or with the pause/resume hotkey", "WARN")
+        try This.MainFrame["pausePreviewsBtn"].Text := "Resume Live Previews"
+        try This.MainFrame["livePreviewsStatus"].Text := This.LivePreviewStatus()
+        This.SchedulePausedPreviewRelease()
+    }
+
+    SchedulePausedPreviewRelease() {
+        if !This.HasOwnProp("pausedPreviewReleaseTimer")
+            This.pausedPreviewReleaseTimer := ObjBindMethod(This, "ReleasePausedLivePreviews")
+        SetTimer(This.pausedPreviewReleaseTimer, -50)
+    }
+
+    ReleasePausedLivePreviews() {
+        if !This.livePreviewsPaused || This.releasingLivePreviews
+            return
+        if This.previewDwmCalls {
+            This.SchedulePausedPreviewRelease()
+            return
+        }
+        This.releasingLivePreviews := true
+        try {
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                try thumb["Thumbnail"].Close()
+                catch as err
+                    ProgramLog.Error(err, "Paused preview cleanup hwnd=" hwnd)
+                ; Hide windows directly so pausing never submits DWM properties.
+                for key, obj in thumb
+                    if key != "Thumbnail"
+                        try obj.Hide()
+                thumb["Window"].PreviewShown := false
+            }
+        } finally {
+            This.releasingLivePreviews := false
+        }
+        ProgramLog.Flush()
+    }
+
+    LivePreviewStatus() {
+        return This.livePreviewPauseReason != ""
+            ? "Automatically paused: " This.livePreviewPauseReason ". Resume when the display is stable."
+            : "Pause live previews when needed; hotkeys stay available. Creation speed is controlled in Other."
     }
 
     CloseLivePreviews(reason, code) {
+        This.livePreviewsPaused := true
+        This.previewGeneration += 1
+        if This.HasOwnProp("pausedPreviewReleaseTimer")
+            SetTimer(This.pausedPreviewReleaseTimer, 0)
         for hwnd, thumb in This.ThumbWindows.OwnProps()
             try thumb["Thumbnail"].Close()
         ProgramLog.Add("Live previews released on " reason)

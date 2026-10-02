@@ -1,3 +1,7 @@
+; Cancellation is expected when a hotkey or DWM notification interrupts startup.
+class PreviewInterruptedError extends Error {
+}
+
 ; Optional staggered startup; failure backoff applies in both modes.
 class PreviewStartupQueue {
     items := Map()

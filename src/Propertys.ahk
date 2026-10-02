@@ -758,6 +758,11 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["SlowThumbnailCreation"] := value
     }
 
+    AutoPauseOnDwmFailure {
+        get => This._JSON["_Profiles"][This.ProfileOther]["Other"].Get("AutoPauseOnDwmFailure", 1)
+        set => This._JSON["_Profiles"][This.ProfileOther]["Other"]["AutoPauseOnDwmFailure"] := value
+    }
+
     chatLogsDirectory {
         get => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"].Get("chatLogsDirectory", "")
         set => This._JSON["_Profiles"][This.ProfileGameLogsMonitoring]["Game Logs Monitoring"]["chatLogsDirectory"] := value

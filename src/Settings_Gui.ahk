@@ -1753,6 +1753,9 @@ Class Settings_Gui {
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Slow Thumbnail Creation:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSlowThumbnailCreation Checked" This.SlowThumbnailCreation, "On/Off")
         This.MainFrame["SlowThumbnailCreation"].ToolTip := "Off: create ready previews immediately. On: wait 3 seconds, then stagger previews to reduce startup GPU pressure."
+        Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Auto-Pause on DWM Failure:")
+        Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vAutoPauseOnDwmFailure Checked" This.AutoPauseOnDwmFailure, "On/Off")
+        This.MainFrame["AutoPauseOnDwmFailure"].ToolTip := "Enabled by default. Pause live previews on DWM errors or Windows composition changes. Resume manually in About or with the pause/resume hotkey. Applies immediately."
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.lGap), "Switch Language to English on Error:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
 
@@ -1773,6 +1776,7 @@ Class Settings_Gui {
 
         This.MainFrame["SwitchLangOnErr"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["SlowThumbnailCreation"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
+        This.MainFrame["AutoPauseOnDwmFailure"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateGls"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
         This.MainFrame["UpdateThumbnails"].OnEvent("Click", (obj, *) => cOther_EventHandler(obj))
 
@@ -1783,6 +1787,10 @@ Class Settings_Gui {
                 This.SlowThumbnailCreation := obj.value
                 This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
                 ProgramLog.Add("Slow thumbnail creation=" This.SlowThumbnailCreation)
+            }
+            else if obj.name = "AutoPauseOnDwmFailure" {
+                This.AutoPauseOnDwmFailure := obj.value
+                ProgramLog.Add("Auto-pause on DWM failure=" This.AutoPauseOnDwmFailure)
             }
             else if (obj.name = "SwitchLangOnErr") {
                 This.SwitchLangOnErr := obj.value
@@ -1800,7 +1808,7 @@ Class Settings_Gui {
                 This.Update_All_Thumbnails()
                 need_reload := 1
             }
-            if obj.name != "SlowThumbnailCreation"
+            if obj.name != "SlowThumbnailCreation" && obj.name != "AutoPauseOnDwmFailure"
                 This.NeedRestart := 1
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             if need_reload {
@@ -1908,7 +1916,7 @@ Class Settings_Gui {
         arr.Push This.MainFrame.Add("Button", Format("x{} yp+28 w130", This.contentGap) " vshowProgramLogBtn", "Show Log")
         arr.Push This.MainFrame.Add("Button", "xp+138 yp w130 vexportProgramLogBtn", "Export Log")
         arr.Push This.MainFrame.Add("Button", Format("x{} yp+36 w200", This.contentGap) " vpausePreviewsBtn", This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews")
-        arr.Push This.MainFrame.Add("Text", Format("x{} yp+32 w{} r2", This.contentGap, This.sepW), "Pause live previews when needed; hotkeys stay available. Creation speed is controlled in Other.")
+        arr.Push This.MainFrame.Add("Text", Format("x{} yp+32 w{} r2", This.contentGap, This.sepW) " vlivePreviewsStatus", This.LivePreviewStatus())
         arr.Push This.MainFrame.Add("Text", Format("x{} yp+48 w{} r2", This.contentGap, This.sepW), "Automatic logs: %LOCALAPPDATA%\EVE-X-Preview\Logs`nScript errors automatically export a diagnostic snapshot.")
         This.MainFrame["showProgramLogBtn"].OnEvent("Click", (*) => ProgramLog.Show())
         This.MainFrame["exportProgramLogBtn"].OnEvent("Click", (*) => ProgramLog.ExportDialog())
@@ -2093,7 +2101,7 @@ Class Settings_Gui {
                     if k != group || !enab
                         continue
                     if group = "Other" {
-                        Loop 6
+                        Loop 8
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkeys Settings" {
@@ -2312,6 +2320,7 @@ Class Settings_Gui {
         ; Other
         This.MainFrame["SwitchLangOnErr"].value := This.SwitchLangOnErr
         This.MainFrame["SlowThumbnailCreation"].Value := This.SlowThumbnailCreation
+        This.MainFrame["AutoPauseOnDwmFailure"].Value := This.AutoPauseOnDwmFailure
 
         for group in This.GlobalGroupsOrder {
             group_ := StrReplace(group, A_Space, "_")

@@ -453,3 +453,265 @@ PreviewLifecycleTest() {
         DetectHiddenWindows(previousHidden)
     }
 }
+
+class DwmFaultFixture extends PreviewLifecycleFixture {
+    fault := ""
+    registrationAttempts := 0
+    updatesAfterPause := 0
+    nativeCallsAtPause := 0
+    shadowCalls := 0
+    ExtendThumbnailFrame(hwnd) {
+        this.shadowCalls += 1
+        if this.fault = "shadow"
+            return 0x80070006
+        return super.ExtendThumbnailFrame(hwnd)
+    }
+    CreateLiveThumbnail(hwnd, destination) {
+        return DwmFaultLiveThumb(hwnd, destination, this)
+    }
+}
+
+class DwmFaultLiveThumb extends LiveThumb {
+    RegisterThumbnail(source, destination, &id) {
+        this.Controller.registrationAttempts += 1
+        if this.Controller.fault = "registration-once" {
+            this.Controller.fault := ""
+            return 0xD0000701
+        }
+        if this.Controller.fault = "registration"
+            return 0xD0000701
+        hr := super.RegisterThumbnail(source, destination, &id)
+        if this.Controller.fault = "pause-during-registration" {
+            this.Controller.nativeCallsAtPause := this.Controller.previewDwmCalls
+            this.Controller.ToggleLivePreviews()
+            this.Controller.ToggleLivePreviews() ; Must not resume into this call.
+        }
+        return hr
+    }
+    UpdateProperties() {
+        if this.Controller.livePreviewsPaused
+            this.Controller.updatesAfterPause += 1
+        if this.Controller.fault = "update-once" {
+            this.Controller.fault := ""
+            return 0xD0000701
+        }
+        if this.Controller.fault = "update"
+            return 0xD0000701
+        return super.UpdateProperties()
+    }
+}
+
+TestRunner.Register("Logged DWM failures stop the batch and release all live previews", DwmFaultStopsBatchTest)
+DwmFaultStopsBatchTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    baseline := LiveThumb.OBJ_COUNTER
+    for fault in ["shadow", "registration", "update"] {
+        app := DwmFaultFixture()
+        app.SlowThumbnailCreation := false
+        app.previewQueue := PreviewStartupQueue()
+        existing := Gui(), first := Gui(), second := Gui()
+        try {
+            existing.Show("Hide w160 h100"), first.Show("Hide w160 h100"), second.Show("Hide w160 h100")
+            app.QueuePreview(existing.Hwnd, "Existing")
+            app.ProcessPreviewQueue([existing.Hwnd])
+            AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER)
+            app.DisabledChars[existing.Hwnd] := "Existing"
+            app.fault := fault
+            attempts := app.registrationAttempts
+            app.QueuePreview(first.Hwnd, "Failing"), app.QueuePreview(second.Hwnd, "Must not start")
+            app.ProcessPreviewQueue([existing.Hwnd, first.Hwnd, second.Hwnd])
+            AssertTrue(app.livePreviewsPaused)
+            AssertTrue(InStr(app.LivePreviewStatus(), fault = "shadow" ? "0x80070006" : "0xD0000701"))
+            AssertEqual(attempts + (fault = "shadow" ? 0 : 1), app.registrationAttempts, "Only the first failure may touch DWM.")
+            AssertEqual(0, app.previewQueue.items.Count)
+            AssertFalse(app.ThumbWindows.HasProp(second.Hwnd))
+            AssertEqual(0, app.previewDwmCalls)
+            app.ReleasePausedLivePreviews()
+            AssertEqual(baseline, LiveThumb.OBJ_COUNTER)
+            AssertTrue(app.DisabledChars.Has(existing.Hwnd), "Safety pause retains group state.")
+            app.ProcessPreviewQueue([existing.Hwnd, first.Hwnd, second.Hwnd])
+            AssertEqual(0, app.previewQueue.items.Count, "A safety pause must not retry on the next poll.")
+            AssertEqual(0, app.updatesAfterPause)
+            app.fault := ""
+            app.ToggleLivePreviews()
+            app.ProcessPreviewQueue([existing.Hwnd])
+            AssertFalse(app.livePreviewsPaused)
+            AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER, "Manual resume restores live previews.")
+        } finally {
+            app.CloseLivePreviews("test", 0)
+            for source in [existing, first, second] {
+                app.DisposePreview(source.Hwnd)
+                source.Destroy()
+            }
+            SetTimer(app.debugToolTipMethod, 0)
+        }
+    }
+    DetectHiddenWindows(oldHidden)
+}
+
+TestRunner.Register("Pause during registration cancels its result and prevents an interrupted resume", DwmInterruptedRegistrationTest)
+DwmInterruptedRegistrationTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := DwmFaultFixture(), source := Gui()
+    baseline := LiveThumb.OBJ_COUNTER
+    try {
+        source.Show("Hide w160 h100")
+        app.fault := "pause-during-registration"
+        beforeWindows := WinGetList("ahk_pid " ProcessExist()).Length
+        AssertThrows(() => app.Create_Thumbnail(source.Hwnd, "Interrupted"), "interrupted by pause")
+        AssertEqual(1, app.nativeCallsAtPause)
+        AssertTrue(app.livePreviewsPaused)
+        AssertEqual(0, app.previewDwmCalls)
+        AssertEqual(baseline, LiveThumb.OBJ_COUNTER, "A successful result arriving after pause must be unregistered.")
+        AssertEqual(beforeWindows, WinGetList("ahk_pid " ProcessExist()).Length)
+        AssertEqual(0, app.updatesAfterPause)
+        app.fault := ""
+        app.ToggleLivePreviews()
+        AssertFalse(app.livePreviewsPaused)
+    } finally {
+        app.CloseLivePreviews("test", 0)
+        source.Destroy()
+        SetTimer(app.debugToolTipMethod, 0)
+        DetectHiddenWindows(oldHidden)
+    }
+}
+
+TestRunner.Register("Composition bursts pause once, defer native cleanup, and retain the About reason", DwmCompositionPauseTest)
+DwmCompositionPauseTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := DwmFaultFixture(), source := Gui()
+    app.SlowThumbnailCreation := false
+    app.previewQueue := PreviewStartupQueue()
+    baseline := LiveThumb.OBJ_COUNTER
+    try {
+        app.MainFrame := Gui()
+        app.MainFrame.Add("Button", "vpausePreviewsBtn", "Pause Live Previews")
+        app.MainFrame.Add("Text", "vlivePreviewsStatus w600 r2", "")
+        source.Show("Hide w160 h100")
+        app.QueuePreview(source.Hwnd, "Composition source")
+        app.ProcessPreviewQueue([source.Hwnd])
+        app.BeginPreviewDwmCall(app.previewGeneration)
+        generation := app.previewGeneration
+        ProgramLog.DisplayNotificationAt.Clear()
+        previousNotifications := StrSplit(ProgramLog.Text, "Windows display notification=0x31E").Length
+        loop 30 {
+            app.OnDwmCompositionChanged(0, 0, 0x031E, source.Hwnd)
+            ProgramLog.DisplayChanged(0, 0, 0x031E, source.Hwnd)
+        }
+        AssertEqual(generation + 1, app.previewGeneration)
+        AssertEqual(previousNotifications + 1, StrSplit(ProgramLog.Text, "Windows display notification=0x31E").Length, "A broadcast burst should produce one diagnostic.")
+        AssertEqual("Resume Live Previews", app.MainFrame["pausePreviewsBtn"].Text)
+        AssertTrue(InStr(app.MainFrame["livePreviewsStatus"].Text, "composition changed"))
+        app.ReleasePausedLivePreviews()
+        AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER, "Do not unregister inside an active DWM call.")
+        app.ToggleLivePreviews()
+        AssertTrue(app.livePreviewsPaused)
+        app.EndPreviewDwmCall()
+        ; Resume before the deferred timer fires must still release old registrations.
+        app.ToggleLivePreviews()
+        AssertEqual(baseline, LiveThumb.OBJ_COUNTER)
+        app.ProcessPreviewQueue([source.Hwnd])
+        AssertEqual(baseline + 1, LiveThumb.OBJ_COUNTER)
+        AssertEqual(2, app.shadowCalls, "Resume must reapply retained window frames after composition changes.")
+    } finally {
+        app.CloseLivePreviews("test", 0)
+        app.DisposePreview(source.Hwnd)
+        app.MainFrame.Destroy(), source.Destroy()
+        SetTimer(app.debugToolTipMethod, 0)
+        DetectHiddenWindows(oldHidden)
+    }
+}
+
+TestRunner.Register("A closed source does not trigger a compositor safety pause", DwmClosedSourceDoesNotPauseTest)
+DwmClosedSourceDoesNotPauseTest() {
+    app := DwmFaultFixture(), source := Gui(), destination := Gui()
+    sourceHwnd := source.Hwnd
+    source.Destroy()
+    try {
+        AssertThrows(() => LiveThumb(sourceHwnd, destination.Hwnd, app), "DwmRegisterThumbnail")
+        AssertFalse(app.livePreviewsPaused)
+        AssertEqual(0, app.previewDwmCalls)
+    } finally {
+        destination.Destroy()
+        app.CloseLivePreviews("test", 0)
+    }
+}
+
+TestRunner.Register("DWM auto-pause defaults on, persists off, and follows the Other profile", DwmAutoPauseSettingTest)
+DwmAutoPauseSettingTest() {
+    app := DwmFaultFixture()
+    AssertEqual(1, app.AutoPauseOnDwmFailure)
+    app._JSON["_Profiles"][app.ProfileOther]["Other"].Delete("AutoPauseOnDwmFailure")
+    AssertEqual(1, app.AutoPauseOnDwmFailure, "Older profiles enable the protection.")
+    app.AutoPauseOnDwmFailure := 0
+    app._JSON := JsonMergeNoOverwrite(JSON.Load(default_JSON), JSON.Load(JSON.Dump(app._JSON)))
+    AssertEqual(0, app.AutoPauseOnDwmFailure, "Merging defaults must preserve an explicit opt-out.")
+    previousProfile := app.ProfileOther
+    app._JSON["_Profiles"]["DwmSettingTest"] := Map("Other", Map())
+    app.ProfileOther := "DwmSettingTest"
+    AssertEqual(1, app.AutoPauseOnDwmFailure)
+    app.ProfileOther := previousProfile
+    AssertEqual(0, app.AutoPauseOnDwmFailure)
+    app.SetState()
+    app.MainFrame := Gui()
+    app.MainFrame.Group := Map()
+    try {
+        app.Other_Ctrl()
+        AssertEqual(0, app.MainFrame["AutoPauseOnDwmFailure"].Value)
+        app.MainFrame["SlowThumbnailCreation"].GetPos(, &slowY, , &slowH)
+        app.MainFrame["AutoPauseOnDwmFailure"].GetPos(, &pauseY, , &pauseH)
+        app.MainFrame["SwitchLangOnErr"].GetPos(, &languageY)
+        AssertTrue(pauseY >= slowY + slowH && pauseY + pauseH <= languageY)
+        app.MainFrame["UpdateThumbnails"].GetPos(, &bottom, , &buttonHeight)
+        AssertTrue(bottom + buttonHeight <= app.guiHeight - 10)
+    } finally {
+        app.MainFrame.Destroy()
+    }
+}
+
+TestRunner.Register("Disabled DWM auto-pause retains previews and independent retries", DwmAutoPauseDisabledTest)
+DwmAutoPauseDisabledTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    baseline := LiveThumb.OBJ_COUNTER
+    try {
+        for fault in ["shadow", "registration-once", "update-once"] {
+            app := DwmFaultFixture(), first := Gui(), second := Gui()
+            app.SlowThumbnailCreation := false
+            app.previewQueue := PreviewStartupQueue()
+            app.AutoPauseOnDwmFailure := 0
+            try {
+                first.Show("Hide w160 h100"), second.Show("Hide w160 h100")
+                app.fault := fault
+                app.QueuePreview(first.Hwnd, "First"), app.QueuePreview(second.Hwnd, "Second")
+                failingHwnd := app.previewQueue.Next()
+                healthyHwnd := failingHwnd = first.Hwnd ? second.Hwnd : first.Hwnd
+                app.ProcessPreviewQueue([first.Hwnd, second.Hwnd])
+                AssertFalse(app.livePreviewsPaused)
+                AssertTrue(app.ThumbWindows.HasProp(healthyHwnd), "A failure must not stop the next ready source: " fault)
+                if fault != "shadow" {
+                    AssertEqual(1, app.previewQueue.items[failingHwnd].failures)
+                    app.previewQueue.items[failingHwnd].retryAt := 0
+                    app.ProcessPreviewQueue([first.Hwnd, second.Hwnd])
+                }
+                AssertEqual(baseline + 2, LiveThumb.OBJ_COUNTER)
+                app.OnDwmCompositionChanged()
+                AssertFalse(app.livePreviewsPaused, "Composition notifications honor the opt-out.")
+                AssertEqual(baseline + 2, LiveThumb.OBJ_COUNTER)
+                app.ToggleLivePreviews()
+                AssertTrue(app.livePreviewsPaused, "Manual pause stays available.")
+                AssertEqual(baseline, LiveThumb.OBJ_COUNTER)
+            } finally {
+                app.CloseLivePreviews("test", 0)
+                app.DisposePreview(first.Hwnd), app.DisposePreview(second.Hwnd)
+                first.Destroy(), second.Destroy()
+                SetTimer(app.debugToolTipMethod, 0)
+            }
+        }
+    } finally {
+        DetectHiddenWindows(oldHidden)
+    }
+}

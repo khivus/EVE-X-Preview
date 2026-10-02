@@ -114,28 +114,35 @@ Class LiveThumb
     ; Parameters ...: hSource = Handle to the window to be previewed.
     ; ..............: hDest   = Handle to the window containing the live preview.
     ; Return .......: LiveThumb object on success - False on error.
-    __New( hSource, hDest )
+    __New( hSource, hDest, controller := 0 )
     {
+        this.Controller := controller
+        this.Generation := IsObject(controller) ? controller.previewGeneration : 0
+        this.SourceHwnd := hSource
+        this.DestinationHwnd := hDest
+        this.CheckActive()
         ; Load the library on first run.
         If ( !LiveThumb.DLL_MODULE )
             LiveThumb.DLL_MODULE := DllCall("LoadLibrary", "Str","dwmapi.dll", "Ptr")
 
         ; Register a thumbnail to get an ID.
-        hr := DllCall( "dwmapi.dll\DwmRegisterThumbnail"
-                    , "Ptr",  hDest
-                    , "Ptr",  hSource
-                    , "Ptr*", &phThumb := 0
-                    , "Int" )
+        phThumb := 0
+        this.BeginDwmCall()
+        try hr := this.RegisterThumbnail(hSource, hDest, &phThumb)
+        finally this.EndDwmCall()
         if hr {
             err := Error("DwmRegisterThumbnail failed " Format("0x{:08X}", hr & 0xFFFFFFFF),, "source=" hSource " destination=" hDest)
-            ProgramLog.Error(err, "DWM registration")
+            this.ReportFailure(err, "DWM registration", hr)
             throw err
         }
                  
         this.THUMB_ID := phThumb
-        this.SourceHwnd := hSource
-        this.DestinationHwnd := hDest
         LiveThumb.OBJ_COUNTER += 1
+        try this.CheckActive()
+        catch as err {
+            this.Close()
+            throw err
+        }
         ProgramLog.Add("DWM registered source=" hSource " destination=" hDest " active=" LiveThumb.OBJ_COUNTER)
         this.THUMB_UPDATED := False
         this.THUMB_PENDING_UPDATE := True
@@ -147,6 +154,35 @@ Class LiveThumb
         ; Object.SetCapacity doesn't zero-fill the allocated memory so we call the Discard method.
         this.Discard( )        
         Return this
+    }
+
+    RegisterThumbnail(hSource, hDest, &phThumb) {
+        return DllCall("dwmapi\DwmRegisterThumbnail", "Ptr", hDest, "Ptr", hSource, "Ptr*", &phThumb, "Int")
+    }
+
+    CheckActive() {
+        if IsObject(this.Controller)
+            this.Controller.EnsureLivePreviewActive(this.Generation)
+    }
+
+    BeginDwmCall() {
+        if IsObject(this.Controller)
+            this.Controller.BeginPreviewDwmCall(this.Generation)
+    }
+
+    EndDwmCall() {
+        if IsObject(this.Controller)
+            this.Controller.EndPreviewDwmCall()
+    }
+
+    ReportFailure(err, context, hr) {
+        ; An ordinary client close must not pause the remaining clients.
+        closedWindow := ((hr & 0xFFFFFFFF) = 0x80070057 || (hr & 0xFFFFFFFF) = 0x80070006)
+            && (!DllCall("IsWindow", "Ptr", this.SourceHwnd, "Int")
+                || !DllCall("IsWindow", "Ptr", this.DestinationHwnd, "Int"))
+        if IsObject(this.Controller) && !closedWindow
+            this.Controller.PauseLivePreviewsForDwmFailure(err.Message)
+        ProgramLog.Error(err, context)
     }
 
     ; Name .........: __Delete - PRIVATE DESTRUCTOR
@@ -161,14 +197,18 @@ Class LiveThumb
             return
         id := this.THUMB_ID
         this.THUMB_ID := 0
-        hr := DllCall("dwmapi\DwmUnregisterThumbnail", "Ptr", id, "Int")
+        ; Cleanup is allowed while paused, but must also block an interrupted resume.
+        if IsObject(this.Controller)
+            this.Controller.previewDwmCalls += 1
+        try hr := DllCall("dwmapi\DwmUnregisterThumbnail", "Ptr", id, "Int")
+        finally this.EndDwmCall()
         LiveThumb.OBJ_COUNTER -= 1
         ; Closing either window can invalidate the DWM registration before our poll.
         releasedWithWindow := (hr & 0xFFFFFFFF) = 0x80070057
             && (!DllCall("IsWindow", "Ptr", this.SourceHwnd, "Int")
                 || !DllCall("IsWindow", "Ptr", this.DestinationHwnd, "Int"))
         if hr && !releasedWithWindow
-            ProgramLog.Error(Error("DwmUnregisterThumbnail " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM cleanup")
+            this.ReportFailure(Error("DwmUnregisterThumbnail " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM cleanup", hr)
         ProgramLog.Add("DWM cleanup id=" id " active=" LiveThumb.OBJ_COUNTER
             " result=" (releasedWithWindow ? "window already closed" : Format("0x{:08X}", hr & 0xFFFFFFFF)))
     }
@@ -183,17 +223,21 @@ Class LiveThumb
     ; Return .......: Array with width and height values - False on error.
     QuerySourceSize( )
     {
+        this.CheckActive()
         SIZE := Buffer(8,0)
-        hr := DllCall( "dwmapi.dll\DwmQueryThumbnailSourceSize"
+        this.BeginDwmCall()
+        try hr := DllCall( "dwmapi.dll\DwmQueryThumbnailSourceSize"
                     , "Ptr", this.THUMB_ID
                     , "Ptr", SIZE
                     , "Int" )
+        finally this.EndDwmCall()
         if hr {
-            ProgramLog.Error(Error("DwmQueryThumbnailSourceSize " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM source size")
+            this.ReportFailure(Error("DwmQueryThumbnailSourceSize " Format("0x{:08X}", hr & 0xFFFFFFFF)), "DWM source size", hr)
             SIZE := Buffer(0)                
             Return False 
         }
         
+        this.CheckActive()
         SourceSize := [NumGet(SIZE, 0, "Int"), NumGet(SIZE, 4, "Int")]
         SIZE := Buffer(0)
         
@@ -207,6 +251,8 @@ Class LiveThumb
     {
         if !this.THUMB_ID
             return false
+        if IsObject(this.Controller) && (this.Controller.livePreviewsPaused || this.Generation != this.Controller.previewGeneration)
+            return false
         if !this.THUMB_PENDING_UPDATE
             return true
         ; If no update is pending, return false.
@@ -214,16 +260,17 @@ Class LiveThumb
         ;     Return False
 
         ; Update properties.
-        hr := DllCall( "dwmapi.dll\DwmUpdateThumbnailProperties"
-                    , "Ptr", this.THUMB_ID
-                    , "Ptr", this.THUMB_UPD_PROP_PTR
-                    , "Int" )
+        this.BeginDwmCall()
+        try hr := this.UpdateProperties()
+        finally this.EndDwmCall()
         if hr {
             err := Error("DwmUpdateThumbnailProperties " Format("0x{:08X}", hr & 0xFFFFFFFF))
-            ProgramLog.Error(err, "DWM update id=" this.THUMB_ID)
+            this.ReportFailure(err, "DWM update id=" this.THUMB_ID, hr)
             this.Close()
             throw err
         }
+        if IsObject(this.Controller) && (this.Controller.livePreviewsPaused || this.Generation != this.Controller.previewGeneration)
+            return false
         
         ; Flag as updated and copy memory so that we can use this portion to track active properties with getters.
         ProgramLog.Count("DWM-updates")
@@ -236,6 +283,10 @@ Class LiveThumb
         ; Use the "Discard" method to reset dwFlags and return.
         this.Discard( )
         Return True
+    }
+
+    UpdateProperties() {
+        return DllCall("dwmapi\DwmUpdateThumbnailProperties", "Ptr", this.THUMB_ID, "Ptr", this.THUMB_UPD_PROP_PTR, "Int")
     }
 
     ; Name .........: Discard - PUBLIC METHOD
