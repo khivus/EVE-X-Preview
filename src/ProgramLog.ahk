@@ -8,11 +8,20 @@ class ProgramLog {
     static Busy := false
     static MaxChars := 262144
     static Activity := Map()
+    static SlowOperationAt := Map()
     static ActivityAt := A_TickCount
     static DisplayNotificationAt := Map()
 
     static Count(event) {
         this.Activity[event] := this.Activity.Get(event, 0) + 1
+    }
+
+    static SlowOperation(name, started) {
+        elapsed := A_TickCount - started
+        if elapsed < 100 || A_TickCount - this.SlowOperationAt.Get(name, -10000) < 10000
+            return
+        this.SlowOperationAt[name] := A_TickCount
+        this.Add("Slow operation: " name "; elapsed=" elapsed "ms", "WARN")
     }
 
     static ReportActivity(now := A_TickCount) {
@@ -75,6 +84,7 @@ class ProgramLog {
         if this.Directory = "" || this.Pending = "" || this.Busy
             return
         this.Busy := true
+        started := A_TickCount
         try {
             path := this.Directory "\current.log"
             if FileExist(path) && FileGetSize(path) > 1048576
@@ -89,6 +99,7 @@ class ProgramLog {
             ; Diagnostics must never recursively fail the application.
         } finally {
             this.Busy := false
+            this.SlowOperation("Diagnostic log flush", started)
         }
     }
 

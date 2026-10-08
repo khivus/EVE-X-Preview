@@ -28,7 +28,18 @@ class SystemTrackingFixture extends CombatEventsFixture {
         file.Close()
     }
     System(hwnd) => this.ThumbWindows.%hwnd%["TextOverlay"]["SystemText"].Text
-    monitorCharacterSystems() => this.systemLogMonitor.Poll(this.active)
+    monitorCharacterSystems() {
+        this.systemLogMonitor.Poll(this.active)
+        if !this.systemLogMonitor.HasOwnProp("discovery")
+            return
+        deadline := A_TickCount + 10000
+        while this.systemLogMonitor.discovery.busy {
+            if A_TickCount > deadline
+                throw Error("Chat discovery worker did not finish")
+            Sleep(10)
+            this.systemLogMonitor.Poll(this.active)
+        }
+    }
 
     Cleanup() {
         this.stopSystemTracking()
@@ -173,12 +184,12 @@ LogDirectoryResolutionTest() {
         app.gameLogsDirectory := ""
         app.gameLogsMonitoring() ; Disabled monitoring must not populate an automatic path.
         AssertEqual("", app.gameLogsDirectory)
-        FileAppend("sample", game "\one.txt")
-        FileAppend("sample", alternate "\two.txt")
+        FileAppend("sample", game "\20260912_000000_12345.txt")
+        FileAppend("sample", alternate "\20260912_000001_67890.txt")
         app.chatLogsDirectory := chat
-        AssertArrayEqual([game "\one.txt"], app.getFilesList())
+        AssertArrayEqual([game "\20260912_000000_12345.txt"], WaitGameLogListing(app))
         app.gameLogsDirectory := alternate
-        AssertArrayEqual([alternate "\two.txt"], app.getFilesList(), "A same-size listing from another folder must not reuse cached paths.")
+        AssertArrayEqual([alternate "\20260912_000001_67890.txt"], WaitGameLogListing(app), "A same-size listing from another folder must not reuse cached paths.")
         app.gameLogsDirectory := root "\Missing"
         app.gameLogsMonitoringEnabled := 1
         app.waitingMonitoringChars["Pilot"] := (*) => 0
@@ -186,7 +197,8 @@ LogDirectoryResolutionTest() {
         AssertFalse(app.waitingMonitoringChars.Has("Pilot"), "Missing folders must allow discovery to retry.")
         AssertEqual(root "\Missing", app.gameLogsDirectory, "Failed discovery must not overwrite the user's setting.")
     } finally {
-        for path in [game "\one.txt", alternate "\two.txt"] {
+        app.CloseGameLogDiscovery()
+        for path in [game "\20260912_000000_12345.txt", alternate "\20260912_000001_67890.txt"] {
             if FileExist(path)
                 FileDelete(path)
         }

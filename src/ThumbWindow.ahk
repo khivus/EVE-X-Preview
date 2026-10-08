@@ -350,61 +350,65 @@ Class ThumbWindow extends Propertys {
         return { x: dx, y: dy, w: dw, h: dh }
     }
 
-    ;## Moves the Window by holding down the Right Mousebutton
-    ;## By Holding CTRL and SHIFT it moves all Windows
+    ; Move the GUI stack while deferring timer work until the mouse is released.
     Mouse_DragMove(hwnd, moveAll := 0) {
-        CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
-        This.Resize := 1
-        dragging := 0
-        ThumbMap := Map()
-
-        MouseGetPos(&x0, &y0, &window_id) ;gets the current Mouse possition
-        if !(This.ThumbHwnd_EvEHwnd.Has(window_id))
+        if !This.ThumbHwnd_EvEHwnd.Has(hwnd)
             return
-        WinGetPos &wx, &wy, &wn, &wh, window_id  ;gets the current window possition what the user clicks on
-
-        ;Store the current size and position  of all Thumbnails
-        for ThumbIDs in This.ThumbHwnd_EvEHwnd {
-            if (ThumbIDs == This.ThumbHwnd_EvEHwnd[hwnd])
-                continue
-            if This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[ThumbIDs]) {
-                for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[ThumbIDs]% {
-                    WinGetPos(&Tempx, &Tempy, , , v.Hwnd)
-                    ThumbMap[v.Hwnd] := { x: Tempx, y: Tempy }
+        source := This.ThumbHwnd_EvEHwnd[hwnd]
+        CoordMode "Mouse", "Screen"
+        This.Resize := 1
+        Thread("NoTimers", true)
+        try {
+            This.MouseDragPosition(&x0, &y0)
+            windows := This.CaptureThumbnailDragWindows(source, moveAll)
+            lastX := x0, lastY := y0
+            while This.MouseDragButtonsHeld() {
+                This.MouseDragPosition(&x, &y)
+                if x != lastX || y != lastY {
+                    This.MoveThumbnailDragWindows(windows, x - x0, y - y0)
+                    lastX := x, lastY := y
                 }
+                Sleep(10) ; Process mouse messages without busy-spinning or running timers.
+            }
+        } finally {
+            Thread("NoTimers", false)
+        }
+    }
+
+    MouseDragPosition(&x, &y) {
+        MouseGetPos(&x, &y)
+    }
+
+    MouseDragButtonsHeld() {
+        ; Physical state remains reliable without installing a mouse hook.
+        return (DllCall("GetAsyncKeyState", "Int", 0x02, "Short") & 0x8000)
+            && !(DllCall("GetAsyncKeyState", "Int", 0x01, "Short") & 0x8000)
+    }
+
+    CaptureThumbnailDragWindows(source, moveAll) {
+        windows := Map()
+        for id, thumb in This.ThumbWindows.OwnProps() {
+            if !moveAll && id != source
+                continue
+            ; Only GUI components move; never the live thumbnail's source client.
+            for type in ["Window", "TextOverlay", "Border"] {
+                if !thumb.Has(type)
+                    continue
+                hwnd := thumb[type].Hwnd
+                try WinGetPos(&x, &y, , , hwnd)
+                catch TargetError
+                    continue
+                windows[hwnd] := {x: x, y: y}
             }
         }
+        return windows
+    }
 
-        while (GetKeyState("RButton") && !GetKeyState("LButton")) {
-
-            ;Moves a Single Window
-            MouseGetPos &x, &y
-            Nx := x - x0, NEUx := wx + Nx       ;Nx -> stores the pixel diffrenz from Start to stop Moveing, NEUx -> Calculates the new Position
-            Ny := y - y0, NEUy := wy + Ny       ;Ny -> stores the pixel diffrenz from Start to stop Moveing, NEUy -> Calculates the new Position
-            if This.ThumbWindows.HasProp(This.ThumbHwnd_EvEHwnd[hwnd]) {
-                for k, v in This.ThumbWindows.%This.ThumbHwnd_EvEHwnd[hwnd]% {
-                    if WinGetProcessName(v.Hwnd) = "exefile.exe"
-                        continue
-                    WinMove(NEUx, NEUy, , , v.Hwnd)
-                }
-            }
-
-            ;Moves all windows
-            if moveAll {
-                for k, v in This.ThumbWindows.OwnProps() {
-                    for type, Obj in v {
-                        if (hwnd == Obj.Hwnd)
-                            continue
-                        ;Calculates the new Position for all the other Windows
-                        Ax := ThumbMap[Obj.Hwnd].x + Nx
-                        Ay := ThumbMap[Obj.Hwnd].y + Ny
-
-                        if WinGetProcessName(Obj.Hwnd) = "exefile.exe"
-                            continue
-                        WinMove(Ax, Ay, , , Obj.Hwnd)
-                    }
-                }
-            }
+    MoveThumbnailDragWindows(windows, dx, dy) {
+        for hwnd, position in windows.Clone() {
+            try WinMove(position.x + dx, position.y + dy, , , hwnd)
+            catch TargetError
+                windows.Delete(hwnd) ; A closed overlay must not strand the drag loop.
         }
     }
 

@@ -7,6 +7,8 @@
 #Include "src/PreviewStartupQueue.ahk"
 #Include "src/NPCDatabase.ahk"
 #Include "src/DPSMeter.ahk"
+#Include "src/LogScanJob.ahk"
+#Include "src/GameLogDiscovery.ahk"
 #Include "src/Main_Class.ahk"
 #Include "src/ThumbWindow.ahk"
 #Include "src/TrayMenu.ahk"
@@ -31,7 +33,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.1.0
+    ;@Ahk2Exe-Let U_version = 1.6.1.1
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -44,6 +46,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
     ;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
     ;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
 
+    ;@Ahk2Exe-AddResource src/LogScanWorker.ahk, LogScanWorker
     ;@Ahk2Exe-SetMainIcon icon.ico
 
     if !(A_IsCompiled)

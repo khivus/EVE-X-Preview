@@ -297,6 +297,18 @@ class DPSLogFixture extends CombatEventsFixture {
         this.charsToMonitor := [this.character]
         this.events := []
     }
+    ; Legacy reader tests wait for discovery; async responsiveness has separate tests.
+    getFilesList(force := false) {
+        result := super.getFilesList(force)
+        deadline := A_TickCount + 10000
+        while this.gameLogDiscovery.busy {
+            if A_TickCount > deadline
+                throw Error("Game discovery worker did not finish")
+            Sleep(10)
+            result := super.getFilesList()
+        }
+        return result
+    }
     WriteLog(name, content) {
         path := this.directory "\" name
         this.files.Push(path)
@@ -313,6 +325,7 @@ class DPSLogFixture extends CombatEventsFixture {
             this.events.Push(this.monitoredChars[character]["event"])
     }
     Cleanup() {
+        this.CloseGameLogDiscovery()
         for character in this.monitoredChars.Clone()
             this.stopLogMonitoring(character)
         SetTimer(this.debugToolTipMethod, 0)
@@ -565,7 +578,8 @@ DPSLargeLogTest() {
         Loop 32
             app.Append(path, padding)
         app.Append(path, "`r`n" DPSLine(now, 1000, "to"))
-        app.ReadGameLogUpdates(app.character, true, now)
+        while !reader["file"].AtEOF
+            app.ReadGameLogUpdates(app.character, true, now)
         AssertEqual(0, reader["dps"].Rates(now).incoming, "Discarded backlogs must reset previous totals.")
         AssertEqual(100, reader["dps"].Rates(now).outgoing, "The latest complete hit must still count.")
         AssertEqual("", reader["pending"])

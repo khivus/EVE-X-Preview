@@ -1,132 +1,144 @@
-; Local chat has a different header and lifecycle from combat logs. Keep its
-; file cursors separate so event suppression never discards system changes.
+; Discovery and startup system lookup run in a worker; live reads stay bounded.
 class LocalChatMonitor {
     __New(owner) {
         this.owner := owner
         this.readers := Map()
-        this.headers := Map()
         this.lastDiscovery := -5000
+        this.busy := false
     }
 
     Poll(active) {
-        removed := []
-        for character, reader in this.readers {
-            if !active.Has(character) || active[character] != reader.hwnd
-                removed.Push(character)
-        }
-        for character in removed {
-            this.owner.updateThumbnailSystemText("", this.readers[character].hwnd)
-            this.readers[character].file.Close()
-            this.readers.Delete(character)
-        }
+        if this.busy
+            return
+        this.busy := true
+        try this.PollReaders(active)
+        finally this.busy := false
+    }
 
-        ; Rescan even quiet logs: a new session can replace one that never grows.
-        if A_TickCount - this.lastDiscovery >= 5000 {
-            this.lastDiscovery := A_TickCount
-            paths := this.FindLogs(this.owner.ResolveChatLogsDirectory(), active)
-            for character, path in paths {
-                if this.readers.Has(character) && this.readers[character].path = path
-                    continue
-                try file := FileOpen(path, "r", "UTF-8") ; BOM also detects UTF-16 chat logs.
-                catch
-                    continue
-                if !file
-                    continue
-                if this.readers.Has(character)
-                    this.readers[character].file.Close()
-                this.readers[character] := {path: path, file: file, pending: "", system: "", hwnd: active[character]}
+    PollReaders(active) {
+        for character, reader in this.readers.Clone() {
+            if !active.Has(character) || active[character] != reader.hwnd {
+                this.owner.updateThumbnailSystemText("", reader.hwnd)
+                reader.file.Close()
+                this.readers.Delete(character)
             }
         }
-
-        failed := []
-        for character, reader in this.readers {
+        if !active.Count {
+            if this.HasOwnProp("discovery") {
+                this.discovery.Close()
+                this.DeleteProp("discovery")
+            }
+            return
+        }
+        paths := this.FindLogs(this.owner.ResolveChatLogsDirectory(), active)
+        for character, path in paths {
+            seed := this.discovery.byId[this.owner.CleanTitle(character)]
+            previous := this.readers.Get(character, 0)
+            if previous && previous.path = path && previous.generation = this.discovery.generation
+                continue
+            try file := FileOpen(path, "r", "UTF-8")
+            catch
+                continue
+            if !file
+                continue
+            identity := this.owner.GameLogFileIdentity(file)
+            if previous && previous.path = path && identity != "" && identity = previous.identity {
+                if previous.HasOwnProp("needsSeed") && previous.needsSeed {
+                    previous.system := seed.system
+                    previous.needsSeed := false
+                }
+                previous.generation := this.discovery.generation
+                file.Close()
+                continue
+            }
+            if seed.identity != "" && identity != seed.identity {
+                file.Close()
+                this.lastDiscovery := -5000 ; Replaced after the worker's snapshot.
+                continue
+            }
+            if previous
+                previous.file.Close()
+            reader := {path: path, file: file, pending: "", system: seed.system, hwnd: active[character],
+                identity: identity, generation: this.discovery.generation, dropFragment: false}
+            ; Re-read a small tail to retain lines completed after the worker's snapshot.
+            this.SeekRecentTail(reader, Min(seed.cursor, file.Length))
+            this.readers[character] := reader
+        }
+        for character, reader in this.readers.Clone() {
             try {
                 if reader.file.Length < reader.file.Pos {
-                    reader.file.Close()
-                    reader.file := FileOpen(reader.path, "r", "UTF-8")
-                    reader.pending := ""
-                    reader.system := ""
+                    reader.file.Seek(0)
+                    reader.pending := "", reader.system := "", reader.dropFragment := false
                 }
                 this.ReadUpdates(reader)
                 this.owner.updateThumbnailSystemText(reader.system, reader.hwnd)
             } catch {
                 try reader.file.Close()
-                failed.Push(character)
+                this.readers.Delete(character)
                 this.owner.updateThumbnailSystemText("", reader.hwnd)
             }
         }
-        for character in failed
-            this.readers.Delete(character)
     }
 
     FindLogs(directory, active) {
-        result := Map()
-        if !active.Count || !DirExist(directory)
-            return result
-        sessions := Map()
-        seenHeaders := Map()
-        Loop Files, directory "\Local_*.txt", "F" {
-            if !RegExMatch(A_LoopFileName, "i)^Local_\d{8}_\d{6}_\d+\.txt$")
-                continue
-            try {
-                path := A_LoopFileFullPath
-                cacheKey := path "|" A_LoopFileTimeCreated
-                if !this.headers.Has(cacheKey) {
-                    header := this.ReadHeader(path)
-                    if header.listener = "" || header.session = ""
-                        continue ; Incomplete header: retry on the next scan.
-                    this.headers[cacheKey] := header
-                }
-                header := this.headers[cacheKey]
-                seenHeaders[cacheKey] := header
-                character := this.owner.AntiCleanTitle(header.listener)
-                ; Use the session header, not modification time: old chat
-                ; activity and the filename's numeric suffix are not reliable.
-                if active.Has(character) && (!sessions.Has(character) || header.session > sessions[character]) {
-                    sessions[character] := header.session
-                    result[character] := path
-                }
-            }
+        if !this.HasOwnProp("discovery") || this.directory != directory {
+            if this.HasOwnProp("discovery")
+                this.discovery.Close()
+            this.directory := directory
+            this.discovery := LogFileDiscovery(directory, "chat")
         }
-        this.headers := seenHeaders
+        characters := ""
+        for character in active
+            characters .= this.owner.CleanTitle(character) "`n"
+        characters := Sort(characters) ; Window Z-order changes must not restart a scan.
+        this.discovery.Refresh(this.lastDiscovery < 0, characters)
+        this.lastDiscovery := A_TickCount
+        result := Map()
+        for character in active {
+            name := this.owner.CleanTitle(character)
+            if this.discovery.byId.Has(name)
+                result[character] := this.discovery.byId[name].path
+        }
         return result
     }
 
-    ReadHeader(path) {
-        header := {listener: "", session: ""}
-        file := FileOpen(path, "r", "UTF-8")
-        if !file
-            return header
-        try {
-            Loop 32 {
-                if file.AtEOF
-                    break
-                line := file.ReadLine()
-                if RegExMatch(line, "^\s*Listener:\s*(.+?)\s*$", &match)
-                    header.listener := match[1]
-                else if RegExMatch(line, "^\s*Session started:\s*(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})", &match)
-                    header.session := RegExReplace(match[1], "\D")
-                if header.listener != "" && header.session != ""
-                    break
-            }
-        } finally {
-            file.Close()
-        }
-        return header
+    SeekRecentTail(reader, ending) {
+        offset := Max(0, ending - 65536)
+        if InStr(reader.file.Encoding, "UTF-16")
+            offset -= Mod(offset, 2)
+        reader.file.Seek(offset)
+        reader.pending := ""
+        reader.dropFragment := offset > 0
     }
 
     ReadUpdates(reader) {
         if reader.file.AtEOF
             return
-        lines := StrSplit(reader.pending reader.file.Read(), "`n", "`r")
-        reader.pending := lines.Pop() ; Wait for a full line before changing systems.
+        if reader.file.Length - reader.file.Pos > 262144 {
+            this.SeekRecentTail(reader, reader.file.Length)
+            reader.needsSeed := true
+            this.lastDiscovery := -5000
+        }
+        text := reader.pending reader.file.Read(16384)
+        lines := StrSplit(text, "`n", "`r")
+        reader.pending := lines.Pop()
         for line in lines {
+            if reader.dropFragment {
+                reader.dropFragment := false
+                continue
+            }
             if RegExMatch(line, "^\x{FEFF}?\s*\[\s*\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\s*\] EVE System > Channel changed to Local :\s*(.+?)\s*$", &match)
-                reader.system := match[1]
+                reader.system := match[1], reader.needsSeed := false
+        }
+        if StrLen(reader.pending) > 8192 {
+            reader.pending := ""
+            reader.dropFragment := true ; Discard oversized/non-system records in chunks.
         }
     }
 
     Close(*) {
+        if this.HasOwnProp("discovery")
+            this.discovery.Close()
         for character, reader in this.readers
             reader.file.Close()
         this.readers.Clear()

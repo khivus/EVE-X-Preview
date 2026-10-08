@@ -240,6 +240,8 @@ Use this group to assign per-character colors.
 
 ### Game Logs Monitoring
 
+Archive discovery runs in hidden background processes, so Settings and thumbnail controls stay available while large folders are scanned. Recent Local sessions are checked first and published as they are found while older headers continue to be checked. Discovery uses filename notifications and periodic fallback checks, keeps quiet sessions attached, and caches Local headers between scans. Long sessions use a background startup lookup and bounded live reads. Standalone builds embed the worker and must use an AutoHotkey v2 `.exe` compiler base (the usual build), which supports alternate embedded scripts.
+
 This feature does not violate the EULA or Terms of Service, but it is neither endorsed nor supported by CCP. Use it at your own risk.
 Performance impact increases with the number of characters tracked at the same time.
 

@@ -403,8 +403,12 @@ Class Main_Class extends ThumbWindow {
         if This.HasOwnProp("previewTimerBusy") && This.previewTimerBusy
             return
         This.previewTimerBusy := true
+        started := A_TickCount
         try This.PollMainWindows()
-        finally This.previewTimerBusy := false
+        finally {
+            This.previewTimerBusy := false
+            ProgramLog.SlowOperation("Window polling", started)
+        }
     }
 
     PollMainWindows() {
@@ -2420,48 +2424,32 @@ Class Main_Class extends ThumbWindow {
             }
             active[title] := hwnd
         }
-        This.systemLogMonitor.Poll(active)
+        started := A_TickCount
+        try This.systemLogMonitor.Poll(active)
+        finally ProgramLog.SlowOperation("Local chat polling", started)
     }
 
-    getFilesList() {
+    getFilesList(force := false) {
         directory := This.ResolveGameLogsDirectory()
-        if !DirExist(directory)
-            return []
-
-        ; Reuse sorting only when file identities and modification times match.
-        ; A rotation can replace a file without changing the directory count.
-        static fileTimes := Map()
-        static oldFilesList := []
-        static cachedDirectory := ""
-        newFileTimes := Map()
-        changed := directory != cachedDirectory
-
-        files := []
-        Loop Files, directory "\*.*" {
-            files.Push({name: A_LoopFileName, time: A_LoopFileTimeModified})
-            newFileTimes[A_LoopFileName] := A_LoopFileTimeModified
-            if fileTimes.Get(A_LoopFileName, "") != A_LoopFileTimeModified
-                changed := true
+        if !This.HasOwnProp("gameLogDiscovery") || This.gameLogDiscoveryDirectory != directory {
+            This.CloseGameLogDiscovery()
+            This.gameLogDiscoveryDirectory := directory
+            This.gameLogDiscovery := GameLogDiscovery(directory)
+            This.gameLogDiscoveryExit := ObjBindMethod(This, "CloseGameLogDiscovery")
+            OnExit(This.gameLogDiscoveryExit)
         }
-        if !changed && newFileTimes.Count = fileTimes.Count
-            return oldFilesList
-        fileTimes := newFileTimes
-        cachedDirectory := directory
+        return This.gameLogDiscovery.Refresh(force)
+    }
 
-        ; comparator: return <0 if a < b, 0 if equal, >0 if a > b
-        ; for descending (newest first) we invert the usual order
-        comp := (a, b) => (a.time > b.time) ? -1 : (a.time < b.time) ? 1 : 0
-
-        ; in-place quicksort
-        This.QuickSort(files, comp)
-        
-        ; build newline string or process in order
-        fileList := []
-        for file in files {
-            fileList.Push(directory "\" file.name)
+    CloseGameLogDiscovery(*) {
+        if This.HasOwnProp("gameLogDiscovery") {
+            This.gameLogDiscovery.Close()
+            This.DeleteProp("gameLogDiscovery")
         }
-        oldFilesList := fileList
-        return fileList
+        if This.HasOwnProp("gameLogDiscoveryExit") {
+            OnExit(This.gameLogDiscoveryExit, 0)
+            This.DeleteProp("gameLogDiscoveryExit")
+        }
     }
 
     gameLogsMonitoring() {
@@ -2604,16 +2592,33 @@ Class Main_Class extends ThumbWindow {
     getCharNameFromFile(fileName) {
         try file := FileOpen(fileName, "r", "UTF-8")
         catch
-            return "" ; A log may be removed between discovery and opening it.
+            return "" ; A log may disappear between discovery and opening it.
         if !file
-            return
-        Loop 3 {
-            line := file.ReadLine()
-            if A_Index = 3
-                charName := Trim(StrReplace(line, "Listener: "))
-        }
-        file.Close()
-        return This.AntiCleanTitle(charName)
+            return ""
+        try return This.ReadGameLogCharacter(file)
+        finally file.Close()
+    }
+
+    ReadGameLogCharacter(file) {
+        try {
+            header := StrSplit(file.Read(4096), "`n", "`r")
+            if header.Length < 4
+                return ""
+            listener := header[3]
+            session := header[4]
+            if !RegExMatch(listener, "^\s*Listener:\s*(.+?)\s*$", &name)
+                || !RegExMatch(session, "i)^\s*Session Started:\s*\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\s*$")
+                return "" ; Keep the previous reader until the new header is ready.
+            return This.AntiCleanTitle(name[1])
+        } catch
+            return ""
+    }
+
+    GameLogFileIdentity(file) {
+        info := Buffer(52, 0)
+        if !DllCall("GetFileInformationByHandle", "Ptr", file.Handle, "Ptr", info)
+            return ""
+        return NumGet(info, 28, "UInt") ":" NumGet(info, 44, "UInt") ":" NumGet(info, 48, "UInt")
     }
 
     IsGameLogCharacterSelected(charName) {
@@ -2628,62 +2633,79 @@ Class Main_Class extends ThumbWindow {
     }
 
     startLogMonitoring(charName, charId) {
-        ; Failed discovery must allow the window watcher to schedule a retry.
         if This.waitingMonitoringChars.Has(charName)
             This.waitingMonitoringChars.Delete(charName)
         if !This.gameLogsMonitoringEnabled || !This.IsGameLogCharacterSelected(charName)
             return
 
-        filesListSorted := This.getFilesList()
-        if !filesListSorted
-            return
-
-        foundFile := 0
-        for fileName in filesListSorted { ; Finding char names in headers
-
-            SplitPath(fileName, &baseName)
-            fileNameData := StrSplit(baseName, "_")
-            if !fileNameData.Has(3) ; in character selection screen
-                continue
-            fileCharId := StrReplace(fileNameData[3], ".txt") ; removing .txt in the end
-
-            if charId != fileCharId {
-                if charId != 0
-                    continue ; A known ID needs no header reads from other characters' logs.
-                fileCharName := This.getCharNameFromFile(fileName)
-                if !fileCharName || fileCharName != charName
+        files := This.getFilesList()
+        discovery := This.gameLogDiscovery
+        foundFile := "", fileCharId := ""
+        if charId {
+            charId := String(charId)
+            if !discovery.byId.Has(charId)
+                return
+            foundFile := discovery.byId[charId].path
+            fileCharId := charId
+        } else {
+            ; At most one header per character ID, never the whole session archive.
+            for path in files {
+                name := discovery.headers.Get(path, "")
+                ; Header names arrive from the worker; no archive-header I/O here.
+                if name != charName
                     continue
+                foundFile := path
+                SplitPath(path, &baseName)
+                RegExMatch(baseName, "_(\d+)\.txt$", &match)
+                fileCharId := match[1]
+                break
             }
-
-            if charId = 0 {
-                This.charsIds[charName] := fileCharId ; adding to config to speedup process
-                SetTimer(This.Save_Settings_Delay_Timer, -200)
-            }
-            
-            foundFile := fileName
-            break
         }
-
-        if !foundFile
+        if foundFile = ""
             return
 
+        replacing := This.monitoredChars.Has(charName)
+        if replacing {
+            old := This.monitoredChars[charName]
+            if old["fileName"] = foundFile && old.Get("discoveryGeneration", 0) = discovery.generation
+                return ; Quiet sessions keep their reader, pending line and DPS state.
+        }
         try file := FileOpen(foundFile, "r", "UTF-8")
         catch
-            return ; Retry discovery if the game replaced the file meanwhile.
+            return
         if !file
             return
-        size := file.Length
-        file.Seek(0, 2) ; Start at EOF; historical combat must not appear as live DPS.
-
-        This.monitoredChars[charName] := Map("fileName", foundFile, "file", file, "size", size, "pending", "", "launchTime", A_TickCount, "fileUpdated", false)
-        if This.dpsMonitoringEnabled
-            This.monitoredChars[charName]["dps"] := DPSMeter(This.dpsMonitoring)
-
-        if This.waitingMonitoringChars.Has(charName)
-            This.waitingMonitoringChars.Delete(charName)
-
-        This.debugToolTipText .= "Started monitoring: " . charName . "`n"
-        SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+        try {
+            identity := This.GameLogFileIdentity(file)
+            if replacing && old["fileName"] = foundFile && identity != "" && old.Get("identity", "") = identity {
+                old["discoveryGeneration"] := discovery.generation
+                return
+            }
+            if This.ReadGameLogCharacter(file) != charName
+                return ; New/incomplete/mismatched headers must not replace a valid reader.
+            size := file.Length
+            if replacing
+                file.Seek(0) ; Read the new session's first updates on the next poll.
+            else
+                file.Seek(0, 2) ; Skip historical combat only on initial attachment.
+            reader := Map("fileName", foundFile, "file", file, "size", replacing ? 0 : size,
+                "pending", "", "identity", identity, "discoveryGeneration", discovery.generation)
+            if This.dpsMonitoringEnabled
+                reader["dps"] := DPSMeter(This.dpsMonitoring)
+            if replacing
+                old["file"].Close()
+            This.monitoredChars[charName] := reader
+            file := 0 ; Ownership transfers only after successful validation.
+            if This.charsIds.Get(charName, 0) != fileCharId {
+                This.charsIds[charName] := fileCharId
+                SetTimer(This.Save_Settings_Delay_Timer, -200)
+            }
+            This.debugToolTipText .= (replacing ? "Switched monitoring: " : "Started monitoring: ") charName "`n"
+            SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
+        } finally {
+            if IsObject(file)
+                file.Close()
+        }
     }
 
     stopLogMonitoring(charName) {
@@ -2701,8 +2723,21 @@ Class Main_Class extends ThumbWindow {
     }
 
     monitorAllChars() {
-        for charName in This.monitoredChars.Clone()
-            This.monitorChanges(charName)
+        if This.HasOwnProp("gameLogPollBusy") && This.gameLogPollBusy
+            return
+        This.gameLogPollBusy := true
+        started := A_TickCount
+        try {
+            ; Refresh once, then all readers share the same latest-session index.
+            This.getFilesList()
+            for charName in This.monitoredChars.Clone() {
+                This.startLogMonitoring(charName, This.charsIds.Get(charName, 0))
+                This.monitorChanges(charName)
+            }
+        } finally {
+            This.gameLogPollBusy := false
+            ProgramLog.SlowOperation("Game log polling", started)
+        }
     }
 
     monitorChanges(charName, now := 0) {
@@ -2715,16 +2750,12 @@ Class Main_Class extends ThumbWindow {
             return
         }
 
-        tick := A_TickCount
         reader := This.monitoredChars[charName]
         suppressDisplay := (This.supressForFocused || This.HideThumbForActiveWin) && WinActive("ahk_id " hwnd)
         size := This.monitoredChars[charName]["file"].Length
-        if size = This.monitoredChars[charName]["size"] {
+        if size = This.monitoredChars[charName]["size"] && fileObj.AtEOF {
             if reader.Has("dps")
                 This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
-            if !This.monitoredChars[charName]["fileUpdated"] && tick - This.monitoredChars[charName]["launchTime"] > 30000 { ; if there is no changes for some time, try find new file
-                This.stopLogMonitoring(charName)
-            }
             return
         }
         if size < reader["size"] {
@@ -2734,7 +2765,6 @@ Class Main_Class extends ThumbWindow {
                 reader["dps"] := DPSMeter(This.dpsMonitoring)
         }
         This.monitoredChars[charName]["size"] := size
-        This.monitoredChars[charName]["fileUpdated"] := True
 
         suppressEvents := !This.eventMonitoringEnabled || suppressDisplay
         This.ReadGameLogUpdates(charName, suppressEvents, now, hwnd, suppressDisplay)
@@ -2756,12 +2786,20 @@ Class Main_Class extends ThumbWindow {
         if file.Length - file.Pos > maxBacklog {
             file.Seek(-maxBacklog, 2)
             reader["pending"] := ""
-            file.ReadLine()
+            reader["dropFragment"] := true
             if reader.Has("dps")
                 reader["dps"] := DPSMeter(This.dpsMonitoring)
         }
-        lines := StrSplit(reader.Get("pending", "") reader["file"].Read(), "`n", "`r")
-        reader["pending"] := lines.Length ? lines.Pop() : "" ; Wait for the writer to finish the last line.
+        lines := StrSplit(reader.Get("pending", "") file.Read(16384), "`n", "`r")
+        reader["pending"] := lines.Length ? lines.Pop() : ""
+        if reader.Get("dropFragment", false) && lines.Length {
+            lines.RemoveAt(1)
+            reader["dropFragment"] := false
+        }
+        if StrLen(reader["pending"]) > 8192 {
+            reader["pending"] := ""
+            reader["dropFragment"] := true
+        }
         if reader.Has("dps") {
             if now {
                 for line in lines
