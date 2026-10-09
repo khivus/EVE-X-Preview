@@ -1606,8 +1606,7 @@ Class Main_Class extends ThumbWindow {
         if !This.ShiftThumbsForLoginScreen || This.skipShiftThumbs
             return
 
-        static nextPosX := This.ThumbnailStartLocation["x"]
-        static nextPosY := This.ThumbnailStartLocation["y"]
+        static nextPosX := "", nextPosY := ""
         step_x := This.ShiftThumbHorizontalStep
         step_y := This.ShiftThumbVerticalStep
 
@@ -1617,26 +1616,33 @@ Class Main_Class extends ThumbWindow {
             step_y := This.ThumbnailStartLocation["height"]
         
         switch This.ShiftThumbsDirection {
-            case 2 || 7:
+            case 2, 7:
                 step_y := -step_y
-            case 3 || 6:
+            case 3, 6:
                 step_x := -step_x
-            case 4 || 8:
+            case 4, 8:
                 step_x := -step_x
                 step_y := -step_y
         }
 
+        ; Bounds of the monitor holding the start location (may have negative coords)
+        This.GetMonitorBounds(This.ThumbnailStartLocation["x"], This.ThumbnailStartLocation["y"], &monL, &monT, &monR, &monB)
+
+        ; Clamp the start location so the first thumbnail fits fully on that monitor
+        startX := Max(monL, Min(Integer(This.ThumbnailStartLocation["x"]), monR - Integer(This.ThumbnailStartLocation["width"])))
+        startY := Max(monT, Min(Integer(This.ThumbnailStartLocation["y"]), monB - Integer(This.ThumbnailStartLocation["height"])))
+
         ; if ShiftThumbsCollisionCheck enabled checks position of all thumbnails and tries to avoid collision
         ; if we have collision check enabled we can reset nextPos so we start checking from beginning
         if This.ShiftThumbsCollisionCheck {
-            nextPosX := This.ThumbnailStartLocation["x"]
-            nextPosY := This.ThumbnailStartLocation["y"]
+            nextPosX := startX
+            nextPosY := startY
             Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
         }
-        ; if all login windows are closed we reset the position to start from beginning
-        else if This.allLoginClosed {
-            nextPosX := This.ThumbnailStartLocation["x"]
-            nextPosY := This.ThumbnailStartLocation["y"]
+        ; on first use, or if all login windows are closed, we reset the position to start from beginning
+        else if This.allLoginClosed || nextPosX = "" {
+            nextPosX := startX
+            nextPosY := startY
             This.allLoginClosed := false
             Collision := 0
         }
@@ -1647,13 +1653,13 @@ Class Main_Class extends ThumbWindow {
             ; Horizontal -> Vertical
             if This.ShiftThumbsDirection <= 4 {
                 nextPosX += step_x
-                if nextPosX + This.ThumbnailStartLocation["width"] > A_ScreenWidth || nextPosX < 0 {
-                    nextPosX := This.ThumbnailStartLocation["x"]
+                if nextPosX + This.ThumbnailStartLocation["width"] > monR || nextPosX < monL {
+                    nextPosX := startX
                     nextPosY += step_y
                     ; if end of screen reached, return to the default position
-                    if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
-                        nextPosX := This.ThumbnailStartLocation["x"]
-                        nextPosY := This.ThumbnailStartLocation["y"]
+                    if nextPosY + This.ThumbnailStartLocation["height"] > monB || nextPosY < monT {
+                        nextPosX := startX
+                        nextPosY := startY
                         MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
                         This.skipShiftThumbs := true
                         break
@@ -1663,13 +1669,13 @@ Class Main_Class extends ThumbWindow {
             ; Vertical -> Horizontal
             else {
                 nextPosY += step_y
-                if nextPosY + This.ThumbnailStartLocation["height"] > A_ScreenHeight || nextPosY < 0 {
-                    nextPosY := This.ThumbnailStartLocation["y"]
+                if nextPosY + This.ThumbnailStartLocation["height"] > monB || nextPosY < monT {
+                    nextPosY := startY
                     nextPosX += step_x
                     ; if end of screen reached, return to the default position
-                    if nextPosX + This.ThumbnailStartLocation["width"] > A_ScreenWidth || nextPosX < 0 {
-                        nextPosX := This.ThumbnailStartLocation["x"]
-                        nextPosY := This.ThumbnailStartLocation["y"]
+                    if nextPosX + This.ThumbnailStartLocation["width"] > monR || nextPosX < monL {
+                        nextPosX := startX
+                        nextPosY := startY
                         MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
                         This.skipShiftThumbs := true
                         break
@@ -1686,6 +1692,22 @@ Class Main_Class extends ThumbWindow {
                         This.ThumbnailStartLocation["height"],
                         This.ThumbWindows.%Win_Hwnd%)
 
+    }
+
+    ; Returns the bounds of the monitor containing (x, y), or the nearest one if the point is off every monitor
+    GetMonitorBounds(x, y, &left, &top, &right, &bottom) {
+        x := Integer(x), y := Integer(y)
+        bestDist := ""
+        Loop MonitorGetCount() {
+            MonitorGet(A_Index, &l, &t, &r, &b)
+            dx := x < l ? l - x : (x >= r ? x - r + 1 : 0)
+            dy := y < t ? t - y : (y >= b ? y - b + 1 : 0)
+            dist := dx * dx + dy * dy
+            if (bestDist = "" || dist < bestDist) {
+                bestDist := dist
+                left := l, top := t, right := r, bottom := b
+            }
+        }
     }
 
     ; Checks collisions for the new thumbnail position
