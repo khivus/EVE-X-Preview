@@ -1606,8 +1606,7 @@ Class Main_Class extends ThumbWindow {
         if !This.ShiftThumbsForLoginScreen || This.skipShiftThumbs
             return
 
-        static nextPosX := This.ThumbnailStartLocation["x"]
-        static nextPosY := This.ThumbnailStartLocation["y"]
+        static nextPosX := "", nextPosY := ""
         step_x := This.ShiftThumbHorizontalStep
         step_y := This.ShiftThumbVerticalStep
 
@@ -1640,8 +1639,8 @@ Class Main_Class extends ThumbWindow {
             nextPosY := startY
             Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
         }
-        ; if all login windows are closed we reset the position to start from beginning
-        else if This.allLoginClosed {
+        ; on first use, or if all login windows are closed, we reset the position to start from beginning
+        else if This.allLoginClosed || nextPosX = "" {
             nextPosX := startX
             nextPosY := startY
             This.allLoginClosed := false
