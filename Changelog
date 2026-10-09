@@ -6,6 +6,7 @@
 * Game-log discovery shares a newest-session index across characters and refreshes on filename notifications instead of sorting the full archive on every attachment. Quiet sessions remain attached; newer or replaced logs switch after header validation, including after the old log has received updates. Large directory scans yield to mouse/UI handling; slow polling, discovery and diagnostic writes are logged with rate limits.
 
 ### Fixed
+* Login-screen thumbnail shifting now respects the monitor containing the configured start position, including secondary monitors with negative coordinates. Off-screen start positions use the nearest monitor and are clamped to its bounds, including on first use with collision checking disabled. Corrected shift directions for vertical-first layouts (#9, thanks to @thelonewolfk).
 * DWM failures and Windows composition changes now automatically pause live previews and stop further startup attempts until manual Resume. Auto-Pause on DWM Failure in Other is enabled by default and can be disabled without restarting. Interrupted registrations are released, pause cleanup waits for active DWM calls, and About shows the automatic pause reason. Repeated composition notifications are logged once per second.
 
 # v1.6.0

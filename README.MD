@@ -374,6 +374,16 @@ Update logs include automatic/manual checks, cache/duplicate skips, HTTP results
 
 These measures reduce startup bursts, including restarting Preview while clients are launching. They cannot guarantee recovery from a graphics-driver or DWM crash: those may never raise a script error. Preserve `current.log`/`previous.log` and collect Windows Event Viewer or Reliability Monitor details for the same time when reporting a blackout.
 
+## Contributing
+
+Contributions are welcome. All pull requests must target the [`dev` branch](https://github.com/khivus/EVE-X-Preview/tree/dev).
+
+1. Fork the repository and use the latest upstream `dev` as the starting point whenever possible. If you already have a fork, sync its `dev` branch with this repository before starting.
+2. Create a separate branch for your changes from the updated `dev` branch.
+3. Keep changes focused, test the affected behavior, and describe what changed and how you tested it in the pull request.
+4. Before submitting, update your branch with the latest upstream `dev` whenever possible and resolve any conflicts.
+5. Open the pull request against `khivus/EVE-X-Preview` with **base: `dev`**.
+
 ### EVE-X-Preview
 
 * Created by [gonzo83](https://github.com/g0nzo83/EVE-X-Preview)
