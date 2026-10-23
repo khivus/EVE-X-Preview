@@ -9,6 +9,7 @@ Class ThumbWindow extends Propertys {
         try {
         
         ThumbObj["Window"] := Gui("+Owner +LastFound -Caption +ToolWindow +E0x08000000 " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop") , Win_Title) ;WS_EX_NOACTIVATE -> +E0x08000000
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["Window"].Hwnd)
         ThumbObj["Window"].OnEvent("Close", GUI_Close_Button)
 
         ; The Backcolor which is visible when no thumbnail is displayed 
@@ -45,6 +46,7 @@ Class ThumbWindow extends Propertys {
         ;#### Create the Thumbnail TextOverlay
         ;####
         ThumbObj["TextOverlay"] := Gui("+LastFound -Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd " " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop"), Win_Title) ; WS_EX_CLICKTHROUGH -> +E0x20
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["TextOverlay"].Hwnd)
         ThumbObj["TextOverlay"].MarginX := This.ThumbnailTextMargins["x"]
         ThumbObj["TextOverlay"].MarginY := This.ThumbnailTextMargins["y"]
 
@@ -95,6 +97,7 @@ Class ThumbWindow extends Propertys {
         border_color := This.ClientHighligtColor
 
         ThumbObj["Border"] := Gui("-Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd)
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["Border"].Hwnd)
 
         CheckError := 0
         if This.CustomColorsActive && !This.ShowAllColoredBorders {
@@ -151,6 +154,7 @@ Class ThumbWindow extends Propertys {
                 }
         if separateEvents {
             ThumbObj["EventBorder"] := Gui("-Caption +ToolWindow +E0x08000020 +Owner" ThumbObj["Window"].Hwnd)
+            This.ApplyThumbnailCaptureAffinity(ThumbObj["EventBorder"].Hwnd)
             ThumbObj["EventBorder"].BackColor := "FF0000"
             ThumbObj["EventBorder"].EventVisible := false
             WinSetTransparent(255, ThumbObj["EventBorder"].Hwnd) ; Layered + WS_EX_TRANSPARENT lets gestures pass through the ring.
@@ -179,6 +183,11 @@ Class ThumbWindow extends Propertys {
         GUI_Close_Button(*) {
             return
         }
+    }
+
+    ApplyThumbnailCaptureAffinity(hwnd) {
+        ; WDA_EXCLUDEFROMCAPTURE = 0x11, WDA_NONE = 0. Owned overlays need their own affinity.
+        return DllCall("user32\SetWindowDisplayAffinity", "Ptr", hwnd, "UInt", This.ExcludeThumbnailsFromCapture ? 0x11 : 0, "Int")
     }
 
     ExtendThumbnailFrame(hwnd) {
