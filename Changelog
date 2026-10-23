@@ -1,7 +1,5 @@
 # v1.6.1.6
 
-#10, thanks to @thelonewolfk
-
 ### Changed
 * DWM auto-pause consistently defaults to off for profiles without a saved preference.
 
@@ -9,6 +7,8 @@
 * Preview text follows saved thumbnail sizes, and overlays are restacked after client activation.
 * Minimized clients get previews at startup without being restored; maximized and borderless images remain uncropped during preview resizing.
 * Group and previous-window activation safely handle clients with missing saved positions.
+
+Thanks to @thelonewolfk for contibuting (#10).
 
 # v1.6.1.5
 
