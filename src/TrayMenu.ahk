@@ -212,7 +212,7 @@ Class TrayMenu extends Settings_Gui {
 
     CloseAllEVEWindows(*) {
         try {
-            list := WinGetList("Ahk_Exe exefile.exe")
+            list := WinGetList(This.EVEExe)
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
             for hwnd in list {
                 WinTitle := WinGetTitle(hwnd)
@@ -220,7 +220,7 @@ Class TrayMenu extends Settings_Gui {
                 if This.dontCloseActiveClient && WinActive("ahk_id " hwnd)
                     continue
 
-                if This.DontCloseWIn(WinTitle)
+                if This.DontCloseWIn(WinTitle, hwnd)
                     continue
 
                 PostMessage 0x0112, 0xF060, , , hwnd

@@ -53,6 +53,27 @@ SettingsScaledPanelsTest() {
 }
 
 TestRunner.Register("Settings content placement uses parent coordinates including sidebar offsets", SettingsPanelParentCoordinatesTest)
+TestRunner.Register("Logout membership controls fit Thumbnails Interactions and update their profile settings", SettingsGroupPersistenceControlsTest)
+SettingsGroupPersistenceControlsTest() {
+    app := SettingsLayoutFixture()
+    app.Save_Settings_Delay_Timer := (*) => 0
+    try {
+        app.ThumbnailsInteractions_Ctrl()
+        for name in ["PreserveDisabledOnLogout", "PreserveQuickGroupOnLogout"] {
+            control := app.MainFrame[name]
+            control.GetPos(&x, &y, &w, &h)
+            AssertTrue(y + h <= app.guiHeight - 10, "The logout controls must fit without clipping.")
+            AssertEqual(1, control.Value, "Membership persistence must be enabled by default.")
+            SendMessage(0xF5, 0, 0, control) ; BM_CLICK follows the real settings event path.
+            Sleep(20)
+            AssertEqual(0, app.%name%, "The checkbox must update its own profile setting.")
+        }
+    } finally {
+        SetTimer(app.Save_Settings_Delay_Timer, 0)
+        app.Dispose()
+    }
+}
+
 SettingsPanelParentCoordinatesTest() {
     app := SettingsLayoutFixture()
     try {

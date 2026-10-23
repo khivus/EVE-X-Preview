@@ -914,6 +914,9 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Don't Close Disabled Clients:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseDisabledClients" , "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Keep Disabled Status on Logout:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vPreserveDisabledOnLogout Checked" This.PreserveDisabledOnLogout, "On/Off")
+
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Quick Group - Hotkey:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vQuickGroupHotkey -Wrap")
 
@@ -933,6 +936,9 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Don't Close Quick Group Clients:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vDontCloseQuickGroupClients" , "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Keep Quick Group on Logout:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vPreserveQuickGroupOnLogout Checked" This.PreserveQuickGroupOnLogout, "On/Off")
+
         This.MainFrame["DisableFromGroupsColor"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupHotkey"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["QuickGroupSortOrder"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -941,6 +947,8 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["QuickGroupResetsPosition"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["DontCloseDisabledClients"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["DontCloseQuickGroupClients"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["PreserveDisabledOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["PreserveQuickGroupOnLogout"].OnEvent("Click", (obj, *) => EventHandler(obj))
 
         This.MainFrame.Group["Thumbnails Interactions"] := arr
         for k, v in This.MainFrame.Group["Thumbnails Interactions"] {
@@ -955,7 +963,7 @@ Class Settings_Gui extends SoundSettingsGui {
             else if obj.name = "QuickGroupSortOrder" {
                 This.QuickGroupSortOrder := obj.Text
             }
-            else if obj.name = "QuickGroupHotkey" || obj.name = "QuickGroupIgnoredInOtherGroups" || obj.name = "QuickGroupResetsPosition" || obj.name = "DontCloseDisabledClients" || obj.name = "DontCloseQuickGroupClients" {
+            else if obj.name = "QuickGroupHotkey" || obj.name = "QuickGroupIgnoredInOtherGroups" || obj.name = "QuickGroupResetsPosition" || obj.name = "DontCloseDisabledClients" || obj.name = "DontCloseQuickGroupClients" || obj.name = "PreserveDisabledOnLogout" || obj.name = "PreserveQuickGroupOnLogout" {
                 This.%obj.name% := obj.value
             }
             else {
@@ -2389,6 +2397,8 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["QuickGroupResetsPosition"].value := This.QuickGroupResetsPosition
         This.MainFrame["DontCloseDisabledClients"].value := This.DontCloseDisabledClients
         This.MainFrame["DontCloseQuickGroupClients"].value := This.DontCloseQuickGroupClients
+        This.MainFrame["PreserveDisabledOnLogout"].value := This.PreserveDisabledOnLogout
+        This.MainFrame["PreserveQuickGroupOnLogout"].value := This.PreserveQuickGroupOnLogout
 
         ;Thumbnail Settings
         This.MainFrame["ShowThumbnailTextOverlay"].value := This.ShowThumbnailTextOverlay

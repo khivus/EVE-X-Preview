@@ -180,6 +180,10 @@ This group controls global hotkeys and client actions.
 
 Quick Group Sort Order chooses how the Quick Group hotkey cycles through selected windows. Added order (the default) follows the order windows were added to Quick Group; Name cycles alphabetically by character name. Removing and adding a window again places it at the end of added order.
 
+**Keep Quick Group on Logout** and **Keep Disabled Status on Logout** are enabled by default. Membership follows the same client window through character selection and relogin, including switching characters. Turn either option off in Thumbnails Interactions to clear that status on a character change or logout. Closing the client clears its membership; restarting the client or EVE-X-Preview starts fresh.
+
+**Don't Close Quick Group Clients** and **Don't Close Disabled Clients** protect those windows from **Close all EVE Clients**, including while on the login screen, independently of **Don't Close Clients on Login Screen**. Directly closing an individual client still works.
+
 ### Thumbnails Behavior
 
 This group controls thumbnail placement, movement, and visibility behavior.

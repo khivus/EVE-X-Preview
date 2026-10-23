@@ -1,3 +1,13 @@
+# v1.6.2.0
+
+### Added
+* Per-profile thumbnail capture exclusion (#12 thanks to @ShannaAlabel).
+* Quick Group and disabled status survive logout and relogin in the same client window, with separate default-on settings in Thumbnails Interactions.
+
+### Fixed
+* Fixed "Gui has no window" errors from system-color and DPS updates while closing or replacing thumbnails.
+* Close-all protection for Quick Group and disabled clients follows the window through login-screen title changes.
+
 # v1.6.1.6
 
 ### Changed

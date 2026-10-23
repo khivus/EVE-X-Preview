@@ -58,6 +58,79 @@ QuickGroupOrderTest() {
 }
 
 TestRunner.Register("Foreground polling recovers from missing and closed windows", ForegroundPollingTest)
+TestRunner.Register("Close-all protects group HWNDs on login screens without protecting unrelated login clients", GroupCloseAllProtectionTest)
+GroupCloseAllProtectionTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := QuickGroupOrderFixture()
+    app.ProfileClientSettings := "Default"
+    app.DontCloseOnLoginScreen := false
+    app.dontCloseActiveClient := false
+    app.DontCloseClients := ""
+    app.DontCloseQuickGroupClients := true
+    app.DontCloseDisabledClients := true
+    app.DisabledFromGroupsEnabled := true
+    app.EVEExe := "ahk_group CloseProtectionFixture"
+    windows := [], closed := Map()
+    try {
+        loop 3 {
+            window := Gui(, "EVE")
+            windows.Push(window)
+            window.Show("Hide w100 h60")
+            GroupAdd("CloseProtectionFixture", "ahk_id " window.Hwnd)
+            window.OnEvent("Close", RecordClose.Bind(window.Hwnd))
+        }
+        quick := windows[1].Hwnd, disabled := windows[2].Hwnd, ordinary := windows[3].Hwnd
+        app.AddToQuickGroup(quick, "EVE - Old Quick Pilot")
+        app.AddToDisabled(disabled, "EVE - Old Disabled Pilot")
+        ; The title has changed, but the main poll has not updated either stored name.
+        AssertTrue(app.DontCloseWIn("EVE", quick))
+        AssertTrue(app.DontCloseWIn("EVE", disabled))
+        AssertFalse(app.DontCloseWIn("EVE", ordinary))
+        app.CloseAllEVEWindows()
+        Sleep(50)
+        AssertFalse(closed.Has(quick), "Quick Group must be protected even with login-screen protection off.")
+        AssertFalse(closed.Has(disabled), "Disabled protection must use the window, not its previous character name.")
+        AssertTrue(closed.Has(ordinary), "A protected login client must not protect every window titled EVE.")
+        app.DontCloseQuickGroupClients := false
+        AssertFalse(app.DontCloseWIn("EVE", quick))
+        app.DontCloseOnLoginScreen := true
+        AssertTrue(app.DontCloseWIn("EVE", ordinary))
+        app.DontCloseOnLoginScreen := false
+        app.DontCloseClients := "Alice"
+        AssertTrue(app.DontCloseWIn("EVE - Alice", ordinary), "The named-client exclusion must still work.")
+    } finally {
+        for window in windows
+            window.Destroy()
+        DetectHiddenWindows(oldHidden)
+    }
+
+    RecordClose(hwnd, *) {
+        closed[hwnd] := true
+        return true ; Keep these test windows alive for the remaining checks.
+    }
+}
+
+TestRunner.Register("Logout membership defaults migrate without overwriting per-profile opt-outs", GroupPersistenceDefaultsTest)
+GroupPersistenceDefaultsTest() {
+    defaults := JSON.Load(default_JSON)
+    settings := DeepClone(defaults)
+    profile := settings["_Profiles"]["Default"]
+    profile["Hotkeys Settings"].Delete("PreserveQuickGroupOnLogout")
+    profile["Hotkeys Settings"].Delete("PreserveDisabledOnLogout")
+    settings["_Profiles"]["Opt out"] := DeepClone(profile)
+    settings["_Profiles"]["Opt out"]["Hotkeys Settings"]["PreserveQuickGroupOnLogout"] := 0
+    settings["_Profiles"]["Opt out"]["Hotkeys Settings"]["PreserveDisabledOnLogout"] := 0
+    merged := JsonMergeNoOverwrite(defaults, settings)
+    app := QuickGroupOrderFixture()
+    app._JSON := JSON.Load(JSON.Dump(merged))
+    AssertEqual(1, app.PreserveQuickGroupOnLogout)
+    AssertEqual(1, app.PreserveDisabledOnLogout)
+    app.ProfileThumbnailsInteractions := "Opt out"
+    AssertEqual(0, app.PreserveQuickGroupOnLogout)
+    AssertEqual(0, app.PreserveDisabledOnLogout)
+}
+
 ForegroundPollingTest() {
     previousDetectHidden := A_DetectHiddenWindows
     DetectHiddenWindows(true)

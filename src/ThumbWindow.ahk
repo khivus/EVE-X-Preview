@@ -338,58 +338,84 @@ Class ThumbWindow extends Propertys {
 
     updateThumbnailEventText(text, hwnd) {
         ; An event timer can outlive the client and its thumbnail.
-        if This.ThumbWindows.HasProp(hwnd) {
-            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-            previous := overlay["EventText"].Text
-            if previous = text
-                return
-            overlay["EventText"].Text := text
-            if (previous = "") != (text = "")
-                This.RefreshThumbnailTextLayout(overlay)
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if This.ThumbWindows.HasProp(hwnd) {
+                overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+                previous := overlay["EventText"].Text
+                if previous = text
+                    return
+                overlay["EventText"].Text := text
+                if (previous = "") != (text = "")
+                    This.RefreshThumbnailTextLayout(overlay)
+            }
+        } finally {
+            Critical(previousCritical)
         }
     }
 
     updateThumbnailDPSText(text, hwnd, damageText := "") {
-        if !This.ThumbWindows.HasProp(hwnd)
-            return
-        overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-        if !overlay.HasOwnProp("DPSTextHeight")
-            return
-        if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
-            return
-        relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
-        overlay["DPSText"].Text := text
-        overlay["DPSDamageText"].Text := damageText
-        if relayout
-            This.RefreshThumbnailTextLayout(overlay)
+        ; Keep lookup, control access and relayout together if cleanup becomes due.
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if !This.ThumbWindows.HasProp(hwnd)
+                return
+            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+            if !overlay.HasOwnProp("DPSTextHeight")
+                return
+            if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
+                return
+            relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
+            overlay["DPSText"].Text := text
+            overlay["DPSDamageText"].Text := damageText
+            if relayout
+                This.RefreshThumbnailTextLayout(overlay)
+        } finally {
+            Critical(previousCritical)
+        }
     }
 
     updateThumbnailSystemText(text, hwnd) {
-        if This.ThumbWindows.HasProp(hwnd) {
-            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-            control := overlay["SystemText"]
-            if control.Text != text
-                control.Text := text
-            if text = ""
-                This.ApplyThumbnailSystemColor(overlay, "")
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if This.ThumbWindows.HasProp(hwnd) {
+                overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+                control := overlay["SystemText"]
+                if control.Text != text
+                    control.Text := text
+                if text = ""
+                    This.ApplyThumbnailSystemColor(overlay, "")
+            }
+        } finally {
+            Critical(previousCritical)
         }
     }
 
     RefreshThumbnailSystemColors() {
-        enabled := This.systemTrackingEnabled && This.systemColorsEnabled
-        systems := [], overlays := []
-        for hwnd, thumb in This.ThumbWindows.OwnProps() {
-            if !thumb.Has("TextOverlay")
-                continue
-            overlay := thumb["TextOverlay"]
-            overlays.Push(overlay)
+        ; Collected overlay references must remain alive through the color pass.
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            enabled := This.systemTrackingEnabled && This.systemColorsEnabled
+            systems := [], overlays := []
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                if !thumb.Has("TextOverlay")
+                    continue
+                overlay := thumb["TextOverlay"]
+                overlays.Push(overlay)
+                if enabled
+                    systems.Push(overlay["SystemText"].Text)
+            }
             if enabled
-                systems.Push(overlay["SystemText"].Text)
+                This.systemColors.Update(systems)
+            for overlay in overlays
+                This.ApplyThumbnailSystemColor(overlay, enabled ? This.systemColors.Get(overlay["SystemText"].Text) : "")
+        } finally {
+            Critical(previousCritical)
         }
-        if enabled
-            This.systemColors.Update(systems)
-        for overlay in overlays
-            This.ApplyThumbnailSystemColor(overlay, enabled ? This.systemColors.Get(overlay["SystemText"].Text) : "")
     }
 
     ApplyThumbnailSystemColor(overlay, color) {

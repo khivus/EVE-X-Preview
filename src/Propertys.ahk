@@ -8,16 +8,22 @@ class Propertys extends TrayMenu {
 
     SetThumbnailText[hwnd, *] {
         set {
-            if This.ThumbWindows.HasProp(hwnd) {
-                newtext := Value
-                if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
-                    This.HideEventBorder(hwnd)
-                    This.updateThumbnailEventText("", hwnd)
-                    This.updateThumbnailSystemText("", hwnd)
-                    This.updateThumbnailDPSText("", hwnd)
+            previousCritical := A_IsCritical
+            Critical
+            try {
+                if This.ThumbWindows.HasProp(hwnd) {
+                    newtext := Value
+                    if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
+                        This.HideEventBorder(hwnd)
+                        This.updateThumbnailEventText("", hwnd)
+                        This.updateThumbnailSystemText("", hwnd)
+                        This.updateThumbnailDPSText("", hwnd)
+                    }
+                    This.updateThumbnailText(newtext, hwnd)
+                    This.ThumbWindows.%hwnd%["Window"].Title := newtext
                 }
-                This.updateThumbnailText(newtext, hwnd)
-                This.ThumbWindows.%hwnd%["Window"].Title := newtext
+            } finally {
+                Critical(previousCritical)
             }
         }
     }
@@ -136,6 +142,16 @@ class Propertys extends TrayMenu {
     DontCloseDisabledClients {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
+    }
+
+    PreserveQuickGroupOnLogout {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"].Get("PreserveQuickGroupOnLogout", 1)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["PreserveQuickGroupOnLogout"] := value
+    }
+
+    PreserveDisabledOnLogout {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"].Get("PreserveDisabledOnLogout", 1)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["PreserveDisabledOnLogout"] := value
     }
 
     DontCloseQuickGroupClients {

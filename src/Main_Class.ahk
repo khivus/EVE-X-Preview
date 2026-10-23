@@ -480,6 +480,11 @@ Class Main_Class extends ThumbWindow {
             return
 
         WinList.Push(This.ActiveNonEVEApps*)
+        ; A client can exit while its preview is queued for recreation or paused.
+        for entries in [This.QuickGroupChars.Clone(), This.DisabledChars.Clone()]
+            for hwnd in entries
+                if !DllCall("IsWindow", "Ptr", hwnd)
+                    This.ForgetWindowGroups(hwnd)
         ; If any EVE Window exist
         if WinList.Length {
             try { ; Another++ attempt to fix error on thumbnail destruction
@@ -517,6 +522,7 @@ Class Main_Class extends ThumbWindow {
                     
                         ; if in Character selection screen 
                         if (This.ThumbWindows.%hwnd%["Window"].Title != WinList.%hwnd%.Title && WinList.%hwnd%.Title = "EVE" && This.PreserveCharNameOnLogout) {
+                            This.UpdateWindowGroupsOnTitleChange(hwnd, WinList.%hwnd%.Title)
                             if This.monitoringInitialized && This.monitoredChars.Has(This.ThumbWindows.%hwnd%["Window"].Title)
                                 This.stopLogMonitoring(This.ThumbWindows.%hwnd%["Window"].Title)
                             This.ThumbWindows.%hwnd%["Window"].Title := "Char Screen"
@@ -1186,18 +1192,43 @@ Class Main_Class extends ThumbWindow {
         This.debugToolTipText .= "Name changed for: " title "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
+        This.UpdateWindowGroupsOnTitleChange(hwnd, title)
         This.SetThumbnailText[hwnd] := title
         ; moves the Window to the saved positions if any stored, a bit of sleep is usfull to give the window time to move before creating the thumbnail
         if (This.ThumbnailPositions.Has(title)) {
-            This.EvEWindowDestroy(hwnd, title)
+            This.EvEWindowDestroy(hwnd, title, true)
             This.QueuePreview(hwnd, title)
         }
         else
             This.RestoreClientPossitions(hwnd, title)
-        This.DeleteFromQuickGroup(hwnd)
-        This.DeleteFromDisabled(hwnd)
         This.BorderActive := 0
         This.RegisterHotkeys(title)
+    }
+
+    UpdateWindowGroupsOnTitleChange(hwnd, title) {
+        if This.QuickGroupChars.Has(hwnd) {
+            if This.PreserveQuickGroupOnLogout
+                This.QuickGroupChars[hwnd] := title
+            else {
+                This.RemoveQuickGroupWindow(hwnd)
+                This.toggleColorBorder(hwnd, title, 0)
+            }
+        }
+        if This.DisabledChars.Has(hwnd) {
+            if This.PreserveDisabledOnLogout
+                This.DisabledChars[hwnd] := title
+            else {
+                This.DisabledChars.Delete(hwnd)
+                This.toggleColorBorder(hwnd, title, 0)
+            }
+        }
+    }
+
+    ForgetWindowGroups(hwnd) {
+        if This.QuickGroupChars.Has(hwnd)
+            This.RemoveQuickGroupWindow(hwnd)
+        if This.DisabledChars.Has(hwnd)
+            This.DisabledChars.Delete(hwnd)
     }
 
     ; Toggle click through mode on all thumbnail windows
@@ -1439,8 +1470,11 @@ Class Main_Class extends ThumbWindow {
                 try This.QueuePreview(hwnd, WinGetTitle("ahk_id " hwnd))
         }
         for hwnd in This.previewQueue.items.Clone()
-            if !present.Has(hwnd)
+            if !present.Has(hwnd) {
+                if !DllCall("IsWindow", "Ptr", hwnd)
+                    This.ForgetWindowGroups(hwnd)
                 This.previewQueue.Remove(hwnd)
+            }
         if This.livePreviewsPaused
             return
         loop (This.previewQueue.slow ? 1 : This.previewQueue.items.Count) {
@@ -1595,6 +1629,7 @@ Class Main_Class extends ThumbWindow {
         ;Creates the Thumbnail and stores the EVE Hwnd in the array
         If This.ThumbWindows.HasProp(Win_Hwnd)
             return
+        This.UpdateWindowGroupsOnTitleChange(Win_Hwnd, Win_Title)
         try {
         This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
         This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
@@ -1638,16 +1673,23 @@ Class Main_Class extends ThumbWindow {
     }
 
     DisposePreview(hwnd) {
-        if !This.ThumbWindows.HasProp(hwnd)
-            return
-        thumb := This.ThumbWindows.%hwnd%
-        thumb["Thumbnail"].Close()
-        if This.ThumbHwnd_EvEHwnd.Has(thumb["Window"].Hwnd)
-            This.ThumbHwnd_EvEHwnd.Delete(thumb["Window"].Hwnd)
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if !This.ThumbWindows.HasProp(hwnd)
+                return
+            thumb := This.ThumbWindows.%hwnd%
+            thumb["Thumbnail"].Close()
+            if This.ThumbHwnd_EvEHwnd.Has(thumb["Window"].Hwnd)
+                This.ThumbHwnd_EvEHwnd.Delete(thumb["Window"].Hwnd)
+            ; Timers must stop finding this preview before any owned GUI is destroyed.
+            This.ThumbWindows.DeleteProp(hwnd)
+        } finally {
+            Critical(previousCritical)
+        }
         for key, obj in thumb
             if key != "Thumbnail"
                 try obj.Destroy()
-        This.ThumbWindows.DeleteProp(hwnd)
     }
 
     ; Both shifting options share direction, spacing, collision checks and monitor bounds.
@@ -1780,7 +1822,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
-    EvEWindowDestroy(hwnd?, WinTitle?) {
+    EvEWindowDestroy(hwnd?, WinTitle?, preserveGroups := false) {
         try {
             if IsSet(WinTitle)
                 This.debugToolTipText .= "Destroying thumbnail for " WinTitle "`n"
@@ -1792,7 +1834,7 @@ Class Main_Class extends ThumbWindow {
             SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
             if (IsSet(hwnd) && This.ThumbWindows.HasProp(hwnd)) {
-                This.CleanupClosedPreview(hwnd)
+                This.CleanupClosedPreview(hwnd, preserveGroups)
                 Return
             }
             ; A failed cleanup must not prevent other closed clients from being removed.
@@ -1808,16 +1850,15 @@ Class Main_Class extends ThumbWindow {
         }
     }
 
-    CleanupClosedPreview(hwnd) {
+    CleanupClosedPreview(hwnd, preserveGroups := false) {
         hwnd := Integer(hwnd) ; OwnProps yields strings; interaction/group maps use numeric HWNDs.
         title := This.ThumbWindows.%hwnd%["Window"].Title
         ; Do not redraw borders or query a closed client while removing groups.
         This.DisposePreview(hwnd)
-        if This.QuickGroupChars.Has(hwnd)
-            This.RemoveQuickGroupWindow(hwnd)
-        for entries in [This.DisabledChars, This.HidedThumbs]
-            if entries.Has(hwnd)
-                entries.Delete(hwnd)
+        if !preserveGroups
+            This.ForgetWindowGroups(hwnd)
+        if This.HidedThumbs.Has(hwnd)
+            This.HidedThumbs.Delete(hwnd)
         This.previewQueue.Remove(hwnd)
         This.BorderActive := 0
         if This.monitoringInitialized && This.monitoredChars.Has(title)
@@ -2418,25 +2459,18 @@ Class Main_Class extends ThumbWindow {
             This.QuickSort(arr, comp, i, high)
     }
 
-    DontCloseWIn(WinTitle) {
+    DontCloseWIn(WinTitle, hwnd) {
         for k in This.DontCloseClients {
             if k = WinTitle
                 return 1
         }
         if (WinTitle = "EVE" && This.DontCloseOnLoginScreen)
             return 1
-        if This.DontCloseDisabledClients {
-            for k, v in This.DisabledChars {
-                if v = WinTitle
-                    return 1
-            }
-        }
-        if This.DontCloseQuickGroupClients {
-            for k, v in This.QuickGroupChars {
-                if v = WinTitle
-                    return 1
-            }
-        }
+        ; Membership belongs to a client window, even before its new title is polled.
+        if This.DontCloseDisabledClients && This.DisabledChars.Has(hwnd)
+            return 1
+        if This.DontCloseQuickGroupClients && This.QuickGroupChars.Has(hwnd)
+            return 1
         return 0
     }
 
@@ -3045,8 +3079,17 @@ Class Main_Class extends ThumbWindow {
     }
 
     updateThumbnailText(title, hwnd) {
-        This.ThumbWindows.%hwnd%["TextOverlay"]["OverlayText"].Text := This.GetThumbnailDisplayText(title)
-        This.RefreshThumbnailTextLayout(This.ThumbWindows.%hwnd%["TextOverlay"])
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if !This.ThumbWindows.HasProp(hwnd)
+                return
+            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+            overlay["OverlayText"].Text := This.GetThumbnailDisplayText(title)
+            This.RefreshThumbnailTextLayout(overlay)
+        } finally {
+            Critical(previousCritical)
+        }
     }
 
     processNPCCheck(charName, line) {

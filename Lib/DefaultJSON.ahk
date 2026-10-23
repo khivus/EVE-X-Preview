@@ -124,6 +124,8 @@ default_JSON := "
                 "QuickGroupSortOrder": "Added order",
                 "QuickGroupIgnoredInOtherGroups": 1,
                 "QuickGroupResetsPosition": 1,
+                "PreserveQuickGroupOnLogout": 1,
+                "PreserveDisabledOnLogout": 1,
                 "DontCloseDisabledClients": 0,
                 "DontCloseQuickGroupClients": 0
             },
