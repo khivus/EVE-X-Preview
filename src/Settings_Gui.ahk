@@ -1009,6 +1009,9 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Thumbnails Always on Top:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowThumbnailsAlwaysOnTop Checked" This.ShowThumbnailsAlwaysOnTop, "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Exclude Thumbnails from Capture:")
+        arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vExcludeThumbnailsFromCapture Checked" This.ExcludeThumbnailsFromCapture, "On/Off")
+
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vClickThroughActive Checked" This.ClickThroughActive, "On/Off")
 
@@ -1063,6 +1066,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["HideThumbnails"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["HideThumbnailsOnLostFocus"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].OnEvent("Click", (obj, *) => EventHandler(obj))
+        This.MainFrame["ExcludeThumbnailsFromCapture"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ClickThroughActive"].OnEvent("Click", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationx"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailStartLocationy"].OnEvent("Change", (obj, *) => EventHandler(obj))
@@ -1097,6 +1101,9 @@ Class Settings_Gui extends SoundSettingsGui {
             }
             else if (obj.name = "ShowThumbnailsAlwaysOnTop") {
                 This.ShowThumbnailsAlwaysOnTop := obj.value
+            }
+            else if (obj.name = "ExcludeThumbnailsFromCapture") {
+                This.ExcludeThumbnailsFromCapture := obj.value
             }
             else if (obj.name = "ClickThroughActive") {
                 This.ClickThroughActive := obj.value
@@ -2401,6 +2408,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["HideThumbnailsOnLostFocus"].value := This.HideThumbnailsOnLostFocus
         This.MainFrame["ThumbnailOpacity"].value := IntegerToPercentage(This.ThumbnailOpacity)
         This.MainFrame["ShowThumbnailsAlwaysOnTop"].value := This.ShowThumbnailsAlwaysOnTop
+        This.MainFrame["ExcludeThumbnailsFromCapture"].value := This.ExcludeThumbnailsFromCapture
         This.MainFrame["ClickThroughActive"].value := This.ClickThroughActive
         This.MainFrame["ShowAllBorders"].value := This.ShowAllColoredBorders
         This.MainFrame["InactiveClientBorderthickness"].value := This.InactiveClientBorderthickness

@@ -255,6 +255,11 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"] := value
     }
+    ExcludeThumbnailsFromCapture {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"].Get("ExcludeThumbnailsFromCapture", 0)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ExcludeThumbnailsFromCapture"] := value
+    }
+
     ShowThumbnailsAlwaysOnTop {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"] := value

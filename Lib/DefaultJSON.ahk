@@ -35,6 +35,7 @@ default_JSON := "
             "Thumbnails Behavior": {
                 "HideThumbnailsOnLostFocus": 0,
                 "ShowThumbnailsAlwaysOnTop": 1,
+                "ExcludeThumbnailsFromCapture": 0,
                 "ThumbnailStartLocation": {
                     "x": 20,
                     "y": 20,

@@ -1,7 +1,8 @@
 class ThumbnailBorderFixture extends PreviewLifecycleFixture {
     focused := true
-    __New(mode := 1) {
+    __New(mode := 1, excludeCapture := false) {
         super.__New()
+        this.ExcludeThumbnailsFromCapture := excludeCapture
         this.gameLogsMonitoringEnabled := true
         this.flashBorderEnabled := true
         this.EventActiveBorderMode := mode
