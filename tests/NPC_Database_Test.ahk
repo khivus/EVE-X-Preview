@@ -38,6 +38,19 @@ NPCFOBNamesTest() {
     AssertEqual("underAttackByNPC", app.Check('[ 2026.09.13 20:00:00 ] (combat) <color=0xffe57f7f><b>50 GJ</b><font size=10> energy neutralized </font><color=0xFF40FFFF><b>' Chr(0x2666) ' Punisher</b></color> <color=0xFF40FF40><b>Blood Raiders Punisher</b></color> - Energy Neutralizer'))
 }
 
+TestRunner.Register("Drifter pilot names in combat logs are NPCs", NPCDrifterPilotTest)
+NPCDrifterPilotTest() {
+    app := CombatEventsFixture()
+    for name in ["Arithmos Tyrannos", "Hyleus Tyrannos"] {
+        AssertEqual("npc", app.ClassifyTarget(name), name)
+        AssertEqual("player", app.ClassifyTarget(name "[CORP](Rifter)"), "Tagged player: " name)
+    }
+    AssertEqual("player", app.ClassifyTarget("Tyrannos"))
+    AssertEqual("underAttackByNPC", app.Check('[ 2026.10.23 03:28:15 ] (combat) <color=0xffcc0000><b>1467</b> <color=0x77ffffff><font size=10>from</font> <b><color=0xffffffff>Arithmos Tyrannos</b><font size=10><color=0x77ffffff> - Penetrates'))
+    app.monitoredEvents["underAttackByNPC"]["includeNeutralization"] := 1
+    AssertEqual("underAttackByNPC", app.Check('[ 2026.10.23 03:22:08 ] (combat) <color=0xffe57f7f><b>945 GJ</b><color=0x77ffffff><font size=10> energy neutralized </font><b><color=0xffffffff>Arithmos Tyrannos</b><color=0x77ffffff><font size=10> - Drifter Response Battleship</font>'))
+}
+
 TestRunner.Register("Special NPC maps retain priority and fall back to general classification", NPCSpecialPriorityTest)
 NPCSpecialPriorityTest() {
     app := CombatEventsFixture()
