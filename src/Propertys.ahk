@@ -168,6 +168,42 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key] := value
     }
 
+    ThumbnailToolsSettings {
+        get {
+            if !This.HasOwnProp("ProfileThumbnailsBehavior")
+                return Map()
+            return This.Profiles[This.ProfileThumbnailsBehavior].Get("Thumbnails Behavior", Map())
+        }
+    }
+
+    LockThumbnailPositions {
+        get => This.ThumbnailToolsSettings.Get("LockThumbnailPositions", 0)
+        set => This.ThumbnailToolsSettings["LockThumbnailPositions"] := !!value
+    }
+
+    AnonymizeThumbnails {
+        get => This.Profiles[This.ProfileThumbnailsVisuals].Get("Thumbnails Visuals", Map()).Get("AnonymizeThumbnails", 0)
+        set => This.Profiles[This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["AnonymizeThumbnails"] := !!value
+    }
+
+    AnonymousNames {
+        get => This.Profiles[This.ProfileThumbnailsVisuals].Get("Thumbnails Visuals", Map()).Get("AnonymousNames", "Aurora`nComet`nNova`nOrbit`nRaven`nZenith")
+        set => This.Profiles[This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["AnonymousNames"] := value
+    }
+
+    ThumbnailPollingInterval {
+        get {
+            interval := This.ThumbnailToolsSettings.Get("ThumbnailPollingInterval", 50)
+            return IsNumber(interval) ? Max(50, Min(1000, Round(interval))) : 50
+        }
+        set => This.ThumbnailToolsSettings["ThumbnailPollingInterval"] := value
+    }
+
+    AutoWildcardWindowHotkeys {
+        get => This.HasOwnProp("ProfileHotkeysGroups") ? This.Profiles[This.ProfileHotkeysGroups]["Hotkeys Settings"].Get("AutoWildcardWindowHotkeys", 1) : 1
+        set => This.Profiles[This.ProfileHotkeysGroups]["Hotkeys Settings"]["AutoWildcardWindowHotkeys"] := !!value
+    }
+
     AutoSaveThumbnailPositions {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["AutoSaveThumbnailPositions"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["AutoSaveThumbnailPositions"] := value

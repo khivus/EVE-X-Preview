@@ -1,6 +1,7 @@
 ﻿#Include "UpdateChecker.ahk"
 
 #Include "SoundSettings.ahk"
+#Include "SettingsScrollPane.ahk"
 
 Class Settings_Gui extends SoundSettingsGui {
 
@@ -87,6 +88,7 @@ Class Settings_Gui extends SoundSettingsGui {
             This.CloseEventSoundDialog()
             This.StopTestThumbnail()
             This.sidebarStatusHwnd := 0
+            This.settingsScroller.Stop()
             This.S_Gui.Destroy()
             if (This.NeedRestart) {
                 SetTimer(This.Save_Settings_Delay_Timer, 0)
@@ -166,7 +168,7 @@ Class Settings_Gui extends SoundSettingsGui {
         if !DllCall("GetWindowRect", "Ptr", This.Sidebar.Hwnd, "Ptr", rect)
             throw OSError()
         DllCall("MapWindowPoints", "Ptr", 0, "Ptr", This.S_Gui.Hwnd, "Ptr", rect, "UInt", 2)
-        This.MainFrame.Show(Format("x{} y{} w{} h{}", NumGet(rect, 8, "Int"), NumGet(rect, 4, "Int"), This.contentW - 10, This.guiHeight - 10))
+        This.settingsScroller.Show(NumGet(rect, 8, "Int"), NumGet(rect, 4, "Int"), This.contentW - 10, This.guiHeight - 10)
     }
 
     SetState() {
@@ -271,8 +273,11 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     CreateMainFrame() {
-        This.MainFrame := Gui("+Parent" This.S_Gui.Hwnd " -Caption -Border")
-        This.MainFrame.BackColor := "0xf7f7f7"
+        if This.HasOwnProp("settingsScroller")
+            This.settingsScroller.Stop()
+        This.settingsScroller := SettingsScrollPane(This.S_Gui)
+        This.MainFrame := This.settingsScroller.content
+        This.thumbnailOptionControls := []
 
         ; Create map group which holds the GUI objects for the settings groups
         This.MainFrame.Group := Map()
@@ -291,6 +296,20 @@ Class Settings_Gui extends SoundSettingsGui {
             ProgramLog.Error(err, "Open test thumbnail")
             MsgBox(err.Message, "Test thumbnail", "Icon! Owner" This.S_Gui.Hwnd)
         }
+    }
+
+    ShowSettings(*) {
+        if This.HasOwnProp("S_Gui") {
+            try {
+                hwnd := This.S_Gui.Hwnd
+                if DllCall("IsWindow", "Ptr", hwnd) {
+                    This.S_Gui.Show()
+                    WinActivate(hwnd)
+                    return
+                }
+            }
+        }
+        This.MainGui()
     }
 
     StopTestThumbnail() {
@@ -320,6 +339,7 @@ Class Settings_Gui extends SoundSettingsGui {
                     ob.Visible := 0
             }                
         }
+        This.settingsScroller.Select(This.MainFrame.Group[Obj.Text])
         This.S_Gui.Show()
         This.ScheduleHotkeyWarnings()
         This.RefreshColorPickers()
@@ -502,7 +522,12 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Preserve Hotkeys on Logout:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Add * to Switching Hotkeys:")
+        automatic := This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vAutoWildcardWindowHotkeys Checked" This.AutoWildcardWindowHotkeys, "On/Off")
+        This.RegisterThumbnailOption(automatic, "Hotkey Groups")
+        Hotkey_Groups.Push(automatic)
+
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Preserve Hotkeys on Logout:")
         Hotkey_Groups.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vPreserveHotkeysOnLogout Checked" This.PreserveHotkeysOnLogout, "On/Off")
 
         Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Keep Groups Positions:")
@@ -1023,6 +1048,11 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Click Through Thumbnails:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vClickThroughActive Checked" This.ClickThroughActive, "On/Off")
 
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Window Polling Interval (ms):")
+        polling := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Number vThumbnailPollingInterval", This.ThumbnailPollingInterval)
+        This.RegisterThumbnailOption(polling, "Thumbnails Behavior")
+        arr.Push(polling)
+
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Default Thumbnail Position (px):")
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp", This.offsetX), "x:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 16, This.editOffset, mediumEditW) " vThumbnailStartLocationx", This.ThumbnailStartLocation["x"])
@@ -1034,6 +1064,11 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 37, This.editOffset, smallEditW) " vThumbnailStartLocationwidth", This.ThumbnailStartLocation["width"])
         arr.Push This.MainFrame.Add("Text", Format("xp+{} yp+{}", smallEditW + This.baseGrid + 1, This.editOffset), "height:")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", 44, This.editOffset, smallEditW) " vThumbnailStartLocationheight", This.ThumbnailStartLocation["height"])
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Lock Thumbnail Positions and Sizes:")
+        lock := This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vLockThumbnailPositions Checked" This.LockThumbnailPositions, "On/Off")
+        This.RegisterThumbnailOption(lock, "Thumbnails Behavior")
+        arr.Push(lock)
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Enable Thumbnail Snap:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vThumbnailSnap Checked" This.ThumbnailSnap, "On/Off")
@@ -1299,6 +1334,19 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["ThumbnailMinimumSizewidth"].OnEvent("Change", (obj, *) => EventHandler(obj))
         This.MainFrame["ThumbnailMinimumSizeheight"].OnEvent("Change", (obj, *) => EventHandler(obj))
 
+        arr.Push This.MainFrame.Add("Text", Format("x{} ys+{} Section", This.contentGap, 112 + This.xlGap + This.btnH), "Anonymize Thumbnail Labels:")
+        anonymous := This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vAnonymizeThumbnails Checked" This.AnonymizeThumbnails, "On/Off")
+        This.RegisterThumbnailOption(anonymous, "Thumbnails Visuals")
+        arr.Push(anonymous)
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap) " vAnonymousNamesLabel", "Random Names:")
+        names := This.MainFrame.Add("Edit", Format("xs ys+{} w{} h112", This.contentGap, This.editExW) " -Wrap vAnonymousNames", This.AnonymousNames)
+        This.RegisterThumbnailOption(names, "Thumbnails Visuals")
+        arr.Push(names)
+        reshuffle := This.MainFrame.Add("Button", Format("xp yp+{} w{}", 112 + This.baseGrid, This.editExW) " vReshuffleAnonymousNames", "Reshuffle names")
+        reshuffle.OnEvent("Click", (*) => This.RefreshAnonymousThumbnailNames(true))
+        arr.Push(reshuffle)
+        arr.Push This.MainFrame.Add("Text", Format("xs+{} ys+{} w{} h112", This.editExW + This.contentGap, This.contentGap, This.editExW), "Random names, one per line. Empty/exhausted lists use Pilot + number. Labels stay stable until restart or reshuffle.")
         This.MainFrame.Group["Thumbnails Visuals"] := arr
         for k, v in This.MainFrame.Group["Thumbnails Visuals"] {
             v.Visible := 0
@@ -2015,12 +2063,34 @@ Class Settings_Gui extends SoundSettingsGui {
             v.Visible := 0
     }
 
+    RegisterThumbnailOption(control, category) {
+        if !This.HasOwnProp("thumbnailOptionControls")
+            This.thumbnailOptionControls := []
+        control.SettingsCategory := category
+        control.OnEvent(control.Type = "CheckBox" ? "Click" : "Change", ObjBindMethod(This, "SaveThumbnailOption"))
+        This.thumbnailOptionControls.Push(control)
+    }
+
+    SaveThumbnailOption(control, *) {
+        if control.Name = "ThumbnailPollingInterval" && control.Value = ""
+            return
+        This.%control.Name% := control.Value
+        if control.Name = "AnonymizeThumbnails"
+            This.RefreshAnonymousThumbnailNames()
+        else if control.Name = "AutoWildcardWindowHotkeys"
+            This.ScheduleHotkeyWarnings()
+        This.NeedRestart := 1
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
     TrayMenuSettings_Ctrl() {
         arr := []
 
         This.TrayMenuShortcutsOrder := [
             "Suspend Hotkeys",
             "Hide Thumbnails",
+            "Lock Thumbnail Positions",
+            "Anonymize Thumbnails",
             "Show Thumbnails Always on Top",
             "Click Through Thumbnails",
             "Minimize Inactive Clients",
@@ -2107,9 +2177,9 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["exportProgramLogBtn"].OnEvent("Click", (*) => ProgramLog.ExportDialog())
         This.MainFrame["pausePreviewsBtn"].OnEvent("Click", ObjBindMethod(This, "ToggleLivePreviews"))
 
-        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 130 - This.contentGap, This.guiHeight - 65 - This.contentGap, 130) " vdebugModeBtn", "Debug Mode: " . (This.DebugMode ? "On" : "Off"))
+        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 10 - 130 - This.contentGap, This.guiHeight - 10 - 2 * This.btnH - This.baseGrid - This.contentGap, 130) " vdebugModeBtn", "Debug Mode: " . (This.DebugMode ? "On" : "Off"))
 
-        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 130 - This.contentGap, This.guiHeight - 30 - This.contentGap, 130) " vfunnyBtn", "Funny" . (This.ThisThat ? "!" : "?"))
+        arr.Push This.MainFrame.Add("Button", Format("x{} y{} w{} Section", This.contentW - 10 - 130 - This.contentGap, This.guiHeight - 10 - This.btnH - This.contentGap, 130) " vfunnyBtn", "Funny" . (This.ThisThat ? "!" : "?"))
 
         This.MainFrame["checkUpdatesBtn"].OnEvent("Click", (obj, *) => This.CheckForUpdates())
         This.MainFrame["updateToReleaseBtn"].OnEvent("Click", (obj, *) => processUpdateApp("false"))
@@ -2296,7 +2366,7 @@ Class Settings_Gui extends SoundSettingsGui {
                             v[A_Index].Enabled := 0
                     }
                     else if group = "Hotkey Groups" {
-                        Loop 15
+                        Loop 17
                             v[A_Index].Enabled := 0
                     }
                     else {
@@ -2322,6 +2392,8 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     Refresh_ControlValues() {
+        for control in This.thumbnailOptionControls
+            control.Value := This.%control.Name%
 
         ;Client Settings
         This.MainFrame["MinimizeInactiveClients"].value := This.MinimizeInactiveClients
@@ -2537,6 +2609,8 @@ Class Settings_Gui extends SoundSettingsGui {
                 ob.Enabled := 1
             }
         }
+        for control in This.thumbnailOptionControls
+            control.Enabled := This.LastUsedProfile = "Default" || !This.ComboGroups[control.SettingsCategory]
         This.enableCtrlsInGroupsSettings(0)
         This.enableCtrlsInNonEVEGroupsSettings(0)
 

@@ -36,10 +36,6 @@ SettingsScaledPanelsTest() {
             AssertTrue(DllCall("SetWindowPos", "Ptr", app.Sidebar.Hwnd, "Ptr", 0,
                 "Int", 0, "Int", 0, "Int", sidebarWidth, "Int", Round(app.guiHeight * scale), "UInt", 0x14))
             sidebar := SettingsNativeRect(app.Sidebar.Hwnd, app.S_Gui.Hwnd)
-            app.MainFrame.Show(Format("x{} y0 w450 h812", app.sidebarW))
-            oldContent := SettingsNativeRect(app.MainFrame.Hwnd, app.S_Gui.Hwnd)
-            if scale > 1
-                AssertTrue(oldContent.left < sidebar.right, "Reproduce the reported leftward overlap at " (scale * 100) "%.")
             app.ShowSettingsContent()
             content := SettingsNativeRect(app.MainFrame.Hwnd, app.S_Gui.Hwnd)
             AssertEqual(sidebar.right, content.left, "No overlap or gap at " (scale * 100) "%.")

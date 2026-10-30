@@ -1,3 +1,23 @@
+# Changelog
+
+## v1.6.2.1
+
+### Added
+* Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
+* A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
+* An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
+* Window Polling Interval in Thumbnails Behavior to adjust how often client windows, focus and title changes are checked.
+
+### Changed
+* Settings pages now scroll within the right pane, with category headings pinned at the top. New controls follow the existing styles, offsets and gaps.
+* The README now links to separate setup and usage guides in `docs/`. The changelog is now `Changelog.md`.
+* Application icons now live in `res/`; source and compiled builds use the updated paths.
+
+### Fixed
+* Active thumbnail borders now clear when EVE loses focus, including after event or group updates. Background updates no longer restore the active highlight.
+* Shift Logged In Thumbnails now handles login and character-title changes without stacking previews. Saved positions stay reserved during startup, and unsaved thumbnails move aside when a saved position is restored.
+* About-page buttons fit within the settings pane without adding an unnecessary scrollbar.
+
 # v1.6.2.0
 
 ### Added

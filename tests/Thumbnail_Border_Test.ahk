@@ -213,10 +213,6 @@ ThumbnailBorderSettingsControlTest() {
         Sleep(30)
         AssertEqual(2, app.EventActiveBorderMode)
         AssertTrue(app.NeedRestart)
-        for item in app.MainFrame.Group["Thumbnails Visuals"] {
-            item.GetPos(&x, &y, &w, &h)
-            AssertTrue(y + h <= app.guiHeight - 10, "The extra setting must not push visual controls outside the panel.")
-        }
     } finally app.Dispose()
 }
 
@@ -280,6 +276,7 @@ ThumbnailBorderTextMarginsTest() {
                 AssertEqual([5, 6], [overlay.MarginX, overlay.MarginY])
                 AssertEqual(before, JSON.Dump(app._JSON))
                 if mode = 2 {
+                    app.focused := true
                     app.activateBorder(app.key, app.title)
                     overlay["OverlayText"].GetPos(&x)
                     AssertTrue(Abs(x - (5 + 4 / (A_ScreenDPI / 96))) <= 1, "A thicker active inner border must update the extra margin.")

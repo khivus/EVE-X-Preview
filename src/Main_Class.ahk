@@ -280,7 +280,7 @@ Class Main_Class extends ThumbWindow {
         This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
         OnMessage(0x031E, ObjBindMethod(This, "OnDwmCompositionChanged"))
         ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
-        SetTimer(ObjBindMethod(This, "HandleMainTimer"), 50)
+        SetTimer(ObjBindMethod(This, "HandleMainTimer"), This.ThumbnailPollingInterval)
         OnExit(ObjBindMethod(This, "CloseLivePreviews"))
         
         ;Timer property to remove Thumbnails for closed EVE windows 
@@ -379,7 +379,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     RegisterWindowHotkey(keyName, callback, context) {
-        keyName := HotkeyBindings.ForWindowSwitch(keyName)
+        keyName := HotkeyBindings.ForWindowSwitch(keyName, This.AutoWildcardWindowHotkeys)
         if This.SwitchLangOnErr
             return This.RegisterHotkeyWithLanguageRetry(keyName, callback, "P1", context)
         Hotkey(keyName, callback, "P1")
@@ -464,6 +464,9 @@ Class Main_Class extends ThumbWindow {
     }
 
     PollMainWindows() {
+        ; Reconcile painted highlights even when activation/event code reset the
+        ; polling cache, and before any window-discovery work can fail or defer.
+        This.ReconcileActiveThumbnailBorders(This._GetForegroundHwnd())
         ; if This.ProfActive ; Profiling
         static __t1 := 0
         __t0 := A_TickCount
@@ -586,6 +589,8 @@ Class Main_Class extends ThumbWindow {
                         This.BorderActive := Ahwnd
                     }
                 }
+                if !This.ThumbWindows.HasProp(Ahwnd)
+                    This.ClearActiveThumbnailBorder()
                 LastActiveHWND := Ahwnd
             }
             catch as err {
@@ -1199,8 +1204,11 @@ Class Main_Class extends ThumbWindow {
             This.EvEWindowDestroy(hwnd, title, true)
             This.QueuePreview(hwnd, title)
         }
-        else
+        else {
             This.RestoreClientPossitions(hwnd, title)
+            if This.CleanTitle(title) != "" && title != "Char Screen" && WinExist(This.EVEExe " ahk_id " hwnd)
+                This.ShiftThumbs(hwnd, true)
+        }
         This.BorderActive := 0
         This.RegisterHotkeys(title)
     }
@@ -1507,6 +1515,7 @@ Class Main_Class extends ThumbWindow {
                 This.AttachLivePreview(This.ThumbWindows.%hwnd%, hwnd)
             else
                 This.EVE_WIN_Created(hwnd, title)
+            This.Update_Thumb(false, This.ThumbWindows.%hwnd%["Window"].Hwnd)
             This.EnsureLivePreviewActive(generation)
             if !This.HideThumbnailsOnLostFocus || WinActive(This.EVEExe)
                 This.ShowThumb(hwnd, "Show")
@@ -1653,6 +1662,7 @@ Class Main_Class extends ThumbWindow {
 
             This.LayoutThumbnailBorders(This.ThumbWindows.%Win_Hwnd%)
             This.Update_Thumb(false, This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
+            This.ReflowOverlappingUnsavedThumbnails()
             If ((This.HideThumbnailsOnLostFocus && WinActive(This.EVEExe)) || (!This.HideThumbnailsOnLostFocus)) {
                 This.ShowThumb(Win_Hwnd, "Show")
             }
@@ -1693,9 +1703,38 @@ Class Main_Class extends ThumbWindow {
     }
 
     ; Both shifting options share direction, spacing, collision checks and monitor bounds.
+    ReflowOverlappingUnsavedThumbnails() {
+        if !This.ShiftThumbsForLoggedInCharacters || !This.ShiftThumbsCollisionCheck
+            return
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            for hwnd, thumb in This.ThumbWindows.Clone().OwnProps() {
+                title := thumb["Window"].Title
+                if This.ThumbnailPositions.Has(title) || This.CleanTitle(title) = "" || title = "Char Screen"
+                    continue
+                if !WinExist(This.EVEExe " ahk_id " hwnd)
+                    continue
+                rect := Buffer(16, 0)
+                if !DllCall("GetWindowRect", "Ptr", thumb["Window"].Hwnd, "Ptr", rect)
+                    continue
+                x := NumGet(rect, 0, "Int"), y := NumGet(rect, 4, "Int")
+                if This.CheckCollisions(x, y, NumGet(rect, 8, "Int") - x, NumGet(rect, 12, "Int") - y, thumb["Window"].Hwnd)
+                    This.ShiftThumbs(hwnd, true)
+            }
+        } finally Critical(previousCritical)
+    }
+
     ShiftThumbs(Win_Hwnd, loggedInCharacter := false) {
+        previousCritical := A_IsCritical
+        Critical
+        try This.PlaceShiftedThumbnail(Win_Hwnd, loggedInCharacter)
+        finally Critical(previousCritical)
+    }
+
+    PlaceShiftedThumbnail(Win_Hwnd, loggedInCharacter := false) {
         enabled := loggedInCharacter ? This.ShiftThumbsForLoggedInCharacters : This.ShiftThumbsForLoginScreen
-        if !enabled || This.skipShiftThumbs
+        if !enabled
             return
 
         static nextPosX := "", nextPosY := ""
@@ -1727,9 +1766,10 @@ Class Main_Class extends ThumbWindow {
         ; if ShiftThumbsCollisionCheck enabled checks position of all thumbnails and tries to avoid collision
         ; if we have collision check enabled we can reset nextPos so we start checking from beginning
         if This.ShiftThumbsCollisionCheck {
+            obstacles := This.ThumbnailPlacementObstacles(This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
             nextPosX := startX
             nextPosY := startY
-            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, obstacles)
         }
         ; Reset after all clients close (or all login screens close when only their shifting is enabled).
         else if This.allLoginClosed || nextPosX = "" {
@@ -1750,11 +1790,8 @@ Class Main_Class extends ThumbWindow {
                     nextPosY += step_y
                     ; if end of screen reached, return to the default position
                     if nextPosY + This.ThumbnailStartLocation["height"] > monB || nextPosY < monT {
-                        nextPosX := startX
-                        nextPosY := startY
-                        MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
-                        This.skipShiftThumbs := true
-                        break
+                        ProgramLog.Add("No free thumbnail position in the configured shift grid", "WARN")
+                        return false
                     }
                 }
             }
@@ -1766,16 +1803,13 @@ Class Main_Class extends ThumbWindow {
                     nextPosX += step_x
                     ; if end of screen reached, return to the default position
                     if nextPosX + This.ThumbnailStartLocation["width"] > monR || nextPosX < monL {
-                        nextPosX := startX
-                        nextPosY := startY
-                        MsgBox("Thumbnail shifting reached end of screen! Returning to default position. Try change thumbnail default position, size, shift direction or step.")
-                        This.skipShiftThumbs := true
-                        break
+                        ProgramLog.Add("No free thumbnail position in the configured shift grid", "WARN")
+                        return false
                     }
                 }
             }
 
-            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd)
+            Collision := This.CheckCollisions(nextPosX, nextPosY, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"], This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd, IsSet(obstacles) ? obstacles : [])
         }
 
         This.ThumbMove( nextPosX,
@@ -1803,22 +1837,42 @@ Class Main_Class extends ThumbWindow {
     }
 
     ; Checks collisions for the new thumbnail position
-    CheckCollisions(x1, y1, w1, h1, ThumbHwnd) {
-        if !This.ShiftThumbsCollisionCheck
-            return
-
+    ThumbnailPlacementObstacles(ThumbHwnd) {
+        obstacles := []
         for EvEHwnd, ThumbObj in This.ThumbWindows.OwnProps() {
-            for Name, Obj in ThumbObj {
-                if (Name = "Window") {
-                    WinGetPos(&x2, &y2, &w2, &h2, Obj.Hwnd)
-
-                    if (x1 < x2 + w2) && (x2 < x1 + w1) && (y1 < y2 + h2) && (y2 < y1 + h1) && (Obj.Hwnd != ThumbHwnd) {
-                        return 1
-                    }
-                }
-            }
+            hwnd := ThumbObj["Window"].Hwnd
+            if hwnd = ThumbHwnd
+                continue
+            rect := Buffer(16, 0)
+            if !DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", rect)
+                continue
+            obstacles.Push([NumGet(rect, 0, "Int"), NumGet(rect, 4, "Int"), NumGet(rect, 8, "Int"), NumGet(rect, 12, "Int")])
         }
-        return
+        ; A source with a saved position can still be waiting for DWM startup.
+        ; Reserve that rectangle before unsaved previews claim it.
+        for hwnd in WinGetList(This.EVEExe) {
+            if This.ThumbWindows.HasOwnProp(hwnd)
+                continue
+            try title := WinGetTitle(hwnd)
+            catch TargetError
+                continue
+            if !This.ThumbnailPositions.Has(title)
+                continue
+            rect := This.ThumbnailPositions[title]
+            obstacles.Push([rect["x"], rect["y"], rect["x"] + rect["width"], rect["y"] + rect["height"]])
+        }
+        return obstacles
+    }
+
+    CheckCollisions(x1, y1, w1, h1, ThumbHwnd, obstacles?) {
+        if !This.ShiftThumbsCollisionCheck
+            return false
+        if !IsSet(obstacles)
+            obstacles := This.ThumbnailPlacementObstacles(ThumbHwnd)
+        for rect in obstacles
+            if x1 < rect[3] && rect[1] < x1 + w1 && y1 < rect[4] && rect[2] < y1 + h1
+                return true
+        return false
     }
 
     ;if a EVE Window got closed this destroyes the Thumbnail and frees the memory.
@@ -3063,11 +3117,96 @@ Class Main_Class extends ThumbWindow {
         This.updateThumbnailEventText("", hwnd)
     }
 
-    GetThumbnailDisplayText(title) {
+    GetAnonymousThumbnailName(character) {
+        profile := This.ProfileThumbnailsVisuals
+        if !This.HasOwnProp("anonymousThumbnailNames") || This.anonymousThumbnailProfile != profile {
+            This.anonymousThumbnailProfile := profile
+            This.anonymousThumbnailNames := Map()
+            This.anonymousThumbnailNames.CaseSense := "Off"
+        }
+        if This.anonymousThumbnailNames.Has(character)
+            return This.anonymousThumbnailNames[character]
+        used := Map(), candidates := [], seen := Map()
+        used.CaseSense := "Off", seen.CaseSense := "Off"
+        for source, alias in This.anonymousThumbnailNames
+            used[alias] := true
+        for alias in StrSplit(This.AnonymousNames, "`n", "`r") {
+            alias := Trim(alias)
+            if alias != "" && !used.Has(alias) && !seen.Has(alias) {
+                candidates.Push(alias)
+                seen[alias] := true
+            }
+        }
+        alias := candidates.Length ? candidates[Random(1, candidates.Length)] : "Pilot " Random(1000, 9999)
+        while used.Has(alias)
+            alias := "Pilot " Random(1000, 9999)
+        This.anonymousThumbnailNames[character] := alias
+        return alias
+    }
+
+    RefreshAnonymousThumbnailNames(reshuffle := false) {
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if reshuffle && This.HasOwnProp("anonymousThumbnailNames")
+                This.DeleteProp("anonymousThumbnailNames")
+            for hwnd, thumb in This.ThumbWindows.OwnProps()
+                This.updateThumbnailText(thumb["Window"].Title, hwnd)
+        } finally {
+            Critical(previousCritical)
+        }
+    }
+
+    ToggleAnonymizeThumbnails(*) {
+        This.AnonymizeThumbnails := !This.AnonymizeThumbnails
+        This.RefreshAnonymousThumbnailNames()
+        This.TrayMenu()
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    ToggleLockThumbnailPositions(*) {
+        This.LockThumbnailPositions := !This.LockThumbnailPositions
+        This.TrayMenu()
+        SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    ClearActiveThumbnailBorder() {
+        This.ReconcileActiveThumbnailBorders(0)
+        This.BorderActive := 0
+        This.lastActiveThumbHwnd := 0
+    }
+
+    ReconcileActiveThumbnailBorders(foregroundHwnd) {
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                if IsNumber(hwnd)
+                    hwnd := Integer(hwnd)
+                if hwnd = foregroundHwnd || !thumb.Has("Border")
+                    continue
+                border := thumb["Border"]
+                cached := (This.HasOwnProp("BorderActive") && This.BorderActive = hwnd)
+                    || (This.HasOwnProp("lastActiveThumbHwnd") && This.lastActiveThumbHwnd = hwnd)
+                if cached || (border.HasOwnProp("ActiveHighlight") && border.ActiveHighlight)
+                    This.clearBorder(hwnd, thumb["Window"].Title)
+            }
+            if This.HasOwnProp("BorderActive") && This.BorderActive != foregroundHwnd
+                This.BorderActive := 0
+            if This.HasOwnProp("lastActiveThumbHwnd") && This.lastActiveThumbHwnd != foregroundHwnd
+                This.lastActiveThumbHwnd := 0
+        } finally {
+            Critical(previousCritical)
+        }
+    }
+
+    GetThumbnailDisplayText(title, identity := "") {
         ; Only replace the character line; game-log event text stays intact.
         lineEnd := InStr(title, "`n")
         character := This.CleanTitle(lineEnd ? RTrim(SubStr(title, 1, lineEnd - 1), "`r") : title)
         suffix := lineEnd ? SubStr(title, lineEnd) : ""
+        if This.AnonymizeThumbnails
+            return This.GetAnonymousThumbnailName(character != "" && character != "Char Screen" ? character : "window:" identity) suffix
         replacements := This.CustomThumbnailNames
         names := StrSplit(replacements["Names"], "`n", "`r")
         for index, source in StrSplit(replacements["Characters"], "`n", "`r") {
@@ -3085,7 +3224,7 @@ Class Main_Class extends ThumbWindow {
             if !This.ThumbWindows.HasProp(hwnd)
                 return
             overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-            overlay["OverlayText"].Text := This.GetThumbnailDisplayText(title)
+            overlay["OverlayText"].Text := This.GetThumbnailDisplayText(title, hwnd)
             This.RefreshThumbnailTextLayout(overlay)
         } finally {
             Critical(previousCritical)

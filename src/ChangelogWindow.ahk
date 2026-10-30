@@ -13,7 +13,7 @@ class ChangelogWindow {
             try SimpleMarkdown.SetText(contents, this.ReadText())
             catch as err {
                 ProgramLog.Error(err, "Reading bundled changelog")
-                SimpleMarkdown.SetText(contents, "The changelog could not be loaded. Please see the Changelog file in the project on GitHub.")
+                SimpleMarkdown.SetText(contents, "The changelog could not be loaded. Please see the Changelog.md file in the project on GitHub.")
             }
             window.AddButton("x644 y520 w100 h28 Default vCloseButton", "Close").OnEvent("Click", (*) => this.Close())
             window.OnEvent("Close", (*) => this.Close())
@@ -37,7 +37,7 @@ class ChangelogWindow {
     static ReadText() {
         if !A_IsCompiled {
             SplitPath(A_LineFile, , &sourceDirectory)
-            return FileRead(sourceDirectory "\..\Changelog", "UTF-8")
+            return FileRead(sourceDirectory "\..\Changelog.md", "UTF-8")
         }
         ; Read the release's own changelog directly from its executable, offline.
         module := DllCall("GetModuleHandleW", "Ptr", 0, "Ptr")

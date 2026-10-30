@@ -1,6 +1,6 @@
 TestRunner.Register("Changelog shows the full local history in one resizable modeless window", ChangelogWindowTest)
 ChangelogWindowTest() {
-    expected := FileRead(A_ScriptDir "\..\Changelog", "UTF-8")
+    expected := FileRead(A_ScriptDir "\..\Changelog.md", "UTF-8")
     AssertEqual(expected, ChangelogWindow.ReadText())
     AssertTrue(RegExMatch(UpdateChecker.CurrentVersion(), "^\d+(\.\d+){1,3}$"))
     heartbeat := {count: 0}

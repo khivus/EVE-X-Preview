@@ -49,7 +49,7 @@ ThumbnailCaptureWindowsTest() {
     } finally DetectHiddenWindows(oldHidden)
 }
 
-TestRunner.Register("Capture checkbox uses behavior save/reload and fits the settings panel", ThumbnailCaptureControlTest)
+TestRunner.Register("Capture checkbox uses behavior save/reload in scrollable settings", ThumbnailCaptureControlTest)
 ThumbnailCaptureControlTest() {
     app := ColorSettingsFixture()
     try {
@@ -66,7 +66,6 @@ ThumbnailCaptureControlTest() {
         for item in app.MainFrame.Group["Thumbnails Behavior"] {
             item.GetPos(&x, &y, &w, &h)
             AssertTrue(x + w <= app.contentW)
-            AssertTrue(y + h <= app.guiHeight - 10)
         }
     } finally app.Dispose()
 }
