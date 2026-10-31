@@ -2,6 +2,7 @@
 
 #Include "SoundSettings.ahk"
 #Include "SettingsScrollPane.ahk"
+#Include "SettingsTooltips.ahk"
 
 Class Settings_Gui extends SoundSettingsGui {
 
@@ -73,6 +74,8 @@ Class Settings_Gui extends SoundSettingsGui {
 
         This.InitHotkeyHelpers()
         This.InitColorPickers()
+        SettingsTooltips.Apply(This.Sidebar, true)
+        SettingsTooltips.Apply(This.MainFrame)
 
         This._Button_Load()
         ControlClick(This.firstBtn)
@@ -256,7 +259,7 @@ Class Settings_Gui extends SoundSettingsGui {
         }
 
         This.testThumbnailButton := This.Sidebar.Add("Button", Format("x{} y{} w{} h26 vTestThumbnailButton", This.contentGap, This.guiHeight - 82, This.sidebarInnerW), "Test Thumbnail")
-        This.testThumbnailButton.ToolTip := "Preview current settings at the default position with sample overlays and cycling border states. Click again to close."
+        This.testThumbnailButton.ToolTip := SettingsTooltips.Description("TestThumbnailButton")
         This.testThumbnailButton.OnEvent("Click", (*) => This.ToggleTestThumbnail())
 
         ; One fixed status area reports the latest save or update-check action.
@@ -328,6 +331,7 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     SettingsGroup_Handler(Obj) {
+        This.ClearSettingsTooltip()
         This.CancelHotkeyRecording()
         for k, v in This.MainFrame.Group {
             if k = Obj.Text {
@@ -1244,7 +1248,7 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event / Active Border Layout:")
         borderMode := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vEventActiveBorderMode Choose" This.EventActiveBorderMode,
             ["Event in, active out", "Active in, event out", "Combined (existing)"])
-        borderMode.ToolTip := "Separate borders: event inside / active outside (default), or active inside / event outside. Combined uses the previous shared-border behavior. Both rings use the client highlight thickness; inactive/group border settings still apply."
+        borderMode.ToolTip := SettingsTooltips.Description("EventActiveBorderMode")
         arr.Push borderMode
         borderMode.OnEvent("Change", (obj, *) => EventHandler(obj))
 
@@ -1654,8 +1658,8 @@ Class Settings_Gui extends SoundSettingsGui {
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("x{} ys-{} w{}", secondOptionX, This.editOffset, optionW) " vshootingInterval")
-                This.MainFrame["E" event].ToolTip := "Stopped Shooting: alert after this many milliseconds without an outgoing shot."
-                This.MainFrame["shootingInterval"].ToolTip := "Stopped Shooting interval in milliseconds."
+                This.MainFrame["E" event].ToolTip := SettingsTooltips.Description("E" event)
+                This.MainFrame["shootingInterval"].ToolTip := SettingsTooltips.Description("shootingInterval")
                 This.MainFrame["shootingInterval"].OnEvent("Change", (obj, *) => EventHandler(obj))
             }
 
@@ -1993,10 +1997,10 @@ Class Settings_Gui extends SoundSettingsGui {
 
         Other.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Slow Thumbnail Creation:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSlowThumbnailCreation Checked" This.SlowThumbnailCreation, "On/Off")
-        This.MainFrame["SlowThumbnailCreation"].ToolTip := "Off: create ready previews immediately. On: wait 3 seconds, then stagger previews to reduce startup GPU pressure."
+        This.MainFrame["SlowThumbnailCreation"].ToolTip := SettingsTooltips.Description("SlowThumbnailCreation")
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", topSettingsGap), "Auto-Pause on DWM Failure:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vAutoPauseOnDwmFailure Checked" This.AutoPauseOnDwmFailure, "On/Off")
-        This.MainFrame["AutoPauseOnDwmFailure"].ToolTip := "Disabled by default. Pause live previews on DWM errors or Windows composition changes. Resume manually in About or with the pause/resume hotkey. Applies immediately."
+        This.MainFrame["AutoPauseOnDwmFailure"].ToolTip := SettingsTooltips.Description("AutoPauseOnDwmFailure")
         Other.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", topSettingsGap), "Switch Language to English on Error:")
         Other.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vSwitchLangOnErr Checked" This.SwitchLangOnErr, "On/Off")
 
@@ -2288,19 +2292,36 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     On_WM_MOUSEMOVE(wParam, lParam, msg, Hwnd) {
-        static PrevHwnd := 0
-        if (Hwnd != PrevHwnd) {
-            Text := "", ToolTip() ; Turn off any previous tooltip.
-            CurrControl := GuiCtrlFromHwnd(Hwnd)
-            if CurrControl {
-                if !CurrControl.HasProp("ToolTip")
-                    return ; No tooltip for this control.
-                Text := CurrControl.ToolTip
-                SetTimer () => ToolTip(Text), -1000
-                SetTimer () => ToolTip(), -4000 ; Remove the tooltip.
-            }
-            PrevHwnd := Hwnd
+        if This.HasOwnProp("settingsTooltipHwnd") && Hwnd = This.settingsTooltipHwnd
+            return
+        This.ClearSettingsTooltip()
+        This.settingsTooltipHwnd := Hwnd
+        control := GuiCtrlFromHwnd(Hwnd)
+        if !control || !control.HasProp("ToolTip") || control.ToolTip = ""
+            return
+        This.settingsTooltipShowTimer := ObjBindMethod(This, "ShowSettingsTooltip", Hwnd)
+        SetTimer(This.settingsTooltipShowTimer, -700)
+    }
+
+    ShowSettingsTooltip(hwnd) {
+        MouseGetPos(,,, &hovered, 2)
+        if hovered != hwnd || !DllCall("IsWindowVisible", "Ptr", hwnd)
+            return
+        control := GuiCtrlFromHwnd(hwnd)
+        if !control || !control.HasProp("ToolTip") || control.ToolTip = ""
+            return
+        ToolTip(control.ToolTip)
+        This.settingsTooltipHideTimer := ObjBindMethod(This, "ClearSettingsTooltip")
+        SetTimer(This.settingsTooltipHideTimer, -5000)
+    }
+
+    ClearSettingsTooltip() {
+        for name in ["settingsTooltipShowTimer", "settingsTooltipHideTimer"] {
+            if This.HasOwnProp(name)
+                SetTimer(This.%name%, 0)
         }
+        This.settingsTooltipHwnd := 0
+        ToolTip()
     }
 
     Profiles_to_Array() {

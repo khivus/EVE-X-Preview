@@ -3,6 +3,7 @@
 ## v1.6.2.1
 
 ### Added
+* Short tooltips explain every setting, with help on labels, controls and event-sound options.
 * Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
 * A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
 * An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).

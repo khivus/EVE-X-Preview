@@ -65,7 +65,7 @@ class HotkeySettingsGui {
             SetTimer(this.hotkeyRefreshTimer, 0)
         if this.HasOwnProp("hotkeyTooltipCallback")
             OnMessage(0x200, this.hotkeyTooltipCallback, 0)
-        ToolTip()
+        this.ClearSettingsTooltip()
     }
 
     HotkeyFieldIds(helper) {
