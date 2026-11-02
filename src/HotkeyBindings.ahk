@@ -1,4 +1,4 @@
-; Read-only conflict checks: never register, disable or rewrite the user's binds.
+﻿; Read-only conflict checks: never register, disable or rewrite the user's binds.
 class HotkeyBindings {
     static ForWindowSwitch(key, automatic := true) {
         ; Custom combinations already have wildcard behavior; an explicit *
@@ -24,7 +24,8 @@ class HotkeyBindings {
             switchesWindow := key = "SwitchToPreviousWindow_Hotkey" || key = "CycleEveryLoggedIn_Hotkey" || key = "Login_Screen_Cycle_Hotkey"
             this.Add(entries, "setting:" key, label, settings.Get(key, ""), switchesWindow && automatic)
         }
-        quick := app.Profiles[app.ProfileThumbnailsInteractions].Get("Hotkeys Settings", Map())
+        quickProfile := app.FieldProfile("QuickGroupHotkey", app.ProfileThumbnailsInteractions)
+        quick := app.Profiles[quickProfile].Get("Hotkeys Settings", Map())
         this.Add(entries, "quick", "Quick Group", quick.Get("QuickGroupHotkey", ""), automatic)
         for name, group in app.Hotkey_Groups {
             for key in ["ForwardsHotkey", "BackwardsHotkey", "FirstCharHotkey"]
@@ -63,8 +64,9 @@ class HotkeyBindings {
                 mods[m[2]] := m[1] = "<" ? 1 : m[1] = ">" ? 2 : 3
             key := SubStr(key, StrLen(m[0]) + 1)
         }
-        prefix := ""
+        prefix := "", custom := false
         if RegExMatch(key, "^(.+?)\s+&\s+(.+)$", &m) {
+            custom := true
             ; AHK custom combinations allow additional modifiers by default.
             wildcard := true
             prefix := StrLower(Trim(m[1]))
@@ -77,7 +79,7 @@ class HotkeyBindings {
             } else
                 prefix := this.Key(prefix)
         }
-        return {key: this.Key(key), mods: mods, prefix: prefix, wildcard: wildcard, up: !!up}
+        return {key: this.Key(key), mods: mods, prefix: prefix, wildcard: wildcard, up: !!up, custom: custom}
     }
 
     static Key(name) {
@@ -118,12 +120,36 @@ class HotkeyBindings {
         return true
     }
 
+    static IntentionalOverlap(first, second) {
+        direct := InStr(first.id, "character:") = 1 ? first : InStr(second.id, "character:") = 1 ? second : 0
+        group := InStr(first.id, "group:") = 1 || first.id = "quick" ? first
+            : InStr(second.id, "group:") = 1 || second.id = "quick" ? second : 0
+        return IsObject(direct) && IsObject(group)
+    }
+
+    static ModifierFallback(a, b) {
+        ; A more-specific modifier chord can coexist with a wildcard fallback.
+        ; Keep duplicate chords and ambiguous/custom combinations visible.
+        if a.custom || b.custom
+            return false
+        moreA := false, moreB := false
+        for mod, side in a.mods {
+            other := b.mods[mod]
+            if side && other && side != other
+                return false
+            moreA := moreA || (side && !other)
+            moreB := moreB || (other && !side)
+        }
+        return moreA != moreB
+    }
+
     static Conflicts(entries) {
         result := Map()
         for i, entry in entries {
             loop entries.Length - i {
                 other := entries[i + A_Index]
-                if !this.Overlap(entry.parsed, other.parsed)
+                if this.IntentionalOverlap(entry, other) || !this.Overlap(entry.parsed, other.parsed)
+                    || this.ModifierFallback(entry.parsed, other.parsed)
                     continue
                 if !result.Has(entry.id)
                     result[entry.id] := []

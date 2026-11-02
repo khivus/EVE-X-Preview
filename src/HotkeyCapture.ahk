@@ -1,4 +1,4 @@
-class HotkeyCapture {
+﻿class HotkeyCapture {
     static Active := false
     static Current := 0
     static MouseKeys := ["LButton", "RButton", "MButton", "XButton1", "XButton2", "WheelUp", "WheelDown", "WheelLeft", "WheelRight"]
@@ -13,7 +13,9 @@ class HotkeyCapture {
             return false
         wasCritical := A_IsCritical
         Critical(true)
-        this.ownerHwnd := owner.Hwnd
+        ; Main settings forms live in child GUIs. Focus belongs to their
+        ; top-level window; owned row dialogs keep their own top-level root.
+        this.ownerHwnd := DllCall("GetAncestor", "Ptr", owner.Hwnd, "UInt", 2, "Ptr") ; GA_ROOT
         this.helper := helper
         this.area := helper.waiting
         this.onComplete := onComplete

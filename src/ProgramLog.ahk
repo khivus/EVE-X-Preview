@@ -1,4 +1,4 @@
-; Bounded in-memory event history plus rotating, buffered on-disk diagnostics.
+﻿; Bounded in-memory event history plus rotating, buffered on-disk diagnostics.
 class ProgramLog {
     static Text := ""
     static Pending := ""
@@ -212,8 +212,18 @@ class ProgramLog {
     }
 
     static Show(*) {
+        this.ShowOwned(0)
+    }
+
+    static ShowOwned(owner) {
         viewer := this.CreateViewer()
-        viewer.Show()
+        if owner {
+            viewer.Opt("+Owner" owner)
+            work := SettingsWindowSizing.WorkArea(owner)
+            fit := SettingsWindowSizing.Fit(work.left, work.top, work.right, work.bottom, A_ScreenDPI)
+            SettingsWindowSizing.ShowCentered(viewer, owner, Min(880, fit.width), Min(520, fit.height))
+        } else
+            viewer.Show()
     }
 
     static CreateViewer() {

@@ -1,4 +1,4 @@
-class ColorPicker {
+﻿class ColorPicker {
     static CustomColors := Buffer(16 * 4, 0)
 
     static Normalize(value, fallback := "FFFFFF") {
@@ -23,11 +23,24 @@ class ColorPicker {
 
     static Show(ownerHwnd, initial) {
         dialog := this.BuildDialog(ownerHwnd, initial)
-        if DllCall("comdlg32\ChooseColorW", "Ptr", dialog, "Int")
-            return Format("{:06X}", this.SwapChannels(NumGet(dialog, A_PtrSize * 3, "UInt")))
-        code := DllCall("comdlg32\CommDlgExtendedError", "UInt")
-        if code
-            throw Error("Cannot open color picker",, Format("Common dialog error 0x{:X}", code))
-        return "" ; Cancel preserves the current field and saved settings.
+        hook := CallbackCreate(ObjBindMethod(this, "CenterDialog"),, 4)
+        NumPut("UInt", 0x113, dialog, A_PtrSize * 5) ; Also enable the initialization hook.
+        NumPut("Ptr", hook, dialog, A_PtrSize = 8 ? 56 : 28)
+        try {
+            if DllCall("comdlg32\ChooseColorW", "Ptr", dialog, "Int")
+                return Format("{:06X}", this.SwapChannels(NumGet(dialog, A_PtrSize * 3, "UInt")))
+            code := DllCall("comdlg32\CommDlgExtendedError", "UInt")
+            if code
+                throw Error("Cannot open color picker",, Format("Common dialog error 0x{:X}", code))
+            return "" ; Cancel preserves the current field and saved settings.
+        } finally CallbackFree(hook)
+    }
+    static CenterDialog(hwnd, message, wParam, lParam) {
+        if message = 0x110 {
+            owner := NumGet(lParam, A_PtrSize, "Ptr")
+            if owner && DllCall("IsWindow", "Ptr", owner)
+                SettingsWindowSizing.CenterWindow(hwnd, owner)
+        }
+        return 0
     }
 }

@@ -1,4 +1,4 @@
-; Keep control coordinates stable by scrolling their child GUI inside a clipped
+﻿; Keep control coordinates stable by scrolling their child GUI inside a clipped
 ; viewport. All ranges and offsets below are physical pixels (Win32 units).
 class SettingsScrollPane {
     offset := 0
@@ -13,9 +13,11 @@ class SettingsScrollPane {
 
     __New(owner) {
         this.ownerHwnd := owner.Hwnd
-        this.viewport := Gui("+Parent" owner.Hwnd " -Caption -Border +0x02200000 +E0x10000") ; CLIPCHILDREN | VSCROLL
+        this.viewport := Gui("+Parent" owner.Hwnd " -Caption -Border +0x02000000 +E0x10000") ; CLIPCHILDREN; scrollbar is a separate child.
         this.viewport.BackColor := "F7F7F7"
         this.viewportHwnd := this.viewport.Hwnd
+        this.scrollbar := this.viewport.Add("Custom", "ClassScrollBar +0x1 -Theme x0 y0 w17 h1 Hidden")
+        this.scrollbarHwnd := this.scrollbar.Hwnd
         this.content := Gui("+Parent" this.viewportHwnd " -Caption -Border +0x02000000 +E0x10000")
         this.content.BackColor := "F7F7F7"
         this.contentHwnd := this.content.Hwnd
@@ -25,9 +27,12 @@ class SettingsScrollPane {
         this.heading := this.header.AddText("x16 y16 w410 h24", "")
         this.rule := this.header.AddText("x16 y40 w410 h2 +0x10", "")
         this.headerHwnd := this.header.Hwnd
+        this.mouseFocusUntil := 0
         this.focusCallback := ObjBindMethod(this, "EnsureVisible")
         this.callbacks := Map(0x115, ObjBindMethod(this, "OnScroll"),
-            0x20A, ObjBindMethod(this, "OnWheel"), 0x2, ObjBindMethod(this, "OnDestroy"))
+            0x20A, ObjBindMethod(this, "OnWheel"), 0x201, ObjBindMethod(this, "MouseFocus"),
+            0x202, ObjBindMethod(this, "MouseFocus"), 0x100, ObjBindMethod(this, "MouseFocus"),
+            0x2, ObjBindMethod(this, "OnDestroy"))
         for message, callback in this.callbacks
             OnMessage(message, callback)
     }
@@ -87,7 +92,9 @@ class SettingsScrollPane {
         for hwnd, control in this.content {
             if control.HasOwnProp("SettingsScrollFocusBound")
                 continue
-            if !InStr("|Edit|Button|CheckBox|Radio|DDL|ComboBox|ListBox|DateTime|MonthCal|UpDown|ListView|TreeView|", "|" control.Type "|")
+            ; UpDown controls cannot receive Focus events. Their edit buddies
+            ; are the keyboard targets and already provide scroll visibility.
+            if !InStr("|Edit|Button|CheckBox|Radio|DDL|ComboBox|ListBox|DateTime|MonthCal|ListView|TreeView|", "|" control.Type "|")
                 continue
             control.OnEvent("Focus", this.focusCallback)
             control.SettingsScrollFocusBound := true
@@ -106,27 +113,43 @@ class SettingsScrollPane {
         info := Buffer(28, 0)
         NumPut("UInt", 28, "UInt", 7, "Int", 0, "Int", Max(0, this.extent - 1),
             "UInt", this.page, "Int", this.offset, info)
-        DllCall("SetScrollInfo", "Ptr", this.viewportHwnd, "Int", 1, "Ptr", info, "Int", true)
-        ; Showing/hiding the bar changes the viewport's available client width.
+        DllCall("SetScrollInfo", "Ptr", this.scrollbarHwnd, "Int", 2, "Ptr", info, "Int", false)
         DllCall("GetClientRect", "Ptr", this.viewportHwnd, "Ptr", rect)
+        width := NumGet(rect, 8, "Int")
+        barWidth := DllCall("GetSystemMetrics", "Int", 2, "Int")
+        DllCall("SetWindowPos", "Ptr", this.scrollbarHwnd, "Ptr", 0, "Int", Max(0, width - barWidth), "Int", 0,
+            "Int", barWidth, "Int", this.page, "UInt", this.maximum ? 0x54 : 0x94)
         DllCall("SetWindowPos", "Ptr", this.contentHwnd, "Ptr", 0, "Int", 0, "Int", -this.offset - this.inset,
-            "Int", NumGet(rect, 8, "Int"), "Int", Max(this.page, this.extent) + this.inset, "UInt", 0x54)
+            "Int", Max(1, width - (this.maximum ? barWidth : 0)), "Int", Max(this.page, this.extent) + this.inset, "UInt", 0x15C)
+        this.RepaintContent()
     }
 
     ScrollTo(position) {
         if this.stopped
             return
-        this.offset := Max(0, Min(this.maximum, Round(position)))
+        position := Max(0, Min(this.maximum, Round(position)))
+        if position = this.offset
+            return
+        this.offset := position
         info := Buffer(28, 0)
         NumPut("UInt", 28, "UInt", 4, info)
         NumPut("Int", this.offset, info, 20)
-        DllCall("SetScrollInfo", "Ptr", this.viewportHwnd, "Int", 1, "Ptr", info, "Int", true)
+        DllCall("SetScrollInfo", "Ptr", this.scrollbarHwnd, "Int", 2, "Ptr", info, "Int", false)
         DllCall("SetWindowPos", "Ptr", this.contentHwnd, "Ptr", 0, "Int", 0, "Int", -this.offset - this.inset,
-            "Int", 0, "Int", 0, "UInt", 0x15) ; NOACTIVATE | NOZORDER | NOSIZE
+            "Int", 0, "Int", 0, "UInt", 0x11D) ; NOACTIVATE | NOZORDER | NOSIZE | NOREDRAW | NOCOPYBITS
+        this.RepaintContent()
+    }
+
+    RepaintContent() {
+        if this.HasOwnProp("theme") && this.theme.updates.Count
+            return
+        ; Moving the canvas must not copy clipped/partly painted child pixels.
+        ; Invalidate the visible viewport once after its position is final.
+        DllCall("RedrawWindow", "Ptr", this.viewportHwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x185)
     }
 
     OnScroll(wParam, lParam, message, hwnd) {
-        if this.stopped || hwnd != this.viewportHwnd || lParam
+        if this.stopped || hwnd != this.viewportHwnd || (lParam && lParam != this.scrollbarHwnd)
             return
         line := Round(32 * A_ScreenDPI / 96)
         switch wParam & 0xFFFF {
@@ -137,7 +160,7 @@ class SettingsScrollPane {
             case 4, 5:
                 info := Buffer(28, 0)
                 NumPut("UInt", 28, "UInt", 0x10, info)
-                DllCall("GetScrollInfo", "Ptr", hwnd, "Int", 1, "Ptr", info)
+                DllCall("GetScrollInfo", "Ptr", this.scrollbarHwnd, "Int", 2, "Ptr", info)
                 this.ScrollTo(NumGet(info, 24, "Int")) ; 32-bit thumb tracking position
             case 6: this.ScrollTo(0)
             case 7: this.ScrollTo(this.maximum)
@@ -186,12 +209,30 @@ class SettingsScrollPane {
             && NumGet(info, 12, "Int") >= NumGet(info, 16, "UInt")
     }
 
+    MouseFocus(wParam, lParam, message, hwnd) {
+        if hwnd = this.ownerHwnd || DllCall("IsChild", "Ptr", this.ownerHwnd, "Ptr", hwnd)
+            this.mouseFocusUntil := message = 0x100 ? 0 : A_TickCount + 350
+    }
+
     EnsureVisible(control, *) {
-        if this.stopped || !control.Visible || !this.maximum
+        if this.stopped || !control.Visible || !this.maximum || A_TickCount < this.mouseFocusUntil
             return
         rect := Buffer(16, 0)
-        DllCall("GetWindowRect", "Ptr", control.Hwnd, "Ptr", rect)
-        DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this.contentHwnd, "Ptr", rect, "UInt", 2)
+        if control.Type = "ListView" {
+            row := SendMessage(0x100C, -1, 1, control)
+            if row < 0
+                row := 0
+            if !control.GetCount()
+                return
+            SendMessage(0x1013, row, 0, control)
+            NumPut("Int", 0, rect)
+            if !SendMessage(0x100E, row, rect.Ptr, control)
+                return
+            DllCall("MapWindowPoints", "Ptr", control.Hwnd, "Ptr", this.contentHwnd, "Ptr", rect, "UInt", 2)
+        } else {
+            DllCall("GetWindowRect", "Ptr", control.Hwnd, "Ptr", rect)
+            DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this.contentHwnd, "Ptr", rect, "UInt", 2)
+        }
         top := NumGet(rect, 4, "Int") - this.inset, bottom := NumGet(rect, 12, "Int") - this.inset
         padding := Round(8 * A_ScreenDPI / 96)
         if top < this.offset

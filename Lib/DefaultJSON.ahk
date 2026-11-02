@@ -1,4 +1,4 @@
-default_JSON := "
+﻿default_JSON := "
 (
 {
     "settings_version": "3",
@@ -6,6 +6,8 @@ default_JSON := "
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
     "DebugMode": 0,
+    "SettingsTheme": "system",
+    "NewProfileInheritance": {},
     "SoundLibrary": [],
     "MasterSoundVolume": 100,
     "MaxSimultaneousSounds": 1,
@@ -18,19 +20,11 @@ default_JSON := "
                 "MinimizeInactiveClients": 0,
                 "AlwaysMaximize": 0,
                 "TrackClientPossitions": 0,
-                "Dont_Minimize_Clients": [
-                    "Example Name1",
-                    "Example Name2",
-                    "Example Name3"
-                ],
+                "Dont_Minimize_Clients": [],
                 "Minimize_Delay": 100,
                 "DontCloseOnLoginScreen": 0,
                 "dontCloseActiveClient": 0,
-                "DontCloseClients" : [
-                    "Example Name1",
-                    "Example Name2",
-                    "Example Name3"
-                ]
+                "DontCloseClients" : []
             },
             "Thumbnails Behavior": {
                 "LockThumbnailPositions": 0,
@@ -112,12 +106,7 @@ default_JSON := "
                 "ToggleLivePreviewsHotkey": "",
                 "AutoWildcardWindowHotkeys": 1,
                 "Exit_Program_Hotkey": "",
-                "CharacterHotkeys": [
-                    {"Example Name1":"1"},
-                    {"Example Name2":"ctrl & 1"},
-                    {"Example Name3":"Xbutton1 & 1"},
-                    {"Example Name4":"^XButton1 & 1"}
-                ],
+                "CharacterHotkeys": [],
                 "GroupsHoldDelay": 100,
                 "MaxActiveWindowRetries": 3,
                 "ActiveWindowRetryInterval": 25,
@@ -141,10 +130,10 @@ default_JSON := "
             "Custom Colors":{                
                 "cColorActive": "0",
                 "cColors": {
-                    "CharNames": ["Example Char"],
-                    "TextColor": ["FFFFFF"],
-                    "Bordercolor":["FFFFFF"],                
-                    "IABordercolor":["FFFFFF"]                    
+                    "CharNames": [],
+                    "TextColor": [],
+                    "Bordercolor":[],
+                    "IABordercolor":[]
                 }
             },
             "Other": {
@@ -188,9 +177,9 @@ default_JSON := "
             "Non-EVE Applications": {
                 "NonEVEGroups": {},
                 "NonEVEHotkeys": {
-                "exe": ["App1.exe"], 
-                "title": ["Titel"], 
-                "hotkey": ["*^!Tab"]
+                "exe": [],
+                "title": [],
+                "hotkey": []
                 }
             },
             "DPS Monitoring": {

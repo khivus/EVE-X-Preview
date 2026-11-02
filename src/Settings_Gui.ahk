@@ -43,73 +43,13 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     MainGui() {
-        ProgramLog.Add("Settings opened")
-        ;if settings got chnaged which require a restart to apply
-        This.NeedRestart := 0
-
-        SetControlDelay(-1)
-        This.S_Gui := Gui("+OwnDialogs -MinimizeBox -Resize -MaximizeBox SysMenu")
-        This.S_Gui.Title := "EVE-X-Preview - Settings"
-
-        This.SetState()
-        
-        This.CreateSidebar()
-        This.CreateMainFrame()
-
-        This.ClientSettings_Ctrl()
-        This.CustomColors_Ctrl()
-        This.HotkeyGroups_Ctrl()
-        This.HotkeysSettings_Ctrl()
-        This.ThumbnailsInteractions_Ctrl()
-        This.ThumbnailsBehavior_Ctrl()
-        This.ThumbnailsVisuals_Ctrl()
-        This.ThumbnailVisibility_Ctrl()
-        This.GameLogsMonitoring_Ctrl()
-        This.MonitoredEvents_Ctrl()
-        This.DPSMonitoring_Ctrl()
-        This.NonEVEApps_Ctrl()
-        This.TrayMenuSettings_Ctrl()
-        This.Other_Ctrl()
-        This.About_Ctrl()
-
-        This.InitHotkeyHelpers()
-        This.InitColorPickers()
-        SettingsTooltips.Apply(This.Sidebar, true)
-        SettingsTooltips.Apply(This.MainFrame)
-
-        This._Button_Load()
-        ControlClick(This.firstBtn)
-        This.ResetSidebarStatus()
-
-        This.S_Gui.OnEvent("Close", (*) => GuiDestroy())
-
-        GuiDestroy(*) {
-            ProgramLog.Add("Settings closed; restart required=" This.NeedRestart)
-            SetTimer(This.updateUiTimer, 0)
-            This.StopHotkeyHelpers()
-            This.StopColorPickers()
-            This.CloseEventSoundDialog()
-            This.StopTestThumbnail()
-            This.sidebarStatusHwnd := 0
-            This.settingsScroller.Stop()
-            This.S_Gui.Destroy()
-            if (This.NeedRestart) {
-                SetTimer(This.Save_Settings_Delay_Timer, 0)
-                This.SaveJsonToFile()
-                Reload()
-            }
+        ProgramLog.Add("Settings workbench opened")
+        if this.HasOwnProp("settingsWorkbench") && !this.settingsWorkbench.closed {
+            this.settingsWorkbench.S_Gui.Show()
+            return
         }
-
-        This.S_Gui.Show(Format("w{} h{} Center", This.guiWidth, This.guiHeight))
-        This.Sidebar.Show(Format("x{} y{} w{} h{}", 0, 0, This.sidebarW, This.guiHeight))
-        This.ShowSettingsContent()
-        if !This.HasOwnProp("updateChecker")
-            This.updateChecker := UpdateChecker()
-        This.BeginSidebarUpdateStatus()
-        This.updateChecker.Start()
-        This.updateUiTimer := ObjBindMethod(This, "RefreshUpdateStatus")
-        SetTimer(This.updateUiTimer, 200)
-        This.RefreshUpdateStatus()
+        this.settingsWorkbench := SettingsWorkbench(this)
+        this.S_Gui := this.settingsWorkbench.S_Gui
     }
 
     ResetSidebarStatus() {

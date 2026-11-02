@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 ; SetBatchLines(-1)
 SetWinDelay -1
@@ -11,6 +11,12 @@ global __EVE_X_PREVIEW_TESTING__ := true
 #Include "..\Main.ahk"
 
 global TestRunner := TestRunnerClass()
+if A_Args.Length && A_Args[1] = "--headless"
+    OnError(HeadlessTestError)
+HeadlessTestError(err, mode) {
+    FileAppend("Unhandled test error: " err.Message " at " err.File ":" err.Line "`n", "**")
+    ExitApp(2)
+}
 
 class TestRunnerClass {
     tests := []
@@ -31,15 +37,37 @@ class TestRunnerClass {
     }
 
     Log(message) {
-        FileAppend(message "`n", this.logPath)
+        ; File watchers can briefly open the tracked log without write sharing.
+        ; Retry sharing violations only; real IO failures still fail the run.
+        loop 20 {
+            try {
+                FileAppend(message "`n", this.logPath)
+                return
+            } catch OSError as err {
+                if (err.Number != 32 && err.Number != 33) || A_Index = 20
+                    throw err
+                Sleep(25)
+            }
+        }
     }
 
     RunAll() {
         this.passed := 0
         this.failed := 0
-        this.total := this.tests.Length
+        selected := this.tests
+        if A_Args.Length >= 3 && A_Args[2] = "--filter" {
+            selected := []
+            for item in this.tests
+                if InStr(item["name"], A_Args[3])
+                    selected.Push(item)
+            if !selected.Length {
+                FileAppend("No tests match the requested filter.`n", "*")
+                ExitApp(2)
+            }
+        }
+        this.total := selected.Length
 
-        for item in this.tests {
+        for item in selected {
             try {
                 item["callback"].Call()
                 this.passed++
@@ -194,4 +222,17 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 
 #Include "Thumbnail_Tools_Test.ahk"
 #Include "Settings_Scroll_Test.ahk"
+#Include "Settings_Redesign_Model_Test.ahk"
+#Include "Settings_Workbench_Test.ahk"
+#Include "Settings_Grid_Test.ahk"
+#Include "Settings_Interaction_Followup_Test.ahk"
+#Include "Settings_Appearance_Test.ahk"
+#Include "Settings_Polish_Test.ahk"
+#Include "Settings_Chrome_Test.ahk"
+#Include "Settings_Paint_Lifecycle_Test.ahk"
+#Include "Settings_Scroll_Rendering_Test.ahk"
+#Include "Settings_Input_Pulse_Test.ahk"
+#Include "Settings_Review_Followup_Test.ahk"
+#Include "Settings_Release_Safety_Test.ahk"
+#Include "Release_Packaging_Test.ahk"
 TestRunner.RunAll()

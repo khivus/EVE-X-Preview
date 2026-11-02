@@ -1,8 +1,8 @@
-; One modeless window shared by About, the tray and the post-update notice.
+﻿; One modeless window shared by About, the tray and the post-update notice.
 class ChangelogWindow {
     static window := 0
 
-    static Show(afterUpdate := false) {
+    static Show(afterUpdate := false, owner := 0) {
         if !IsObject(this.window) {
             window := Gui("+Resize +MinSize520x320", "EVE-X-Preview - Changelog")
             window.BackColor := "F7F7F7"
@@ -20,11 +20,19 @@ class ChangelogWindow {
             window.OnEvent("Escape", (*) => this.Close())
             window.OnEvent("Size", ObjBindMethod(this, "Resize"))
             this.window := window
-            window.Show("w760 h564")
+            if owner {
+                window.Opt("+Owner" owner)
+                SettingsWindowSizing.ShowCentered(window, owner, 760, 564)
+            } else
+                window.Show("w760 h564")
             window["CloseButton"].Focus()
         } else {
             ; Repeated actions focus the same window, including when minimized.
             WinRestore(this.window.Hwnd)
+            if owner {
+                this.window.Opt("+Owner" owner)
+                SettingsWindowSizing.CenterWindow(this.window.Hwnd, owner)
+            }
             this.window.Show()
         }
         if afterUpdate

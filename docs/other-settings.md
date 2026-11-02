@@ -1,8 +1,14 @@
-# Other settings
+# Application and advanced settings
 
-[Back to README](../README.MD)
+[Back to README](../README.MD) · [Settings overview](settings.md)
 
-* Auto-Pause on DWM Failure: enabled by default, including existing profiles. Automatically pauses live previews on DWM failures or Windows composition changes. Applies immediately; turn it off to keep automatic retries. An existing pause still requires manual Resume.
-* Slow Thumbnail Creation: off by default, including existing profiles. Off creates ready previews immediately without startup or spacing delays. On waits three seconds, requires stable source dimensions for 500 ms, and spaces queued previews by 150 ms to reduce startup GPU pressure. Applies immediately to queued previews and controls startup, new clients, and resume after pausing.
-* Switch Language to English on Error: switches the Windows language to English if hotkey assigning error occurs.
-* Update all thumbnails size to default size: use this button to update every thumbnail size to the current default size.
+**Application → Advanced** contains performance and compatibility options:
+
+- **Time between window and focus checks:** 50–1000 ms. Higher values reduce window polling and delay discovery/focus updates.
+- **Stagger preview creation at startup:** waits three seconds, requires stable source dimensions and spaces preview creation to reduce startup GPU bursts. It also affects new clients and resume operations.
+- **Pause previews if Windows composition fails:** releases preview resources after rendering/composition failures. Resume explicitly from the tray, a configured shortcut or Diagnostics. Disabling the preference does not resume an existing pause.
+- **Retry failed shortcuts using an English keyboard layout:** a registration compatibility fallback, not an interface-language setting.
+
+These preferences are draft settings and activate with **Apply & restart**. Profile inheritance is managed in Profiles. Thumbnail size resets are in Thumbnails → Layout.
+
+**Diagnostics** contains staged debugging/counter preferences and explicitly immediate log/export/preview actions. **About and updates** contains version information, offline release notes, documentation, issue reporting and installers. Older installers are labelled as downgrades and require confirmation; apply/discard the draft first.

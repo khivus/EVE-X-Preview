@@ -1,25 +1,21 @@
 # Updates and diagnostics
 
-[Back to README](../README.MD)
+[Back to README](../README.MD) · [Settings overview](settings.md)
 
-Use **Show Changelog** in About to read the full changelog in a resizable window. Markdown headings appear larger and bold, with formatted bullets, inline bold and code. Text wraps and can be selected or copied. It also opens automatically after an update, showing the installed version. Monitoring, hotkeys and Settings remain available while it is open. The changelog is bundled with compiled releases and works offline.
+**Application → About and updates** provides explicit version checks, included changelog, documentation and issue reporting. Install buttons show the target version. An older target is labelled **Downgrade** and asks for confirmation. Apply or discard a draft before installing another version. The offline changelog remains resizable, selectable and available after an update.
 
-Buttons:
-* Check Updates: click to checks aviable updates.
-* Update to Release: after update checking can use for update/downgrade to latest release version.
-* Update to Pre-Release: after update checking can use for update/downgrade to latest pre-release version.
-* Help: opens this README page.
-* Report Bug: opens [GitHub issue](https://github.com/khivus/EVE-X-Preview/issues/new) page.
-* Show Log: shows a snapshot of the current session's program events, even with Debug Mode off.
-* Export Log: saves that event history to a chosen `.log` file.
-* Pause Live Previews / Resume Live Previews: temporarily unregisters live DWM thumbnails and hides their overlays without removing existing hotkeys or group membership. With Auto-Pause on DWM Failure enabled in Other (the default), DWM failures or a Windows composition change automatically pause previews; About shows the reason. Resume manually after the display is stable, using this button or the pause/resume hotkey. Resume uses the Slow Thumbnail Creation option in Other. Pause is session-only and resets on restart.
+Opening Settings also starts a background update check. A newer stable version shows **Update available: v…** in the sidebar. Click it to open About and review the update. The check does not interrupt editing or install anything automatically. Pre-releases stay an explicit choice in About; errors and timeouts can be reviewed and retried there.
+
+**Application → Diagnostics** provides immediate Show log, Export diagnostic snapshot and Pause/Resume previews commands. Debugging information and switching-counter preferences remain staged until Apply & restart. Pause/Resume is also always available from the tray and through a configured shortcut. Pausing releases live preview resources while keeping shortcuts and group membership. An automatic pause reports its reason and requires explicit resume. Startup pacing and composition-failure preferences are in Application → Advanced.
 
 Program diagnostics are kept in `ProgramLog.Text` (up to 256 Ki characters) and written every two seconds to `%LOCALAPPDATA%\EVE-X-Preview\Logs\current.log`. The disk log rotates at approximately 1 MiB into `previous.log`. Startup registration attempts are flushed before touching DWM. Errors reaching the script error handler, DWM failures, and logged runtime errors automatically export an `error-*.log` snapshot; snapshots are limited to one per ten seconds and the newest ten files. Logs can contain character/window names and local paths. Nothing is uploaded automatically.
 
-Slow Thumbnail Creation is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry startup failures independently, with increasing delays capped at 30 seconds. Auto-Pause on DWM Failure is enabled by default and applies immediately when changed in Other. When enabled, DWM failures stop the entire queue and require manual Resume; when disabled, failures remain logged and failed registrations retry. Disabling this setting does not resume already paused previews. Pause cancels interrupted startup attempts, waits for active DWM calls to return before cleanup, and prevents Resume during those calls. Unchanged geometry and visibility do not cause redundant DWM updates.
+Stagger preview creation at startup is optional and disabled by default. When enabled, saved client geometry is restored before the stability wait. Both modes require nonzero source dimensions and retry startup failures independently, with increasing delays capped at 30 seconds. Pause-on-composition-failure is configured under Application → Advanced and activates with Apply & restart. When enabled, DWM failures stop the entire queue and require manual Resume; when disabled, failures remain logged and failed registrations retry. Disabling this setting does not resume already paused previews. Pause cancels interrupted startup attempts, waits for active DWM calls to return before cleanup, and prevents Resume during those calls. Unchanged geometry and visibility do not cause redundant DWM updates.
 
 Diagnostics also record settings load/save/recovery, activation requests and focus results, Windows display-change notifications, and ten-second summaries of DWM geometry/visibility updates and window show commands, with GDI/USER handle counts. These summaries describe the program's operations, not the compositor's frame rate or GPU utilization; display notifications alone do not confirm a driver reset.
 
 Update logs include automatic/manual checks, cache/duplicate skips, HTTP results, selected versions, timeouts, download results, cancellation, and handoff to the updater. The standalone updater writes replacement and relaunch steps to `%LOCALAPPDATA%\EVE-X-Preview\Logs\Updater`. This requires rebuilding and shipping the updated updater executable with the release; older published updater binaries will not contain the new logging.
+
+Standalone updater v1.6.0 includes the current application and suspend icons and identifies its own version in Windows file properties. Running it without arguments installs the latest stable release. To try a pre-release, download its application executable directly or use the explicit pre-release install action in About and updates.
 
 These measures reduce startup bursts, including restarting Preview while clients are launching. They cannot guarantee recovery from a graphics-driver or DWM crash: those may never raise a script error. Preserve `current.log`/`previous.log` and collect Windows Event Viewer or Reliability Monitor details for the same time when reporting a blackout.

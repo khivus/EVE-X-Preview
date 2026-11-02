@@ -1,16 +1,73 @@
 # Changelog
 
+## v1.7.0
+
+### Added
+* A settings workbench with seven navigation areas, searchable subsections, persistent selection and scroll positions, keyboard help, resizable monitor-bounded layouts and scrollable row/event editors.
+* An isolated settings draft with explicit Apply & restart, Discard, close protection, shared validation and explanations for inherited or unavailable controls.
+* Complete-row editors for character shortcuts, custom labels/colors, client exceptions, ordered groups and application matching, with running-window selection, duplicate-name protection and removal Undo.
+* Independent inheritance for each visible settings subsection, separate profile editing/activation, readable shortcut recording/clearing and independent focused-client sound, visual-alert and DPS preferences.
+* New-profile inheritance presets: use a saved Default template, disable all or enable all, then adjust individual subsections before creating the profile.
+* A simple per-event sound editor, shared library, advanced playback/batch tools and an always-available tray preview command.
+* Inline spreadsheet editing for setting tables, with a trailing entry row, cell/range selection, Tab navigation, clipboard copy/paste, bulk typing, row deletion and removal Undo.
+* The Quick Group thumbnail gesture can be configured beside its switching settings, using the same assignment as Mouse actions.
+* Color cells show a swatch beside the hex value, including character and event colors.
+* System, Light and Dark settings themes, with immediate preview and themed row/event editors.
+* Dark tooltips, dropdown lists/arrows, flat input and table borders, scrollbars, spinner buttons, slider tracks and navigation arrows throughout Settings.
+* Inherited subsections offer Edit Default here. The selected profile stays unchanged, and a pinned title, warning and footer identify edits to DEFAULT.
+* Search words are highlighted in visible setting labels, descriptions, dropdowns and table values without selecting editable text.
+* Standalone updater v1.6.0 includes the current application and suspend icons, matching version metadata, and update diagnostics from the current source.
+
+### Changed
+* Settings edits remain staged until Apply & restart; unrelated runtime positions and discovered IDs are preserved when applying. Reload, Exit and profile actions protect an open draft.
+* New configurations start with empty assignment tables. Existing profiles and legacy JSON storage routes are preserved, and older installers are explicitly labelled as downgrades.
+* Setting rows have stronger labels, subtle separators, tighter consistent gaps and measured text wrapping. Settings sources always precede section descriptions.
+* Navigation groups retain their expansion state until explicitly collapsed. Resize redraw clears stale footer-button images.
+* Character exceptions are part of Close protection. Volume and opacity sliders show scale marks and move in steps of five; numeric fields retain exact entry.
+* Event, sound-library, inheritance, batch-assignment and running-window tables share cell selection and clipboard controls. Event names remain fixed.
+* Advanced shortcut editing unlocks the existing field. Invalid syntax remains visible inline without opening another dialog.
+* The sidebar fills the window height, and inherited setting labels consistently show their read-only state.
+* Existing inheritance migrates to the new subsections while preserving effective values; mixed sources become custom, with dormant local values backed up.
+* Opening Settings starts an asynchronous update check. A newer stable version displays an update-available button in the sidebar, linking to About and updates.
+
+### Fixed
+* Long DPS descriptions and other wrapped labels no longer use a fixed two-line height that clips their text.
+* Incomplete table rows survive navigation and resizing, block Apply with an explanation, and follow profile rename/remove/Undo actions.
+* Clicking table cells no longer scrolls the settings pane. Drag selection works across cells, including section inheritance; choice cells open usable dropdowns immediately.
+* Starting a table edit keeps the caret after the first typed character, so the next character appends correctly.
+* Selecting or editing entries in scrolled tables preserves their vertical and horizontal positions and selects the row originally clicked.
+* Rows without a target are ignored without validation warnings, and clearing a target removes its paired assignment.
+* Direct character shortcuts can share a key with character groups and Quick Group. Available direct targets take priority; otherwise the group remains usable, without a conflict warning for the supported pair.
+* Theme switches repaint existing controls in both directions. Disabled labels repaint immediately instead of retaining stale or embossed text until scrolling.
+* Hotkey recording checks the active top-level settings/editor window, preventing immediate cancellation when the recorder lives in a child pane.
+* Mouse drag selection toggles cells against their selection at the start of the drag; dragging over selected cells deselects them.
+* Dark scrollbars keep their palette while held or dragged, including tables and dropdown lists. Dropdowns fit their settings/editor window and open above a field when needed.
+* Settings layout changes redraw in batches. Interactive resizing rebuilds the pane after the drag ends, and height-only changes preserve inline editors. Buttons keep their palette after default/focus changes and tray profile activation.
+* Tables use their native double buffer without whole-window compositing. Selecting cells no longer erases/repaints the header, and moving settings pages repaints clipped controls and separators instead of copying stale pixels.
+* Cell redraws exclude the column-header area, and native table painting clips its header child, keeping headings visible through repeated clicks and inline editor focus changes.
+* Settings panes use a separate scrollbar control with app-owned dark painting from its first frame. Range, keyboard scrolling and accessible geometry stay synchronized.
+* Color swatches update immediately after valid typing or color selection. Numeric arrow buttons no longer insert thousands separators into integer settings.
+* Slider tracking keeps the native thumb position while values advance in steps of five, snapping the thumb on release. Unchanged labels, hints and status no longer redraw on every update.
+* Switching directly between table cells consistently opens the next editor. Dragging computes its final selection before painting and skips redraws when the selected range has not changed.
+* Slider marks are drawn by the slider itself, so dragging cannot erase them. Scalar color swatches request an immediate repaint after valid typing or selection.
+* Validation hints update their text and color together. Default/minimum thumbnail size mismatches highlight both fields and clear as soon as the values are corrected.
+* Opening row details for an invalid shortcut keeps its table intact; late focus events and saves safely ignore disposed editors.
+* Settings popups, including group/profile editors and color pickers, center over their owner on the same monitor. About aligns installed/stable/pre-release versions, and stacked action buttons use a common width.
+* Modified switching shortcuts can coexist with plain-key wildcard fallbacks without false conflict warnings, including Alt+backtick for login screens beside backtick for a group. Duplicate chords still warn; registration behavior is unchanged.
+* Dark tables and navigation suppress intermediate system-scrollbar drawing during native scrolling, resizing and tree expansion. Local paint buffers retain table headings and selection; existing redraw locks and the light theme keep their behavior.
+* The pinned heading consistently identifies when an inherited subsection is editing DEFAULT.
+
 ## v1.6.2.1
 
 ### Added
 * Short tooltips explain every setting, with help on labels, controls and event-sound options.
-* Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
+* Random thumbnail names with an editable per-profile list and a Reshuffle preview labels button under Thumbnails / Labels. Turning anonymization off restores the usual labels.
 * A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
-* An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
-* Window Polling Interval in Thumbnails Behavior to adjust how often client windows, focus and title changes are checked.
+* An option under Switching / Keyboard shortcuts to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
+* Time between window and focus checks under Application / Advanced to adjust how often client windows, focus and title changes are checked.
 
 ### Changed
-* Settings pages now scroll within the right pane, with category headings pinned at the top. New controls follow the existing styles, offsets and gaps.
+* Settings pages now scroll within the right pane, with category headings pinned at the top. Controls use consistent labels, units, ranges and dependency hints.
 * The README now links to separate setup and usage guides in `docs/`. The changelog is now `Changelog.md`.
 * Application icons now live in `res/`; source and compiled builds use the updated paths.
 

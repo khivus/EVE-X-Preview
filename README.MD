@@ -11,12 +11,14 @@ A Windows tool for managing multiple EVE Online clients with live thumbnails, mo
 [Download the latest release](https://github.com/khivus/EVE-X-Preview/releases) · [Changelog](Changelog.md) · [Report an issue](https://github.com/khivus/EVE-X-Preview/issues/new) · [Discord](https://discord.gg/d9EzgUXnT6)
 
 <p align="center">
-<img width="702" height="738" alt="EVE-X-Preview settings" src="https://github.com/user-attachments/assets/40e1f9ea-7555-4d7d-b91d-7c42c66e791b" />
+<img width="900" alt="Settings workbench with sample settings" src="docs/images/settings-workbench.png" />
+<br /><em>Settings workbench shown with sample data.</em>
 </p>
 
 ## Documentation
 
 - [Getting started](docs/getting-started.md)
+- [Settings workbench, search and Apply/Discard](docs/settings.md)
 - [Hotkeys and groups](docs/hotkeys.md)
 - [Mouse gestures](docs/mouse-gestures.md)
 - [Tray menu](docs/tray-menu.md)
@@ -28,7 +30,7 @@ A Windows tool for managing multiple EVE Online clients with live thumbnails, mo
 - [Test thumbnail](docs/test-thumbnail.md)
 - [Client settings](docs/client-settings.md)
 - [Game logs, events and DPS](docs/game-log-monitoring.md)
-- [Other settings](docs/other-settings.md)
+- [Application and advanced settings](docs/other-settings.md)
 - [Updates and diagnostics](docs/updates-and-diagnostics.md)
 - [Source setup, tests and contributing](docs/development.md)
 
