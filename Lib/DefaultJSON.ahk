@@ -33,8 +33,11 @@ default_JSON := "
                 ]
             },
             "Thumbnails Behavior": {
+                "LockThumbnailPositions": 0,
+                "ThumbnailPollingInterval": 50,
                 "HideThumbnailsOnLostFocus": 0,
                 "ShowThumbnailsAlwaysOnTop": 1,
+                "ExcludeThumbnailsFromCapture": 0,
                 "ThumbnailStartLocation": {
                     "x": 20,
                     "y": 20,
@@ -69,6 +72,8 @@ default_JSON := "
                 "QuickGroup": {"lmb": 0, "rmb": 1, "shift": 1, "ctrl": 0}
             },
             "Thumbnails Visuals": {
+                "AnonymizeThumbnails": 0,
+                "AnonymousNames": "Aurora\nComet\nCosmos\nEclipse\nEmber\nFalcon\nHorizon\nLuna\nMeteor\nNebula\nNova\nOrbit\nPhoenix\nPulsar\nQuasar\nRaven\nSolstice\nSparrow\nStarlight\nZenith",
                 "CustomThumbnailNames": {"Characters": "", "Names": ""},
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
@@ -105,6 +110,7 @@ default_JSON := "
                 "Close_All_EVE_Win_Hotkey": "",
                 "Reload_Program_Hotkey": "",
                 "ToggleLivePreviewsHotkey": "",
+                "AutoWildcardWindowHotkeys": 1,
                 "Exit_Program_Hotkey": "",
                 "CharacterHotkeys": [
                     {"Example Name1":"1"},
@@ -123,6 +129,8 @@ default_JSON := "
                 "QuickGroupSortOrder": "Added order",
                 "QuickGroupIgnoredInOtherGroups": 1,
                 "QuickGroupResetsPosition": 1,
+                "PreserveQuickGroupOnLogout": 1,
+                "PreserveDisabledOnLogout": 1,
                 "DontCloseDisabledClients": 0,
                 "DontCloseQuickGroupClients": 0
             },
@@ -164,6 +172,8 @@ default_JSON := "
                 "TrayMenuShortcuts": {
                     "Suspend Hotkeys": 1,
                     "Hide Thumbnails": 1,
+                    "Lock Thumbnail Positions": 0,
+                    "Anonymize Thumbnails": 0,
                     "Minimize Inactive Clients": 0,
                     "Close all EVE Clients": 1,
                     "Restore Client Positions": 1,

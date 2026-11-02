@@ -37,7 +37,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.1.6
+    ;@Ahk2Exe-Let U_version = 1.6.2.2
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -45,17 +45,17 @@ if !__EVE_X_PREVIEW_TESTING__ {
     ;@Ahk2Exe-SetProductName EVE-X-Preview
     ;@Ahk2Exe-ExeName EVE-X-Preview
 
-    ;@Ahk2Exe-AddResource icon.ico, 160  ; Replaces 'H on blue'
-    ;@Ahk2Exe-AddResource icon-suspend.ico, 206  ; Replaces 'S on green'
-    ;@Ahk2Exe-AddResource icon.ico, 207  ; Replaces 'H on red'
-    ;@Ahk2Exe-AddResource icon-suspend.ico, 208  ; Replaces 'S on red'
+    ;@Ahk2Exe-AddResource res/Icon.ico, 160  ; Replaces 'H on blue'
+    ;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 206  ; Replaces 'S on green'
+    ;@Ahk2Exe-AddResource res/Icon.ico, 207  ; Replaces 'H on red'
+    ;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 208  ; Replaces 'S on red'
 
     ;@Ahk2Exe-AddResource src/LogScanWorker.ahk, LogScanWorker
-    ;@Ahk2Exe-AddResource Changelog, Changelog
-    ;@Ahk2Exe-SetMainIcon icon.ico
+    ;@Ahk2Exe-AddResource Changelog.md, Changelog
+    ;@Ahk2Exe-SetMainIcon res/Icon.ico
 
     if !(A_IsCompiled)
-        TraySetIcon("icon.ico",,true)
+        TraySetIcon("res/Icon.ico",,true)
 
     ; Catch all unhandled Errors to prevent the Script from stopping 
     OnError(Error_Handler)
@@ -112,6 +112,7 @@ Load_JSON() {
             MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
+        MigrateThumbnailNameSettings(UJSON)
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
 
         ; Atomic write: write to tmp file then move/rename to target
@@ -152,6 +153,22 @@ Load_JSON() {
 
     ProgramLog.Add("Settings loaded")
     return _JSON
+}
+
+MigrateThumbnailNameSettings(settings) {
+    for name, profile in settings.Get("_Profiles", Map()) {
+        behavior := profile.Get("Thumbnails Behavior", Map())
+        if !profile.Has("Thumbnails Visuals")
+            profile["Thumbnails Visuals"] := Map()
+        visuals := profile["Thumbnails Visuals"]
+        for key in ["AnonymizeThumbnails", "AnonymousNames"] {
+            if behavior.Has(key) {
+                if !visuals.Has(key)
+                    visuals[key] := behavior[key]
+                behavior.Delete(key)
+            }
+        }
+    }
 }
 
 DeepClone(obj) {

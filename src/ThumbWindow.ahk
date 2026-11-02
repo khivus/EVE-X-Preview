@@ -9,6 +9,7 @@ Class ThumbWindow extends Propertys {
         try {
         
         ThumbObj["Window"] := Gui("+Owner +LastFound -Caption +ToolWindow +E0x08000000 " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop") , Win_Title) ;WS_EX_NOACTIVATE -> +E0x08000000
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["Window"].Hwnd)
         ThumbObj["Window"].OnEvent("Close", GUI_Close_Button)
 
         ; The Backcolor which is visible when no thumbnail is displayed 
@@ -45,6 +46,7 @@ Class ThumbWindow extends Propertys {
         ;#### Create the Thumbnail TextOverlay
         ;####
         ThumbObj["TextOverlay"] := Gui("+LastFound -Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd " " (This.ShowThumbnailsAlwaysOnTop ? "AlwaysOnTop" : "-AlwaysOnTop"), Win_Title) ; WS_EX_CLICKTHROUGH -> +E0x20
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["TextOverlay"].Hwnd)
         ThumbObj["TextOverlay"].MarginX := This.ThumbnailTextMargins["x"]
         ThumbObj["TextOverlay"].MarginY := This.ThumbnailTextMargins["y"]
 
@@ -77,6 +79,7 @@ Class ThumbWindow extends Propertys {
             }
         }
 
+        ThumbObj["TextOverlay"].SourceIdentity := Win_Hwnd
         This.AddThumbnailTextControls(ThumbObj["TextOverlay"], Win_Title, This.ThumbnailStartLocation["width"], This.ThumbnailStartLocation["height"])
 
         ThumbObj["TextOverlay"].BackColor := "040101" ;Sets a Color for the Text Control to make it also invisible, same as background color
@@ -95,6 +98,7 @@ Class ThumbWindow extends Propertys {
         border_color := This.ClientHighligtColor
 
         ThumbObj["Border"] := Gui("-Caption +E0x20 +Owner" ThumbObj["Window"].Hwnd)
+        This.ApplyThumbnailCaptureAffinity(ThumbObj["Border"].Hwnd)
 
         CheckError := 0
         if This.CustomColorsActive && !This.ShowAllColoredBorders {
@@ -151,6 +155,7 @@ Class ThumbWindow extends Propertys {
                 }
         if separateEvents {
             ThumbObj["EventBorder"] := Gui("-Caption +ToolWindow +E0x08000020 +Owner" ThumbObj["Window"].Hwnd)
+            This.ApplyThumbnailCaptureAffinity(ThumbObj["EventBorder"].Hwnd)
             ThumbObj["EventBorder"].BackColor := "FF0000"
             ThumbObj["EventBorder"].EventVisible := false
             WinSetTransparent(255, ThumbObj["EventBorder"].Hwnd) ; Layered + WS_EX_TRANSPARENT lets gestures pass through the ring.
@@ -179,6 +184,11 @@ Class ThumbWindow extends Propertys {
         GUI_Close_Button(*) {
             return
         }
+    }
+
+    ApplyThumbnailCaptureAffinity(hwnd) {
+        ; WDA_EXCLUDEFROMCAPTURE = 0x11, WDA_NONE = 0. Owned overlays need their own affinity.
+        return DllCall("user32\SetWindowDisplayAffinity", "Ptr", hwnd, "UInt", This.ExcludeThumbnailsFromCapture ? 0x11 : 0, "Int")
     }
 
     ExtendThumbnailFrame(hwnd) {
@@ -249,7 +259,7 @@ Class ThumbWindow extends Propertys {
     }
 
     AddThumbnailTextControls(overlay, title, width, height) {
-        overlay.Add("Text", "vOverlayText +0x80 Background040101", This.GetThumbnailDisplayText(title))
+        overlay.Add("Text", "vOverlayText +0x80 Background040101", This.GetThumbnailDisplayText(title, overlay.HasOwnProp("SourceIdentity") ? overlay.SourceIdentity : "test"))
         ; Inherit the overlay font/color; keep a single utility line inside its bottom edge.
         eventText := overlay.Add("Text", "vEventText x0 y0 w1 r1 +0x4080 Background040101", "") ; SS_ENDELLIPSIS | SS_NOPREFIX
         eventText.GetPos(, , , &lineHeight)
@@ -329,58 +339,84 @@ Class ThumbWindow extends Propertys {
 
     updateThumbnailEventText(text, hwnd) {
         ; An event timer can outlive the client and its thumbnail.
-        if This.ThumbWindows.HasProp(hwnd) {
-            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-            previous := overlay["EventText"].Text
-            if previous = text
-                return
-            overlay["EventText"].Text := text
-            if (previous = "") != (text = "")
-                This.RefreshThumbnailTextLayout(overlay)
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if This.ThumbWindows.HasProp(hwnd) {
+                overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+                previous := overlay["EventText"].Text
+                if previous = text
+                    return
+                overlay["EventText"].Text := text
+                if (previous = "") != (text = "")
+                    This.RefreshThumbnailTextLayout(overlay)
+            }
+        } finally {
+            Critical(previousCritical)
         }
     }
 
     updateThumbnailDPSText(text, hwnd, damageText := "") {
-        if !This.ThumbWindows.HasProp(hwnd)
-            return
-        overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-        if !overlay.HasOwnProp("DPSTextHeight")
-            return
-        if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
-            return
-        relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
-        overlay["DPSText"].Text := text
-        overlay["DPSDamageText"].Text := damageText
-        if relayout
-            This.RefreshThumbnailTextLayout(overlay)
+        ; Keep lookup, control access and relayout together if cleanup becomes due.
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if !This.ThumbWindows.HasProp(hwnd)
+                return
+            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+            if !overlay.HasOwnProp("DPSTextHeight")
+                return
+            if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
+                return
+            relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
+            overlay["DPSText"].Text := text
+            overlay["DPSDamageText"].Text := damageText
+            if relayout
+                This.RefreshThumbnailTextLayout(overlay)
+        } finally {
+            Critical(previousCritical)
+        }
     }
 
     updateThumbnailSystemText(text, hwnd) {
-        if This.ThumbWindows.HasProp(hwnd) {
-            overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
-            control := overlay["SystemText"]
-            if control.Text != text
-                control.Text := text
-            if text = ""
-                This.ApplyThumbnailSystemColor(overlay, "")
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            if This.ThumbWindows.HasProp(hwnd) {
+                overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
+                control := overlay["SystemText"]
+                if control.Text != text
+                    control.Text := text
+                if text = ""
+                    This.ApplyThumbnailSystemColor(overlay, "")
+            }
+        } finally {
+            Critical(previousCritical)
         }
     }
 
     RefreshThumbnailSystemColors() {
-        enabled := This.systemTrackingEnabled && This.systemColorsEnabled
-        systems := [], overlays := []
-        for hwnd, thumb in This.ThumbWindows.OwnProps() {
-            if !thumb.Has("TextOverlay")
-                continue
-            overlay := thumb["TextOverlay"]
-            overlays.Push(overlay)
+        ; Collected overlay references must remain alive through the color pass.
+        previousCritical := A_IsCritical
+        Critical
+        try {
+            enabled := This.systemTrackingEnabled && This.systemColorsEnabled
+            systems := [], overlays := []
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                if !thumb.Has("TextOverlay")
+                    continue
+                overlay := thumb["TextOverlay"]
+                overlays.Push(overlay)
+                if enabled
+                    systems.Push(overlay["SystemText"].Text)
+            }
             if enabled
-                systems.Push(overlay["SystemText"].Text)
+                This.systemColors.Update(systems)
+            for overlay in overlays
+                This.ApplyThumbnailSystemColor(overlay, enabled ? This.systemColors.Get(overlay["SystemText"].Text) : "")
+        } finally {
+            Critical(previousCritical)
         }
-        if enabled
-            This.systemColors.Update(systems)
-        for overlay in overlays
-            This.ApplyThumbnailSystemColor(overlay, enabled ? This.systemColors.Get(overlay["SystemText"].Text) : "")
     }
 
     ApplyThumbnailSystemColor(overlay, color) {
@@ -484,6 +520,8 @@ Class ThumbWindow extends Propertys {
 
     ; Move the GUI stack while deferring timer work until the mouse is released.
     Mouse_DragMove(hwnd, moveAll := 0) {
+        if This.LockThumbnailPositions
+            return
         if !This.ThumbHwnd_EvEHwnd.Has(hwnd)
             return
         source := This.ThumbHwnd_EvEHwnd[hwnd]
@@ -547,6 +585,8 @@ Class ThumbWindow extends Propertys {
 
     ; Resizes the thumbnail
     Mouse_ResizeThumb(hwnd, resizeAll := 0) {
+        if This.LockThumbnailPositions
+            return
         CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
         This.Resize := 0
         while (GetKeyState("LButton") && GetKeyState("RButton")) {
@@ -609,6 +649,8 @@ Class ThumbWindow extends Propertys {
 
     ; Snaps the window to the nearest corner of another window if it is within SnapRange in pixels
     Window_Snap(hwnd, GuiObject, SnapRange := 20) {
+        if This.LockThumbnailPositions
+            return
         if (This.ThumbnailSnap) {
             SnapRange := This.ThumbnailSnap_Distance
             ;stores the coordinates of the corners from moving window
@@ -813,6 +855,8 @@ Class ThumbWindow extends Propertys {
     }
 
     clearBorder(hwnd, title?) {
+        if IsNumber(hwnd)
+            hwnd := Integer(hwnd)
         if !This.ThumbWindows.HasOwnProp(hwnd)
             return
 
@@ -823,11 +867,14 @@ Class ThumbWindow extends Propertys {
             return
         thumbWin := thumb["Window"]
         thumbBorder := thumb["Border"]
+        thumbBorder.ActiveHighlight := false
 
         if !IsSet(title)
             title := WinGetTitle("ahk_id " hwnd)
 
-        clearLastThumb := !This.DisabledChars.Has(hwnd) && !This.QuickGroupChars.Has(hwnd) && (!This.flashMethod.Has(title) || This.stopDisplayingOnSwitch || This.SeparateEventBorder(thumb))
+        clearLastThumb := (!This.DisabledChars.Has(hwnd) || !This.DisabledFromGroupsEnabled)
+            && (!This.QuickGroupChars.Has(hwnd) || !This.QuickGroupEnabled)
+            && (!This.flashMethod.Has(title) || This.stopDisplayingOnSwitch || This.SeparateEventBorder(thumb))
 
         if !This.CustomColorsActive && !This.ShowAllColoredBorders && clearLastThumb {
             try
@@ -875,6 +922,11 @@ Class ThumbWindow extends Propertys {
     activateBorder(hwnd, title) {
         if This.livePreviewsPaused
             return
+        ; Focus can change between a polling/event callback and this draw.
+        if !This.EventSourceActive(hwnd) {
+            This.clearBorder(hwnd, title)
+            return
+        }
         if This.Thumbnail_visibility.Has(title) || !This.ShowClientHighlightBorder || This.HidedThumbs.Has(hwnd)
             return
 
@@ -892,6 +944,7 @@ Class ThumbWindow extends Propertys {
         thumb["Border"].BackColor := color
         This.LayoutThumbnailBorders(thumb, This.ClientHighligtBorderthickness)
         thumb["Border"].Show("NoActivate")
+        thumb["Border"].ActiveHighlight := true
     }
 
     flashBorder(title) {
@@ -948,6 +1001,7 @@ Class ThumbWindow extends Propertys {
             return
         }
         thumb["Border"].BackColor := "0x" color
+        thumb["Border"].ActiveHighlight := false
         This.LayoutThumbnailBorders(thumb, This.ClientHighligtBorderthickness)
 
         flashmethod["isOn"] := !flashmethod["isOn"]
@@ -980,6 +1034,7 @@ Class ThumbWindow extends Propertys {
             thumb["Border"].BackColor := "0x" color
         catch 
             thumb["Border"].BackColor := "0xffffff"
+        thumb["Border"].ActiveHighlight := false
         This.LayoutThumbnailBorders(thumb, This.ClientHighligtBorderthickness)
         
         if enable

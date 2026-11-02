@@ -1,6 +1,35 @@
-# v1.6.1.6
+# Changelog
 
-#10, thanks to @thelonewolfk
+## v1.6.2.1
+
+### Added
+* Short tooltips explain every setting, with help on labels, controls and event-sound options.
+* Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
+* A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
+* An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
+* Window Polling Interval in Thumbnails Behavior to adjust how often client windows, focus and title changes are checked.
+
+### Changed
+* Settings pages now scroll within the right pane, with category headings pinned at the top. New controls follow the existing styles, offsets and gaps.
+* The README now links to separate setup and usage guides in `docs/`. The changelog is now `Changelog.md`.
+* Application icons now live in `res/`; source and compiled builds use the updated paths.
+
+### Fixed
+* Active thumbnail borders now clear when EVE loses focus, including after event or group updates. Background updates no longer restore the active highlight.
+* Shift Logged In Thumbnails now handles login and character-title changes without stacking previews. Saved positions stay reserved during startup, and unsaved thumbnails move aside when a saved position is restored.
+* About-page buttons fit within the settings pane without adding an unnecessary scrollbar.
+
+# v1.6.2.0
+
+### Added
+* Per-profile thumbnail capture exclusion (#12 thanks to @ShannaAlabel).
+* Quick Group and disabled status survive logout and relogin in the same client window, with separate default-on settings in Thumbnails Interactions.
+
+### Fixed
+* Fixed "Gui has no window" errors from system-color and DPS updates while closing or replacing thumbnails.
+* Close-all protection for Quick Group and disabled clients follows the window through login-screen title changes.
+
+# v1.6.1.6
 
 ### Changed
 * DWM auto-pause consistently defaults to off for profiles without a saved preference.
@@ -9,6 +38,8 @@
 * Preview text follows saved thumbnail sizes, and overlays are restacked after client activation.
 * Minimized clients get previews at startup without being restored; maximized and borderless images remain uncropped during preview resizing.
 * Group and previous-window activation safely handle clients with missing saved positions.
+
+Thanks to @thelonewolfk for contibuting (#10).
 
 # v1.6.1.5
 

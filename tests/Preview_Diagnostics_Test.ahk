@@ -233,6 +233,276 @@ class PreviewLifecycleFixture extends CombatEventsFixture {
     }
 }
 
+class PreviewMembershipFixture extends PreviewLifecycleFixture {
+    __New() {
+        super.__New()
+        this.QuickGroupEnabled := true
+        this.DisabledFromGroupsEnabled := true
+        this.Save_Settings_Delay_Timer := (*) => 0
+        this.flashMethod := Map()
+        this.eventMethods := Map()
+    }
+    RestoreClientPossitions(*) {
+    }
+}
+
+TestRunner.Register("Quick Group and disabled membership survive logout relogin and saved-position preview recreation", PreviewMembershipReloginTest)
+PreviewMembershipReloginTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := PreviewMembershipFixture()
+    sources := [Gui(), Gui(), Gui()]
+    handles := []
+    try {
+        for source in sources {
+            source.Show("Hide w160 h100")
+            handles.Push(source.Hwnd)
+            app.EVE_WIN_Created(source.Hwnd, "EVE - Original " A_Index)
+        }
+        quick := handles[1], disabled := handles[2]
+        app.AddToQuickGroup(quick, "EVE - Original 1")
+        app.AddToQuickGroup(handles[3], "EVE - Original 3")
+        app.AddToDisabled(disabled, "EVE - Original 2")
+        app.ThumbnailPositions["EVE - Relogged"] := [50, 60, 180, 120]
+        for hwnd in handles {
+            app.EVENameChange(hwnd, "EVE")
+            app.EVENameChange(hwnd, "EVE - Relogged")
+            AssertFalse(app.ThumbWindows.HasProp(hwnd), "A saved position must exercise preview recreation.")
+            AssertTrue(app.previewQueue.items.Has(hwnd))
+            app.EVE_WIN_Created(hwnd, "EVE - Relogged")
+        }
+        AssertEqual([quick, handles[3]], app.GetQuickGroupWindowOrder(), "Recreation must retain the original added order.")
+        AssertEqual("EVE - Relogged", app.QuickGroupChars[quick])
+        AssertEqual("EVE - Relogged", app.DisabledChars[disabled])
+        app.DontCloseQuickGroupClients := true
+        AssertTrue(app.DontCloseWIn("EVE", quick))
+        for hwnd in handles
+            app.CleanupClosedPreview(hwnd)
+        AssertEqual(0, app.QuickGroupChars.Count, "Actual client removal must still clear membership.")
+        AssertEqual(0, app.DisabledChars.Count)
+        AssertEqual(0, app.QuickGroupOrder.Length)
+    } finally {
+        for hwnd in handles
+            app.DisposePreview(hwnd)
+        for source in sources
+            source.Destroy()
+        SetTimer(app.debugToolTipMethod, 0)
+        SetTimer(app.Save_Settings_Delay_Timer, 0)
+        DetectHiddenWindows(oldHidden)
+    }
+}
+
+TestRunner.Register("Logout persistence settings independently clear membership and closed queued clients are forgotten", PreviewMembershipOptOutTest)
+PreviewMembershipOptOutTest() {
+    oldHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := PreviewMembershipFixture()
+    sources := [Gui(), Gui()]
+    handles := []
+    try {
+        for source in sources {
+            source.Show("Hide w160 h100")
+            handles.Push(source.Hwnd)
+            app.EVE_WIN_Created(source.Hwnd, "EVE - Original")
+        }
+        quick := handles[1], disabled := handles[2]
+        app.AddToQuickGroup(quick, "EVE - Original")
+        app.AddToDisabled(disabled, "EVE - Original")
+        app.PreserveQuickGroupOnLogout := false
+        app.EVENameChange(quick, "EVE")
+        app.EVENameChange(disabled, "EVE")
+        AssertEqual(0, app.QuickGroupChars.Count)
+        AssertTrue(app.DisabledChars.Has(disabled), "Disabled persistence remains enabled independently.")
+        app.PreserveDisabledOnLogout := false
+        app.EVENameChange(disabled, "EVE - Other Pilot")
+        AssertEqual(0, app.DisabledChars.Count)
+        app.PreserveQuickGroupOnLogout := true
+        app.AddToQuickGroup(quick, "EVE")
+        app.ThumbnailPositions["EVE - Other Pilot"] := [50, 60, 180, 120]
+        app.EVENameChange(quick, "EVE - Other Pilot")
+        AssertTrue(app.QuickGroupChars.Has(quick))
+        AssertFalse(app.ThumbWindows.HasProp(quick))
+        sources[1].Destroy()
+        app.ProcessPreviewQueue([disabled])
+        AssertEqual(0, app.QuickGroupChars.Count, "Closing while recreation is queued must not retain stale membership.")
+        AssertEqual(0, app.QuickGroupOrder.Length)
+    } finally {
+        for hwnd in handles
+            app.DisposePreview(hwnd)
+        for source in sources
+            source.Destroy()
+        SetTimer(app.debugToolTipMethod, 0)
+        SetTimer(app.Save_Settings_Delay_Timer, 0)
+        DetectHiddenWindows(oldHidden)
+    }
+}
+
+; Allow a real timer to interrupt disposal after an owned overlay has been destroyed.
+class PreviewDestroyTimerWindow {
+    __New(window, callback) {
+        this.window := window
+        this.Hwnd := window.Hwnd
+        this.callback := callback
+    }
+    Destroy() {
+        this.window.Destroy()
+        SetTimer(this.callback, -1)
+        Sleep(30)
+    }
+}
+
+TestRunner.Register("Closing previews detach before overlay timers run and ten replacements stay usable", PreviewOverlayDisposalTimerTest)
+PreviewOverlayDisposalTimerTest() {
+    previousHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := PreviewLifecycleFixture()
+    sources := [], handles := [], callbacks := []
+    state := {polls: 0, errors: []}
+    baseline := LiveThumb.OBJ_COUNTER
+    try {
+        app.systemTrackingEnabled := 1
+        app.systemColorsEnabled := 1
+        loop 2 {
+            loop 10 {
+                source := Gui(, "Overlay timer source")
+                sources.Push(source)
+                source.Show("Hide w160 h100")
+                hwnd := source.Hwnd
+                handles.Push(hwnd)
+                app.EVE_WIN_Created(hwnd, "EVE - Timer pilot " A_Index)
+                app.updateThumbnailSystemText("Jita", hwnd)
+                app.updateThumbnailDPSText("DPS: In: 10 | Out: 20", hwnd, "% EM 100")
+                thumb := app.ThumbWindows.%hwnd%
+                callback := PollDuringDestroy.Bind(hwnd, thumb["Window"].Hwnd)
+                callbacks.Push(callback)
+                thumb["Window"] := PreviewDestroyTimerWindow(thumb["Window"], callback)
+            }
+            ; Close every client, then dispose the batch as the main-window timer does.
+            for source in sources
+                source.Destroy()
+            for hwnd in handles {
+                pollsBefore := state.polls
+                app.DisposePreview(hwnd)
+                AssertEqual(pollsBefore + 1, state.polls, "Polling must actually interrupt GUI destruction.")
+                AssertEqual(0, state.errors.Length, state.errors.Length ? state.errors[1] : "")
+                AssertFalse(app.ThumbWindows.HasProp(hwnd))
+            }
+            AssertEqual(baseline, LiveThumb.OBJ_COUNTER, "The closed batch must release all DWM registrations.")
+            sources := [], handles := []
+        }
+        AssertEqual(20, state.polls)
+    } finally {
+        for callback in callbacks
+            SetTimer(callback, 0)
+        for hwnd in handles {
+            if app.ThumbWindows.HasProp(hwnd) {
+                thumb := app.ThumbWindows.%hwnd%
+                if thumb["Window"] is PreviewDestroyTimerWindow
+                    thumb["Window"] := thumb["Window"].window
+            }
+            app.DisposePreview(hwnd)
+        }
+        for source in sources
+            source.Destroy()
+        SetTimer(app.debugToolTipMethod, 0)
+        DetectHiddenWindows(previousHidden)
+    }
+
+    PollDuringDestroy(closingHwnd, previewHwnd) {
+        state.polls++
+        try {
+            app.RefreshThumbnailSystemColors()
+            app.updateThumbnailDPSText("", closingHwnd)
+            AssertFalse(app.ThumbWindows.HasProp(closingHwnd), "Destroyed overlays must already be detached.")
+            AssertFalse(app.ThumbHwnd_EvEHwnd.Has(previewHwnd), "Clicks must no longer resolve to the disposed preview.")
+            app.updateThumbnailSystemText("", closingHwnd)
+            app.updateThumbnailEventText("", closingHwnd)
+            app.updateThumbnailText("EVE - Closed", closingHwnd)
+            app.SetThumbnailText[closingHwnd] := "EVE - Closed"
+            app.DisposePreview(closingHwnd) ; Reentrant cleanup is harmless.
+            for hwnd, thumb in app.ThumbWindows.OwnProps() {
+                app.updateThumbnailDPSText("DPS: In: 30 | Out: 40", hwnd, "% Th 100")
+                AssertEqual("DPS: In: 30 | Out: 40", thumb["TextOverlay"]["DPSText"].Text)
+            }
+        } catch as err {
+            state.errors.Push(err.Message)
+        }
+    }
+}
+
+class PreviewOverlayUpdateFixture extends PreviewLifecycleFixture {
+    probe := 0
+    RefreshThumbnailTextLayout(overlay) {
+        this.WaitForCleanup()
+        super.RefreshThumbnailTextLayout(overlay)
+    }
+    ApplyThumbnailSystemColor(overlay, color) {
+        this.WaitForCleanup()
+        super.ApplyThumbnailSystemColor(overlay, color)
+    }
+    WaitForCleanup() {
+        if !this.probe
+            return
+        SetTimer(this.probe.callback, -1)
+        Sleep(30)
+        this.probe.aliveDuringUpdate := this.ThumbWindows.HasProp(this.probe.hwnd)
+    }
+}
+
+TestRunner.Register("DPS layout and system coloring finish before pending cleanup destroys their overlay", PreviewOverlayUpdateTimerTest)
+PreviewOverlayUpdateTimerTest() {
+    previousHidden := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    previousCritical := A_IsCritical
+    Critical(0)
+    app := PreviewOverlayUpdateFixture()
+    source := Gui(, "Overlay update source")
+    hwnd := source.Hwnd
+    probe := 0
+    try {
+        source.Show("Hide w160 h100")
+        app.systemTrackingEnabled := 1
+        app.systemColorsEnabled := 1
+        for operation in ["dps", "colors"] {
+            app.EVE_WIN_Created(hwnd, "EVE - Update pilot")
+            app.updateThumbnailSystemText("Jita", hwnd)
+            probe := {hwnd: hwnd, fired: false, aliveDuringUpdate: false, error: ""}
+            probe.callback := CleanupDuringUpdate.Bind(probe)
+            app.probe := probe
+            if operation = "dps"
+                app.updateThumbnailDPSText("DPS: In: 10 | Out: 20", hwnd, "% EM 100")
+            else
+                app.RefreshThumbnailSystemColors()
+            AssertEqual(0, A_IsCritical, "Text updates must restore the caller's interruptibility.")
+            app.probe := 0
+            deadline := A_TickCount + 1000
+            while !probe.fired && A_TickCount < deadline
+                Sleep(10)
+            AssertTrue(probe.aliveDuringUpdate, "Cleanup must wait until the overlay operation finishes.")
+            AssertTrue(probe.fired, "Pending cleanup must run after the text update.")
+            AssertEqual("", probe.error)
+            AssertFalse(app.ThumbWindows.HasProp(hwnd))
+            SetTimer(probe.callback, 0)
+        }
+    } finally {
+        app.probe := 0
+        if probe
+            SetTimer(probe.callback, 0)
+        app.DisposePreview(hwnd)
+        SetTimer(app.debugToolTipMethod, 0)
+        source.Destroy()
+        Critical(previousCritical)
+        DetectHiddenWindows(previousHidden)
+    }
+
+    CleanupDuringUpdate(probe) {
+        try app.DisposePreview(probe.hwnd)
+        catch as err
+            probe.error := err.Message
+        probe.fired := true
+    }
+}
+
 class PreviewCloseFixture extends PreviewLifecycleFixture {
     failCloseHwnd := 0
     failCreateHwnd := 0

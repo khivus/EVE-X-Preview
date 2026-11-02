@@ -163,3 +163,76 @@ LoggedInThumbnailShiftSettingTest() {
         app.MainFrame.Destroy()
     }
 }
+
+TestRunner.Register("Login-to-character title changes shift unsaved thumbnails even when login shifting is off", LoggedInRenamePlacementTest)
+LoggedInRenamePlacementTest() {
+    previous := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := ThumbnailShiftFixture(), sources := []
+    try {
+        app.ShiftThumbsForLoginScreen := false
+        Loop 2 {
+            source := app.CreateSource("EVE")
+            sources.Push(source)
+            app.EVE_WIN_Created(source.Hwnd, "EVE")
+        }
+        Loop 2 {
+            source := sources[A_Index]
+            source.Title := "EVE - Login placement " A_Index
+            app.EVENameChange(source.Hwnd, source.Title)
+        }
+        WinGetPos(&x1, &y1, &w1, &h1, app.ThumbWindows.%sources[1].Hwnd%["Window"].Hwnd)
+        WinGetPos(&x2, &y2, &w2, &h2, app.ThumbWindows.%sources[2].Hwnd%["Window"].Hwnd)
+        AssertFalse(x1 < x2 + w2 && x2 < x1 + w1 && y1 < y2 + h2 && y2 < y1 + h1)
+        AssertEqual(0, app.ThumbnailPositions.Count, "Automatic placement must not rewrite saved layouts.")
+    } finally {
+        app.Cleanup(sources)
+        DetectHiddenWindows(previous)
+    }
+}
+
+TestRunner.Register("Unsaved previews reserve saved positions of clients still waiting for startup", LoggedInReservedPlacementTest)
+LoggedInReservedPlacementTest() {
+    previous := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := ThumbnailShiftFixture(), sources := []
+    try {
+        saved := app.CreateSource("EVE - Reserved placement")
+        unsaved := app.CreateSource("EVE - Unsaved placement")
+        sources.Push(saved, unsaved)
+        app.Profiles["Default"]["Thumbnail Positions"]["EVE - Reserved placement"] := Map("x", 100, "y", 100, "width", 100, "height", 80)
+        app.EVE_WIN_Created(unsaved.Hwnd, unsaved.Title)
+        AssertShiftPosition(app, unsaved, 200, 100)
+        app.EVE_WIN_Created(saved.Hwnd, saved.Title)
+        AssertShiftPosition(app, saved, 100, 100)
+        AssertShiftPosition(app, unsaved, 200, 100)
+    } finally {
+        app.Cleanup(sources)
+        DetectHiddenWindows(previous)
+    }
+}
+
+TestRunner.Register("A later login restoring saved geometry relocates overlapping unsaved previews", LoggedInLateSavedPlacementTest)
+LoggedInLateSavedPlacementTest() {
+    previous := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := ThumbnailShiftFixture(), sources := []
+    try {
+        app.ShiftThumbsForLoginScreen := false
+        saved := app.CreateSource("EVE")
+        unsaved := app.CreateSource("EVE - Late saved neighbor")
+        sources.Push(saved, unsaved)
+        app.EVE_WIN_Created(saved.Hwnd, "EVE")
+        app.EVE_WIN_Created(unsaved.Hwnd, unsaved.Title)
+        AssertShiftPosition(app, unsaved, 200, 100)
+        saved.Title := "EVE - Late saved placement"
+        app.Profiles["Default"]["Thumbnail Positions"][saved.Title] := Map("x", 200, "y", 100, "width", 100, "height", 80)
+        app.EVENameChange(saved.Hwnd, saved.Title)
+        app.EVE_WIN_Created(saved.Hwnd, saved.Title)
+        AssertShiftPosition(app, saved, 200, 100)
+        AssertShiftPosition(app, unsaved, 100, 100)
+    } finally {
+        app.Cleanup(sources)
+        DetectHiddenWindows(previous)
+    }
+}

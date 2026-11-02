@@ -1,6 +1,8 @@
 ; A separate renderer uses the real thumbnail windows and text layout, with
 ; sample data in place of a live client. It never joins the client's HWND maps.
 class SettingsThumbnailPreview extends Main_Class {
+    ; The isolated demo intentionally simulates an active client.
+    EventSourceActive(hwnd) => true
     static SampleDuration := 1000
     static MouseMessages := [0x201, 0x204, 0x208] ; Left/right down, middle up.
     static Systems := ["Jita", "Dodixie", "Amarr", "Hek", "Tama", "Turnur", "Ahbazon"]
@@ -387,6 +389,8 @@ class SettingsThumbnailPreview extends Main_Class {
     }
 
     BeginGesture(action, flags) {
+        if this.LockThumbnailPositions
+            return
         point := this.PointerState()
         WinGetPos(&x, &y, &w, &h, this.sample["Window"].Hwnd)
         this.gesture := {resize: InStr(action, "Resize") > 0, buttons: flags & 3,

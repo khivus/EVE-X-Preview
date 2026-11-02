@@ -36,10 +36,6 @@ SettingsScaledPanelsTest() {
             AssertTrue(DllCall("SetWindowPos", "Ptr", app.Sidebar.Hwnd, "Ptr", 0,
                 "Int", 0, "Int", 0, "Int", sidebarWidth, "Int", Round(app.guiHeight * scale), "UInt", 0x14))
             sidebar := SettingsNativeRect(app.Sidebar.Hwnd, app.S_Gui.Hwnd)
-            app.MainFrame.Show(Format("x{} y0 w450 h812", app.sidebarW))
-            oldContent := SettingsNativeRect(app.MainFrame.Hwnd, app.S_Gui.Hwnd)
-            if scale > 1
-                AssertTrue(oldContent.left < sidebar.right, "Reproduce the reported leftward overlap at " (scale * 100) "%.")
             app.ShowSettingsContent()
             content := SettingsNativeRect(app.MainFrame.Hwnd, app.S_Gui.Hwnd)
             AssertEqual(sidebar.right, content.left, "No overlap or gap at " (scale * 100) "%.")
@@ -53,6 +49,27 @@ SettingsScaledPanelsTest() {
 }
 
 TestRunner.Register("Settings content placement uses parent coordinates including sidebar offsets", SettingsPanelParentCoordinatesTest)
+TestRunner.Register("Logout membership controls fit Thumbnails Interactions and update their profile settings", SettingsGroupPersistenceControlsTest)
+SettingsGroupPersistenceControlsTest() {
+    app := SettingsLayoutFixture()
+    app.Save_Settings_Delay_Timer := (*) => 0
+    try {
+        app.ThumbnailsInteractions_Ctrl()
+        for name in ["PreserveDisabledOnLogout", "PreserveQuickGroupOnLogout"] {
+            control := app.MainFrame[name]
+            control.GetPos(&x, &y, &w, &h)
+            AssertTrue(y + h <= app.guiHeight - 10, "The logout controls must fit without clipping.")
+            AssertEqual(1, control.Value, "Membership persistence must be enabled by default.")
+            SendMessage(0xF5, 0, 0, control) ; BM_CLICK follows the real settings event path.
+            Sleep(20)
+            AssertEqual(0, app.%name%, "The checkbox must update its own profile setting.")
+        }
+    } finally {
+        SetTimer(app.Save_Settings_Delay_Timer, 0)
+        app.Dispose()
+    }
+}
+
 SettingsPanelParentCoordinatesTest() {
     app := SettingsLayoutFixture()
     try {

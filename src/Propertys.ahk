@@ -8,16 +8,22 @@ class Propertys extends TrayMenu {
 
     SetThumbnailText[hwnd, *] {
         set {
-            if This.ThumbWindows.HasProp(hwnd) {
-                newtext := Value
-                if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
-                    This.HideEventBorder(hwnd)
-                    This.updateThumbnailEventText("", hwnd)
-                    This.updateThumbnailSystemText("", hwnd)
-                    This.updateThumbnailDPSText("", hwnd)
+            previousCritical := A_IsCritical
+            Critical
+            try {
+                if This.ThumbWindows.HasProp(hwnd) {
+                    newtext := Value
+                    if This.ThumbWindows.%hwnd%["Window"].Title != newtext {
+                        This.HideEventBorder(hwnd)
+                        This.updateThumbnailEventText("", hwnd)
+                        This.updateThumbnailSystemText("", hwnd)
+                        This.updateThumbnailDPSText("", hwnd)
+                    }
+                    This.updateThumbnailText(newtext, hwnd)
+                    This.ThumbWindows.%hwnd%["Window"].Title := newtext
                 }
-                This.updateThumbnailText(newtext, hwnd)
-                This.ThumbWindows.%hwnd%["Window"].Title := newtext
+            } finally {
+                Critical(previousCritical)
             }
         }
     }
@@ -138,6 +144,16 @@ class Propertys extends TrayMenu {
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseDisabledClients"] := value
     }
 
+    PreserveQuickGroupOnLogout {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"].Get("PreserveQuickGroupOnLogout", 1)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["PreserveQuickGroupOnLogout"] := value
+    }
+
+    PreserveDisabledOnLogout {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"].Get("PreserveDisabledOnLogout", 1)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["PreserveDisabledOnLogout"] := value
+    }
+
     DontCloseQuickGroupClients {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsInteractions]["Hotkeys Settings"]["DontCloseQuickGroupClients"] := value
@@ -150,6 +166,42 @@ class Propertys extends TrayMenu {
     ThumbnailStartLocation[key] {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ThumbnailStartLocation"][key] := value
+    }
+
+    ThumbnailToolsSettings {
+        get {
+            if !This.HasOwnProp("ProfileThumbnailsBehavior")
+                return Map()
+            return This.Profiles[This.ProfileThumbnailsBehavior].Get("Thumbnails Behavior", Map())
+        }
+    }
+
+    LockThumbnailPositions {
+        get => This.ThumbnailToolsSettings.Get("LockThumbnailPositions", 0)
+        set => This.ThumbnailToolsSettings["LockThumbnailPositions"] := !!value
+    }
+
+    AnonymizeThumbnails {
+        get => This.Profiles[This.ProfileThumbnailsVisuals].Get("Thumbnails Visuals", Map()).Get("AnonymizeThumbnails", 0)
+        set => This.Profiles[This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["AnonymizeThumbnails"] := !!value
+    }
+
+    AnonymousNames {
+        get => This.Profiles[This.ProfileThumbnailsVisuals].Get("Thumbnails Visuals", Map()).Get("AnonymousNames", "Aurora`nComet`nNova`nOrbit`nRaven`nZenith")
+        set => This.Profiles[This.ProfileThumbnailsVisuals]["Thumbnails Visuals"]["AnonymousNames"] := value
+    }
+
+    ThumbnailPollingInterval {
+        get {
+            interval := This.ThumbnailToolsSettings.Get("ThumbnailPollingInterval", 50)
+            return IsNumber(interval) ? Max(50, Min(1000, Round(interval))) : 50
+        }
+        set => This.ThumbnailToolsSettings["ThumbnailPollingInterval"] := value
+    }
+
+    AutoWildcardWindowHotkeys {
+        get => This.HasOwnProp("ProfileHotkeysGroups") ? This.Profiles[This.ProfileHotkeysGroups]["Hotkeys Settings"].Get("AutoWildcardWindowHotkeys", 1) : 1
+        set => This.Profiles[This.ProfileHotkeysGroups]["Hotkeys Settings"]["AutoWildcardWindowHotkeys"] := !!value
     }
 
     AutoSaveThumbnailPositions {
@@ -255,6 +307,11 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["HideThumbnailsOnLostFocus"] := value
     }
+    ExcludeThumbnailsFromCapture {
+        get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"].Get("ExcludeThumbnailsFromCapture", 0)
+        set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ExcludeThumbnailsFromCapture"] := value
+    }
+
     ShowThumbnailsAlwaysOnTop {
         get => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"]
         set => This._JSON["_Profiles"][This.ProfileThumbnailsBehavior]["Thumbnails Behavior"]["ShowThumbnailsAlwaysOnTop"] := value

@@ -104,6 +104,17 @@ Class TrayMenu extends Settings_Gui {
         if This.TrayMenuShortcuts["Auto Save Thumbnail Positions"] || This.TrayMenuShortcuts["Save Thumbnail Positions"]
             TrayMenu.Add() ; Seperator
 
+        if This.TrayMenuShortcuts.Get("Lock Thumbnail Positions", 0) {
+            TrayMenu.Add("Lock Thumbnail Positions", ObjBindMethod(This, "ToggleLockThumbnailPositions"))
+            if This.LockThumbnailPositions
+                TrayMenu.Check("Lock Thumbnail Positions")
+        }
+        if This.TrayMenuShortcuts.Get("Anonymize Thumbnails", 0) {
+            TrayMenu.Add("Anonymize Thumbnails", ObjBindMethod(This, "ToggleAnonymizeThumbnails"))
+            if This.AnonymizeThumbnails
+                TrayMenu.Check("Anonymize Thumbnails")
+        }
+
         TrayMenu.Add("Reload", (*) => Reload())
         TrayMenu.Add("Exit", (*) => ExitApp())
         TrayMenu.Default := "Open"
@@ -162,11 +173,7 @@ Class TrayMenu extends Settings_Gui {
                 This.ActivateProfile(ItemName, "Tray")
             }
             Else if (ItemName = "Open") {
-                if WinExist("EVE-X-Preview - Settings") {
-                    WinActivate("EVE-X-Preview - Settings")
-                    Return
-                }
-                This.MainGui()
+                This.ShowSettings()
             }
             Else If (ItemName = "Suspend Hotkeys") {
                 Suspend(-1)
@@ -212,7 +219,7 @@ Class TrayMenu extends Settings_Gui {
 
     CloseAllEVEWindows(*) {
         try {
-            list := WinGetList("Ahk_Exe exefile.exe")
+            list := WinGetList(This.EVEExe)
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
             for hwnd in list {
                 WinTitle := WinGetTitle(hwnd)
@@ -220,7 +227,7 @@ Class TrayMenu extends Settings_Gui {
                 if This.dontCloseActiveClient && WinActive("ahk_id " hwnd)
                     continue
 
-                if This.DontCloseWIn(WinTitle)
+                if This.DontCloseWIn(WinTitle, hwnd)
                     continue
 
                 PostMessage 0x0112, 0xF060, , , hwnd

@@ -31,6 +31,7 @@ class SoundSettingsGui extends ColorSettingsGui {
         if !this.MainFrame["Sound" event].Enabled
             return
         this.CancelHotkeyRecording()
+        this.ClearSettingsTooltip()
         this.CloseEventSoundDialog()
         dialog := Gui("+Owner" this.S_Gui.Hwnd " -MinimizeBox -MaximizeBox", "Event Sounds - " this.monitoredEventsTexts[event])
         this.eventSoundDialog := dialog
@@ -81,12 +82,13 @@ class SoundSettingsGui extends ColorSettingsGui {
             dialog[name].OnEvent("Change", ObjBindMethod(this, "ChangeSoundVolume", scope))
             dialog[name "Text"].OnEvent("Change", ObjBindMethod(this, "ChangeSoundVolumeText", scope))
             dialog[name "Text"].OnEvent("LoseFocus", ObjBindMethod(this, "CommitSoundVolumeText", scope))
-            dialog[name].ToolTip := "Volume in 5% steps. Type an exact percentage in the field."
-            dialog[name "Text"].ToolTip := "Enter a whole percentage from 0 to 300, with or without %."
+            dialog[name].ToolTip := SettingsTooltips.Description(name)
+            dialog[name "Text"].ToolTip := SettingsTooltips.Description(name "Text")
         }
         dialog.OnEvent("Close", (*) => this.CloseEventSoundDialog())
         dialog.OnEvent("Escape", (*) => this.CloseEventSoundDialog())
         this.AddSoundPlaybackControls()
+        SettingsTooltips.Apply(dialog)
         this.RefreshSoundLibrary(event,, true)
         this.S_Gui.Opt("+Disabled")
         dialog.Show("w900 h652")
@@ -110,8 +112,8 @@ class SoundSettingsGui extends ColorSettingsGui {
             dialog[name].OnEvent("Change", ObjBindMethod(this, "ChangeSoundPlaybackSetting"))
             dialog[name].OnEvent("LoseFocus", ObjBindMethod(this, "CommitSoundPlaybackSetting"))
         }
-        dialog["MaxSimultaneousSounds"].ToolTip := "Shared across profiles. A new event sound replaces the oldest when the limit is reached. Manual previews are separate."
-        dialog["SoundRepeatTimeout"].ToolTip := "0-3600000 ms between starts of the same file, shared by all events and characters. 0 allows immediate repeats. Manual previews ignore this timeout."
+        dialog["MaxSimultaneousSounds"].ToolTip := SettingsTooltips.Description("MaxSimultaneousSounds")
+        dialog["SoundRepeatTimeout"].ToolTip := SettingsTooltips.Description("SoundRepeatTimeout")
     }
 
     ReadSoundPlaybackSetting(name) => name = "MaxSimultaneousSounds" ? EventSounds.MaxSimultaneous(this._JSON) : EventSounds.RepeatTimeout(this._JSON)
@@ -420,6 +422,7 @@ class SoundSettingsGui extends ColorSettingsGui {
             this.DeleteProp("settingsSoundPlayer")
         }
         if this.HasOwnProp("eventSoundDialog") {
+            this.ClearSettingsTooltip()
             this.S_Gui.Opt("-Disabled")
             this.eventSoundDialog.Destroy()
             this.DeleteProp("eventSoundDialog")

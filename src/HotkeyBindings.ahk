@@ -1,9 +1,9 @@
 ; Read-only conflict checks: never register, disable or rewrite the user's binds.
 class HotkeyBindings {
-    static ForWindowSwitch(key) {
+    static ForWindowSwitch(key, automatic := true) {
         ; Custom combinations already have wildcard behavior; an explicit *
         ; before their prefix key is rejected by AHK. Preserve existing text.
-        return key = "" || InStr(key, "*") || RegExMatch(key, "\s&\s") ? key : "*" key
+        return !automatic || key = "" || InStr(key, "*") || RegExMatch(key, "\s&\s") ? key : "*" key
     }
 
     static Settings := Map(
@@ -18,27 +18,28 @@ class HotkeyBindings {
         entries := []
         for name, profile in app.Profiles
             this.Add(entries, "profile:" name, "Profile: " name, profile.Get("ActivationHotkey", ""))
+        automatic := app.AutoWildcardWindowHotkeys
         settings := app.Profiles[app.ProfileHotkeysSettings].Get("Hotkeys Settings", Map())
         for key, label in this.Settings {
             switchesWindow := key = "SwitchToPreviousWindow_Hotkey" || key = "CycleEveryLoggedIn_Hotkey" || key = "Login_Screen_Cycle_Hotkey"
-            this.Add(entries, "setting:" key, label, settings.Get(key, ""), switchesWindow)
+            this.Add(entries, "setting:" key, label, settings.Get(key, ""), switchesWindow && automatic)
         }
         quick := app.Profiles[app.ProfileThumbnailsInteractions].Get("Hotkeys Settings", Map())
-        this.Add(entries, "quick", "Quick Group", quick.Get("QuickGroupHotkey", ""), true)
+        this.Add(entries, "quick", "Quick Group", quick.Get("QuickGroupHotkey", ""), automatic)
         for name, group in app.Hotkey_Groups {
             for key in ["ForwardsHotkey", "BackwardsHotkey", "FirstCharHotkey"]
-                this.Add(entries, "group:" name ":" key, "Group " name ": " key, group.Get(key, ""), true)
+                this.Add(entries, "group:" name ":" key, "Group " name ": " key, group.Get(key, ""), automatic)
         }
         for row, item in app._Hotkeys {
             for name, key in item
-                this.Add(entries, "character:" row, "Character: " app.CleanTitle(name), key, true)
+                this.Add(entries, "character:" row, "Character: " app.CleanTitle(name), key, automatic)
         }
         for name, group in app.NonEVEGroups {
             for key in ["fkey", "bkey"]
-                this.Add(entries, "nonGroup:" name ":" key, "App group " name ": " key, group.Get(key, ""), true)
+                this.Add(entries, "nonGroup:" name ":" key, "App group " name ": " key, group.Get(key, ""), automatic)
         }
         for row, key in app.NonEVEHotkeys["hotkey"]
-            this.Add(entries, "nonApp:" row, "App hotkey row " row, key, true)
+            this.Add(entries, "nonApp:" row, "App hotkey row " row, key, automatic)
         return entries
     }
 

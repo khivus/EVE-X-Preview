@@ -189,6 +189,9 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 #Include "Color_Settings_Test.ahk"
 #Include "Settings_Thumbnail_Preview_Test.ahk"
 #Include "Thumbnail_Border_Test.ahk"
+#Include "Thumbnail_Capture_Test.ahk"
 #Include "Event_Sounds_Test.ahk"
 
+#Include "Thumbnail_Tools_Test.ahk"
+#Include "Settings_Scroll_Test.ahk"
 TestRunner.RunAll()
