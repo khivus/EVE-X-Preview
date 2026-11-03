@@ -157,3 +157,123 @@ SettingsResizePaletteTest() {
         }
     } finally app.Dispose()
 }
+
+TestRunner.Register("Settings painting visible update batches preserve top-level visibility and focus", SettingsVisibleBatchTest)
+SettingsVisibleBatchTest() {
+    app := SettingsWorkbenchFixture()
+    try {
+        app.S_Gui.Show("NoActivate x-3000 y-3000 w1000 h740")
+        Sleep(180)
+        DllCall("SetActiveWindow", "Ptr", app.S_Gui.Hwnd, "Ptr")
+        app.search.Focus()
+        active := DllCall("GetActiveWindow", "Ptr"), focus := DllCall("GetFocus", "Ptr")
+        app.theme.BeginUpdate(app.S_Gui)
+        try {
+            AssertTrue(DllCall("IsWindowVisible", "Ptr", app.S_Gui.Hwnd), "Settings must remain visible throughout an update, including to the taskbar.")
+            AssertTrue(DllCall("IsWindowVisible", "Ptr", app.search.Hwnd), "The parent must retain its visible flag while child controls update.")
+            app.theme.BeginUpdate(app.S_Gui)
+            try app.Layout()
+            finally app.theme.EndUpdate(app.S_Gui)
+            AssertTrue(DllCall("IsWindowVisible", "Ptr", app.S_Gui.Hwnd))
+            AssertEqual(1, app.theme.updates[app.S_Gui.Hwnd].depth)
+            AssertEqual(active, DllCall("GetActiveWindow", "Ptr"))
+            AssertEqual(focus, DllCall("GetFocus", "Ptr"))
+        } finally app.theme.EndUpdate(app.S_Gui)
+        AssertEqual(0, app.theme.updates.Count)
+
+        dialog := SettingsChildDialog(app, "Visible update fixture")
+        try {
+            dialog.AddText("x20 y20 w300 h26", "Keep this owned dialog visible too")
+            dialog.Show("w440 h300")
+            app.theme.BeginUpdate(dialog.root)
+            try {
+                AssertTrue(DllCall("IsWindowVisible", "Ptr", dialog.Hwnd), "Owned editors are also top-level windows.")
+                dialog.Layout(500, 350)
+                AssertTrue(DllCall("IsWindowVisible", "Ptr", dialog.Hwnd))
+            } finally app.theme.EndUpdate(dialog.root)
+        } finally dialog.Destroy()
+    } finally app.Dispose()
+}
+
+; Check visibility during native message dispatch; final-state checks miss the
+; brief WS_VISIBLE removal that makes the shell remove and recreate a task button.
+class SettingsVisibilityObserver {
+    static WindowOrder(handles) {
+        wanted := Map(), order := []
+        for index, handle in handles
+            wanted[handle] := index
+        handle := DllCall("GetTopWindow", "Ptr", 0, "Ptr")
+        while handle {
+            if wanted.Has(handle)
+                order.Push(wanted[handle])
+            handle := DllCall("GetWindow", "Ptr", handle, "UInt", 2, "Ptr")
+        }
+        return order
+    }
+    __New(handle) {
+        this.handle := handle, this.hidden := 0
+        this.callback := CallbackCreate(ObjBindMethod(this, "WindowProc"),, 6)
+        DllCall("comctl32\SetWindowSubclass", "Ptr", handle, "Ptr", this.callback, "UPtr", 97, "UPtr", 0)
+    }
+    WindowProc(handle, message, wParam, lParam, subclass, data) {
+        result := DllCall("comctl32\DefSubclassProc", "Ptr", handle, "UInt", message, "Ptr", wParam, "Ptr", lParam, "Ptr")
+        if !DllCall("IsWindowVisible", "Ptr", handle)
+            this.hidden++
+        return result
+    }
+    Dispose() {
+        if DllCall("IsWindow", "Ptr", this.handle)
+            DllCall("comctl32\RemoveWindowSubclass", "Ptr", this.handle, "Ptr", this.callback, "UPtr", 97)
+        CallbackFree(this.callback)
+    }
+}
+
+TestRunner.Register("Settings painting buttons and page rebuilds never hide or reorder the settings window", SettingsButtonWindowContinuityTest)
+SettingsButtonWindowContinuityTest() {
+    app := SettingsWorkbenchFixture(), observer := 0, backgrounds := []
+    try {
+        app.S_Gui.Show("NoActivate x-3000 y-3000 w1000 h740")
+        Sleep(180)
+        handles := [app.S_Gui.Hwnd]
+        loop 2 {
+            background := Gui("+ToolWindow", "Settings stacking fixture " A_Index)
+            backgrounds.Push(background)
+            background.Show("NoActivate x-3000 y-3000 w200 h100")
+            DllCall("SetWindowPos", "Ptr", background.Hwnd, "Ptr", handles[-1],
+                "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
+            handles.Push(background.Hwnd)
+        }
+        AssertArrayEqual([1, 2, 3], SettingsVisibilityObserver.WindowOrder(handles))
+        DllCall("SetActiveWindow", "Ptr", app.S_Gui.Hwnd, "Ptr")
+        app.manageProfiles.Focus()
+        active := DllCall("GetActiveWindow", "Ptr"), focus := DllCall("GetFocus", "Ptr")
+        foreground := DllCall("GetForegroundWindow", "Ptr")
+        observer := SettingsVisibilityObserver(app.S_Gui.Hwnd)
+        SendMessage(0xF5, 0, 0, app.manageProfiles) ; BM_CLICK follows the real button handler.
+        Sleep(35)
+        AssertEqual("profiles", app.renderedSection)
+        app.CreateProfile("Fleet")
+        app.Navigate("appearance")
+        app.EditDefaultHere("appearance")
+        app.EndDefaultEditing()
+        for mode in ["dark", "light"] {
+            app.model.Set("SettingsTheme", mode)
+            app.Changed()
+            app.Navigate("layout")
+            app.Layout()
+        }
+        app.DiscardDraft()
+        AssertEqual(0, observer.hidden, "No intermediate message may see Settings hidden during ordinary actions.")
+        AssertEqual(active, DllCall("GetActiveWindow", "Ptr"), "Page actions must retain the active window.")
+        AssertEqual(focus, DllCall("GetFocus", "Ptr"), "A surviving sidebar button retains keyboard focus.")
+        AssertEqual(foreground, DllCall("GetForegroundWindow", "Ptr"), "Page actions must retain the foreground window.")
+        AssertArrayEqual([1, 2, 3], SettingsVisibilityObserver.WindowOrder(handles), "Settings and background fixtures must retain their relative window order.")
+        AssertEqual(0, app.theme.updates.Count)
+    } finally {
+        if IsObject(observer)
+            observer.Dispose()
+        app.Dispose()
+        for background in backgrounds
+            background.Destroy()
+    }
+}

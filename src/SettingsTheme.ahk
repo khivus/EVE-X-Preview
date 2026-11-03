@@ -108,9 +108,14 @@ class SettingsTheme {
             this.updates[handle].depth++
             return
         }
-        visible := !!DllCall("IsWindowVisible", "Ptr", handle)
-        this.updates[handle] := {depth: 1, visible: visible}
-        if visible
+        ; DefWindowProc handles WM_SETREDRAW by changing WS_VISIBLE. Doing
+        ; this to a top-level window removes its task button and disturbs
+        ; activation/z-order. Keep it visible and use the controls' local
+        ; buffers plus the final redraw; only child windows may be suspended.
+        suspendRedraw := DllCall("IsWindowVisible", "Ptr", handle)
+            && (SettingsNativeChrome.Long(handle, -16) & 0x40000000) ; WS_CHILD
+        this.updates[handle] := {depth: 1, suspendRedraw: suspendRedraw}
+        if suspendRedraw
             DllCall("SendMessageW", "Ptr", handle, "UInt", 0xB, "Ptr", 0, "Ptr", 0)
     }
     EndUpdate(gui) {
@@ -122,7 +127,7 @@ class SettingsTheme {
             return
         ; Never enable redraw on a window that was hidden: WM_SETREDRAW(TRUE)
         ; would make it visible, including a fixture or an unfinished editor.
-        if update.visible
+        if update.suspendRedraw
             DllCall("SendMessageW", "Ptr", handle, "UInt", 0xB, "Ptr", 1, "Ptr", 0)
         DllCall("RedrawWindow", "Ptr", handle, "Ptr", 0, "Ptr", 0, "UInt", 0x585)
     }

@@ -31,6 +31,7 @@
 * Opening Settings starts an asynchronous update check. A newer stable version displays an update-available button in the sidebar, linking to About and updates.
 
 ### Fixed
+* Settings buttons and page changes no longer briefly remove the taskbar icon, lose focus or disturb the order of open windows. Owned settings editors also stay visible while their layouts update.
 * Long DPS descriptions and other wrapped labels no longer use a fixed two-line height that clips their text.
 * Incomplete table rows survive navigation and resizing, block Apply with an explanation, and follow profile rename/remove/Undo actions.
 * Clicking table cells no longer scrolls the settings pane. Drag selection works across cells, including section inheritance; choice cells open usable dropdowns immediately.
