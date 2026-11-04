@@ -162,7 +162,14 @@ class SettingsSchema {
         this.Section("Application", "interface", "Settings appearance", "", "Theme changes preview immediately. Apply saves the choice for future settings windows.")
         this.Field("SettingsTheme", "Settings theme", "choice",,,, "Choose a light or dark interface, or follow the Windows app theme.", ["SettingsTheme"], "", true)
         this.Choices("SettingsTheme", "Use Windows setting", "system", "Light", "light", "Dark", "dark")
+        for id in SettingsPalettes.Order
+            this.Fields["SettingsTheme"].choices.Push({label: SettingsPalettes.Items[id]["label"], value: id})
+        this.Field("SettingsEditor", "Settings editor", "choice",,,, "Automatic prefers the compatible modern editor beside the application. The internal editor is always available from the tray.", ["SettingsEditor"], "", true)
+        this.Choices("SettingsEditor", "Automatic", "automatic", "Modern (C#)", "modern", "Built-in (AHK)", "builtin")
         this.Section("Application", "tray", "Tray menu commands", "Tray Menu Settings", "Checked commands appear in the tray menu. These checks do not turn the features themselves on.")
+        ; Ordinary metadata is generated from the canonical default command list.
+        for name, visible in JSON.Load(default_JSON)["_Profiles"]["Default"]["Tray Menu Settings"]["TrayMenuShortcuts"]
+            this.Field("TrayCommand:" name, name, "bool",,,, "Show this command in the tray menu.", ["Tray Menu Settings", "TrayMenuShortcuts", name])
         this.Section("Application", "performance", "Performance and compatibility", "Other")
         this.Field("ThumbnailPollingInterval", "Time between window and focus checks", "integer", 50, 1000, "ms", "Higher values reduce window checks and delay client and focus updates.", ["Thumbnails Behavior", "ThumbnailPollingInterval"], "Thumbnails Behavior")
         this.Field("SlowThumbnailCreation", "Stagger preview creation at startup", "bool",,,, "Wait 3 seconds, then create ready previews gradually to reduce startup GPU pressure.")

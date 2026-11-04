@@ -19,7 +19,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
 
     __New(owner, show := true) {
         this.owner := owner
-        this.model := SettingsModel(owner._JSON)
+        this.model := owner.HasOwnProp("settingsRecoveredModel") ? owner.DeleteProp("settingsRecoveredModel") : SettingsModel(owner._JSON)
         this._JSON := this.model.config
         this.default_JSON := JSON.Load(default_JSON)
         this.shortcutDrafts := Map(), this.shortcutErrors := Map()
@@ -468,7 +468,8 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                 for id in section.fields
                     if section.id != "events" || id != "shootingInterval"
                         this.RenderField(SettingsSchema.Fields[id])
-                this.RenderSpecial(section.id)
+                if section.id != "tray" ; Tray options now use the shared scalar schema.
+                    this.RenderSpecial(section.id)
             }
             for control in this.MainFrame
                 if control != heading && control != rule
@@ -997,13 +998,8 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         previousCritical := A_IsCritical
         Critical(true)
         try {
-            before := this.owner._JSON
-            merged := this.model.Merge(before)
-            this.owner._JSON := merged
-            this.owner.SaveJsonToFile()
+            SettingsSession.Commit(this.owner, this.model)
         } catch as err {
-            if IsSet(before)
-                this.owner._JSON := before
             failure := err.Message
         } finally Critical(previousCritical)
         if failure != "" {

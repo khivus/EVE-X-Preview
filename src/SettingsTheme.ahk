@@ -18,12 +18,13 @@ class SettingsTheme {
         this.SetMode(mode)
     }
     SetMode(mode) {
-        dark := mode = "dark"
+        custom := SettingsPalettes.Items.Has(mode)
+        dark := mode = "dark" || custom
         if mode = "system" {
             try dark := !RegRead("HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1)
         }
-        changed := !this.HasOwnProp("dark") || dark != this.dark
-        this.mode := mode, this.dark := dark
+        changed := !this.HasOwnProp("dark") || dark != this.dark || mode != this.mode
+        this.mode := mode, this.dark := dark, this.custom := custom
         if !dark && this.HasOwnProp("chrome")
             this.chrome.scrollbars.Finish(false)
         this.background := dark ? "202124" : "F7F7F7"
@@ -32,6 +33,11 @@ class SettingsTheme {
         this.foreground := dark ? "ECEEF2" : "202020"
         this.muted := dark ? "A6ADB8" : "707070"
         this.line := dark ? "424750" : "DDE1E7"
+        this.accent := dark ? "76B7FF" : "0078D4"
+        this.selection := dark ? "304C70" : "0078D4"
+        if custom
+            for key in ["background", "sidebar", "input", "foreground", "muted", "line", "accent", "selection"]
+                this.%key% := SettingsPalettes.Items[mode][key]
         if changed {
             this.ApplyAll()
             this.Repaint()
@@ -58,6 +64,10 @@ class SettingsTheme {
     Color(value) {
         if !this.dark
             return value
+        if this.custom
+            return Map("202020", this.foreground, "000000", this.foreground, "444444", this.foreground,
+                "555555", this.muted, "606A76", this.muted, "707070", this.muted, "526778", this.accent,
+                "765B00", "E9C579", "9A5700", "F0C674", "B42318", "FF9990").Get(StrUpper(value), value)
         return Map("202020", this.foreground, "000000", this.foreground,
             "444444", "D0D5DD", "555555", "BAC2CE", "606A76", "BAC2CE",
             "707070", this.muted, "526778", "9BC5E8", "765B00", "E9C579",
@@ -326,7 +336,7 @@ class SettingsTheme {
             stateOffset := A_PtrSize = 8 ? 64 : 40
             state := NumGet(data, stateOffset, "UInt")
             NumPut("UInt", SettingsTheme.BGR(this.foreground), data, A_PtrSize = 8 ? 80 : 48)
-            NumPut("UInt", SettingsTheme.BGR(state & 1 ? "304C70" : this.sidebar), data, A_PtrSize = 8 ? 84 : 52)
+            NumPut("UInt", SettingsTheme.BGR(state & 1 ? this.selection : this.sidebar), data, A_PtrSize = 8 ? 84 : 52)
             NumPut("UInt", state & ~0x11, data, stateOffset)
             return 0x12
         }
@@ -377,7 +387,7 @@ class SettingsTheme {
         DllCall("RtlMoveMemory", "Ptr", rect, "Ptr", lParam + (A_PtrSize = 8 ? 40 : 28), "UPtr", 16)
         state := NumGet(lParam, 16, "UInt"), index := NumGet(lParam, 8, "Int")
         selected := state & 1, disabled := state & 4 || !control.Enabled
-        SettingsTheme.Fill(dc, rect, this.dark ? selected ? "304C70" : this.input : selected ? "0078D4" : "FFFFFF")
+        SettingsTheme.Fill(dc, rect, selected ? this.selection : this.dark ? this.input : "FFFFFF")
         if index >= 0 {
             length := SendMessage(0x149, index, 0, control) ; CB_GETLBTEXTLEN
             text := Buffer(Max(2, (length + 1) * 2), 0)
@@ -411,7 +421,7 @@ class SettingsTheme {
             : state & 1 ? "CEE2F6" : state & 0x40 ? "E2EEF9" : "EFEFEF" : control.Gui.BackColor
         SettingsTheme.Fill(dc, rect, background)
         if control.Type = "Button"
-            SettingsTheme.Fill(dc, rect, control.Enabled && (WinGetStyle(control.Hwnd) & 0xF) = 1 ? this.dark ? "76B7FF" : "0078D4" : this.line, true)
+            SettingsTheme.Fill(dc, rect, control.Enabled && (WinGetStyle(control.Hwnd) & 0xF) = 1 ? this.accent : this.line, true)
         else {
             box := Buffer(16, 0), height := NumGet(rect, 12, "Int")
             scale := A_ScreenDPI / 96, size := Round(14 * scale), left := Round(scale)
@@ -420,7 +430,7 @@ class SettingsTheme {
             SettingsTheme.Fill(dc, box, this.input)
             SettingsTheme.Fill(dc, box, control.Enabled ? this.muted : this.line, true)
             if SendMessage(0xF0, 0, 0, control) {
-                pen := DllCall("CreatePen", "Int", 0, "Int", Max(1, Round(2 * scale)), "UInt", SettingsTheme.BGR(control.Enabled ? this.dark ? "76B7FF" : "0078D4" : this.muted), "Ptr")
+                pen := DllCall("CreatePen", "Int", 0, "Int", Max(1, Round(2 * scale)), "UInt", SettingsTheme.BGR(control.Enabled ? this.accent : this.muted), "Ptr")
                 previous := DllCall("SelectObject", "Ptr", dc, "Ptr", pen, "Ptr")
                 DllCall("MoveToEx", "Ptr", dc, "Int", left + Round(3 * scale), "Int", top + Round(7 * scale), "Ptr", 0)
                 DllCall("LineTo", "Ptr", dc, "Int", left + Round(6 * scale), "Int", top + Round(10 * scale))

@@ -64,6 +64,9 @@
 
     __New() { 
 
+        ; Advertise startup before reading configuration so an offline editor
+        ; hands its draft to this runtime instead of becoming a competing writer.
+        This.settingsBridge := SettingsBridge(This)
         This._JSON := Load_JSON()
         This.default_JSON := JSON.Load(default_JSON)
         This.runningProfile := This.LastUsedProfile
@@ -302,6 +305,7 @@
 
         This.ShowPostUpdateChangelog()
         This.RestoreSettingsAfterApply()
+        This.settingsBridge.ready := true
         return This
     }
 
@@ -386,6 +390,8 @@
         if !hwnd
             return false
         try {
+            if This.HasOwnProp("settingsBridge") && This.settingsBridge.HasExternal && WinGetPID(hwnd) = This.settingsBridge.ExternalPid
+                return true
             if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed
                 return DllCall("GetAncestor", "Ptr", hwnd, "UInt", 3, "Ptr") = This.settingsWorkbench.S_Gui.Hwnd
             if This.HasOwnProp("S_Gui")
@@ -2490,7 +2496,10 @@
         return "EVE - " title
     }
 
-    SaveJsonToFile(savePath := "EVE-X-Preview.json") {
+    SaveJsonToFile(savePath := "") {
+        if savePath = ""
+            savePath := A_ScriptDir "\EVE-X-Preview.json"
+        lock := SettingsFileLock(A_ScriptDir)
         previousCritical := A_IsCritical
         Critical
         tempPath := savePath ".save.tmp"
@@ -2504,6 +2513,7 @@
             ProgramLog.Add("Settings saved")
         } finally {
             Critical(previousCritical)
+            lock.Dispose()
         }
         This.SettingsSaveCompleted(serializedSettings)
     }

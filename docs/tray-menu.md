@@ -2,6 +2,8 @@
 
 [Back to README](../README.MD) · [Settings overview](settings.md)
 
+**Open** and tray-icon double-click follow the global **Settings editor** preference. **Open internal settings** provides direct access to the AHK workbench. Complete or discard any protected draft/dialog before changing editors. See [settings editors](modern-settings.md) for companion compatibility and fallback.
+
 Open Settings from the tray's **Open** command. Configure optional commands under **Application → Tray menu commands**. Checked rows control whether commands appear in the menu; they do not activate the features themselves.
 
 | Command | Effect |

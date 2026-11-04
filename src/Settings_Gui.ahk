@@ -241,7 +241,9 @@ Class Settings_Gui extends SoundSettingsGui {
         }
     }
 
-    ShowSettings(*) {
+    ShowSettings(*) => SettingsEditor.Open(this)
+
+    ShowInternalSettings(*) {
         if This.HasOwnProp("S_Gui") {
             try {
                 hwnd := This.S_Gui.Hwnd

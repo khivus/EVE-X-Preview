@@ -19,9 +19,14 @@
 #Include "src/ChangelogWindow.ahk"
 #Include "src/SimpleMarkdown.ahk"
 #Include "src/SettingsThumbnailPreview.ahk"
+#Include "src/SettingsPalettes.ahk"
 #Include "src/SettingsSchema.ahk"
 #Include "src/SettingsModel.ahk"
 #Include "src/SettingsTables.ahk"
+#Include "src/SettingsContract.ahk"
+#Include "src/SettingsSession.ahk"
+#Include "src/SettingsBridge.ahk"
+#Include "src/SettingsEditor.ahk"
 #Include "src/SettingsSearchText.ahk"
 #Include "src/SettingsScrollbars.ahk"
 #Include "src/SettingsControlScrollbars.ahk"
@@ -48,6 +53,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
     ; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
     SetWinDelay -1
     FileEncoding("UTF-8") ; Encoding for JSON file
+    SetWorkingDir(A_ScriptDir)
 
     SetTitleMatchMode 3
 
@@ -85,6 +91,12 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
 ; Improved settings loader
 Load_JSON() {
+    lock := SettingsFileLock(A_ScriptDir)
+    try return Load_JSONUnlocked()
+    finally lock.Dispose()
+}
+
+Load_JSONUnlocked(interactive := true) {
     ProgramLog.Add("Loading settings from " A_WorkingDir "\EVE-X-Preview.json")
     defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
     userPath    := "EVE-X-Preview.json"
@@ -124,7 +136,7 @@ Load_JSON() {
             ; ensure we set new version so merge will not re-trigger
             UJSON["settings_version"] := dver
         }
-        if uver > dver
+        if uver > dver && interactive
             MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
@@ -139,6 +151,8 @@ Load_JSON() {
 
     } catch Error as e {
         ProgramLog.Error(e, "Loading or migrating settings")
+        if !interactive
+            throw e
         MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
         value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")

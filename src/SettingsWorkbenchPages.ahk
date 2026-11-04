@@ -330,21 +330,7 @@
 
     StageSizeReset() {
         width := this.model.Get("ThumbnailStartLocationwidth"), height := this.model.Get("ThumbnailStartLocationheight")
-        positions := this.model.Profiles[this.model.profile]["Thumbnail Positions"]
-        for name, position in positions {
-            if position is Map
-                position["width"] := width, position["height"] := height
-            else if position is Array && position.Length >= 4
-                positions[name] := Map("x", position[1], "y", position[2], "width", width, "height", height)
-        }
-        for hwnd, thumb in this.owner.ThumbWindows.OwnProps() {
-            try {
-                window := thumb["Window"]
-                WinGetPos(&x, &y,,, window.Hwnd)
-                if window.Title != ""
-                    positions[window.Title] := Map("x", x, "y", y, "width", width, "height", height)
-            }
-        }
+        this.model.ResetThumbnailSizes(this.owner)
         this.Changed()
         this.UpdateStatus("Thumbnail sizes will reset to " width " × " height " px after Apply & restart.")
     }
@@ -440,10 +426,7 @@
     }
 
     SetGroupShortcut(kind, name, key, value) {
-        if this.model.Inherited(kind = "characters" ? "Character groups" : "Non-EVE Applications")
-            throw ValueError("Customize this section before editing its shortcuts.")
-        SettingsValue.Hotkey(value)
-        this.model.Groups(kind)[name][key] := value
+        this.model.SetGroupShortcut(kind, name, key, value)
         this.Changed()
         this.RefreshConflictNotice()
     }
