@@ -115,8 +115,10 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Check("Anonymize Thumbnails")
         }
 
-        TrayMenu.Add("Reload", (*) => Reload())
-        TrayMenu.Add("Exit", (*) => ExitApp())
+        This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+        TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
+        TrayMenu.Add("Reload", (*) => This.RequestRuntimeAction("reload"))
+        TrayMenu.Add("Exit", (*) => This.RequestRuntimeAction("exit"))
         TrayMenu.Default := "Open"
 
         MenuHandler(ItemName, ItemPos, MyMenu) {
@@ -150,7 +152,7 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.ToggleCheck("Show Thumbnails Always on Top")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
                 Sleep(300)
-                Reload()
+                This.RequestRuntimeAction("reload")
             }
             Else if (ItemName = "Click Through Thumbnails") {
                 This.Toggle_ClickThrough()
@@ -188,6 +190,23 @@ Class TrayMenu extends Settings_Gui {
     ActivateProfile(profileName, source := "Hotkey", *) {
         if !This.Profiles.Has(profileName)
             return false
+        if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
+            editor := This.settingsWorkbench
+            if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {
+                editor.UpdateStatus("Finish the current settings dialog before changing profiles.")
+                return false
+            }
+            if editor.model.Profiles.Has(profileName) {
+                editor.SelectProfile(profileName)
+                editor.model.ActivateProfile()
+                editor.Changed()
+                editor.Navigate("profiles")
+                editor.S_Gui.Show()
+                editor.UpdateStatus("Profile activation is staged. Apply & restart activates it and your other draft changes.")
+            } else
+                editor.UpdateStatus("That profile was removed from the draft. Undo the removal or discard the draft first.")
+            return false
+        }
         ; Keep selection, save and reload together while login timers are active.
         previousCritical := A_IsCritical
         Critical
@@ -205,6 +224,34 @@ Class TrayMenu extends Settings_Gui {
 
     ReloadForProfile() {
         Reload()
+    }
+
+    RequestRuntimeAction(action) {
+        if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
+            editor := This.settingsWorkbench
+            if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {
+                editor.UpdateStatus("Finish the current settings dialog before exiting or reloading.")
+                return false
+            }
+            if editor.HasDraftChanges() {
+                editor.S_Gui.Show()
+                editor.UpdateStatus("Apply or discard your settings draft before " (action = "exit" ? "exiting." : "reloading."))
+                return false
+            }
+            editor.Dispose()
+        }
+        if This.HasOwnProp("Save_Settings_Delay_Timer")
+            SetTimer(This.Save_Settings_Delay_Timer, 0)
+        This.SaveJsonToFile()
+        This.PerformRuntimeAction(action)
+        return true
+    }
+
+    PerformRuntimeAction(action) {
+        if action = "exit"
+            ExitApp()
+        else
+            Reload()
     }
 
     ShowHideThumbnails() {

@@ -1,4 +1,4 @@
-TestRunner.Register("Automatic wildcard opt-out preserves explicit syntax and updates conflict warnings", ThumbnailWildcardOptOutTest)
+﻿TestRunner.Register("Automatic wildcard opt-out preserves explicit syntax and distinct modifier warnings", ThumbnailWildcardOptOutTest)
 ThumbnailWildcardOptOutTest() {
     app := CombatEventsFixture()
     app.ProfileOverride()
@@ -11,7 +11,7 @@ ThumbnailWildcardOptOutTest() {
     AssertEqual("*F23", HotkeyBindings.ForWindowSwitch("*F23", false))
     AssertEqual("XButton1 & 1", HotkeyBindings.ForWindowSwitch("XButton1 & 1", false))
     app.AutoWildcardWindowHotkeys := true
-    AssertTrue(HotkeyBindings.Conflicts(HotkeyBindings.Collect(app)).Has("setting:SwitchToPreviousWindow_Hotkey"))
+    AssertFalse(HotkeyBindings.Conflicts(HotkeyBindings.Collect(app)).Has("setting:SwitchToPreviousWindow_Hotkey"))
 }
 
 class ThumbnailExactHotkeyFixture extends CombatEventsFixture {

@@ -1,7 +1,22 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
+#Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
 
-VERSION := "1.5"
+;@Ahk2Exe-Let U_version = 1.6.0
+;@Ahk2Exe-SetVersion %U_version%
+;@Ahk2Exe-SetFileVersion %U_version%
+;@Ahk2Exe-SetCopyright gonzo83+khivus
+;@Ahk2Exe-SetDescription EVE-X-Preview Updater
+;@Ahk2Exe-SetProductName EVE-X-Preview Updater
+;@Ahk2Exe-SetMainIcon res/Icon.ico
+;@Ahk2Exe-AddResource res/Icon.ico, 160
+;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 206
+;@Ahk2Exe-AddResource res/Icon.ico, 207
+;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 208
+
+VERSION := "1.6.0"
+if !A_IsCompiled
+    TraySetIcon(A_ScriptDir "\res\Icon.ico",, true)
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
 ProgramLog.Add("Standalone updater version=" VERSION)
 OnError(UpdaterError)

@@ -2,20 +2,15 @@
 
 [Back to README](../README.MD)
 
-## How to use
+1. Download EVE-X-Preview.exe from the [releases page](https://github.com/khivus/EVE-X-Preview/releases).
+2. Put it in a writable folder outside protected program directories and start it. Keep its EVE-X-Preview.json beside the executable.
+3. Open the tray icon's **Open** command, or double-click the tray icon.
+4. Use the sidebar profile selector to choose what to edit. Create/manage profiles under **Profiles**.
+5. Find settings through the seven navigation areas or Search. Configure rows with Add/Edit and preview changes with Test thumbnail.
+6. Choose **Apply & restart** to activate the draft. Closing an unfinished draft offers Apply, Discard or Keep editing.
 
-1. Download the `EVE-X-Preview.exe` from the [releases page](https://github.com/khivus/EVE-X-Preview/releases).
-2. Create a folder anywhere except Program Files or other protected program folders, then move `EVE-X-Preview.exe` into that folder.
-3. Start `EVE-X-Preview.exe`. It will create a JSON file in the same folder. This file must stay together with the executable because it stores all settings.
-4. A tray icon will appear in the bottom-right corner of the taskbar.
-5. Right-click the tray icon and choose **Open**, or double-click it, then go to **Profile Settings** and create a new profile or edit default one.
-6. Configure the settings as needed.
+Back up EVE-X-Preview.json before upgrading. Existing profiles and effective inheritance are retained. New configurations start with empty assignment/exception tables rather than example characters or applications.
 
-`Important Note:`
-`Some settings require a restart of the tool. The settings window must be closed before those changes are applied.`
+The window is resizable and initially fits the monitor work area. Navigation and subsection headings stay available while the right pane scrolls. Each subsection remembers its position, and keyboard focus scrolls fields into view. Child row/event editors also scroll when the display is small or scaled.
 
-Back up `EVE-X-Preview.json` before upgrading. Close Settings to apply changes that require a restart.
-
-The right settings pane scrolls vertically when the selected category is longer than the available space. Use the scrollbar or the mouse wheel over that pane; the sidebar stays in place. Tabbing to a field brings it into view. Multiline fields keep their own wheel scrolling. Selecting another category starts at the top.
-
-The selected category heading stays pinned above the scrolling fields. Closing Settings applies changes that require a restart.
+Read the [settings overview](settings.md), [shortcut guide](hotkeys.md), [profile guide](profiles.md) and [mouse gestures](mouse-gestures.md).

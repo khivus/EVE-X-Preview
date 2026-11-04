@@ -1,16 +1,46 @@
 # Changelog
 
+## v1.7.0.2
+
+### Fixed
+* Opening Settings with an existing #hex or RGB border color no longer causes an Invalid option error.
+* Settings scrollbars share the main pane's drawing and dragging behavior, including sidebar navigation, tables, text fields and dropdowns.
+* Shortcut conflicts are grouped by shared key in a consistent, scrollable window.
+
+### Changed
+* Apply & restart reopens Settings at the same page, window size and scroll position.
+* Monitored characters includes the monitoring and character-filter switches, shared with Log sources.
+
+## v1.7.0.1
+
+### Fixed
+* Settings buttons and page changes no longer briefly remove the taskbar icon, lose focus or disturb the order of open windows. Owned settings editors also stay visible while their layouts update.
+
+## v1.7.0.0
+
+### Changed
+* Rebuilt Settings with seven navigation areas, search, keyboard help and a resizable layout that remembers the selected page and scroll position.
+* Settings stay in a draft until Apply & restart. Discard and close protection help prevent accidental changes or lost edits.
+* Assignment tables support spreadsheet-style editing, cell and range selection, copy/paste, keyboard navigation and removal Undo. Dedicated editors cover character shortcuts, labels and colors, client exceptions, groups and application matching.
+* Profile inheritance is controlled per subsection, with an option to edit Default in place. Editing a profile and activating it are separate actions.
+* Redesigned event-sound settings with a shared sound library, per-event controls, advanced playback and batch assignment tools.
+
+### Added
+* System, Light and Dark settings themes with immediate preview.
+* New-profile inheritance presets: use a saved Default template, inherit everything or customize every subsection.
+* Automatic background update checks when opening Settings, with an update notice linking to About and updates.
+
 ## v1.6.2.1
 
 ### Added
 * Short tooltips explain every setting, with help on labels, controls and event-sound options.
-* Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
+* Random thumbnail names with an editable per-profile list and a Reshuffle preview labels button under Thumbnails / Labels. Turning anonymization off restores the usual labels.
 * A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
-* An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
-* Window Polling Interval in Thumbnails Behavior to adjust how often client windows, focus and title changes are checked.
+* An option under Switching / Keyboard shortcuts to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
+* Time between window and focus checks under Application / Advanced to adjust how often client windows, focus and title changes are checked.
 
 ### Changed
-* Settings pages now scroll within the right pane, with category headings pinned at the top. New controls follow the existing styles, offsets and gaps.
+* Settings pages now scroll within the right pane, with category headings pinned at the top. Controls use consistent labels, units, ranges and dependency hints.
 * The README now links to separate setup and usage guides in `docs/`. The changelog is now `Changelog.md`.
 * Application icons now live in `res/`; source and compiled builds use the updated paths.
 

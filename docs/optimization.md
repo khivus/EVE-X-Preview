@@ -2,13 +2,13 @@
 
 [Back to README](../README.MD)
 
-Open **Thumbnails Behavior**. The **Window Polling Interval (ms)** row is next to the other window behavior options. Defaults preserve existing behavior.
+Open **Application → Advanced** for **Time between window and focus checks**. Changes activate with Apply & restart.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
 | Window polling interval | 50 ms | Increase up to 1000 ms to reduce application window checks. Focus, title and client discovery updates may arrive later. This does not cap live FPS or change log-monitoring intervals. |
-| Hide Thumbnail for Active Window | Off | Existing setting in Thumbnails Behavior. Avoid showing a duplicate of the client you are using. |
-| Hide Thumbnails on Lost Focus | Off | Existing setting in Thumbnails Behavior. Makes DWM thumbnails invisible while working in other apps. |
+| Hide Thumbnail for Active Window | Off | Available in Thumbnails → Visibility. Avoid showing a duplicate of the client you are using. |
+| Hide Thumbnails on Lost Focus | Off | Available in Thumbnails → Visibility. Makes DWM thumbnails invisible while working in other apps. |
 
 A 100–250 ms polling interval reduces window checks, with correspondingly slower focus/title updates. These are adjustable tradeoffs, not guaranteed performance gains. FPS remains controlled by Windows DWM and the source client.
 
@@ -20,4 +20,4 @@ A true FPS or internal-resolution selector would require another capture/renderi
 
 ## Other available measures
 
-Disable unused system/event/DPS monitoring to stop the corresponding work, increase its own log interval if acceptable, or use **Pause/Resume Live Previews** from Other/a configured hotkey to release preview resources until resumed. **Minimize Inactive Clients** may reduce client rendering workload, depending on EVE settings, and can affect source updates. **Slow Thumbnail Creation** staggers startup DWM calls; it addresses startup bursts rather than steady-state FPS. Hiding previews changes visibility but retains their registrations; pausing releases them.
+Disable unused system/event/DPS monitoring to stop the corresponding work, increase its own log interval if acceptable, or use **Pause/Resume Live Previews** from the tray, Application → Diagnostics or a configured shortcut to release preview resources until resumed. **Minimize Inactive Clients** may reduce client rendering workload, depending on EVE settings, and can affect source updates. **Stagger preview creation at startup** staggers startup DWM calls; it addresses startup bursts rather than steady-state FPS. Hiding previews changes visibility but retains their registrations; pausing releases them.

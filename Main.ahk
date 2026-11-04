@@ -3,6 +3,7 @@
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
 #Include "Lib/LiveThumb.ahk"
+#Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
 #Include "src/PreviewStartupQueue.ahk"
 #Include "src/NPCDatabase.ahk"
@@ -18,6 +19,21 @@
 #Include "src/ChangelogWindow.ahk"
 #Include "src/SimpleMarkdown.ahk"
 #Include "src/SettingsThumbnailPreview.ahk"
+#Include "src/SettingsSchema.ahk"
+#Include "src/SettingsModel.ahk"
+#Include "src/SettingsTables.ahk"
+#Include "src/SettingsSearchText.ahk"
+#Include "src/SettingsScrollbars.ahk"
+#Include "src/SettingsControlScrollbars.ahk"
+#Include "src/SettingsNativeChrome.ahk"
+#Include "src/SettingsTooltip.ahk"
+#Include "src/SettingsTheme.ahk"
+#Include "src/SettingsWorkbenchPages.ahk"
+#Include "src/SettingsGrid.ahk"
+#Include "src/SettingsRowTable.ahk"
+#Include "src/SettingsMonitoringEditors.ahk"
+#Include "src/SettingsChildDialog.ahk"
+#Include "src/SettingsWorkbench.ahk"
 #Include "src/LocalChatMonitor.ahk"
 
 if !IsSet(__EVE_X_PREVIEW_TESTING__)
@@ -37,7 +53,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.2.2
+    ;@Ahk2Exe-Let U_version = 1.7.0.1
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus

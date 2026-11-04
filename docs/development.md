@@ -28,6 +28,8 @@ Contributions are welcome. All pull requests must target the [`dev` branch](http
 
 `Main.ahk` starts the app, `src/` holds application code, `Lib/` holds libraries and default settings, and `res/` holds icons used by the script and Ahk2Exe. `Changelog.md` is embedded in compiled releases for the offline changelog viewer.
 
+Build the established pair of portable Windows x64 release packages with `tools/Build-Release.ps1 -OutputDirectory <folder>`. It builds `EVE-X-Preview.exe` and `EVE-X-Preview-Updater.exe` using AutoHotkey v2 and verifies their Windows version metadata against the source directives. Both executables embed the application and suspend icons from `res/`. The updater has its own version; keep its displayed `VERSION` and compile directive aligned when changing it.
+
 Run the Windows AutoHotkey v2 suite from the repository root:
 
 ```powershell
@@ -35,3 +37,37 @@ Run the Windows AutoHotkey v2 suite from the repository root:
 ```
 
 Tests use temporary windows and fixture settings. Live EVE checks and rebuilding a release are separate verification steps.
+
+## Settings architecture and focused checks
+
+The production entry point opens SettingsWorkbench. SettingsModel owns an isolated draft and merges changed leaves into current runtime JSON on Apply. SettingsSchema supplies labels, storage routes, validation and search metadata. SettingsTables preserves related values as rows while retaining legacy JSON formats. Workbench pages, row/event editors and scrollable child dialogs use native Windows controls.
+
+Settings_Review_Followup_Test.ahk covers immediate scalar-swatch WM_PAINT requests, invalid/valid hint colors and size relations, slider-owned ticks, invalid-shortcut details and disposal during commit, new-profile inheritance templates/effective copies, creation presets, popup geometry and About alignment. Run it with `--filter "Settings review"`. New-profile inheritance defaults live in the application-wide `NewProfileInheritance` map; changing the template does not alter existing profiles.
+
+Settings_Redesign_Model_Test.ahk covers isolation, merge behavior, migration, validation and row serialization. Settings_Workbench_Test.ahk exercises real native controls, navigation, dialogs, inheritance, Apply/Discard, lifecycle protection and sound workflows. The legacy page builders remain covered as compatibility helpers; the production settings entry point uses the workbench.
+
+Run a focused group with:
+
+```powershell
+& 'C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe' /ErrorStdOut tests/TestRunner.ahk --headless --filter Workbench
+```
+
+The filter must match at least one test. Render isolated fixture snapshots with tests/Render_Settings_Workbench.ahk and an optional output-directory argument; it never loads user settings. Verify font/text fit, child-dialog scrolling and monitor-work-area bounds at relevant display scales. Live EVE rendering, audio-device behavior and updater handoff remain separate manual checks.
+
+SettingsGrid supplies native cell overlays, selection painting, clipboard and bulk operations to all settings tables. Settings_Grid_Test.ahk covers row creation, range fills, atomic validation, draft/profile lifecycle, picker/inheritance interaction, slider precision and resize/navigation behavior. Run it with `--filter Grid`.
+
+Settings_Interaction_Followup_Test.ahk sends native mouse and character messages to check pane/table scroll stability, initial typing/caret placement, drag selection and dropdown editing. It also covers inline raw shortcut drafts, blank targets, subsection migration/runtime sources, inherited control states and direct/group shortcut priority. Run it with `--filter "Settings interaction"`.
+
+SettingsTheme owns the settings palette and native text/button/header drawing, with cleanup when windows are destroyed. Color swatches retain their configuration RGB values. Default editing uses a scoped editing target while preserving the sidebar selection and activation draft. Settings_Appearance_Test.ahk covers swatch pixels, dark-theme navigation and child editors, automatic update checks using simulated responses, and Default editing across scalar/structured settings and validation. Run it with `--filter "Settings appearance"`.
+
+Settings_Polish_Test.ahk covers palette-switch pixels, immediate enabled-state repaints, literal/multiline search highlighting, top-level recording ownership for panes and dialogs, and overlapping drag selection. Run it with `--filter "Settings polish"`.
+
+SettingsNativeChrome subclasses controls to paint dark borders, dropdown arrows, scrollbars and spinners. SettingsScrollbars handles dark scrollbar capture, dragging and repeated clicks without entering the system light tracking loop; native ranges and keyboard/accessibility scroll commands remain available. Pane and table thumb positions retain 32-bit precision. Light mode restores only the original border bits, preserving editable/read-only state. Dropdown popup bounds use the actual editor window and monitor work area. SettingsTooltip supplies a native, nonactivating tracked tooltip in either palette. Settings_Chrome_Test.ahk checks native pixels, light/dark restoration, dropdown bounds/selection, numeric changes, held dragging on both axes, capture lifecycle and tooltip focus. Run it with `--filter "Settings chrome"`.
+
+SettingsTheme batches layout and page replacement with nested redraw scopes. Whole-window WS_EX_COMPOSITED is deliberately disabled because it conflicts with local native/custom control painting. Tables use LVS_EX_DOUBLEBUFFER and WS_CLIPCHILDREN; headers buffer their complete paint and suppress background erasure. Cell selection invalidates only the rectangle below the mapped header bounds. RDW_NOCHILDREN alone does not prevent the parent's buffer from covering the header. Moving a settings canvas discards stale copied pixels and repaints its visible children after positioning. Hidden windows stay hidden when an update scope ends. Buttons use the same custom paint handler for normal, pressed, hover, disabled, focused and default states, retaining native input and dialog-key behavior. Workbench sizing defers page replacement until WM_EXITSIZEMOVE; height-only changes retain controls and inline edits. Scrollbar parts are buffered together, with a reentrancy guard and no extra table client-DC pass after WM_PAINT. Settings_Paint_Lifecycle_Test.ahk checks tray activation and resizing (`--filter "Settings painting"`). Settings_Scroll_Rendering_Test.ahk observes paint/erase messages and update bounds to check header isolation, repeated click/editor focus across palettes, idle painting, separators and selection through held scrolling (`--filter "Settings scroll rendering"`).
+
+Top-level Settings and owned editor windows retain WS_VISIBLE throughout nested update scopes. WM_SETREDRAW is reserved for visible child windows because its default handling would briefly remove the Settings taskbar button and disturb focus/window order. The existing control buffers and final redraw present the completed layout. Settings_Paint_Lifecycle_Test.ahk checks visibility during updates and native button dispatch, along with focus and window order across page, profile and palette changes.
+
+SettingsScrollPane now uses a separate native ScrollBar child instead of WS_VSCROLL on its viewport. SettingsNativeChrome owns its dark client painting, hit geometry and keyboard path; SB_CTL retains the native 32-bit range and SBM_GETSCROLLBARINFO exposes matching accessible geometry. First input never falls back to native modal light tracking. Slider callbacks use TB_THUMBTRACK to avoid writing TBM_SETPOS during capture, then snap at release. Unchanged UI values use guarded assignments. Preserved-color swatches have their own paint path; UpDown controls use UDS_NOTHOUSANDS. Grid editor focus loss ignores stale events during opening and focus within the grid; drag selection computes XOR before its single redraw and skips an unchanged endpoint. Settings_Input_Pulse_Test.ahk covers these input sequences (`--filter "Settings input pulse"`).
+
+SettingsNativeChrome also brackets dark ListView/TreeView native scroll, layout and expansion updates with a local WM_SETREDRAW scope, then presents the final client/nonclient paint. Ordinary table selection retains its existing paint path. Existing caller redraw locks and hidden controls are left alone; the subclass tracks WM_SETREDRAW because common controls may consume it without setting SysSetRedraw. Vertical table repaints exclude the header, and dark navigation uses TVS_EX_DOUBLEBUFFER for clean background clearing after collapse. Settings_Release_Safety_Test.ahk observes below the chrome subclass to verify the redraw state received by the native procedure, checks buffered table erasure, exercises real sidebar expander hits and owned profile grids, and confirms modified-chord warnings. Run it with `--filter "Settings release safety"`. Offscreen fixtures cannot verify compositor timing on every display or DPI configuration.

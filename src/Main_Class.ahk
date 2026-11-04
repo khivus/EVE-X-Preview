@@ -1,4 +1,4 @@
-Class Main_Class extends ThumbWindow {
+﻿Class Main_Class extends ThumbWindow {
     Static  WM_DESTROY := 0x02,
             WM_SIZE := 0x05,
             WM_NCCALCSIZE := 0x83,
@@ -122,9 +122,9 @@ Class Main_Class extends ThumbWindow {
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.SwitchToPreviousWindow_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => WinExist(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => WinActive(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "Previous window")
             catch ValueError as e
@@ -134,9 +134,9 @@ Class Main_Class extends ThumbWindow {
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.CycleEveryLoggedIn_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => WinExist(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => WinActive(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "Cycle logged in windows")
             catch ValueError as e
@@ -146,9 +146,9 @@ Class Main_Class extends ThumbWindow {
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => WinExist(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => WinActive(This.EVEExe)
+                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "Cycle login screens")
             catch ValueError as e
@@ -157,7 +157,7 @@ Class Main_Class extends ThumbWindow {
 
         ; Register Hotkey for Close Active EVE Window Hotkey if user set
         if (This.Close_Active_EVE_Win_Hotkey != "") {
-            HotIf (*) => WinExist(This.EVEExe)
+            HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             if !This.SwitchLangOnErr {
                 try
                     Hotkey(This.Close_Active_EVE_Win_Hotkey, ObjBindMethod(This, "CloseActiveEVEWin"),"P1" )
@@ -170,7 +170,7 @@ Class Main_Class extends ThumbWindow {
 
         ; Register Hotkey for Close All EVE Windows Hotkey if user set
         if (This.Close_All_EVE_Win_Hotkey != "") {
-            HotIf (*) => WinExist(This.EVEExe)
+            HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             if !This.SwitchLangOnErr {
                 try
                     Hotkey(This.Close_All_EVE_Win_Hotkey, ObjBindMethod(This, "CloseAllEVEWindows"),"P1" )
@@ -186,15 +186,15 @@ Class Main_Class extends ThumbWindow {
             HotIf (*) => !HotkeyCapture.Active && This.anyWinExists()
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.Reload_Program_Hotkey, ( * ) => Reload(), "S1"
+                    Hotkey This.Reload_Program_Hotkey, ( * ) => This.RequestRuntimeAction("reload"), "S1"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Reload EVE-X-Preview - Hotkey")
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => Reload(), "S1", "Reload program")
+                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => This.RequestRuntimeAction("reload"), "S1", "Reload program")
         }
 
-        HotIf (*) => !HotkeyCapture.Active ; Also available without EVE, except while recording.
+        HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() ; Available without EVE, outside settings editors.
         if (This.ToggleLivePreviewsHotkey != "") {
             if !This.SwitchLangOnErr {
                 try
@@ -208,12 +208,12 @@ Class Main_Class extends ThumbWindow {
         if (This.Exit_Program_Hotkey != "") {
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.Exit_Program_Hotkey, (*) => ExitApp(), "S1"
+                    Hotkey This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S1"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Exit EVE-X-Preview - Hotkey")
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => ExitApp(), "S1", "Exit program")
+                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S1", "Exit program")
         }
 
         This.RegisterProfileHotkeys()
@@ -301,7 +301,18 @@ Class Main_Class extends ThumbWindow {
         This.startSystemTracking()
 
         This.ShowPostUpdateChangelog()
+        This.RestoreSettingsAfterApply()
         return This
+    }
+
+    RestoreSettingsAfterApply() {
+        state := SettingsWorkbench.TakeResume()
+        if !IsObject(state)
+            return
+        this.settingsWorkbench := SettingsWorkbench(this, false)
+        this.S_Gui := this.settingsWorkbench.S_Gui
+        this.settingsWorkbench.RestoreSession(state)
+        this.settingsWorkbench.StartUpdateCheck(false)
     }
 
     ShowPostUpdateChangelog() {
@@ -328,7 +339,7 @@ Class Main_Class extends ThumbWindow {
 
     RegisterProfileHotkeys() {
         ; All profiles remain reachable, even without an EVE window. Avoid firing while editing settings.
-        This.profileHotkeyCondition := (*) => !WinActive("EVE-X-Preview - Settings")
+        This.profileHotkeyCondition := (*) => !HotkeyCapture.Active && !This.SettingsEditingActive()
         HotIf(This.profileHotkeyCondition)
         This.profileHotkeys := Map()
         try {
@@ -370,6 +381,20 @@ Class Main_Class extends ThumbWindow {
             return false
         }
     }
+
+    SettingsOwnsWindow(hwnd) {
+        if !hwnd
+            return false
+        try {
+            if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed
+                return DllCall("GetAncestor", "Ptr", hwnd, "UInt", 3, "Ptr") = This.settingsWorkbench.S_Gui.Hwnd
+            if This.HasOwnProp("S_Gui")
+                return DllCall("GetAncestor", "Ptr", hwnd, "UInt", 3, "Ptr") = This.S_Gui.Hwnd
+        }
+        return false
+    }
+
+    SettingsEditingActive() => This.SettingsOwnsWindow(DllCall("GetForegroundWindow", "Ptr")) || !!WinActive("EVE-X-Preview - Settings")
 
     ActivateProfileFromHotkey(profileName, *) {
         ; Holding a shortcut through reload must not repeatedly restart the active profile.
@@ -660,6 +685,8 @@ Class Main_Class extends ThumbWindow {
     }
 
     anyWinExists() {
+        if HotkeyCapture.Active || This.SettingsEditingActive()
+            return false
         try
             if WinGetList(This.EVEExe).Length != 0 || This.ActiveNonEVEApps.Length != 0
                 return true
@@ -687,9 +714,9 @@ Class Main_Class extends ThumbWindow {
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     
         if This.Global_Hotkeys
-            HotIf (*) => WinExist(title " " This.EVEExe) && !WinActive("EVE-X-Preview - Settings")
+            HotIf (*) => !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && !This.SettingsEditingActive()
         else    
-            HotIf (*) => WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !WinActive("EVE-X-Preview - Settings")
+            HotIf (*) => !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !This.SettingsEditingActive()
     
         try This.RegisterWindowHotkey(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "Activate " title)
         catch ValueError as e
@@ -960,14 +987,47 @@ Class Main_Class extends ThumbWindow {
     }
 
     ; Register QuickGroup Hotkey
+    ShortcutTargetAvailable(title) => !!WinExist(title " " This.EVEExe)
+    ShortcutScopeActive() => This.Global_Hotkeys || !!WinActive(This.EVEExe)
+    ShortcutModifierDown(symbol, side) {
+        names := Map("^", ["LControl", "RControl"], "!", ["LAlt", "RAlt"], "+", ["LShift", "RShift"], "#", ["LWin", "RWin"])
+        return (side & 1 && GetKeyState(names[symbol][1])) || (side & 2 && GetKeyState(names[symbol][2]))
+    }
+    DirectShortcutAvailable(keyName) {
+        if keyName = "" || !This.ShortcutScopeActive()
+            return false
+        incoming := HotkeyBindings.Parse(keyName)
+        for item in This._Hotkeys
+            for title, key in item {
+                if key = "" || !This.ShortcutTargetAvailable(title)
+                    continue
+                binding := HotkeyBindings.Parse(HotkeyBindings.ForWindowSwitch(key, This.AutoWildcardWindowHotkeys))
+                if !HotkeyBindings.SameKey(binding.key, incoming.key) || binding.up != incoming.up
+                    continue
+                if IsObject(binding.prefix) && !GetKeyState(binding.prefix.name)
+                    continue
+                matches := true
+                for symbol, side in binding.mods {
+                    if (side && !This.ShortcutModifierDown(symbol, side))
+                        || (!side && !binding.wildcard && This.ShortcutModifierDown(symbol, 3)) {
+                        matches := false
+                        break
+                    }
+                }
+                if matches
+                    return true
+            }
+        return false
+    }
+
     RegisterQuickGroup() {
         if !This.QuickGroupEnabled || !This.QuickGroupHotkey
             return
 
         if This.Global_Hotkeys
-            HotIf (*) => WinExist(This.EVEExe)
+            HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && !This.DirectShortcutAvailable(keyName) && WinExist(This.EVEExe)
         else
-            HotIf (*) => WinActive(This.EVEExe)
+            HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && !This.DirectShortcutAvailable(keyName) && WinActive(This.EVEExe)
         
         try This.RegisterWindowHotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "Quick group")
         catch ValueError as e
@@ -1153,21 +1213,23 @@ Class Main_Class extends ThumbWindow {
     }
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
-    OnWinExist(Arr, *) {
+    OnWinExist(Arr, keyName := "", *) {
+        if HotkeyCapture.Active || This.SettingsEditingActive() || This.DirectShortcutAvailable(keyName)
+            return false
         for index, Name in Arr {
-            ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") && !This.PreserveHotkeysOnLogout) {
-            If ( WinExist(Name " Ahk_Exe exefile.exe") && !WinActive("EVE-X-Preview - Settings") ) {
+            ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !This.SettingsEditingActive() && !This.PreserveHotkeysOnLogout) {
+            If ( WinExist(Name " Ahk_Exe exefile.exe") && !This.SettingsEditingActive() ) {
                 return true
             }
-            else if This.hasMathcingOldTitle(Name) && !WinActive("EVE-X-Preview - Settings") {
+            else if This.hasMathcingOldTitle(Name) && !This.SettingsEditingActive() {
                 return true
             }
         }
         return false
     }
 
-    OnWinActive(Arr, *) {        
-        If (This.OnWinExist(Arr) && WinActive("Ahk_exe exefile.exe")) {
+    OnWinActive(Arr, keyName := "", *) {
+        If (This.OnWinExist(Arr, keyName) && WinActive("Ahk_exe exefile.exe")) {
             return true
         }        
         return false
@@ -1548,6 +1610,22 @@ Class Main_Class extends ThumbWindow {
         ProgramLog.Flush()
         try This.MainFrame["pausePreviewsBtn"].Text := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
         try This.MainFrame["livePreviewsStatus"].Text := This.LivePreviewStatus()
+        This.RefreshPreviewCommands()
+    }
+
+    RefreshPreviewCommands() {
+        label := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+        if This.HasOwnProp("trayPreviewLabel") && This.trayPreviewLabel != label {
+            try This.TrayMenuObj.Rename(This.trayPreviewLabel, label)
+            This.trayPreviewLabel := label
+        }
+        if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
+            editor := This.settingsWorkbench
+            if editor.currentSection = "diagnostics" {
+                try editor.runtimePreviewButton.Text := This.livePreviewsPaused ? "Resume live previews now" : "Pause live previews now"
+                try editor.runtimePreviewStatus.Text := This.LivePreviewStatus()
+            }
+        }
     }
 
     EnsureLivePreviewActive(generation) {
@@ -1576,9 +1654,10 @@ Class Main_Class extends ThumbWindow {
         This.previewGeneration += 1
         This.livePreviewPauseReason := reason
         This.previewQueue := PreviewStartupQueue(A_TickCount, This.SlowThumbnailCreation)
-        ProgramLog.Add("Live previews automatically paused: " reason "; resume manually in About or with the pause/resume hotkey", "WARN")
+        ProgramLog.Add("Live previews automatically paused: " reason "; resume from the tray, Application / Diagnostics or the preview shortcut", "WARN")
         try This.MainFrame["pausePreviewsBtn"].Text := "Resume Live Previews"
         try This.MainFrame["livePreviewsStatus"].Text := This.LivePreviewStatus()
+        This.RefreshPreviewCommands()
         This.SchedulePausedPreviewRelease()
     }
 
@@ -1616,7 +1695,8 @@ Class Main_Class extends ThumbWindow {
     LivePreviewStatus() {
         return This.livePreviewPauseReason != ""
             ? "Automatically paused: " This.livePreviewPauseReason ". Resume when the display is stable."
-            : "Pause live previews when needed; hotkeys stay available. Creation speed is controlled in Other."
+            : This.livePreviewsPaused ? "Live previews are paused. Window-switching hotkeys remain available. Use Resume to recreate the previews."
+            : "Live previews are running. Startup pacing is in Application / Advanced."
     }
 
     CloseLivePreviews(reason, code) {
@@ -2188,8 +2268,10 @@ Class Main_Class extends ThumbWindow {
     }
 
     AtLeastOneWinExist_(group, *) {
+        if HotkeyCapture.Active || This.SettingsEditingActive()
+            return false
         for i, exec in group["exe"] {
-            if !WinExist("ahk_exe " exec) || WinActive("EVE-X-Preview - Settings")
+            if !WinExist("ahk_exe " exec)
                 continue
             if group["title"][i] != ""
                 return WinExist(group["title"][i])
@@ -2287,7 +2369,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     OnWinExist_(exe, title, *) {
-        if !WinExist("ahk_exe " exe) || WinActive("EVE-X-Preview - Settings")
+        if HotkeyCapture.Active || This.SettingsEditingActive() || !WinExist("ahk_exe " exe)
             return false
     
         if title != ""
@@ -2918,7 +3000,7 @@ Class Main_Class extends ThumbWindow {
         }
 
         reader := This.monitoredChars[charName]
-        suppressDisplay := (This.supressForFocused || This.HideThumbForActiveWin) && WinActive("ahk_id " hwnd)
+        suppressDisplay := (This.HideDPSForFocused || This.HideThumbForActiveWin) && WinActive("ahk_id " hwnd)
         size := This.monitoredChars[charName]["file"].Length
         if size = This.monitoredChars[charName]["size"] && fileObj.AtEOF {
             if reader.Has("dps")
@@ -2933,7 +3015,7 @@ Class Main_Class extends ThumbWindow {
         }
         This.monitoredChars[charName]["size"] := size
 
-        suppressEvents := !This.eventMonitoringEnabled || suppressDisplay
+        suppressEvents := !This.eventMonitoringEnabled
         This.ReadGameLogUpdates(charName, suppressEvents, now, hwnd, suppressDisplay)
     }
 
@@ -3022,7 +3104,12 @@ Class Main_Class extends ThumbWindow {
         try hwnd := This.EventSourceWindow(charName)
         catch
             return ; The client can close between reading its log and dispatching.
-        if !hwnd || ((This.supressForFocused || This.HideThumbForActiveWin) && This.EventSourceActive(hwnd))
+        if !hwnd
+            return
+        focused := This.EventSourceActive(hwnd)
+        hideVisual := focused && (This.supressForFocused || This.HideThumbForActiveWin)
+        muteSound := focused && This.SuppressFocusedEventSounds
+        if hideVisual && muteSound
             return
         if !shooting && (This.monitoredChars[charName]["event"] = "" || This.monitoredChars[charName]["event"] = "stoppedShooting")
             return
@@ -3043,8 +3130,9 @@ Class Main_Class extends ThumbWindow {
         This.debugToolTipText .= "handleEventActivation: event " event " triggered for: " charName "`n"
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
-        This.PlayEventSound(charName, event)
-        if !This.HideThumbnails && This.flashBorderEnabled { ; Flashing border if enabled
+        if !muteSound
+            This.PlayEventSound(charName, event)
+        if !hideVisual && !This.HideThumbnails && This.flashBorderEnabled { ; Flashing border if enabled
             try {
                 This.flashMethod[charName] := Map()
                 This.flashMethod[charName]["isOn"] := false
@@ -3054,7 +3142,7 @@ Class Main_Class extends ThumbWindow {
                 SetTimer(This.flashMethod[charName]["flashMethod"], This.flashBorderInterval)
             }
         }
-        if !This.HideThumbnails && This.showEventText {
+        if !hideVisual && !This.HideThumbnails && This.showEventText {
             This.updateThumbnailEventText(This.monitoredEventsTexts[event], hwnd)
         }
         This.eventMethods[charName] := ObjBindMethod(This, "endEvent", charName, hwnd)
@@ -3118,7 +3206,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     GetAnonymousThumbnailName(character) {
-        profile := This.ProfileThumbnailsVisuals
+        profile := This.FieldProfile("AnonymizeThumbnails", This.ProfileThumbnailsVisuals)
         if !This.HasOwnProp("anonymousThumbnailNames") || This.anonymousThumbnailProfile != profile {
             This.anonymousThumbnailProfile := profile
             This.anonymousThumbnailNames := Map()

@@ -1,4 +1,4 @@
-TestRunner.Register("Hotkey conflicts recognize aliases, modifier order, custom prefixes and wildcards", HotkeyOverlapTest)
+﻿TestRunner.Register("Hotkey conflicts recognize aliases, modifier order, custom prefixes and wildcards", HotkeyOverlapTest)
 HotkeyOverlapTest() {
     for pair in [["^!F23", "!^f23"], ["Ctrl & 1", "^1"], ["Escape", "Esc"], ["^a", "^vk41"],
         ["~$^F1", "^F1"], ["*F1", "^!F1"], ["<^F1", "^F1"], ["XButton1 & 1", "xbutton1 & 1"],
@@ -409,7 +409,7 @@ WindowHotkeyWildcardPathsTest() {
     }
 }
 
-TestRunner.Register("Duplicate warnings account for automatic window wildcards without changing entered text", WindowHotkeyWildcardConflictsTest)
+TestRunner.Register("Duplicate warnings distinguish modified shortcuts from automatic window wildcard fallbacks", WindowHotkeyWildcardConflictsTest)
 WindowHotkeyWildcardConflictsTest() {
     app := CombatEventsFixture()
     app.ProfileOverride()
@@ -418,8 +418,8 @@ WindowHotkeyWildcardConflictsTest() {
     app.ProfileActivationHotkey := "F24"
     entries := HotkeyBindings.Collect(app)
     conflicts := HotkeyBindings.Conflicts(entries)
-    AssertTrue(conflicts.Has("setting:SwitchToPreviousWindow_Hotkey"))
-    AssertTrue(conflicts.Has("setting:Exit_Program_Hotkey"))
+    AssertFalse(conflicts.Has("setting:SwitchToPreviousWindow_Hotkey"))
+    AssertFalse(conflicts.Has("setting:Exit_Program_Hotkey"))
     for entry in entries {
         if entry.id = "setting:SwitchToPreviousWindow_Hotkey" {
             AssertEqual("F23", entry.key)
