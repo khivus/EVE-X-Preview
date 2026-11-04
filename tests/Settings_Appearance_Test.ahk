@@ -40,6 +40,45 @@ SettingsSwatchDrawingTest() {
     }
 }
 
+TestRunner.Register("Settings appearance border preview opens with legacy color formats without changing saved values", SettingsBorderPreviewColorsTest)
+SettingsBorderPreviewColorsTest() {
+    for pair in [["#E36A0D", "E36A0D"], ["0xe36a0d", "E36A0D"], ["e36a0d", "E36A0D"],
+        ["rgb(12, 34, 56)", "0C2238"], ["12, 34, 56", "0C2238"], ["red", "FF0000"],
+        ["  #12ab34  ", "12AB34"], ["0", "000000"], ["invalid color", "E36A0D"], ["", "E36A0D"]] {
+        owner := SettingsWorkbenchOwnerFixture()
+        owner._JSON["_Profiles"]["Default"]["Thumbnails Visuals"]["ClientHighligtColor"] := pair[1]
+        before := JSON.Dump(owner._JSON)
+        app := SettingsWorkbenchFixture(owner)
+        try {
+            AssertFalse(app.model.Dirty, "Opening Settings must not normalize the stored color.")
+            for mode in [1, 2, 3] {
+                app.model.Set("EventActiveBorderMode", mode)
+                for theme in ["light", "dark"] {
+                    app.theme.SetMode(theme)
+                    app.Navigate("appearance")
+                    app.Render()
+                    rings := Map()
+                    for control in app.MainFrame {
+                        if control.Type != "Text" || !control.ThemePreserve
+                            continue
+                        control.GetPos(,, &width, &height)
+                        if width = 210 && height = 76
+                            rings["outer"] := control.ThemeBackground
+                        if width = 194 && height = 60
+                            rings["inner"] := control.ThemeBackground
+                    }
+                    AssertEqual(2, rings.Count, "Both preview rings must render for " pair[1] ".")
+                    AssertEqual(mode = 2 ? "E9A23B" : pair[2], rings["outer"])
+                    AssertEqual(mode = 1 ? "E9A23B" : pair[2], rings["inner"])
+                }
+            }
+            AssertEqual(pair[1], app.model.Get("ClientHighligtColor"))
+            AssertEqual(before, JSON.Dump(owner._JSON))
+            AssertEqual(0, owner.saves)
+        } finally app.Dispose()
+    }
+}
+
 TestRunner.Register("Settings appearance dark theme previews across pages and child editors and Discard restores it", SettingsDarkThemeTest)
 SettingsDarkThemeTest() {
     owner := SettingsWorkbenchOwnerFixture()

@@ -301,7 +301,18 @@
         This.startSystemTracking()
 
         This.ShowPostUpdateChangelog()
+        This.RestoreSettingsAfterApply()
         return This
+    }
+
+    RestoreSettingsAfterApply() {
+        state := SettingsWorkbench.TakeResume()
+        if !IsObject(state)
+            return
+        this.settingsWorkbench := SettingsWorkbench(this, false)
+        this.S_Gui := this.settingsWorkbench.S_Gui
+        this.settingsWorkbench.RestoreSession(state)
+        this.settingsWorkbench.StartUpdateCheck(false)
     }
 
     ShowPostUpdateChangelog() {

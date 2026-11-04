@@ -129,6 +129,7 @@ class SettingsTheme {
         ; would make it visible, including a fixture or an unfinished editor.
         if update.suspendRedraw
             DllCall("SendMessageW", "Ptr", handle, "UInt", 0xB, "Ptr", 1, "Ptr", 0)
+        this.chrome.controlScrollbars.SyncAll()
         DllCall("RedrawWindow", "Ptr", handle, "Ptr", 0, "Ptr", 0, "UInt", 0x585)
     }
     Scroll(scroll) {
@@ -227,7 +228,8 @@ class SettingsTheme {
             }
         }
         this.chrome.Attach(control)
-        control.Redraw()
+        if DllCall("IsWindow", "Ptr", handle)
+            control.Redraw()
         return control
     }
     Prune() {
@@ -244,11 +246,18 @@ class SettingsTheme {
         }
     }
     ApplyAll() {
+        previousCritical := A_IsCritical
+        Critical(true)
+        try this.ApplyPalette()
+        finally Critical(previousCritical)
+    }
+    ApplyPalette() {
         this.Prune()
         for surface in this.surfaces
             this.Window(surface.gui, surface.sidebar)
-        for handle, control in this.controls
-            this.Control(control)
+        for handle, control in this.controls.Clone()
+            if DllCall("IsWindow", "Ptr", handle)
+                this.Control(control)
         if this.app.HasOwnProp("settingsScroller")
             this.Scroll(this.app.settingsScroller)
         if this.app.HasOwnProp("activeDialog")
@@ -260,6 +269,7 @@ class SettingsTheme {
         if this.app.closed || this.updates.Count
             return
         this.Prune()
+        this.chrome.controlScrollbars.SyncAll()
         for surface in this.surfaces
             DllCall("RedrawWindow", "Ptr", surface.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x585)
     }

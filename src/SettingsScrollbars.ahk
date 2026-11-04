@@ -7,8 +7,13 @@ class SettingsScrollbars {
     }
     Handle(item, message, wParam, lParam) {
         if item.kind = "PaneScrollbar" && (message = 0x201 || message = 0x203) {
-            this.Begin(item, 1, this.Point(item.handle, lParam))
+            this.Begin(item, item.HasOwnProp("axis") ? item.axis : 1, this.Point(item.handle, lParam))
             return true ; Never fall back to the system's modal light tracking loop.
+        }
+        if item.kind = "ComboList" && (message = 0x201 || message = 0x203) {
+            point := this.Point(item.handle, lParam)
+            if IsObject(this.Hit(item.handle, 1, point))
+                return this.Begin(item, 1, point)
         }
         if (message = 0xA1 || message = 0xA3) && (wParam = 6 || wParam = 7)
             return this.Begin(item, wParam = 7 ? 1 : 0, this.Point(item.handle, lParam, true))
@@ -71,26 +76,29 @@ class SettingsScrollbars {
     }
     Begin(item, bar, point) {
         ; Let grids finish an active cell before its native rows move.
-        if item.kind = "ListView"
+        source := item.kind = "PaneScrollbar" && item.control.HasOwnProp("source") ? item.control.source : item
+        if source.kind = "ListView"
             for grid in this.chrome.theme.app.grids
-                if !grid.disposed && grid.list.Hwnd = item.handle
+                if !grid.disposed && grid.list.Hwnd = source.handle
                     grid.CommitEditor()
         hit := this.Hit(item.handle, bar, point), range := this.Range(item.handle, bar)
         if !IsObject(hit) || !IsObject(range) || range.maximum <= range.minimum
             return false
         this.Finish(false)
-        this.drag := {item: item, bar: bar, code: hit.code, position: range.position, point: point,
+        trackingItem := source.kind = "ComboList" ? source : item
+        paintHandle := source.kind = "ComboList" && source.HasOwnProp("bars") && source.bars.Has(bar) ? source.bars[bar].handle : item.handle
+        this.drag := {item: trackingItem, paintHandle: paintHandle, bar: bar, code: hit.code, position: range.position, point: point,
             grab: hit.coordinate - hit.thumbTop, origin: hit.origin, arrow: hit.arrow,
             travel: Max(1, hit.length - 2 * hit.arrow - hit.thumbSize), range: range,
             previousCapture: DllCall("GetCapture", "Ptr")}
-        if this.drag.previousCapture != item.handle
-            DllCall("SetCapture", "Ptr", item.handle)
-        if DllCall("GetCapture", "Ptr") != item.handle {
+        if this.drag.previousCapture != trackingItem.handle
+            DllCall("SetCapture", "Ptr", trackingItem.handle)
+        if DllCall("GetCapture", "Ptr") != trackingItem.handle {
             this.drag := 0
             return false
         }
         if hit.code != 5 {
-            this.Scroll(item, bar, hit.code)
+            this.Scroll(trackingItem, bar, hit.code)
             SetTimer(this.repeatTimer, -350)
         }
         this.chrome.RepaintNonclient(item.handle)
@@ -130,10 +138,22 @@ class SettingsScrollbars {
             if tracking
                 item.control.ScrollTo(position)
             else
-                item.control.OnScroll(code, item.handle, 0x115, item.control.viewportHwnd)
+                item.control.OnScroll(code, item.handle, bar = 1 ? 0x115 : 0x114, item.control.HasOwnProp("viewportHwnd") ? item.control.viewportHwnd : 0)
         } else if tracking && item.kind = "ScrollPane"
             item.control.ScrollTo(position) ; Keep 32-bit pane offsets.
-        else if tracking && item.kind = "ListView" {
+        else if tracking && item.kind = "TreeView" && bar = 1 {
+            ; A tree does not consume a fabricated native thumb-track position.
+            ; Select its first visible row directly without changing selection.
+            row := DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0x110A, "Ptr", 0, "Ptr", 0, "Ptr")
+            loop Max(0, position) {
+                next := DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0x110A, "Ptr", 6, "Ptr", row, "Ptr")
+                if !next
+                    break
+                row := next
+            }
+            if row
+                DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0x110B, "Ptr", 5, "Ptr", row)
+        } else if tracking && item.kind = "ListView" {
             range := this.Range(item.handle, bar)
             if !IsObject(range)
                 return
@@ -147,16 +167,18 @@ class SettingsScrollbars {
             DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0x1014, "Ptr", bar = 0 ? delta : 0, "Ptr", bar = 1 ? delta : 0)
         } else if tracking && bar = 1 && (item.kind = "ListBox" || item.kind = "ComboList")
             DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0x197, "Ptr", position, "Ptr", 0) ; LB_SETTOPINDEX
-        else if tracking && bar = 1 && item.kind = "Edit" {
+        else if tracking && item.kind = "Edit" {
             range := this.Range(item.handle, bar)
             if IsObject(range)
-                DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0xB6, "Ptr", 0, "Ptr", position - range.position) ; EM_LINESCROLL
+                DllCall("SendMessageW", "Ptr", item.handle, "UInt", 0xB6,
+                    "Ptr", bar = 0 ? position - range.position : 0, "Ptr", bar = 1 ? position - range.position : 0) ; EM_LINESCROLL
         } else
             DllCall("SendMessageW", "Ptr", item.handle, "UInt", bar = 1 ? 0x115 : 0x114,
                 "Ptr", code | ((position & 0xFFFF) << 16), "Ptr", 0)
         this.chrome.RepaintNonclient(item.handle)
+        this.chrome.controlScrollbars.Sync(item)
     }
-    Pressed(handle, bar, code) => IsObject(this.drag) && this.drag.item.handle = handle && this.drag.bar = bar && this.drag.code = code
+    Pressed(handle, bar, code) => IsObject(this.drag) && this.drag.paintHandle = handle && this.drag.bar = bar && this.drag.code = code
     Finish(commit, notify := true) {
         if !IsObject(this.drag)
             return
@@ -165,7 +187,8 @@ class SettingsScrollbars {
         if DllCall("GetCapture", "Ptr") = drag.item.handle {
             ; An open combo owns capture before its scrollbar is pressed.
             ; Preserve it so releasing the thumb does not close the list.
-            if drag.item.kind = "ComboList" && drag.previousCapture && DllCall("IsWindow", "Ptr", drag.previousCapture) {
+            source := drag.item.kind = "PaneScrollbar" && drag.item.control.HasOwnProp("source") ? drag.item.control.source : drag.item
+            if source.kind = "ComboList" && drag.previousCapture && DllCall("IsWindow", "Ptr", drag.previousCapture) {
                 if drag.previousCapture != drag.item.handle
                     DllCall("SetCapture", "Ptr", drag.previousCapture)
             } else

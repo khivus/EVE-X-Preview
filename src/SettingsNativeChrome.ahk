@@ -4,6 +4,7 @@ class SettingsNativeChrome {
     __New(theme) {
         this.theme := theme, this.windows := Map()
         this.scrollbars := SettingsScrollbars(this)
+        this.controlScrollbars := SettingsControlScrollbars(this)
         this.callback := CallbackCreate(ObjBindMethod(this, "WindowProc"),, 6)
     }
     static Long(handle, index) => DllCall(A_PtrSize = 8 ? "GetWindowLongPtrW" : "GetWindowLongW", "Ptr", handle, "Int", index, "Ptr")
@@ -41,6 +42,7 @@ class SettingsNativeChrome {
             }
         }
         DllCall("RedrawWindow", "Ptr", handle, "Ptr", 0, "Ptr", 0, "UInt", 0x585)
+        this.controlScrollbars.Sync(item)
     }
     ComboInfo(handle) {
         info := Buffer(A_PtrSize = 8 ? 64 : 52, 0)
@@ -63,6 +65,8 @@ class SettingsNativeChrome {
         if message = 0x82 {
             if IsObject(this.scrollbars.drag) && this.scrollbars.drag.item.handle = handle
                 this.scrollbars.Finish(false, false)
+            if this.windows.Has(handle)
+                this.controlScrollbars.Destroy(this.windows[handle])
             this.windows.Delete(handle)
             DllCall("comctl32\RemoveWindowSubclass", "Ptr", handle, "Ptr", this.callback, "UPtr", 1)
         }
@@ -70,6 +74,8 @@ class SettingsNativeChrome {
             this.ConstrainPopup(this.windows[handle], lParam)
             return 0
         }
+        if this.windows.Has(handle) && (message = 0x18 || message = 0xA)
+            this.controlScrollbars.Sync(this.windows[handle])
         if !this.theme.dark || !this.windows.Has(handle)
             return DllCall("comctl32\DefSubclassProc", "Ptr", handle, "UInt", message, "Ptr", wParam, "Ptr", lParam, "Ptr")
         item := this.windows[handle]
@@ -105,9 +111,9 @@ class SettingsNativeChrome {
                     return true
                 }
             }
-            if message = 0x100 && InStr("|33|34|35|36|38|40|", "|" wParam "|") {
-                code := Map(38, 0, 40, 1, 33, 2, 34, 3, 36, 6, 35, 7)[wParam]
-                this.scrollbars.Scroll(item, 1, code)
+            if message = 0x100 && InStr("|33|34|35|36|37|38|39|40|", "|" wParam "|") {
+                code := Map(37, 0, 38, 0, 39, 1, 40, 1, 33, 2, 34, 3, 36, 6, 35, 7)[wParam]
+                this.scrollbars.Scroll(item, item.HasOwnProp("axis") ? item.axis : 1, code)
                 return 0
             }
         }
@@ -164,20 +170,30 @@ class SettingsNativeChrome {
             || message = 0xA0 || message = 0xA1 || message = 0xA2 || message = 0x2A2
             || message = 0x1013 || message = 0x1014 || message = 0x1060 || message = 0x5 || message = 0x47 || message = 0x7D
             this.RepaintNonclient(handle)
+        if this.windows.Has(handle)
+            this.controlScrollbars.Sync(item)
         if (item.kind = "UpDown" || item.kind = "DDL" || item.kind = "ComboBox")
             && (message = 0xA || message = 0x30 || message = 0x31A || message = 0x14F || message = 0x201 || message = 0x202)
             DllCall("RedrawWindow", "Ptr", handle, "Ptr", 0, "Ptr", 0, "UInt", 0x141)
         return result
     }
     ScrollUpdateMessage(item, message, key, point := 0) {
-        if item.kind != "ListView" && item.kind != "TreeView"
+        ; TreeView refuses to move its visible rows while WM_SETREDRAW hides it.
+        ; The separate scrollbar covers the system track throughout the update.
+        if item.kind = "TreeView" && item.HasOwnProp("bars") && item.bars.Count
             return false
-        if message = 0x115 || message = 0x114 || message = 0x20A || message = 0x20E || message = 0x5 || message = 0x47
+        if !InStr("|ListView|TreeView|ListBox|ComboList|Edit|", "|" item.kind "|")
+            return false
+        if message = 0x115 || message = 0x114 || message = 0x20A || message = 0x20E || message = 0x5 || message = 0x46 || message = 0x47
             return true
         if message = 0x100
             return key >= 0x21 && key <= 0x28 ; Page/Home/End/arrows.
         if item.kind = "ListView"
             return message = 0x1014 ; LVM_SCROLL; ordinary selection retains its existing paint path.
+        if item.kind = "Edit"
+            return message = 0xB6 || message = 0xC2 || message = 0xC || message = 0xB7 ; Scroll / replace / set / caret.
+        if item.kind = "ListBox" || item.kind = "ComboList"
+            return message = 0x197 || message = 0x186 || message = 0x18B ; Top index / selection / count.
         if message = 0x201 || message = 0x203 {
             hit := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
             NumPut("Int", (point & 0xFFFF) << 48 >> 48, "Int", ((point >> 16) & 0xFFFF) << 48 >> 48, hit)
@@ -325,15 +341,21 @@ class SettingsNativeChrome {
     }
     ScrollInfo(handle, object) {
         paneBar := this.windows.Has(handle) && this.windows[handle].kind = "PaneScrollbar"
+        if !paneBar && this.windows.Has(handle) {
+            item := this.windows[handle], axis := object = -5 ? 1 : 0
+            if item.HasOwnProp("bars") && item.bars.Has(axis) && DllCall("IsWindowVisible", "Ptr", item.bars[axis].handle)
+                return this.ScrollInfo(item.bars[axis].handle, object)
+        }
         if paneBar {
-            if object != -5 || !(SettingsNativeChrome.Long(handle, -16) & 0x10000000)
+            axis := this.windows[handle].HasOwnProp("axis") ? this.windows[handle].axis : 1
+            if object != (axis = 1 ? -5 : -6) || !(SettingsNativeChrome.Long(handle, -16) & 0x10000000)
                 return 0
-            range := this.scrollbars.Range(handle, 1)
+            range := this.scrollbars.Range(handle, axis)
             if !IsObject(range)
                 return 0
             rect := Buffer(16, 0), info := Buffer(60, 0)
             DllCall("GetWindowRect", "Ptr", handle, "Ptr", rect)
-            height := Max(1, NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int"))
+            height := Max(1, axis = 1 ? NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int") : NumGet(rect, 8, "Int") - NumGet(rect, 0, "Int"))
             arrow := Min(DllCall("GetSystemMetrics", "Int", 20, "Int"), height // 2)
             track := Max(0, height - 2 * arrow)
             thumb := Min(track, Max(Round(8 * A_ScreenDPI / 96), Round(track * range.page / Max(1, range.maximum - range.minimum + range.page))))
@@ -343,10 +365,13 @@ class SettingsNativeChrome {
             NumPut("Int", arrow, "Int", top, "Int", top + thumb, info, 20)
             return info
         }
+        return this.NativeScrollInfo(handle, object)
+    }
+    NativeScrollInfo(handle, object) {
         info := Buffer(60, 0)
         NumPut("UInt", info.Size, info)
         return DllCall("GetScrollBarInfo", "Ptr", handle, "Int", object, "Ptr", info)
-            && !(NumGet(info, 36, "UInt") & (paneBar ? 0x8000 : 0x18000)) ? info : 0
+            && !(NumGet(info, 36, "UInt") & 0x18000) ? info : 0
     }
     PaintNonclient(handle, dc) {
         window := Buffer(16, 0), rect := Buffer(16, 0)
@@ -431,6 +456,11 @@ class SettingsNativeChrome {
     }
     Dispose() {
         this.scrollbars.Dispose()
+        items := []
+        for handle, item in this.windows
+            items.Push(item)
+        for item in items
+            this.controlScrollbars.Destroy(item)
         for handle in this.windows
             if DllCall("IsWindow", "Ptr", handle)
                 DllCall("comctl32\RemoveWindowSubclass", "Ptr", handle, "Ptr", this.callback, "UPtr", 1)

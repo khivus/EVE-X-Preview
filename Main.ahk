@@ -24,6 +24,7 @@
 #Include "src/SettingsTables.ahk"
 #Include "src/SettingsSearchText.ahk"
 #Include "src/SettingsScrollbars.ahk"
+#Include "src/SettingsControlScrollbars.ahk"
 #Include "src/SettingsNativeChrome.ahk"
 #Include "src/SettingsTooltip.ahk"
 #Include "src/SettingsTheme.ahk"

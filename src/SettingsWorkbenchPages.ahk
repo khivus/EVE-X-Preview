@@ -76,7 +76,9 @@
                 this.Subheading("Character exceptions")
                 this.AddRowTable("exceptions")
             case "window-behavior": this.Action("Capture open EVE window placement to draft", (*) => this.StageClientPlacement(), 380)
-            case "monitored-characters": this.AddRowTable("monitored-characters")
+            case "monitored-characters":
+                this.monitoringNotice := this.Note(this.MonitoringStatus(), "9A5700", 54)
+                this.AddRowTable("monitored-characters")
             case "sources": this.SourceStatus()
             case "events": SettingsEventTable(this).Build()
             case "sounds": SettingsSoundLibrary(this).Build()
@@ -262,20 +264,42 @@
 
     ShowShortcutConflicts() {
         this.RefreshConflictNotice()
-        text := ""
-        for id, others in this.shortcutConflicts {
-            text .= id ":`n"
-            for other in others
-                text .= "  " other "`n"
-            text .= "`n"
+        groups := HotkeyBindings.ConflictGroups(HotkeyBindings.Collect(this))
+        dialog := this.ChildDialog("Shortcut conflicts")
+        dialog.conflictGroups := groups
+        dialog.AddButton("x20 y16 w100 h28", "Close").OnEvent("Click", (*) => this.CloseChild(dialog))
+        dialog.AddText("x136 y18 w580 h26", "Conflicting assignments are grouped by shortcut. Intentional overlaps remain allowed.")
+        y := 58
+        if !groups.Length
+            dialog.AddText("x20 y58 w680 h32", "No overlapping shortcuts were found.")
+        for group in groups {
+            title := ""
+            for key in group.keys
+                title .= (title = "" ? "" : " / ") key
+            dialog.SetFont("s11 Bold")
+            heading := dialog.AddText("x20 y" y " w680 h26", title)
+            height := Max(26, SettingsLayout.TextHeight(heading, title, 680))
+            heading.Move(,,, height)
+            y += height + 6
+            dialog.SetFont("s10 Norm")
+            for entry in group.entries {
+                text := entry.label " (" SettingsValue.HotkeyText(entry.key) ")"
+                control := dialog.AddText("x32 y" y " w668 h24", text)
+                height := Max(24, SettingsLayout.TextHeight(control, text, 668))
+                control.Move(,,, height)
+                y += height + 2
+            }
+            y += 18
         }
-        MsgBox(text != "" ? text : "No overlapping shortcuts were found.", "Shortcut conflicts", "Owner" this.S_Gui.Hwnd)
+        dialog.Show("w740 h540")
     }
 
     BorderDiagram() {
         this.Subheading("Border layout preview")
         mode := this.model.Get("EventActiveBorderMode")
-        active := this.model.Get("ClientHighligtColor")
+        ; Saved colors can use #hex, 0xhex or RGB notation. GUI options need bare hex.
+        active := "E36A0D"
+        try active := SettingsValue.Color(this.model.Get("ClientHighligtColor"))
         event := "E9A23B"
         outer := mode = 1 ? active : event
         inner := mode = 1 ? event : active
@@ -288,6 +312,14 @@
         this.Note(mode = 1 ? "Outer: active client. Inner: event alert. Orange illustrates an event color."
             : mode = 2 ? "Outer: event alert. Inner: active client. Orange illustrates an event color."
             : "Combined: the active state and event alert share the border.", "555555", 34)
+    }
+
+    MonitoringStatus() {
+        if !this.model.Get("gameLogsMonitoringEnabled")
+            return "Game-log monitoring is off. You can prepare the character list before enabling it."
+        return this.model.Get("monitorOnlySelectedChars")
+            ? "Only the listed characters are monitored. These switches also appear under Log sources."
+            : "All detected characters are monitored. Enable Monitor only selected characters to use this list."
     }
 
     ReshufflePreview() {

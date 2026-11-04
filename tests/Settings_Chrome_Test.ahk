@@ -245,7 +245,9 @@ SettingsChromeStartDrag(app, handle, bar) {
     } else
         DllCall("SendMessageW", "Ptr", handle, "UInt", 0xA1, "Ptr", bar = 1 ? 7 : 6, "Ptr", (x & 0xFFFF) | ((y & 0xFFFF) << 16))
     AssertTrue(IsObject(app.theme.chrome.scrollbars.drag), "Dark dragging must not enter the system light tracking loop. Range=" (IsObject(range) ? JSON.Dump(range) : "none") "; hit=" (IsObject(hit) ? JSON.Dump(hit) : "none"))
-    AssertEqual(handle, DllCall("GetCapture", "Ptr"))
+    item := app.theme.chrome.windows[handle]
+    expectedCapture := item.kind = "PaneScrollbar" && item.control.HasOwnProp("source") && item.control.source.kind = "ComboList" ? item.control.source.handle : handle
+    AssertEqual(expectedCapture, DllCall("GetCapture", "Ptr"))
     return [x, y]
 }
 SettingsChromeMoveDrag(handle, point, release := false) {

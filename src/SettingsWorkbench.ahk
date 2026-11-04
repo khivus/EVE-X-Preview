@@ -2,6 +2,7 @@
 ; builders remain available to old integrations; MainGui opens this workbench.
 class SettingsWorkbench extends SettingsWorkbenchPages {
     static Active := 0
+    static ResumeVariable := "EVE_X_PREVIEW_SETTINGS_RESUME"
     static HelpCondition := (*) => SettingsWorkbench.HelpAllowed()
     static HelpHandler := (*) => SettingsWorkbench.HelpRequested()
 
@@ -344,7 +345,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
     }
 
     NavigationSelected(control, item) {
-        if this.navBuilding || !this.navItems.Has(item) || this.navPages.Has(item)
+        if this.navBuilding || !this.navItems.Has(item) || this.navPages.Has(item) || control.GetSelection() != item
             return
         this.Navigate(this.navItems[item])
     }
@@ -407,7 +408,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         ; Queued edit notifications can outlive controls during a page rebuild.
         for helper in this.recorders
             helper.rawMode := false
-        for name in ["conflictLabel", "reshuffleButton", "mouseActionNotice", "eventTable", "soundLibrary", "runtimePreviewButton", "runtimePreviewStatus", "versionStatus"]
+        for name in ["conflictLabel", "monitoringNotice", "reshuffleButton", "mouseActionNotice", "eventTable", "soundLibrary", "runtimePreviewButton", "runtimePreviewStatus", "versionStatus"]
             if this.HasOwnProp(name)
                 this.DeleteProp(name)
         for grid in this.grids
@@ -596,8 +597,6 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             if !enabled
                 this.Action("Open log sources", (*) => this.Navigate("sources"))
         }
-        if section.id = "monitored-characters" && !this.model.Get("monitorOnlySelectedChars")
-            this.Note("The character filter is off. This list is kept for later; all eligible characters are currently monitored.", "9A5700", 34)
     }
 
     RenderField(field) {
@@ -835,6 +834,8 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             } else
                 this.PaintError(binding, message)
         }
+        if this.HasOwnProp("monitoringNotice")
+            SettingsTheme.Assign(this.monitoringNotice, "Value", this.MonitoringStatus())
         if this.currentSection = "labels" && this.HasOwnProp("reshuffleButton")
             SettingsTheme.Assign(this.reshuffleButton, "Enabled", !!this.model.Get("AnonymizeThumbnails"))
         if this.currentSection = "mouse-actions" && this.HasOwnProp("mouseActionNotice")
@@ -1009,12 +1010,77 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             this.ShowError("Settings could not be saved. Your draft is still open.`n" failure)
             return false
         }
+        this.resumeState := this.CaptureSession()
         this.Dispose()
         this.RestartAfterApply()
         return true
     }
 
-    RestartAfterApply() => Reload()
+    CaptureSession() {
+        this.RememberScroll()
+        WinGetPos(&x, &y,,, this.S_Gui.Hwnd)
+        return Map("script", A_ScriptFullPath, "profile", this.SelectedProfile, "section", this.currentSection,
+            "search", this.search.Value, "scroll", this.scrollPositions.Clone(), "expanded", this.expandedPages.Clone(),
+            "x", x, "y", y, "width", this.width, "height", this.height,
+            "maximized", WinGetMinMax(this.S_Gui.Hwnd) = 1)
+    }
+
+    RestartAfterApply() {
+        EnvSet(SettingsWorkbench.ResumeVariable, JSON.Dump(this.resumeState))
+        Reload()
+    }
+
+    static TakeResume() {
+        value := EnvGet(this.ResumeVariable)
+        EnvSet(this.ResumeVariable, "") ; One restart only; normal launches stay closed.
+        if value = ""
+            return 0
+        try {
+            state := JSON.Load(value)
+            if !(state is Map) || state.Get("script", "") != A_ScriptFullPath
+                return 0
+            for key in ["profile", "section", "search", "scroll", "expanded", "x", "y", "width", "height", "maximized"]
+                if !state.Has(key)
+                    return 0
+            if !(state["scroll"] is Map) || !(state["expanded"] is Map)
+                return 0
+            for key in ["x", "y", "width", "height"]
+                if !IsNumber(state[key])
+                    return 0
+            SettingsSchema.FindSection(state["section"])
+            return state
+        }
+        return 0
+    }
+
+    RestoreSession(state, show := true) {
+        this.S_Gui.Show("Hide x" state["x"] " y" state["y"] " w" state["width"] " h" state["height"])
+        work := SettingsWindowSizing.WorkArea(this.S_Gui.Hwnd)
+        fit := SettingsWindowSizing.Fit(work.left, work.top, work.right, work.bottom, A_ScreenDPI)
+        this.width := Max(fit.minWidth, Min(state["width"], Floor((work.right - work.left - 24) * 96 / A_ScreenDPI)))
+        this.height := Max(fit.minHeight, Min(state["height"], Floor((work.bottom - work.top - 40) * 96 / A_ScreenDPI)))
+        this.S_Gui.Opt("+MinSize" fit.minWidth "x" fit.minHeight)
+        this.S_Gui.Show("Hide w" this.width " h" this.height)
+        WinGetPos(,, &outerWidth, &outerHeight, this.S_Gui.Hwnd)
+        x := Max(work.left, Min(state["x"], work.right - outerWidth))
+        y := Max(work.top, Min(state["y"], work.bottom - outerHeight))
+        WinMove(x, y,,, this.S_Gui.Hwnd)
+        if this.model.Profiles.Has(state["profile"])
+            this.model.SelectProfile(state["profile"])
+        this.ProfileOverride()
+        this.profileSelector.Choose(this.model.profile)
+        if this.HasOwnProp("renderedScrollKey")
+            this.DeleteProp("renderedScrollKey")
+        this.scrollPositions := state["scroll"]
+        this.expandedPages := state["expanded"]
+        this.currentSection := state["section"]
+        this.search.Value := state["search"]
+        this.BuildNavigation(this.search.Value)
+        this.Layout()
+        this.Navigate(this.currentSection)
+        if show
+            this.S_Gui.Show(state["maximized"] ? "Maximize" : "")
+    }
 
     Discard() {
         if !this.HasDraftChanges()

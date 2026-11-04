@@ -186,6 +186,8 @@ class SettingsSchema {
                     field.group := section.id
             }
         }
+        ; Reuse the Log sources fields and their inheritance source on this page.
+        this.FindSection("monitored-characters").fields.Push("gameLogsMonitoringEnabled", "monitorOnlySelectedChars")
 
     }
 
