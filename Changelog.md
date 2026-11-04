@@ -2,14 +2,15 @@
 
 ## v1.7.0.2
 
+### Changed
+* Apply & restart reopens Settings at the same page, window size and scroll position.
+* Monitored characters includes the monitoring and character-filter switches, shared with Log sources.
+
 ### Fixed
 * Opening Settings with an existing #hex or RGB border color no longer causes an Invalid option error.
 * Settings scrollbars share the main pane's drawing and dragging behavior, including sidebar navigation, tables, text fields and dropdowns.
 * Shortcut conflicts are grouped by shared key in a consistent, scrollable window.
-
-### Changed
-* Apply & restart reopens Settings at the same page, window size and scroll position.
-* Monitored characters includes the monitoring and character-filter switches, shared with Log sources.
+* Recognise Drifter battleship pilots as NPCs (#14 thanks to @thelonewolfk)
 
 ## v1.7.0.1
 
