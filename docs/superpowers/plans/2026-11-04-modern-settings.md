@@ -71,6 +71,6 @@ Files: `tools/Build-Release.ps1`, `tools/Test-SettingsIntegration.ps1`, existing
 - [x] Run AHK/C#/real bridge integration tests, source and compiled launch checks; record baseline/regressions separately.
 - [x] Measure actual package bytes, startup and process memory; perform visual checks and review all changed files.
 - [x] Update documentation and record implemented scope, evidence and limitations.
-- [ ] Publish reviewed source to the authorized fork and open the upstream dev PR.
+- [x] Publish reviewed source to the authorized fork and open the upstream dev PR.
 
-Verification evidence and explicit limits are recorded in docs/modern-settings-verification.md. Final Git publication is the remaining integration step.
+Verification evidence and explicit limits are recorded in docs/modern-settings-verification.md. Published from S0CT/feature/avalonia-settings in draft PR https://github.com/khivus/EVE-X-Preview/pull/15 targeting upstream dev.
