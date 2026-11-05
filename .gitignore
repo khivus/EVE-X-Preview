@@ -1,7 +1,14 @@
 # Folders
 .vs/
+build/
 
 # Files
 *.exe
 *.json
+!settings/**/app.manifest
+!settings/**/Fixtures/*.json
 EVE-X-Preview*.log
+
+# Companion build products
+settings/**/bin/
+settings/**/obj/

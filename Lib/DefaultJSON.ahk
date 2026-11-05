@@ -7,6 +7,7 @@
     "ThisThat" : 0,
     "DebugMode": 0,
     "SettingsTheme": "system",
+    "SettingsEditor": "automatic",
     "NewProfileInheritance": {},
     "SoundLibrary": [],
     "MasterSoundVolume": 100,

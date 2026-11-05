@@ -2,6 +2,8 @@
 
 [Back to README](../README.MD) · [Settings overview](settings.md)
 
+**Open** and tray-icon double-click follow the global **Settings editor** preference. **Open internal settings** provides direct access to the AHK workbench. Complete or discard any protected draft/dialog before changing editors. See [settings editors](modern-settings.md) for companion compatibility and fallback.
+
 Open Settings from the tray's **Open** command. Configure optional commands under **Application → Tray menu commands**. Checked rows control whether commands appear in the menu; they do not activate the features themselves.
 
 | Command | Effect |
@@ -20,10 +22,11 @@ Open Settings from the tray's **Open** command. Configure optional commands unde
 | Save Client Positions | Saves current EVE window positions and sizes |
 | Auto Save Thumbnail Positions | Toggles automatic saving of thumbnail positions and sizes |
 | Save Thumbnail Positions | Saves current thumbnail positions and sizes |
+| Recover off-screen thumbnails | Brings partially or fully off-screen thumbnails onto the nearest connected display, preserving visible placements across all monitors |
 | Pause/Resume Live Previews | Immediately pauses or recreates live previews; switching hotkeys remain available |
 | Reload | Restarts EVE-X-Preview |
 | Exit | Closes EVE-X-Preview |
 
-Pause/Resume Live Previews is always available and its caption follows the current preview state. Locking and anonymization entries are hidden by default.
+Recover off-screen thumbnails and Pause/Resume Live Previews are always available. The pause/resume caption follows the current preview state. Locking and anonymization entries are hidden by default.
 
 An open draft is protected from Reload and Exit: apply or discard it first. Selecting a tray profile while Settings is open stages activation in Profiles. Finish any open row or event editor before changing profiles. Other immediate runtime changes, including saved positions, are preserved when an unrelated draft is applied.

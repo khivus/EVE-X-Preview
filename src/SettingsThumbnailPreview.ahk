@@ -407,6 +407,8 @@ class SettingsThumbnailPreview extends Main_Class {
     GestureTick(*) {
         if this.closed || !IsObject(this.gesture)
             return
+        previousWinDelay := A_WinDelay
+        SetWinDelay(-1)
         try {
             point := this.PointerState()
             gesture := this.gesture
@@ -425,18 +427,31 @@ class SettingsThumbnailPreview extends Main_Class {
                 this.ApplyGeometry(gesture.left, gesture.top, width, height)
             } else
                 this.ApplyGeometry(gesture.left + dx, gesture.top + dy, gesture.width, gesture.height)
-            this.PaintSample(A_TickCount)
+            if gesture.resize
+                this.PaintSample(A_TickCount)
         } catch as err {
             this.EndGesture()
             ProgramLog.Error(err, "Test thumbnail gesture")
-        }
+        } finally SetWinDelay(previousWinDelay)
     }
 
     ApplyGeometry(x, y, width, height) {
+        resized := false
         for key in ["Window", "TextOverlay", "Border", "EventBorder"]
-            if this.sample.Has(key)
-                WinMove(x, y, width, height, this.sample[key].Hwnd)
-        this.lastPaint := ""
+            if this.sample.Has(key) {
+                hwnd := this.sample[key].Hwnd
+                rect := Buffer(16, 0)
+                if !DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", rect)
+                    continue
+                sameSize := NumGet(rect, 8, "Int") - NumGet(rect, 0, "Int") = width
+                    && NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int") = height
+                resized := resized || !sameSize
+                if !sameSize || NumGet(rect, 0, "Int") != x || NumGet(rect, 4, "Int") != y
+                    DllCall("SetWindowPos", "Ptr", hwnd, "Ptr", 0, "Int", x, "Int", y,
+                        "Int", width, "Int", height, "UInt", 0x14 | (sameSize ? 1 : 0))
+            }
+        if resized
+            this.lastPaint := ""
     }
 
     EndGesture() {

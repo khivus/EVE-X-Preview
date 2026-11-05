@@ -5,6 +5,8 @@ class UpdateChecker {
     releaseTag := ""
     preReleaseTag := ""
     status := "Not checked yet."
+    settingsTag := ""
+    settingsUrl := ""
 
     Start(force := false) {
         if this.busy || (!force && this.checkedAt && A_TickCount - this.checkedAt < 300000) {
@@ -71,6 +73,10 @@ class UpdateChecker {
                         break
                     }
                 }
+                if this.releaseRequest.Status = 200
+                    releases.Push(JSON.Load(this.releaseRequest.ResponseText))
+                companion := UpdateChecker.SettingsAsset(releases)
+                this.settingsTag := companion["tag"], this.settingsUrl := companion["url"]
             }
             this.Finish("Updates checked.")
         } catch as err {
@@ -113,6 +119,25 @@ class UpdateChecker {
 
     static IsNewer(tag, current) {
         return tag != "" && VerCompare(tag, current) > 0
+    }
+
+    static SettingsAsset(releases) {
+        result := Map("tag", "", "url", "")
+        for release in releases {
+            if !(release is Map) || release.Get("draft", true)
+                continue
+            tag := RegExReplace(release.Get("tag_name", ""), "i)^v")
+            if !RegExMatch(tag, "^\d+(\.\d+){1,3}$") || (result["tag"] != "" && VerCompare(tag, result["tag"]) <= 0)
+                continue
+            for asset in release.Get("assets", []) {
+                url := asset.Get("browser_download_url", "")
+                if asset.Get("name", "") = "EVE-X-Preview-Settings.exe" && RegExMatch(url, "^https://github\.com/khivus/EVE-X-Preview/releases/download/[^/]+/EVE-X-Preview-Settings\.exe$") {
+                    result["tag"] := tag, result["url"] := url
+                    break
+                }
+            }
+        }
+        return result
     }
 
     static CurrentVersion() {

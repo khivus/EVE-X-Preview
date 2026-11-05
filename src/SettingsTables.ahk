@@ -187,14 +187,19 @@ class SettingsTables {
                     colors["IABordercolor"].Push(SettingsValue.Color(row[3]))
                     colors["TextColor"].Push(SettingsValue.Color(row[4]))
                 }
-                profile["Custom Colors"]["cColors"] := colors
+                target := profile["Custom Colors"]["cColors"]
+                for key, value in colors
+                    target[key] := value
             case "custom-names":
                 names := "", labels := ""
                 for index, row in rows {
                     names .= (index = 1 ? "" : "`n") this.CleanName(row[1])
                     labels .= (index = 1 ? "" : "`n") Trim(row[2])
                 }
-                profile["Thumbnails Visuals"]["CustomThumbnailNames"] := Map("Characters", names, "Names", labels)
+                if !profile["Thumbnails Visuals"].Has("CustomThumbnailNames")
+                    profile["Thumbnails Visuals"]["CustomThumbnailNames"] := Map()
+                target := profile["Thumbnails Visuals"]["CustomThumbnailNames"]
+                target["Characters"] := names, target["Names"] := labels
             case "exceptions":
                 minimize := [], close := []
                 for row in rows {
@@ -229,12 +234,15 @@ class SettingsTables {
                 if kind = "app-group-members" {
                     profile["Non-EVE Applications"]["NonEVEGroups"][groupName]["exe"] := apps
                     profile["Non-EVE Applications"]["NonEVEGroups"][groupName]["title"] := titles
-                } else
-                    profile["Non-EVE Applications"]["NonEVEHotkeys"] := Map("exe", apps, "title", titles, "hotkey", hotkeys)
+                } else {
+                    target := profile["Non-EVE Applications"]["NonEVEHotkeys"]
+                    target["exe"] := apps, target["title"] := titles, target["hotkey"] := hotkeys
+                }
             case "gestures":
                 for row in rows {
                     mask := row[2] + 0
-                    profile["Thumbnails Interactions"][row[1]] := Map("lmb", !!(mask & 1), "rmb", !!(mask & 2), "shift", !!(mask & 4), "ctrl", !!(mask & 8))
+                    target := profile["Thumbnails Interactions"][row[1]]
+                    target["lmb"] := !!(mask & 1), target["rmb"] := !!(mask & 2), target["shift"] := !!(mask & 4), target["ctrl"] := !!(mask & 8)
                 }
         }
     }

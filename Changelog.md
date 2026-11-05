@@ -1,4 +1,11 @@
-# Changelog
+﻿# Changelog
+
+## v1.7.0.3
+
+### Added
+* Optional C# / Avalonia settings editor alongside the built-in AHK editor, distributed as one self-contained executable with shared settings validation, profiles and inheritance. Choose Automatic, Modern or Built-in settings; the tray detects the modern editor and falls back to the built-in editor when needed. Both editors check for updates quietly and offer a download link for the latest published settings editor.
+* Additional settings themes shared by both editors: Graphite (neutral gray), The Matrix, Kitsune, Synthwave and Cyberpunk.
+* Recover off-screen thumbnails from the tray menu or Thumbnails → Layout. Moves partially or fully off-screen thumbnails back to the nearest connected display, preserving their sizes. Thumbnails fully visible on any monitor, including across adjacent displays, stay in place.
 
 ## v1.7.0.2
 

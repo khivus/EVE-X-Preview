@@ -310,6 +310,26 @@ class SettingsModel {
 
     Rows(kind, groupName := "") => SettingsTables.Read(this.Profiles[this.Source(SettingsTables.Group(kind))], kind, groupName)
 
+    ResetThumbnailSizes(runtime := 0) {
+        width := this.Get("ThumbnailStartLocationwidth"), height := this.Get("ThumbnailStartLocationheight")
+        positions := this.Profiles[this.profile]["Thumbnail Positions"]
+        for name, position in positions {
+            if position is Map
+                position["width"] := width, position["height"] := height
+            else if position is Array && position.Length >= 4
+                positions[name] := Map("x", position[1], "y", position[2], "width", width, "height", height)
+        }
+        if IsObject(runtime) && runtime.HasOwnProp("ThumbWindows")
+            for hwnd, thumb in runtime.ThumbWindows.OwnProps() {
+                try {
+                    window := thumb["Window"]
+                    WinGetPos(&x, &y,,, window.Hwnd)
+                    if window.Title != ""
+                        positions[window.Title] := Map("x", x, "y", y, "width", width, "height", height)
+                }
+            }
+    }
+
     Groups(kind) {
         profile := this.Profiles[this.Source(kind = "characters" ? "Character groups" : "Non-EVE Applications")]
         return kind = "characters" ? profile["Hotkey Groups"] : profile["Non-EVE Applications"]["NonEVEGroups"]
@@ -351,6 +371,22 @@ class SettingsModel {
         groups.Delete(name)
     }
 
+    SetGroupShortcut(kind, name, key, value) {
+        if kind != "characters" && kind != "apps"
+            throw ValueError("Choose character groups or application groups.")
+        if this.Inherited(kind = "characters" ? "character-groups" : "app-groups")
+            throw ValueError("Customize this section before editing its shortcuts.")
+        groups := this.Groups(kind)
+        allowed := kind = "characters" ? ["ForwardsHotkey", "BackwardsHotkey", "FirstCharHotkey"] : ["fkey", "bkey"]
+        valid := false
+        for candidate in allowed
+            valid := valid || key = candidate
+        if !valid || !groups.Has(name)
+            throw ValueError("Choose a valid group and shortcut.")
+        SettingsValue.Hotkey(value)
+        groups[name][key] := value
+    }
+
     UndoLast() {
         if !this.undo.Length
             return false
@@ -381,6 +417,11 @@ class SettingsModel {
                     restored.Push(path)
             }
             this.config["SoundLibrary"] := restored
+        } else if entry.kind = "table-state" {
+            if !this.Profiles.Has(entry.profile)
+                throw ValueError("Restore the profile before restoring its table rows.")
+            this.profile := entry.profile
+            this.SaveRows(entry.tableKind, this.Clone(entry.rows), entry.groupName)
         } else if entry.kind = "row-batch" {
             this.profile := entry.profile
             rows := this.Rows(entry.tableKind, entry.groupName)
@@ -415,6 +456,53 @@ class SettingsModel {
         return result
     }
 
+    ; Check edited leaves against the same baseline used by Merge. Renames keep
+    ; their old profile identity so live discovery/geometry is compared correctly.
+    Conflicts(current) {
+        before := this.Clone(this.original), after := this.Clone(this.config), live := this.Clone(current), conflicts := []
+        for name, origin in this.profileOrigins {
+            if name = origin || !this.Profiles.Has(name)
+                continue
+            if live["_Profiles"].Has(name)
+                conflicts.Push("_Profiles/" name)
+            if !live["_Profiles"].Has(origin)
+                conflicts.Push("_Profiles/" origin)
+            else if before["_Profiles"].Has(origin)
+                SettingsModel.FindConflicts(before["_Profiles"][origin], this.Profiles[name], live["_Profiles"][origin], "_Profiles/" name, conflicts)
+            for collection in [before["_Profiles"], after["_Profiles"], live["_Profiles"]] {
+                if collection.Has(origin)
+                    collection.Delete(origin)
+                if collection.Has(name)
+                    collection.Delete(name)
+            }
+        }
+        SettingsModel.FindConflicts(before, after, live, "", conflicts)
+        return conflicts
+    }
+
+    static FindConflicts(before, after, current, path, result) {
+        if this.Equal(before, after) || this.Equal(after, current)
+            return
+        if before is Map && after is Map && current is Map {
+            for key, previous in before {
+                child := path = "" ? key : path "/" key
+                if !after.Has(key) {
+                    if current.Has(key) && !this.Equal(previous, current[key])
+                        result.Push(child)
+                } else if !this.Equal(previous, after[key]) {
+                    if !current.Has(key)
+                        result.Push(child)
+                    else
+                        this.FindConflicts(previous, after[key], current[key], child, result)
+                }
+            }
+            for key, value in after
+                if !before.Has(key) && current.Has(key) && !this.Equal(value, current[key])
+                    result.Push(path = "" ? key : path "/" key)
+        } else if !this.Equal(before, current)
+            result.Push(path)
+    }
+
     static MergeChanged(before, after, current) {
         if this.Equal(before, after)
             return this.Clone(current)
@@ -436,8 +524,13 @@ class SettingsModel {
 
 class SettingsValue {
     static Parse(field, input) {
-        if field.kind = "bool"
-            return !!input
+        if field.kind = "bool" {
+            if !IsObject(input) && (input = 0 || input = "false")
+                return false
+            if !IsObject(input) && (input = 1 || input = "true")
+                return true
+            throw ValueError("Choose enabled or disabled.")
+        }
         value := Trim(input, " `t`r`n")
         if field.kind = "integer" || field.kind = "number" || field.kind = "slider" {
             pattern := field.kind = "number" ? "^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$" : "^[+-]?\d+$"

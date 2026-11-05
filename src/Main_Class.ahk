@@ -64,6 +64,9 @@
 
     __New() { 
 
+        ; Advertise startup before reading configuration so an offline editor
+        ; hands its draft to this runtime instead of becoming a competing writer.
+        This.settingsBridge := SettingsBridge(This)
         This._JSON := Load_JSON()
         This.default_JSON := JSON.Load(default_JSON)
         This.runningProfile := This.LastUsedProfile
@@ -302,6 +305,7 @@
 
         This.ShowPostUpdateChangelog()
         This.RestoreSettingsAfterApply()
+        This.settingsBridge.ready := true
         return This
     }
 
@@ -386,6 +390,8 @@
         if !hwnd
             return false
         try {
+            if This.HasOwnProp("settingsBridge") && This.settingsBridge.HasExternal && WinGetPID(hwnd) = This.settingsBridge.ExternalPid
+                return true
             if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed
                 return DllCall("GetAncestor", "Ptr", hwnd, "UInt", 3, "Ptr") = This.settingsWorkbench.S_Gui.Hwnd
             if This.HasOwnProp("S_Gui")
@@ -1900,6 +1906,42 @@
 
     }
 
+    ThumbnailRecoveryMonitors() => ThumbnailRecovery.Monitors()
+
+    RecoverOffscreenThumbnails(*) {
+        monitors := This.ThumbnailRecoveryMonitors()
+        recovered := 0
+        previousCritical := A_IsCritical, previousHidden := A_DetectHiddenWindows
+        Critical
+        DetectHiddenWindows(true)
+        try {
+            for hwnd, thumb in This.ThumbWindows.OwnProps() {
+                window := thumb["Window"]
+                try WinGetPos(&x, &y, &width, &height, window.Hwnd)
+                catch TargetError
+                    continue
+                target := ThumbnailRecovery.Position(x, y, width, height, monitors)
+                if !target || (target.x = x && target.y = y)
+                    continue
+                ; Move all overlays by the same offset without resizing or showing them.
+                windows := This.CaptureThumbnailDragWindows(hwnd, false)
+                This.MoveThumbnailDragWindows(windows, target.x - x, target.y - y)
+                try WinGetPos(&x, &y, &width, &height, window.Hwnd)
+                catch TargetError
+                    continue
+                if window.Title != "" && window.Title != "EVE"
+                    This.ThumbnailPositions[window.Title] := [x, y, width, height]
+                recovered++
+            }
+            if recovered
+                ProgramLog.Add("Recovered " recovered " off-screen thumbnails")
+        } finally {
+            DetectHiddenWindows(previousHidden)
+            Critical(previousCritical)
+        }
+        return recovered
+    }
+
     ; Returns the bounds of the monitor containing (x, y), or the nearest one if the point is off every monitor
     GetMonitorBounds(x, y, &left, &top, &right, &bottom) {
         x := Integer(x), y := Integer(y)
@@ -2490,7 +2532,10 @@
         return "EVE - " title
     }
 
-    SaveJsonToFile(savePath := "EVE-X-Preview.json") {
+    SaveJsonToFile(savePath := "") {
+        if savePath = ""
+            savePath := A_ScriptDir "\EVE-X-Preview.json"
+        lock := SettingsFileLock(A_ScriptDir)
         previousCritical := A_IsCritical
         Critical
         tempPath := savePath ".save.tmp"
@@ -2504,6 +2549,7 @@
             ProgramLog.Add("Settings saved")
         } finally {
             Critical(previousCritical)
+            lock.Dispose()
         }
         This.SettingsSaveCompleted(serializedSettings)
     }

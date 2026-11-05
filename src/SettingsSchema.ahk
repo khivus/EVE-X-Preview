@@ -135,7 +135,7 @@ class SettingsSchema {
         this.Depends("flashBorderInterval", "flashBorderEnabled")
         this.Field("stopDisplayingOnSwitch", "Clear visual alerts when switching to their client", "bool")
         this.Field("eventDisplayDuration", "Alert duration", "integer", 100, 3600000, "ms")
-        this.Section("Monitoring & alerts", "events", "Event alerts", "Monitored Events", "Select an event to edit its conditions, color, sound and volume. Events are grouped by purpose.", "Game Logs Monitoring")
+        this.Section("Monitoring & alerts", "events", "Event alerts", "Monitored Events", "Enable alerts and configure their colors and conditions. Reuse sounds and adjust playback in Sound library.", "Game Logs Monitoring")
         this.Field("shootingInterval", "Shooting idle interval", "integer", 100, 3600000, "ms", "Used only by the Shooting idle alert.")
         this.Section("Monitoring & alerts", "dps", "DPS", "DPS Monitoring")
         this.Field("incomingDPSEnabled", "Show incoming DPS", "bool")
@@ -150,7 +150,6 @@ class SettingsSchema {
         this.Field("hideDPSForFocused", "Hide DPS for the focused client", "bool",,,, "Keep counting damage while hiding DPS on the client currently in focus.", ["DPS Monitoring", "hideDPSForFocused"], "Focused-client DPS")
         this.Section("Monitoring & alerts", "sounds", "Sound library and playback", "", "Shared settings affect every profile. Event assignments and event volume belong to the event profile.")
         this.Field("MasterSoundVolume", "Master event volume", "slider", 0, 300, "%", "Above 100% boosts the original sound.", ["MasterSoundVolume"], "", true)
-        this.Section("Monitoring & alerts", "sound-playback", "Advanced sound playback", "", "Playback limits are shared across all profiles. Most users can keep the defaults.")
         this.Field("MaxSimultaneousSounds", "Maximum simultaneous event sounds", "integer", 1, 16, "sounds", "A new event sound replaces the oldest at this limit.", ["MaxSimultaneousSounds"], "", true)
         this.Field("SoundRepeatTimeout", "Minimum time before repeating the same sound", "integer", 0, 3600000, "ms", "Repeated files share this limit across events and characters. 0 allows repeats; manual previews ignore this limit.", ["SoundRepeatTimeout"], "", true)
 
@@ -162,7 +161,14 @@ class SettingsSchema {
         this.Section("Application", "interface", "Settings appearance", "", "Theme changes preview immediately. Apply saves the choice for future settings windows.")
         this.Field("SettingsTheme", "Settings theme", "choice",,,, "Choose a light or dark interface, or follow the Windows app theme.", ["SettingsTheme"], "", true)
         this.Choices("SettingsTheme", "Use Windows setting", "system", "Light", "light", "Dark", "dark")
+        for id in SettingsPalettes.Order
+            this.Fields["SettingsTheme"].choices.Push({label: SettingsPalettes.Items[id]["label"], value: id})
+        this.Field("SettingsEditor", "Settings editor", "choice",,,, "Automatic prefers the compatible modern editor beside the application. The internal editor is always available from the tray.", ["SettingsEditor"], "", true)
+        this.Choices("SettingsEditor", "Automatic", "automatic", "Modern (C#)", "modern", "Built-in (AHK)", "builtin")
         this.Section("Application", "tray", "Tray menu commands", "Tray Menu Settings", "Checked commands appear in the tray menu. These checks do not turn the features themselves on.")
+        ; Ordinary metadata is generated from the canonical default command list.
+        for name, visible in JSON.Load(default_JSON)["_Profiles"]["Default"]["Tray Menu Settings"]["TrayMenuShortcuts"]
+            this.Field("TrayCommand:" name, name, "bool",,,, "Show this command in the tray menu.", ["Tray Menu Settings", "TrayMenuShortcuts", name])
         this.Section("Application", "performance", "Performance and compatibility", "Other")
         this.Field("ThumbnailPollingInterval", "Time between window and focus checks", "integer", 50, 1000, "ms", "Higher values reduce window checks and delay client and focus updates.", ["Thumbnails Behavior", "ThumbnailPollingInterval"], "Thumbnails Behavior")
         this.Field("SlowThumbnailCreation", "Stagger preview creation at startup", "bool",,,, "Wait 3 seconds, then create ready previews gradually to reduce startup GPU pressure.")
@@ -173,7 +179,6 @@ class SettingsSchema {
         this.Field("ThisThat", "Show switching combo and total counters", "bool",,,, "Briefly show your switching streak and total. Hidden while debugging information is enabled.", ["ThisThat"], "", true)
         this.Section("Application", "about", "About and updates", "", "Version details, help, release notes and explicitly labelled installers.")
         this.FindSection("sounds").navTitle := "Sounds"
-        this.FindSection("sound-playback").navTitle := "Advanced playback"
         this.FindSection("performance").navTitle := "Advanced"
         ; Storage paths remain compatible; inheritance follows the visible subsections.
         for section in this.Sections {
@@ -235,6 +240,7 @@ class SettingsSchema {
                 "labels", "character names replacement aliases anonymous anonymization random names", "app-groups", "process executable exe title window application groups",
                 "app-shortcuts", "process executable exe title window shortcut", "mouse-actions", "gesture click drag resize move minimize close Quick Group exclude disable",
                 "close-protection", "character exceptions close protection never minimize", "tray", "tray menu show hide commands",
+                "layout", "recover off-screen offscreen lost thumbnails monitor display edge position",
                 "sounds", "audio WAV MP3 library file volume gain batch assignments timeout simultaneous", "about", "version upgrade downgrade stable prerelease help changelog")
             if keywords.Has(section.id)
                 haystack .= " " StrLower(keywords[section.id])

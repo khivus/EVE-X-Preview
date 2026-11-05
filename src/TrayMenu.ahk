@@ -20,6 +20,7 @@ Class TrayMenu extends Settings_Gui {
         TrayMenu.Delete() ; Delete the Default TrayMenu Items
 
         TrayMenu.Add("Open", MenuHandler)
+        TrayMenu.Add("Open internal settings", (*) => SettingsEditor.OpenInternal(This))
         TrayMenu.Add() ; Seperator
         TrayMenu.Add("Profiles", Profiles_Submenu)
         TrayMenu.Add() ; Seperator
@@ -115,6 +116,7 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Check("Anonymize Thumbnails")
         }
 
+        TrayMenu.Add("Recover off-screen thumbnails", ObjBindMethod(This, "RecoverOffscreenThumbnails"))
         This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
         TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
         TrayMenu.Add("Reload", (*) => This.RequestRuntimeAction("reload"))
@@ -190,6 +192,8 @@ Class TrayMenu extends Settings_Gui {
     ActivateProfile(profileName, source := "Hotkey", *) {
         if !This.Profiles.Has(profileName)
             return false
+        if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
+            return false
         if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
             editor := This.settingsWorkbench
             if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {
@@ -227,6 +231,8 @@ Class TrayMenu extends Settings_Gui {
     }
 
     RequestRuntimeAction(action) {
+        if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
+            return false
         if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
             editor := This.settingsWorkbench
             if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {

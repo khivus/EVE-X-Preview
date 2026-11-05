@@ -57,7 +57,10 @@
                 if !this.model.Get("Ccoloractive")
                     this.Note("Character-specific colors are off. You can prepare rows now, then enable the option above to use them.", "9A5700", 40)
                 this.AddRowTable("character-colors")
-            case "layout": this.Action("Reset this profile's thumbnail sizes on Apply", (*) => this.StageSizeReset(), 340)
+            case "layout":
+                this.recoverThumbnailsButton := this.Action("Recover off-screen thumbnails", (*) => this.RecoverRuntimeThumbnails())
+                this.Note("Moves current thumbnails back on screen immediately, even when positions are locked. Thumbnails fully visible across connected monitors stay in place.", "555555", 54)
+                this.Action("Reset this profile's thumbnail sizes on Apply", (*) => this.StageSizeReset(), 340)
             case "hidden-characters": this.AddRowTable("hidden-characters")
             case "mouse-actions":
                 this.mouseActionNotice := this.Note("", "9A5700", 40)
@@ -328,23 +331,14 @@
         this.UpdateStatus("Preview labels reshuffled. Applying restarts the app and assigns a fresh runtime set.")
     }
 
+    RecoverRuntimeThumbnails() {
+        count := this.owner.RecoverOffscreenThumbnails()
+        this.UpdateStatus(count ? "Recovered " count " off-screen thumbnail(s)." : "No off-screen thumbnails need recovery.")
+    }
+
     StageSizeReset() {
         width := this.model.Get("ThumbnailStartLocationwidth"), height := this.model.Get("ThumbnailStartLocationheight")
-        positions := this.model.Profiles[this.model.profile]["Thumbnail Positions"]
-        for name, position in positions {
-            if position is Map
-                position["width"] := width, position["height"] := height
-            else if position is Array && position.Length >= 4
-                positions[name] := Map("x", position[1], "y", position[2], "width", width, "height", height)
-        }
-        for hwnd, thumb in this.owner.ThumbWindows.OwnProps() {
-            try {
-                window := thumb["Window"]
-                WinGetPos(&x, &y,,, window.Hwnd)
-                if window.Title != ""
-                    positions[window.Title] := Map("x", x, "y", y, "width", width, "height", height)
-            }
-        }
+        this.model.ResetThumbnailSizes(this.owner)
         this.Changed()
         this.UpdateStatus("Thumbnail sizes will reset to " width " × " height " px after Apply & restart.")
     }
@@ -440,10 +434,7 @@
     }
 
     SetGroupShortcut(kind, name, key, value) {
-        if this.model.Inherited(kind = "characters" ? "Character groups" : "Non-EVE Applications")
-            throw ValueError("Customize this section before editing its shortcuts.")
-        SettingsValue.Hotkey(value)
-        this.model.Groups(kind)[name][key] := value
+        this.model.SetGroupShortcut(kind, name, key, value)
         this.Changed()
         this.RefreshConflictNotice()
     }
@@ -832,6 +823,7 @@
         this.Note("Created by gonzo83. Maintained by khivus.`nContributions by mrmjstc and CJKondur.", "555555", 42)
         this.versionStatus := this.Note(this.updateChecker.status, "526778", 42)
         this.Action("Check for updates", (*) => this.StartUpdateCheck())
+        this.Action("Download latest settings editor", (*) => this.OpenSettingsDownload())
         this.releaseInstall := this.Action("Install stable version...", (*) => this.InstallVersion(false), 360)
         this.preInstall := this.Action("Install pre-release version...", (*) => this.InstallVersion(true), 360)
         this.Action("Read included changelog", (*) => ChangelogWindow.Show(false, this.S_Gui.Hwnd))
@@ -844,6 +836,12 @@
         control := this.MainFrame.AddText("x198 y" this.y " w" Max(100, this.contentWidth - 218) " h24", value)
         this.y += 30
         return control
+    }
+
+    OpenSettingsDownload() {
+        url := this.updateChecker.settingsUrl
+        Run(url != "" ? url : "https://github.com/khivus/EVE-X-Preview/releases")
+        this.UpdateStatus(url != "" ? "Settings editor download opened in your browser." : "Opened releases. Look for EVE-X-Preview-Settings.exe; an asset may not be published yet.")
     }
 
     StartUpdateCheck(force := true) {

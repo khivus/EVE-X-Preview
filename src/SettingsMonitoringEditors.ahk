@@ -48,21 +48,7 @@
         return rows
     }
     SaveRows(rows) {
-        if this.inherited
-            throw ValueError("Customize Event alerts before editing inherited values.")
-        normalized := []
-        for index, row in rows {
-            color := SettingsValue.Color(row[4])
-            path := Trim(row[5])
-            if path != "" && !EventSounds.SameFile(path, this.events[this.keys[index]].Get("sound", ""))
-                EventSounds.Validate(path)
-            volume := SettingsValue.Parse({kind: "integer", min: 0, max: 300, unit: "%"}, row[6])
-            normalized.Push([!!row[1], color, path, volume])
-        }
-        for index, row in normalized {
-            config := this.events[this.keys[index]]
-            config["enabled"] := row[1], config["color"] := row[2], config["sound"] := row[3], config["soundVolume"] := row[4]
-        }
+        SettingsSession.ForModel(this.app.owner, this.app.model).EventRows(this.keys, rows)
     }
     Widths() {
         width := this.app.contentWidth - 62
@@ -137,22 +123,26 @@ class SettingsEventEditor {
         this.effective := dialog.AddText("x20 y346 w660 h40 c555555", "")
         dialog.AddButton("x20 y392 w220 h30", "Preview this event sound").OnEvent("Click", (*) => this.Preview())
         y := 438
-        if this.event = "stoppedShooting" {
-            dialog.AddText("x20 y" y " w660 h20", "Milliseconds without an outgoing shot (100–3600000)")
-            this.idle := dialog.AddEdit("x20 y" (y + 26) " w220 h26", this.app.model.Get("shootingInterval"))
-            dialog.Help(this.idle, "Trigger Shooting idle after this many milliseconds without an outgoing shot.")
-            y += 68
-        }
-        if this.event = "underAttackByPlayer" || this.event = "underAttackByNPC" {
-            this.neuts := dialog.AddCheckbox("x20 y" y " w660 h28 Checked" this.config.Get("includeNeutralization", 0), "Include incoming neutralization and Nosferatu drains")
-            this.misses := dialog.AddCheckbox("x20 y" (y + 36) " w660 h28 Checked" this.config.Get("includeMisses", 1), "Include incoming shots that miss")
-            dialog.Help(this.neuts, "Treat incoming energy neutralization and Nosferatu drains as this attack event.")
-            dialog.Help(this.misses, "Trigger this attack alert even when the incoming shot misses.")
-            y += 80
-            if this.event = "underAttackByPlayer" {
-                this.smartbomb := dialog.AddCheckbox("x20 y" y " w660 h28 Checked" this.config.Get("ignoreSmartbombDamage", 1), "Ignore player smartbomb damage")
-                dialog.Help(this.smartbomb, "Exclude player smartbomb damage from this alert. DPS still counts that damage.")
+        this.eventInputs := Map()
+        data := SettingsSession.ForModel(app.owner, app.model).Event(this.event)
+        aliases := Map("shootingInterval", "idle", "includeNeutralization", "neuts", "includeMisses", "misses", "ignoreSmartbombDamage", "smartbomb")
+        for field in data["fields"] {
+            id := field["id"]
+            if id = "enabled" || id = "color" || id = "sound" || id = "soundVolume"
+                continue
+            if field["kind"] = "bool" {
+                control := dialog.AddCheckbox("x20 y" y " w660 h28 Checked" data["values"][id], field["label"])
                 y += 40
+            } else {
+                dialog.AddText("x20 y" y " w660 h20", field["label"] " (" field.Get("min", 0) "–" field.Get("max", 0) ")")
+                control := dialog.AddEdit("x20 y" (y + 26) " w220 h26", data["values"][id])
+                y += 68
+            }
+            dialog.Help(control, field.Get("help", field["label"]))
+            this.eventInputs[id] := control
+            if aliases.Has(id) {
+                alias := aliases[id]
+                this.%alias% := control
             }
         }
         this.error := dialog.AddText("x20 y" y " w660 h26 cB42318", "")
@@ -251,28 +241,10 @@ class SettingsEventEditor {
 
     Save() {
         try {
-            config := SettingsModel.Clone(this.config)
-            config["color"] := SettingsValue.Color(this.color.Value)
-            config["enabled"] := this.enabled.Value
-            config["sound"] := this.SelectedPath()
-            config["soundVolume"] := this.ReadVolume()
-            if config["sound"] != ""
-                EventSounds.Validate(config["sound"])
-            if this.HasOwnProp("idle")
-                idle := SettingsValue.Parse(SettingsSchema.Fields["shootingInterval"], this.idle.Value)
-            if this.HasOwnProp("neuts") {
-                config["includeNeutralization"] := this.neuts.Value
-                config["includeMisses"] := this.misses.Value
-            }
-            if this.HasOwnProp("smartbomb")
-                config["ignoreSmartbombDamage"] := this.smartbomb.Value
-            if this.app.model.Inherited("Monitored Events")
-                throw ValueError("Customize Event alerts before editing this event.")
-            if this.HasOwnProp("idle")
-                this.app.model.Set("shootingInterval", idle)
-            if this.pendingFile != "" && EventSounds.SameFile(this.pendingFile, config["sound"])
-                EventSounds.Add(this.app.model.config, this.pendingFile)
-            this.table.events[this.event] := config
+            values := Map("color", this.color.Value, "enabled", this.enabled.Value, "sound", this.SelectedPath(), "soundVolume", this.volume.Value)
+            for id, control in this.eventInputs
+                values[id] := control.Value
+            SettingsSession.ForModel(this.app.owner, this.app.model).Event(this.event, values)
             this.app.Changed()
             this.table.Refresh(this.row)
             this.app.CloseChild(this.dialog)
@@ -317,31 +289,8 @@ class SettingsSoundLibrary {
         return rows
     }
     SaveRows(rows) {
-        paths := [], gains := Map(), used := Map()
-        used.CaseSense := "Off"
-        for index, row in rows {
-            path := Trim(row[1])
-            if path = ""
-                throw ValueError("Row " index ": enter a full sound-file path, or remove the unfinished row.")
-            known := false
-            for saved in EventSounds.Library(this.app.model.config)
-                if EventSounds.SameFile(path, saved)
-                    known := true
-            if !known
-                EventSounds.Validate(path)
-            path := EventSounds.FullPath(path)
-            if used.Has(path)
-                throw ValueError("Row " index " duplicates an existing sound file.")
-            used[path] := true
-            gains[StrLower(path)] := SettingsValue.Parse({kind: "integer", min: 0, max: 300, unit: "%"}, row[3])
-            paths.Push(path)
-            SplitPath(path,, &directory)
-            row[2] := directory
-        }
-        this.app.model.config["SoundLibrary"] := paths
-        for path, gain in gains
-            EventSounds.Volumes(this.app.model.config)[path] := gain
-        this.paths := paths.Clone()
+        SettingsSession.ForModel(this.app.owner, this.app.model).SoundRows(rows)
+        this.paths := EventSounds.Library(this.app.model.config).Clone()
     }
     Widths() {
         width := this.app.contentWidth - 62
@@ -405,7 +354,8 @@ class SettingsSoundLibrary {
         if path = ""
             return
         try {
-            path := EventSounds.Add(this.app.model.config, path)
+            SettingsSession.ForModel(this.app.owner, this.app.model).Sound(Map("action", "add", "path", path))
+            path := EventSounds.FullPath(path)
             this.app.Changed()
             this.Refresh(path)
         } catch as err
@@ -455,8 +405,7 @@ class SettingsSoundLibrary {
         dialog.Show("w600 h266")
         Save(*) {
             try {
-                gain := SettingsValue.Parse({kind: "integer", min: 0, max: 300, unit: "%"}, value.Value)
-                EventSounds.Volumes(this.app.model.config)[StrLower(path)] := gain
+                SettingsSession.ForModel(this.app.owner, this.app.model).Sound(Map("action", "gain", "path", path, "volume", value.Value))
                 this.app.Changed()
                 this.Refresh(path)
                 this.app.CloseChild(dialog)
@@ -508,12 +457,10 @@ class SettingsSoundLibrary {
             for index, row in holder.rows
                 if row[1]
                     checked[keys[index]] := true
-            plan := EventSounds.AssignmentPlan(events, path, checked)
-            for key, newPath in plan.changes
-                events[key]["sound"] := newPath
+            SettingsSession.ForModel(this.app.owner, this.app.model).Sound(Map("action", "assign", "path", path, "events", checked))
             this.app.Changed()
             this.app.CloseChild(dialog)
-            this.app.UpdateStatus(plan.changes.Count " event sound assignments saved to the draft. Apply & restart activates them.")
+            this.app.UpdateStatus("Event sound assignments saved to the draft. Apply & restart activates them.")
         }
     }
 }

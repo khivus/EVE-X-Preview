@@ -38,6 +38,24 @@ Run the Windows AutoHotkey v2 suite from the repository root:
 
 Tests use temporary windows and fixture settings. Live EVE checks and rebuilding a release are separate verification steps.
 
+## Avalonia companion and isolated development
+
+The optional companion uses .NET 10 LTS and stable Avalonia dependencies pinned in `settings/`. Its ordinary controls consume metadata from `SettingsSchema`, `SettingsTables` and canonical defaults. `SettingsSession` owns external draft operations and the shared Apply transaction. See [settings editors](modern-settings.md) and [bridge v1](settings-bridge.md).
+
+`tools/Build-Release.ps1 -OutputDirectory <folder>` requires a fresh or empty output folder, compiles and embeds the canonical host and publishes a single self-contained Windows x64 companion, including native/runtime dependencies. The output contains the main, updater and settings executables; the intermediate host is kept under `.vs/build/hosts` instead of shipped separately. It requires .NET 10 SDK and Ahk2Exe. Use `-BuiltInOnly` to produce the established main/updater pair. `-DotNetPath` selects a portable SDK; `-NoRestore` uses restored dependencies. Caches default to `.vs/build`, and SDK certificate/tool-path first-use changes are disabled. Debug symbols are omitted from the portable distribution.
+
+Build independently with:
+
+```powershell
+dotnet publish settings/EVE-X-Preview.Settings/EVE-X-Preview.Settings.csproj -c Release -r win-x64 --self-contained true -o <package-folder>
+```
+
+For source-mode execution pass `--installation <repository-folder>` to the companion. It discovers the canonical host there and uses a standard AutoHotkey v2 installation or portable `AutoHotkey64.exe` beside the source.
+
+The AHK suite creates real Windows controls. To isolate it, use Windows Sandbox with a read-only source/input snapshot and a dedicated writable output folder. This workspace's `.vs/isolated/README.md` describes its launcher. `tools/Invoke-SandboxChecks.ps1 -SandboxId <id> -Mode Ahk` snapshots tracked and nonignored new files. `-Filter` selects tests; `Managed` runs C# assertions; `Integration` exercises a fresh offline host; `RuntimeIntegration` exercises actual AHK restart/reconnect. These helpers expect guest `C:\Input`, `C:\Output`, and a copied runtime. Never point integration checks at real user settings.
+
+Publish `settings/EVE-X-Preview.Settings.Tests` self-contained to the guest input's `settings-tests` folder. Run it with no arguments for client tests or `--integration <isolated installation>` for real message-bridge checks. Capture visuals with the companion's `--installation <fixture> --capture-fixtures <output-folder>` mode. Captures at150% are simulated rendering checks; physical monitor scaling needs separate verification.
+
 ## Settings architecture and focused checks
 
 The production entry point opens SettingsWorkbench. SettingsModel owns an isolated draft and merges changed leaves into current runtime JSON on Apply. SettingsSchema supplies labels, storage routes, validation and search metadata. SettingsTables preserves related values as rows while retaining legacy JSON formats. Workbench pages, row/event editors and scrollable child dialogs use native Windows controls.

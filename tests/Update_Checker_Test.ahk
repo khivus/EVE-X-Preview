@@ -1,4 +1,4 @@
-TestRunner.Register("Updates exclude drafts and pre-releases from stable notifications", UpdateFilteringTest)
+﻿TestRunner.Register("Updates exclude drafts and pre-releases from stable notifications", UpdateFilteringTest)
 UpdateFilteringTest() {
     AssertEqual("1.6.0.14", UpdateChecker.ReleaseTag(JSON.Load('{"tag_name":"v1.6.0.14","draft":false,"prerelease":false}')))
     AssertEqual("", UpdateChecker.ReleaseTag(JSON.Load('{"tag_name":"v9.0","draft":false,"prerelease":true}')))
@@ -147,4 +147,23 @@ UpdateSidebarStatusTest() {
             if FileExist(file)
                 FileDelete(file)
     }
+}
+
+TestRunner.Register("Updates select the latest published single-file settings asset without accepting foreign downloads", UpdateSettingsAssetTest)
+UpdateSettingsAssetTest() {
+    Asset(tag, url := "", draft := false) => Map("tag_name", "v" tag, "draft", draft, "assets", [Map("name", "EVE-X-Preview-Settings.exe", "browser_download_url", url != "" ? url : "https://github.com/khivus/EVE-X-Preview/releases/download/v" tag "/EVE-X-Preview-Settings.exe")])
+    releases := [Asset("1.7.0.3"), Asset("9.0",, true), Map("tag_name", "v10.0", "draft", false, "assets", []), Asset("1.6.2"), Asset("11.0", "https://example.com/untrusted.exe")]
+    result := UpdateChecker.SettingsAsset(releases)
+    AssertEqual("1.7.0.3", result["tag"])
+    AssertEqual("https://github.com/khivus/EVE-X-Preview/releases/download/v1.7.0.3/EVE-X-Preview-Settings.exe", result["url"])
+    AssertEqual("", UpdateChecker.SettingsAsset([])["url"])
+    app := SettingsWorkbenchFixture()
+    try {
+        app.Navigate("about")
+        found := false
+        for control in app.MainFrame
+            if control.Type = "Button" && control.Text = "Download latest settings editor"
+                found := true
+        AssertTrue(found, "Internal About must offer the companion download.")
+    } finally app.Dispose()
 }

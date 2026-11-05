@@ -8,6 +8,8 @@
 
 **Reset this profile's thumbnail sizes on Apply** stages the configured default dimensions for this profile's saved thumbnails and current windows. Positions are retained. Apply & restart activates the reset.
 
+**Recover off-screen thumbnails** immediately brings partially or fully off-screen thumbnails back onto the nearest connected display and saves their corrected positions. It checks the combined area of all connected monitors, so thumbnails on a second or third monitor, or spanning adjacent monitors, stay in place when fully visible. Recovery also works while positions are locked and moves hidden thumbnails without showing them. Sizes are preserved; a thumbnail larger than every display is placed with its top-left corner on screen.
+
 Locking blocks move, move-all, resize, resize-all and snapping gestures, including in the test thumbnail. Activation and other click actions continue to work. Saved placements still restore. The optional tray lock command is configured under **Application → Tray menu commands**.
 
 ## Automatic placement
@@ -26,4 +28,4 @@ A login screen becoming a character is checked again for placement. Saved positi
 
 Focused-client event sounds and DPS have separate controls under **Monitoring & alerts**. Hiding the active thumbnail no longer implicitly changes the explicit sound preference after settings migration.
 
-All workbench changes remain staged until Apply & restart. Tray commands are immediate runtime actions.
+Workbench setting changes remain staged until Apply & restart. Thumbnail recovery and tray commands are immediate runtime actions.
