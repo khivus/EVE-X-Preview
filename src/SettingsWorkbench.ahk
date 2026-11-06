@@ -1238,6 +1238,27 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
 }
 
 class SettingsFonts {
+    static DefaultName(fonts?) {
+        fonts := IsSet(fonts) ? fonts : this.Names()
+        for name in fonts
+            if StrLower(name) = "segoe ui"
+                return name
+        return fonts.Length ? fonts[1] : "Segoe UI"
+    }
+    static NormalizeLegacyDefaults(settings, fonts?) {
+        fonts := IsSet(fonts) ? fonts : this.Names()
+        for name in fonts
+            if StrLower(name) = "gill sans mt"
+                return
+        if !fonts.Length
+            return
+        fallback := this.DefaultName(fonts)
+        for name, profile in settings.Get("_Profiles", Map()) {
+            visuals := profile.Get("Thumbnails Visuals", Map())
+            if StrLower(Trim(visuals.Get("ThumbnailTextFont", ""))) = "gill sans mt"
+                visuals["ThumbnailTextFont"] := fallback
+        }
+    }
     static Available(value) {
         for name in this.Names()
             if StrLower(name) = StrLower(value)

@@ -59,6 +59,9 @@ public sealed partial class MainWindow
         Check(workbench.Children[0].Bounds.Height < 55, "Branding and profile selector share a compact title row");
         Check(!loadingView.IsVisible && workbench.IsVisible,"Loading view is replaced by the connected settings workbench");
         sectionId="appearance";RenderPage();await Task.Delay(200);
+        var savedFont=session.Snapshot.Object("values").Object("ThumbnailTextFont").Text("value");
+        var savedFontChoice=page.GetVisualDescendants().OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Label font");
+        Check(savedFontChoice.SelectedItem?.ToString()==savedFont && !CurrentProblems().Any(p=>p.Id=="ThumbnailTextFont"),"The factory label font is installed, selected and free of validation problems");
         string selectedFont="";var fontField=session.Metadata!.Field("ThumbnailTextFont")!;
         var fontChoice=(ComboBox)TypedInput(fontField,JsonValue.Create("Unavailable saved fixture font"),v=>selectedFont=JsonExtensions.Display(v));page.Children.Add(fontChoice);await Task.Delay(100);
         Check(fontChoice.SelectedIndex==-1 && !fontChoice.ItemsSource!.Cast<string>().Contains("Unavailable saved fixture font"),"An unavailable saved font is a placeholder, not the first installed option");
@@ -254,6 +257,28 @@ public sealed partial class MainWindow
         Check(session.Snapshot.Object("inheritance").Bool("appearance") && session.Snapshot.Object("values").Object("ThumbnailOpacity").Number("value")==opacity-5,"Default edits flow through the existing inheritance source");
         await session.ApplyAsync();await ConnectAsync();
         Check(session.Profile=="Review fixture" && profiles.SelectedItem?.ToString()=="Review fixture","Apply and reconnect retain the profile being edited");
+        sectionId="inheritance";RenderPage();await Task.Delay(150);
+        Check(!page.GetVisualDescendants().OfType<ComboBox>().Any() && page.GetVisualDescendants().OfType<CheckBox>().Count()==session.Metadata!.Sections.Count(s=>s.Text("group")!=""),"Section inheritance uses one-click checkboxes for every category");
+        var inheritAppearance=page.GetVisualDescendants().OfType<CheckBox>().Single(c=>c.Tag?.ToString()=="appearance");
+        inheritAppearance.IsChecked=false;await Task.Delay(450);
+        Check(!session.Snapshot.Object("inheritance").Bool("appearance"),"One checkbox interaction changes the category inheritance source");
+        inheritAppearance=page.GetVisualDescendants().OfType<CheckBox>().Single(c=>c.Tag?.ToString()=="appearance");
+        inheritAppearance.IsChecked=true;await Task.Delay(450);
+        var profileCreation=CreateProfileAsync();await Task.Delay(250);var createDialog=OwnedWindows.Single();
+        var createChecks=createDialog.GetVisualDescendants().OfType<CheckBox>().Where(c=>c.Tag is string).ToArray();
+        var expectedCategories=session.Metadata.Sections.Where(s=>s.Text("group")!="").Select(s=>s.Text("page")).Distinct().ToArray();
+        Check(expectedCategories.All(category=>createDialog.GetVisualDescendants().OfType<TextBlock>().Count(t=>t.Text==category)==1),"Create profile groups inheritance choices beneath category headings shown once");
+        void CreationPreset(string label)=>createDialog.GetVisualDescendants().OfType<Button>().Single(b=>b.Content?.ToString()==label).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        CreationPreset("Select all");Check(createChecks.All(c=>c.IsChecked==true),"Create profile Select all checks every inheritance choice");
+        CreationPreset("Select none");Check(createChecks.All(c=>c.IsChecked==false),"Create profile Select none clears every inheritance choice");
+        CreationPreset("Use current profile inheritance");Check(createChecks.All(c=>c.IsChecked==session.Snapshot.Object("inheritance").Bool(c.Tag!.ToString()!)),"Create profile can copy the current profile's inheritance choices");
+        using(var bitmap=new RenderTargetBitmap(new PixelSize((int)createDialog.Bounds.Width,(int)createDialog.Bounds.Height))) {bitmap.Render(createDialog);bitmap.Save(Path.Combine(directory,"create-profile-categories.png"),PngBitmapEncoderOptions.Default);}
+        createDialog.GetVisualDescendants().OfType<TextBox>().Single(t=>t.PlaceholderText=="Profile name").Text="Inheritance preset fixture";
+        CreationPreset("Create");await profileCreation;
+        Check(session.Profile=="Inheritance preset fixture" && session.Snapshot.Object("inheritance").Bool("appearance"),"Create saves the selected inheritance preset to the new profile");
+        await session.MutateAsync("profile",new(){["action"]="delete"});await session.MutateAsync("select-profile",new(){["name"]="Review fixture"});
+        sectionId="inheritance";RenderPage();await Task.Delay(100);
+        using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"inheritance-checkboxes.png"),PngBitmapEncoderOptions.Default);}
         var savedSize=session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value");
         await session.MutateAsync("inheritance",new(){["section"]="appearance",["enabled"]=false});
         await session.ApplyAsync();

@@ -73,7 +73,7 @@
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
-                "ThumbnailTextFont": "Gill Sans MT",
+                "ThumbnailTextFont": "Segoe UI",
                 "ThumbnailTextMargins": {
                     "x": 5,
                     "y": 5

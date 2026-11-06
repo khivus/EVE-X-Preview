@@ -73,7 +73,7 @@ Class ThumbWindow extends Propertys {
             }
             catch as e {
                 MsgBox("Error: Thumbnail Text Color Or Thumbnail Text Font are wrong´nin: Thumbnails Visuals - " This.LastUsedProfile " - Thumbnail Settings`nUse the following syntax:`n HEX =>: #FFFFFF or 0xFFFFFF or FFFFFF`nRGB =>: 255, 255, 255 or rgb(255, 255, 255)`nValues are now Set to Default")
-                This.ThumbnailTextSize := "12", This.ThumbnailTextColor := "fac57a", This.ThumbnailTextFont := "Gill Sans MT"
+                This.ThumbnailTextSize := "12", This.ThumbnailTextColor := "fac57a", This.ThumbnailTextFont := SettingsFonts.DefaultName()
                 ThumbObj["TextOverlay"].SetFont("s" This.ThumbnailTextSize " q6 w500 c0x" This.ThumbnailTextColor, This.ThumbnailTextFont)
                 ThumbObj["TextOverlay"].SystemTextDefaultColor := This.ThumbnailTextColor
             }

@@ -144,6 +144,7 @@ Load_JSONUnlocked(interactive := true) {
 
         ; Merge: default -> user, but don't overwrite user's explicit values
         MigrateThumbnailNameSettings(UJSON)
+        SettingsFonts.NormalizeLegacyDefaults(UJSON)
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
 
         ; Atomic write: write to tmp file then move/rename to target

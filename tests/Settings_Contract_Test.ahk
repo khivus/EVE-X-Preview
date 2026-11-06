@@ -1,5 +1,37 @@
 TestRunner.Register("Settings contract exports every scalar and canonical specialized workflow", SettingsContractMetadataTest)
 TestRunner.Register("Settings canonical accepts the first exported installed font and keeps update labels canonical", SettingsFontAndVersionMetadataTest)
+TestRunner.Register("Settings canonical defaults use an installed font and only migrate the missing legacy factory font", SettingsFontDefaultMigrationTest)
+SettingsFontDefaultMigrationTest() {
+    config := JSON.Load(default_JSON)
+    AssertEqual("Segoe UI", config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    AssertTrue(SettingsFonts.Available("Segoe UI"))
+    config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"] := "Gill Sans MT"
+    config["_Profiles"]["Custom"] := SettingsModel.Clone(config["_Profiles"]["Default"])
+    config["_Profiles"]["Custom"]["Thumbnails Visuals"]["ThumbnailTextFont"] := "My missing custom font"
+    SettingsFonts.NormalizeLegacyDefaults(config, ["Arial", "Segoe UI"])
+    AssertEqual("Segoe UI", config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    AssertEqual("My missing custom font", config["_Profiles"]["Custom"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"] := "Gill Sans MT"
+    SettingsFonts.NormalizeLegacyDefaults(config, ["Gill Sans MT", "Segoe UI"])
+    AssertEqual("Gill Sans MT", config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    SettingsFonts.NormalizeLegacyDefaults(config, ["Arial"])
+    AssertEqual("Arial", config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    config["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"] := "Gill Sans MT"
+    folder := A_Temp "\EveX-font-migration-" SettingsBridge.NewId(), previousDirectory := A_WorkingDir
+    DirCreate(folder)
+    try {
+        SetWorkingDir(folder)
+        FileAppend(JSON.Dump(config), "EVE-X-Preview.json", "UTF-8")
+        loaded := Load_JSONUnlocked(false)
+        expected := SettingsFonts.Available("Gill Sans MT") ? "Gill Sans MT" : SettingsFonts.DefaultName()
+        AssertEqual(expected, loaded["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+        AssertEqual(expected, JSON.Load(FileRead("EVE-X-Preview.json"))["_Profiles"]["Default"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+        AssertEqual("My missing custom font", loaded["_Profiles"]["Custom"]["Thumbnails Visuals"]["ThumbnailTextFont"])
+    } finally {
+        SetWorkingDir(previousDirectory)
+        DirDelete(folder, true)
+    }
+}
 SettingsFontAndVersionMetadataTest() {
     names := SettingsContract.Export()["fonts"]
     AssertTrue(names.Length > 0)

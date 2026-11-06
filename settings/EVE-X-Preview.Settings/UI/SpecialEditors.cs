@@ -63,22 +63,51 @@ public sealed partial class MainWindow
         content.Children.Add(name); content.Children.Add(copy);
         content.Children.Add(Muted("Choose sections that should inherit from Default:"));
         var flags = session.Snapshot.Object("creationInheritance").Copy();
-        foreach (var section in session.Metadata!.Sections.Where(s => s.Text("group") != ""))
-        {
-            var id = section.Text("id");
-            var check = new CheckBox { Content = section.Text("title"), IsChecked = flags.Bool(id) };
-            check.IsCheckedChanged += (_, _) => flags[id] = check.IsChecked == true; content.Children.Add(check);
+        var (choices, checks) = InheritanceChoices(flags);
+        var presets = new WrapPanel();
+        foreach(var (label, mode) in new[] { ("Select all", "all"), ("Select none", "none"), ("Use current profile inheritance", "current") }) {
+            var button = new Button { Content = label, Margin = new Thickness(0,0,8,8) };
+            button.Click += (_,_) => {
+                foreach(var (id, check) in checks) {
+                    var enabled = mode == "all" || mode == "current" && session.Snapshot.Object("inheritance").Bool(id);
+                    flags[id] = enabled;check.IsChecked = enabled;
+                }
+            };
+            presets.Children.Add(button);
         }
+        content.Children.Add(presets);content.Children.Add(choices);
         await Dialogs.ChoiceAsync(this, "Create profile", content, [("Create", "create"), ("Cancel", "cancel")], async choice =>
         {
             if (choice == "create") await session.MutateAsync("profile", new() { ["action"] = "add", ["name"] = name.Text, ["copyCurrent"] = copy.IsChecked == true, ["inheritance"] = flags.DeepClone() });
         });
     }
+    private (StackPanel Panel, Dictionary<string,CheckBox> Checks) InheritanceChoices(JsonObject flags, Func<string,bool,Task>? save = null)
+    {
+        var panel = new StackPanel { Spacing = 8 };
+        var checks = new Dictionary<string,CheckBox>();
+        foreach(var category in session.Metadata!.Sections.Where(s=>s.Text("group")!="").GroupBy(s=>s.Text("page"))) {
+            panel.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0,12,0,4) });
+            panel.Children.Add(new TextBlock { Text = category.Key, FontWeight = FontWeight.SemiBold });
+            foreach(var section in category) {
+                var id = section.Text("id");
+                var check = new CheckBox { Content = section.Text("title"), IsChecked = flags.Bool(id), Tag = id };
+                Avalonia.Automation.AutomationProperties.SetName(check,"Inherit " + section.Text("title"));
+                check.IsCheckedChanged += async (_,_) => {
+                    var enabled = check.IsChecked == true;
+                    if(flags.Bool(id)==enabled)return;
+                    flags[id] = enabled;
+                    if(save is not null)await RunAsync(()=>save(id,enabled));
+                };
+                checks[id] = check;panel.Children.Add(check);
+            }
+        }
+        return (panel,checks);
+    }
     private void RenderInheritance()
     {
         var template = session.Profile == "Default";
         var panel = new StackPanel { Spacing = 10 };
-        panel.Children.Add(Muted(template ? "Choose which categories new profiles inherit from Default. Existing profiles keep their current sources." : "Choose each category's source. Custom values are retained when you switch to Default."));
+        panel.Children.Add(Muted(template ? "Checked categories are inherited from Default by new profiles. Existing profiles keep their current sources." : "Checked categories inherit from Default. Unchecked categories use this profile's stored values."));
         var sections = session.Metadata!.Sections.Where(s => s.Text("group") != "").ToArray();
         var flags = session.Snapshot.Object(template ? "creationInheritance" : "inheritance").Copy();
         var presets = new WrapPanel();
@@ -93,25 +122,11 @@ public sealed partial class MainWindow
             button.Margin = new Thickness(0,0,8,8);presets.Children.Add(button);
         }
         panel.Children.Add(presets);
-        foreach(var group in sections.GroupBy(s=>s.Text("page"))) {
-            panel.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0,12,0,4) });
-            panel.Children.Add(new TextBlock { Text = group.Key, FontWeight = FontWeight.SemiBold });
-            foreach(var section in group) {
-                var id = section.Text("id");
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,250") };
-                row.Children.Add(SearchText(section.Text("title")));
-                var choice = new ComboBox { ItemsSource = new[] { "Default", template ? "Own settings" : session.Profile }, SelectedIndex = flags.Bool(id) ? 0 : 1, HorizontalAlignment = HorizontalAlignment.Stretch };
-                var initial = choice.SelectedIndex;
-                choice.SelectionChanged += async (_,_) => {
-                    if(choice.SelectedIndex == initial)return;
-                    await RunAsync(async () => {
-                        if(template) { flags[id] = choice.SelectedIndex == 0;await session.MutateAsync("creation-inheritance",new(){["flags"]=flags.DeepClone()}); }
-                        else await SetInheritanceAsync(id,choice.SelectedIndex == 0);
-                    });
-                };
-                Grid.SetColumn(choice,1);row.Children.Add(choice);panel.Children.Add(row);
-            }
-        }
+        var (choices, _) = InheritanceChoices(flags,async (id,enabled) => {
+            if(template)await session.MutateAsync("creation-inheritance",new(){["flags"]=flags.DeepClone()});
+            else await SetInheritanceAsync(id,enabled);
+        });
+        panel.Children.Add(choices);
         page.Children.Add(Card(panel));
     }
     private async void LoadGroupEditor(StackPanel host, string kind, bool inherited, int generation)

@@ -110,3 +110,16 @@ Checks used disposable installation/configuration folders under `.vs/v1704` and 
 The native rapid-click check now waits up to 200 ms for posted input callbacks to finish rather than assuming a fixed 35 ms completion time. Pointer setup is atomic, and the change counter caches unchanged state to avoid repeated serialization during input.
 
 Final output: `.vs/build/EVE-X-Preview-v1.7.0.4-win-x64.zip`. Live GitHub installation/download, live EVE behavior, and physical mixed-DPI/multi-monitor behavior were not exercised. Nothing was pushed or published.
+
+
+## Inheritance controls and factory font correction — 2026-11-06
+
+Restored one-click checkboxes on Section inheritance for both the selected profile and Default's new-profile template. Category headings appear once. Create profile uses the same grouped choices and adds Select all, Select none and Use current profile inheritance buttons; the selected choices are passed to canonical profile creation.
+
+New configurations use Segoe UI. Canonical loading replaces a legacy Gill Sans MT value only when that font is absent, using Segoe UI or another installed fallback. Installed Gill Sans MT and other saved font choices are retained. Runtime font-error recovery uses the same installed fallback.
+
+Verification uses disposable configurations under `.vs/inheritance-followup`. Source-host UI checks: **86 passed**, including one-click inheritance changes, category headings, all three creation presets, canonical creation with the copied preset, and the installed/default font selection. Inspected the inheritance and Create profile captures. Canonical font checks cover installed defaults, missing/installed legacy fonts, retention of other custom values, and persisted migration through the real settings-file loader.
+
+The broad native run reported **380 passed, 3 failed, 383 total**. The failures were existing desktop-sensitive checks for covered-preview stacking, repeated table-cell focus and rapid table clicks. All three passed unchanged in isolated reruns. The extended real font-file migration check also passed separately. No production configuration was edited.
+
+The rebuilt standalone settings EXE also passed **86 UI checks** in a fresh folder using its embedded canonical host. All three rebuilt executables retain version **1.7.0.4**. The updated package replaces `.vs/build/EVE-X-Preview-v1.7.0.4-win-x64.zip`; no push or release was performed.
