@@ -28,7 +28,7 @@ Contributions are welcome. All pull requests must target the [`dev` branch](http
 
 `Main.ahk` starts the app, `src/` holds application code, `Lib/` holds libraries and default settings, and `res/` holds icons used by the script and Ahk2Exe. `Changelog.md` is embedded in compiled releases for the offline changelog viewer.
 
-Build the established pair of portable Windows x64 release packages with `tools/Build-Release.ps1 -OutputDirectory <folder>`. It builds `EVE-X-Preview.exe` and `EVE-X-Preview-Updater.exe` using AutoHotkey v2 and verifies their Windows version metadata against the source directives. Both executables embed the application and suspend icons from `res/`. The updater has its own version; keep its displayed `VERSION` and compile directive aligned when changing it.
+Build the established pair of portable Windows x64 release packages with `tools/Build-Release.ps1 -OutputDirectory <folder>`. It builds `EVE-X-Preview.exe` and `EVE-X-Preview-Updater.exe` using AutoHotkey v2 and verifies their Windows version metadata against the source directives. Both executables embed the application and suspend icons from `res/`. The main application, updater and optional settings editor share the release version. The updater replaces the settings editor only when it is already present.
 
 Run the Windows AutoHotkey v2 suite from the repository root:
 

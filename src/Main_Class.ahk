@@ -306,7 +306,30 @@
         This.ShowPostUpdateChangelog()
         This.RestoreSettingsAfterApply()
         This.settingsBridge.ready := true
+        SetTimer(ObjBindMethod(This, "SuggestSettingsDownload"), -1000)
         return This
+    }
+
+    SuggestSettingsDownload(*) {
+        if !A_IsCompiled || FileExist(A_ScriptDir "\EVE-X-Preview-Settings.exe") || This._JSON.Get("SettingsDownloadSuggested", false)
+            return
+        This._JSON["SettingsDownloadSuggested"] := 1
+        This.SaveJsonToFile()
+        if MsgBox("The new settings editor is available as an optional download. Download it into this application folder and open it now? You can also download it later from About.", "New settings editor", "YesNo Icon?") != "Yes"
+            return
+        This.settingsDownloadCheck := UpdateChecker()
+        This.settingsDownloadCheck.Start()
+        poll := (*) => CheckReady()
+        SetTimer(poll, 200)
+        CheckReady() {
+            if This.settingsDownloadCheck.busy
+                return
+            SetTimer(poll, 0)
+            This.settingsDownloader := SettingsDownload(This)
+            try This.settingsDownloader.Start(This.settingsDownloadCheck.settingsUrl, This.settingsDownloadCheck.settingsTag)
+            catch as err
+                MsgBox(err.Message " Download can be retried from About.", "Settings download", "Icon!")
+        }
     }
 
     RestoreSettingsAfterApply() {

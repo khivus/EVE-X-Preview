@@ -26,7 +26,7 @@ public sealed partial class MainWindow
         panel.Children.Add(Muted("Created by gonzo83. Maintained by khivus.\nContributions by mrmjstc and CJKondur."));
         versionStatus=Muted("");panel.Children.Add(versionStatus);
         var actions=new StackPanel {Spacing=10,Width=380,HorizontalAlignment=HorizontalAlignment.Left};
-        foreach(var id in new[]{"check-updates","download-settings","install-stable","install-prerelease","changelog","documentation","report-problem"}) {
+        foreach(var id in new[]{"check-updates","install-stable","install-prerelease","download-settings","changelog","documentation","report-problem"}) {
             var command=session.Metadata!.Commands.FirstOrDefault(c=>c.Text("id")==id);if(command is null)continue;
             var button=ActionButton(command.Text("label"),()=>RunCommandAsync(command),false);
             button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Center;
@@ -52,7 +52,10 @@ public sealed partial class MainWindow
         foreach(var (id,button) in aboutButtons) {
             var command=session.Metadata!.Commands.First(c=>c.Text("id")==id);
             button.IsEnabled=session.Connected&&!busy&&(!command.Bool("runtimeOnly")||session.Role!="offline");
-            if(id=="download-settings")ToolTip.SetTip(button,aboutStatus.Text("settingsVersion") is {Length:>0} tag?"Download the single-file settings editor v"+tag:"Opens releases if no settings editor asset has been published yet.");
+            if(id=="download-settings") {
+                button.IsEnabled &= !aboutStatus.Bool("settingsCurrent") && !aboutStatus.Bool("busy") && aboutStatus.Text("settingsUrl")!="" && !session.Dirty;
+                ToolTip.SetTip(button,aboutStatus.Bool("settingsCurrent")?"The latest settings editor is already installed.":"Download beside EVE-X-Preview and open the editor.");
+            }
             if(id is "install-stable" or "install-prerelease") {
                 var pre=id=="install-prerelease";button.Content=aboutStatus.Text(pre?"prereleaseLabel":"stableLabel",pre?"Install pre-release (check first)":"Install stable version (check first)").TrimEnd('.');
                 button.IsEnabled &= aboutStatus.Bool(pre?"prereleaseAvailable":"stableAvailable")&&!aboutStatus.Bool("busy")&&!session.Dirty;

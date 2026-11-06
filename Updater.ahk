@@ -1,8 +1,9 @@
 ﻿#Requires AutoHotkey v2.0
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
+#Include "src/ReleaseInstaller.ahk"
 
-;@Ahk2Exe-Let U_version = 1.6.0
+;@Ahk2Exe-Let U_version = 1.7.0.4
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -14,7 +15,7 @@
 ;@Ahk2Exe-AddResource res/Icon.ico, 207
 ;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 208
 
-VERSION := "1.6.0"
+VERSION := "1.7.0.4"
 if !A_IsCompiled
     TraySetIcon(A_ScriptDir "\res\Icon.ico",, true)
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
@@ -114,51 +115,23 @@ SetWorkingDir(oldScriptDir)
 ProgramLog.Add("Updater working directory=" oldScriptDir "; target=" newTag)
 Sleep 500 ; Wait some time berfore doing anything
 
-; Downloading file and running
-newScriptName := "EVE-X-Preview-v" newTag ".exe"
-oldNewScriptName := "EVE-X-Preview-Old.exe"
-
 try {
-    status.UpdateStatus("Renaming old version...")
-    if FileExist(oldScriptName) { ; Renaming old script to different name
-        FileMove(oldScriptName, oldNewScriptName, true)
-        ProgramLog.Add("Updater backup created: " oldNewScriptName)
-        if !FileExist(oldNewScriptName) ; If not renamed
-            Throw Error("Error renaming old script!")
-    }
-
-    ; Checking if file of new verison exist and deleting if so
-    if FileExist(newScriptName)
-        FileDelete(newScriptName)
-
-    exeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/EVE-X-Preview.exe"
-    status.UpdateStatus("Downloading new version...")
-    ProgramLog.Add("Updater download URL=" exeUrl)
-    ProgramLog.Flush()
-    Download(exeUrl, newScriptName) ; Download file from GitHub
-
-    ; Checking if new version downloaded
-    if !FileExist(newScriptName)
-        Throw Error("Error downloading new version!")
-    ProgramLog.Add("Updater executable downloaded; bytes=" FileGetSize(newScriptName))
-
-    status.UpdateStatus("Renaming new version...")
-    FileMove(newScriptName, oldScriptName, true) ; Renaming new script to old name
-    ProgramLog.Add("Updater executable replaced: " oldScriptName)
-
-    status.UpdateStatus("Deleting old version...")
-    if FileExist(oldNewScriptName) ; Deleting old script
-        FileDelete(oldNewScriptName)
-        
+    installer := ReleaseInstaller(oldScriptPath, newTag)
+    ; The settings window is asked to close by the app before the handoff.
+    ; Briefly allow Windows to release executable image handles.
+    Sleep(500)
+    installer.Install(status)
     status.UpdateStatus("Done! Launching " oldScriptName "!")
-    Run(oldScriptName)
+    Run('"' oldScriptPath '"', oldScriptDir)
     ProgramLog.Add("Updater relaunch requested successfully")
     ProgramLog.Flush()
     Sleep 1500
 }
 catch Error as e {
     ProgramLog.Error(e, "Installing app update")
-    MsgBox("An error occurred while trying to update the program:`n" e.Message "`nIf program stops working properly, redownload it from github!")
+    MsgBox("The update could not be installed. Existing files were retained or restored.`n" e.Message)
+    if FileExist(oldScriptPath)
+        try Run('"' oldScriptPath '"', oldScriptDir)
 }
 finally {
     status.Close()

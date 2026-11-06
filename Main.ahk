@@ -28,6 +28,8 @@
 #Include "src/SettingsSession.ahk"
 #Include "src/SettingsBridge.ahk"
 #Include "src/SettingsEditor.ahk"
+#Include "src/SettingsDownload.ahk"
+#Include "src/ReleaseInstaller.ahk"
 #Include "src/SettingsSearchText.ahk"
 #Include "src/SettingsScrollbars.ahk"
 #Include "src/SettingsControlScrollbars.ahk"
@@ -60,7 +62,7 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.7.0.3
+    ;@Ahk2Exe-Let U_version = 1.7.0.4
     ;@Ahk2Exe-SetVersion %U_version%
     ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus

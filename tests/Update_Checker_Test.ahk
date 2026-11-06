@@ -165,5 +165,61 @@ UpdateSettingsAssetTest() {
             if control.Type = "Button" && control.Text = "Download latest settings editor"
                 found := true
         AssertTrue(found, "Internal About must offer the companion download.")
+        app.preInstall.GetPos(, &preY)
+        app.settingsInstall.GetPos(, &settingsY)
+        AssertTrue(settingsY > preY, "Companion download follows pre-release installation.")
+        AssertFalse(app.settingsInstall.Enabled, "Downloading waits for a known published asset.")
     } finally app.Dispose()
+}
+
+TestRunner.Register("Updates stage all installed components and preserve the optional editor choice", ReleaseInstallerComponentsTest)
+ReleaseInstallerComponentsTest() {
+    folder := A_Temp "\EveX-update-test-" A_TickCount
+    DirCreate(folder)
+    main := folder "\EVE-X-Preview.exe", editor := folder "\EVE-X-Preview-Settings.exe"
+    status := {UpdateStatus: (*) => 0}
+    try {
+        FileAppend("old-main", main)
+        installer := ReleaseInstallerFixture(main, "1.7.0.4")
+        AssertEqual(1, installer.files.Length)
+        installer.Install(status)
+        AssertEqual("new-EVE-X-Preview.exe", FileRead(main))
+        AssertFalse(FileExist(editor), "Optional settings must not be installed implicitly.")
+        FileAppend("old-editor", editor)
+        installer := ReleaseInstallerFixture(main, "1.7.0.4")
+        AssertEqual(2, installer.files.Length)
+        installer.rejectEditor := true
+        failed := false
+        try installer.Install(status)
+        catch
+            failed := true
+        AssertTrue(failed)
+        AssertEqual("new-EVE-X-Preview.exe", FileRead(main), "Both downloads must finish before either installed file changes.")
+        AssertEqual("old-editor", FileRead(editor))
+        installer.rejectEditor := false
+        lock := DllCall("CreateFileW", "Str", editor, "UInt", 0x80000000, "UInt", 0, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
+        try {
+            failed := false
+            try installer.Install(status)
+            catch
+                failed := true
+            AssertTrue(failed, "A locked companion must fail the transaction.")
+            AssertEqual("new-EVE-X-Preview.exe", FileRead(main), "Replacement failure restores the original main executable.")
+        } finally DllCall("CloseHandle", "Ptr", lock)
+        installer.Install(status)
+        AssertEqual("new-EVE-X-Preview-Settings.exe", FileRead(editor))
+        AssertFalse(FileExist(main ".update"))
+        AssertFalse(FileExist(editor ".previous"))
+    } finally DirDelete(folder, true)
+}
+class ReleaseInstallerFixture extends ReleaseInstaller {
+    rejectEditor := false
+    DownloadAsset(url, path) {
+        SplitPath(RegExReplace(url, "^.*/"), &asset)
+        FileAppend("new-" asset, path)
+    }
+    Verify(path) {
+        if this.rejectEditor && InStr(path, "Settings.exe")
+            throw Error("Simulated incomplete editor download")
+    }
 }

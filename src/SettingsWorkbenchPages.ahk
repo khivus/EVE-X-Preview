@@ -823,9 +823,9 @@
         this.Note("Created by gonzo83. Maintained by khivus.`nContributions by mrmjstc and CJKondur.", "555555", 42)
         this.versionStatus := this.Note(this.updateChecker.status, "526778", 42)
         this.Action("Check for updates", (*) => this.StartUpdateCheck())
-        this.Action("Download latest settings editor", (*) => this.OpenSettingsDownload())
         this.releaseInstall := this.Action("Install stable version...", (*) => this.InstallVersion(false), 360)
         this.preInstall := this.Action("Install pre-release version...", (*) => this.InstallVersion(true), 360)
+        this.settingsInstall := this.Action("Download latest settings editor", (*) => this.OpenSettingsDownload(), 360)
         this.Action("Read included changelog", (*) => ChangelogWindow.Show(false, this.S_Gui.Hwnd))
         this.Action("Open documentation", (*) => Run("https://github.com/khivus/EVE-X-Preview/blob/dev/README.MD"))
         this.Action("Report a problem on GitHub", (*) => Run("https://github.com/khivus/EVE-X-Preview/issues/new"))
@@ -839,9 +839,21 @@
     }
 
     OpenSettingsDownload() {
-        url := this.updateChecker.settingsUrl
-        Run(url != "" ? url : "https://github.com/khivus/EVE-X-Preview/releases")
-        this.UpdateStatus(url != "" ? "Settings editor download opened in your browser." : "Opened releases. Look for EVE-X-Preview-Settings.exe; an asset may not be published yet.")
+        try {
+            this.SettingsDownloader.Start(this.updateChecker.settingsUrl, this.updateChecker.settingsTag)
+            this.UpdateStatus(this.SettingsDownloader.status)
+            if this.HasOwnProp("updateTimer")
+                SetTimer(this.updateTimer, 200)
+        } catch as err
+            this.ShowError(err.Message)
+    }
+
+    SettingsDownloader {
+        get {
+            if !this.owner.HasOwnProp("settingsDownloader")
+                this.owner.settingsDownloader := SettingsDownload(this.owner)
+            return this.owner.settingsDownloader
+        }
     }
 
     StartUpdateCheck(force := true) {
@@ -862,7 +874,7 @@
             this.Layout()
         if this.currentSection = "about" && this.HasOwnProp("versionStatus") {
             checker := this.updateChecker
-            this.versionStatus.Value := checker.status
+            this.versionStatus.Value := this.SettingsDownloader.status != "" ? this.SettingsDownloader.status : checker.status
             missing := checker.busy ? "checking..." : checker.status = "Not checked yet." ? "not checked" : "unknown / not found"
             SettingsTheme.Assign(this.stableVersion, "Value", checker.releaseTag != "" ? "v" checker.releaseTag : missing)
             SettingsTheme.Assign(this.preVersion, "Value", checker.preReleaseTag != "" ? "v" checker.preReleaseTag : missing)
@@ -870,8 +882,10 @@
             this.preInstall.Text := this.InstallLabel(checker.preReleaseTag, true)
             this.releaseInstall.Enabled := checker.releaseTag != "" && VerCompare(checker.releaseTag, this.programVersion) != 0 && !checker.busy
             this.preInstall.Enabled := checker.preReleaseTag != "" && VerCompare(checker.preReleaseTag, this.programVersion) != 0 && !checker.busy
+            this.settingsInstall.Enabled := checker.settingsUrl != "" && !checker.busy && !this.SettingsDownloader.busy && !this.SettingsDownloader.Current(checker.settingsTag)
+            this.settingsInstall.ToolTip := this.SettingsDownloader.Current(checker.settingsTag) ? "The latest settings editor is already installed." : "Download beside EVE-X-Preview and open the editor."
         }
-        if !this.updateChecker.busy
+        if !this.updateChecker.busy && !this.SettingsDownloader.busy
             SetTimer(this.updateTimer, 0)
     }
 
@@ -899,6 +913,8 @@
             Download("https://github.com/khivus/EVE-X-Preview/releases/download/v" tag "/EVE-X-Preview-Updater.exe", updater)
             this.owner.First_Start_After_Update := 1
             this.owner.SaveJsonToFile()
+            if this.owner.HasOwnProp("settingsBridge") && this.owner.settingsBridge.HasExternal
+                PostMessage(0x10, 0, 0,, "ahk_pid " this.owner.settingsBridge.ExternalPid)
             Run '*RunAs "' updater '" "' A_ScriptFullPath '" "' tag '"'
             ExitApp()
         } catch as err

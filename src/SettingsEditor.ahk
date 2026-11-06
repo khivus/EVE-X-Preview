@@ -17,7 +17,8 @@ class SettingsEditor {
         value := this.owner._JSON.Get("SettingsEditor", "automatic")
         return value = "modern" || value = "builtin" ? value : "automatic"
     }
-    Candidate() => A_ScriptDir "\EVE-X-Preview-Settings.exe"
+    Directory => this.owner.HasOwnProp("settingsBridge") ? this.owner.settingsBridge.installation : A_ScriptDir
+    Candidate() => this.Directory "\EVE-X-Preview-Settings.exe"
     Exists(path) => !!FileExist(path)
     BuiltIn() => SettingsEditor.OpenInternal(this.owner)
 
@@ -75,7 +76,7 @@ class SettingsEditor {
         output := A_Temp "\EVE-X-Preview-probe-" ProcessExist() "-" A_TickCount "-" Random(10000, 99999) ".json"
         pid := 0
         try {
-            Run('"' path '" --probe "' output '"', A_ScriptDir, "Hide", &pid)
+            Run('"' path '" --probe "' output '"', this.Directory, "Hide", &pid)
             deadline := A_TickCount + SettingsEditor.ProbeTimeout
             while ProcessExist(pid) && A_TickCount < deadline
                 Sleep(15)
@@ -93,7 +94,7 @@ class SettingsEditor {
     }
     Launch(path) {
         pid := 0
-        Run('"' path '" --installation "' A_ScriptDir '"', A_ScriptDir,, &pid)
+        Run('"' path '" --installation "' this.Directory '"', this.Directory,, &pid)
         this.pid := pid
         this.deadline := A_TickCount + SettingsEditor.HandshakeTimeout
         this.watch := ObjBindMethod(this, "WatchHandshake")

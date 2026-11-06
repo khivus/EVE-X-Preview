@@ -501,10 +501,14 @@ class SettingsSession {
             case "detected-sources": return Map("game", facade.ResolveGameLogsDirectory(), "chat", facade.ResolveChatLogsDirectory())
             case "shortcut-conflicts": return Map("groups", SettingsContract.Wire(HotkeyBindings.ConflictGroups(HotkeyBindings.Collect(facade))))
             case "check-updates": facade.updateChecker.Start(args.Get("manual", true))
-            case "download-settings": facade.OpenSettingsDownload()
-            case "update-status": return Map("status", facade.updateChecker.status, "busy", SettingsContract.Bool(facade.updateChecker.busy),
+            case "download-settings":
+                if this.Dirty
+                    throw SettingsServiceError("busy", "Apply or discard the settings draft before replacing the editor.")
+                facade.SettingsDownloader.Start(facade.updateChecker.settingsUrl, facade.updateChecker.settingsTag)
+            case "update-status": return Map("status", facade.SettingsDownloader.status != "" ? facade.SettingsDownloader.status : facade.updateChecker.status, "busy", SettingsContract.Bool(facade.updateChecker.busy || facade.SettingsDownloader.busy),
                 "stable", facade.updateChecker.releaseTag, "prerelease", facade.updateChecker.preReleaseTag, "installed", facade.programVersion,
                 "settingsVersion", facade.updateChecker.settingsTag, "settingsUrl", facade.updateChecker.settingsUrl,
+                "settingsCurrent", SettingsContract.Bool(facade.SettingsDownloader.Current(facade.updateChecker.settingsTag)),
                 "updateAvailable", SettingsContract.Bool(UpdateChecker.IsNewer(facade.updateChecker.releaseTag, facade.programVersion)),
                 "stableLabel", facade.InstallLabel(facade.updateChecker.releaseTag, false), "prereleaseLabel", facade.InstallLabel(facade.updateChecker.preReleaseTag, true),
                 "stableAvailable", SettingsContract.Bool(facade.updateChecker.releaseTag != "" && VerCompare(facade.updateChecker.releaseTag, facade.programVersion) != 0),
