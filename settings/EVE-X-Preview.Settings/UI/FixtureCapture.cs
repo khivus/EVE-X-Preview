@@ -97,7 +97,7 @@ public sealed partial class MainWindow
         var realUpdateStatus=aboutStatus.Copy();
         SetAboutStatus(new(){["stable"]="9.0.0",["installed"]="1.7.0.4",["updateAvailable"]=true});
         Check(releaseNotice.IsVisible && OwnedWindows.Count()==0,"A newer stable release appears as a quiet inline notice without a popup");
-        sectionId="appearance";RenderPage();releaseNotice.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        sectionId="appearance";RenderPage();releaseNotice.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));await Task.Delay(350);
         Check(sectionId=="about","Release notice opens About for review");SetAboutStatus(realUpdateStatus);
         await UndoLastAsync(); sectionId = "layout"; RenderPage();
         var originalSnap = session.Snapshot.Object("values").Object("ThumbnailSnap")["value"]!.DeepClone();
@@ -214,9 +214,16 @@ public sealed partial class MainWindow
         using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"sound-library-populated-graphite.png"),PngBitmapEncoderOptions.Default);}
         sectionId="events";scrollPositions[session.Profile+"|events"]=default;RenderPage();await Task.Delay(700);UpdateLayout();
         Check(page.GetVisualDescendants().OfType<Button>().Any(b=>b.Content?.ToString()=="Reusable alert"),"Compact event table links to its assigned sound by filename");
-        Check(page.GetVisualDescendants().OfType<Button>().Count(b=>b.Content?.ToString()=="Options")==session.Metadata!.Events.Count(),"Every event has one compact row and additional options");
+        Check(!page.GetVisualDescendants().OfType<Button>().Any(b=>b.Content?.ToString()=="Options") && page.GetVisualDescendants().OfType<TextBlock>().Any(t=>t.Text=="Event options"),"Event options are displayed below the table without popup buttons");
         Check(page.GetVisualDescendants().OfType<Grid>().Where(g=>g.Children.OfType<Button>().Any(b=>Avalonia.Automation.AutomationProperties.GetName(b)=="Choose color")).SelectMany(g=>g.Children.OfType<TextBox>()).All(t=>t.FontSize==14),"Event color text uses the larger readable font size");
-        Check(!page.GetVisualDescendants().OfType<NumericUpDown>().Any(),"Event overview keeps sound volume and playback controls in Sound library");
+        Check(page.GetVisualDescendants().OfType<NumericUpDown>().Count()==1,"Event options expose the shooting interval while sound volume stays in Sound library");
+        var idleEnabled=page.GetVisualDescendants().OfType<CheckBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Shooting idle enabled");
+        var idleOptions=page.GetVisualDescendants().OfType<Control>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Shooting idle / Milliseconds without an outgoing shot");
+        var wasEnabled=idleEnabled.IsChecked;idleEnabled.IsChecked=false;await Task.Delay(400);
+        Check(!idleOptions.IsEffectivelyEnabled,"Disabled events make their inline options inactive");
+        idleEnabled.IsChecked=true;await Task.Delay(400);Check(idleOptions.IsEffectivelyEnabled,"Enabling an event immediately enables its options");idleEnabled.IsChecked=wasEnabled;await Task.Delay(400);
+        idleOptions.BringIntoView();await Task.Delay(150);UpdateLayout();
+        using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"event-options-graphite.png"),PngBitmapEncoderOptions.Default);}
         using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"event-alerts-populated-graphite.png"),PngBitmapEncoderOptions.Default);}
         sectionId="sounds";await UndoCategoryAsync();eventData=await session.ReadAsync("event",new(){["id"]="stoppedShooting"});
         Check(eventData.Object("values").Text("sound")=="" && eventData.Object("values").Number("soundVolume")==100,"Sound category undo restores assignments and event volume together");
@@ -227,6 +234,50 @@ public sealed partial class MainWindow
         pageScroll.Offset=new Vector(0,pageScroll.Extent.Height);captureTheme="graphite";ThemeController.Apply(captureTheme,session.Metadata);await Task.Delay(150);
         using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"close-protection-table-graphite.png"),PngBitmapEncoderOptions.Default);}
         captureTheme=null;
+        sectionId="appearance";RenderPage();await Task.Delay(300);UpdateLayout();
+        var opacityControl=page.GetVisualDescendants().OfType<Control>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Thumbnail opacity");
+        var opacitySlider=opacityControl.GetVisualDescendants().OfType<Slider>().Single();var opacityNumber=opacityControl.GetVisualDescendants().OfType<NumericUpDown>().Single();
+        Check(Math.Abs(opacitySlider.TranslatePoint(default,page)!.Value.Y-opacityNumber.TranslatePoint(default,page)!.Value.Y)<1 && opacityNumber.Width==NumericFieldWidth,"Opacity slider and percentage field share one left-aligned row and the common numeric width");
+        Check(page.GetVisualDescendants().OfType<NumericUpDown>().All(n=>n.Width==NumericFieldWidth),"Appearance numeric fields use one consistent compact width");
+        var inactiveBorder=page.GetVisualDescendants().OfType<Control>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)=="Inactive border thickness");
+        inactiveBorder.BringIntoView();captureTheme="graphite";ThemeController.Apply(captureTheme,session.Metadata);await Task.Delay(200);UpdateLayout();
+        using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"compact-fields-graphite.png"),PngBitmapEncoderOptions.Default);}
+        captureTheme=null;
+        await session.MutateAsync("profile",new(){["action"]="add",["name"]="Review fixture",["copyCurrent"]=true,["inheritance"]=new JsonObject {["appearance"]=true}});
+        sectionId="appearance";RenderPage();await Task.Delay(200);
+        var editDefault=page.GetVisualDescendants().OfType<Button>().Single(b=>b.Content?.ToString()=="Edit Default here");
+        editDefault.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));await Task.Delay(500);
+        Check(session.Profile=="Default" && profiles.SelectedItem?.ToString()=="Review fixture" && defaultEditProfile=="Review fixture","Editing Default keeps the selected profile and inheritance intact");
+        var opacity=session.Snapshot.Object("values").Object("ThumbnailOpacity").Number("value");
+        await session.MutateAsync("set",new(){["id"]="ThumbnailOpacity",["value"]=opacity-5});
+        await EndDefaultEditingAsync();RenderPage();
+        Check(session.Snapshot.Object("inheritance").Bool("appearance") && session.Snapshot.Object("values").Object("ThumbnailOpacity").Number("value")==opacity-5,"Default edits flow through the existing inheritance source");
+        await session.ApplyAsync();await ConnectAsync();
+        Check(session.Profile=="Review fixture" && profiles.SelectedItem?.ToString()=="Review fixture","Apply and reconnect retain the profile being edited");
+        var savedSize=session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value");
+        await session.MutateAsync("inheritance",new(){["section"]="appearance",["enabled"]=false});
+        await session.ApplyAsync();
+        await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=savedSize+1});UpdateStatus();
+        Check(session.ChangeCount==1 && draft.Text=="1 setting changed, apply to save" && draft.Foreground is not null,"Footer visibly counts distinct unapplied settings");
+        await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=savedSize});
+        Check(session.ChangeCount==0,"Returning a setting to its saved value removes it from the count");
+        search.Text="opacity";await Task.Delay(100);UpdateLayout();
+        Check(clearSearch.IsVisible && clearSearch.Bounds.Width==26,"Search reserves a compact clear button");
+        using(var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height))) {bitmap.Render(this);bitmap.Save(Path.Combine(directory,"search-clear-graphite.png"),PngBitmapEncoderOptions.Default);}
+        clearSearch.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);
+        Check(search.Text=="" && !clearSearch.IsVisible,"Search clear button restores the complete navigation");
+        var retainedSize=session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value");
+        await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=retainedSize+1});
+        var host=await session.ReadAsync("hello");using(var hostProcess=System.Diagnostics.Process.GetProcessById(host.Int("pid"))) {hostProcess.Kill();await hostProcess.WaitForExitAsync();}
+        await Task.Delay(2600);UpdateStatus();
+        Check(!session.Connected && connectionBanner.IsVisible && connectionMessage.Text!.Contains("draft") && !page.IsEnabled,"Unexpected disconnection displays a persistent explanation and retains the draft");
+        await ConnectAsync();UpdateStatus();
+        Check(session.Profile=="Review fixture" && session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value")==retainedSize+1 && !connectionBanner.IsVisible && !problems.IsEnabled,"Reconnect restores the edited profile and draft without stale Problems");
+        await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=retainedSize});
+        await session.MutateAsync("select-profile",new(){["name"]="Default"});
+        await session.MutateAsync("set",new(){["id"]="ThumbnailOpacity",["value"]=opacity});
+        await session.MutateAsync("select-profile",new(){["name"]="Review fixture"});await session.MutateAsync("profile",new(){["action"]="delete"});
+        await session.ApplyAsync();await session.ValidateAsync();RenderPage();editHistory.Clear();profileBaselines.Clear();
         File.WriteAllLines(Path.Combine(directory, "interaction-checks.log"), results);
     }
 }

@@ -1,6 +1,7 @@
 ﻿; A task-oriented editor over an isolated SettingsModel draft. The legacy page
 ; builders remain available to old integrations; MainGui opens this workbench.
 class SettingsWorkbench extends SettingsWorkbenchPages {
+    static NumericFieldWidth := 128
     static Active := 0
     static ResumeVariable := "EVE_X_PREVIEW_SETTINGS_RESUME"
     static HelpCondition := (*) => SettingsWorkbench.HelpAllowed()
@@ -61,7 +62,10 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             this.updateNotice := this.Sidebar.AddButton("x16 y0 w208 h30 Hidden", "")
             this.updateNotice.OnEvent("Click", (*) => this.Navigate("about"))
             this.Sidebar.AddText("x16 y114 w208 h20", "Search settings")
-            this.search := this.Sidebar.AddEdit("x16 y138 w208 h26 vSettingsSearch")
+            this.search := this.Sidebar.AddEdit("x16 y138 w176 h26 vSettingsSearch")
+            this.clearSearchButton := this.Sidebar.AddButton("x196 y138 w28 h26", "×")
+            this.clearSearchButton.ToolTip := "Clear search"
+            this.clearSearchButton.OnEvent("Click", (*) => this.ClearSearchEntry())
             this.search.ToolTip := "Search setting names, explanations and categories. Clear this field to show all sections."
             this.search.OnEvent("Change", (*) => this.ScheduleSearch())
             this.nav := this.Sidebar.AddTreeView("x12 y178 w216 h360 +0x20 -HScroll") ; SHOWSELALWAYS
@@ -277,7 +281,8 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             this.Sidebar.Show("NoActivate x0 y0 w" this.sidebarW " h" this.height)
             this.profileSelector.Move(,, this.sidebarW - 32)
             this.manageProfiles.Move(,, this.sidebarW - 32)
-            this.search.Move(,, this.sidebarW - 32)
+            this.search.Move(,, this.sidebarW - 64)
+            this.clearSearchButton.Move(this.sidebarW - 44,, 28)
             noticeHeight := this.updateNotice.Visible ? 38 : 0
             this.nav.Move(,, this.sidebarW - 24, Max(28, this.height - (this.height < 440 ? 226 : 286) - noticeHeight))
             this.updateNotice.Move(, this.height - (this.height < 440 ? 74 : 134), this.sidebarW - 32)
@@ -353,6 +358,11 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
     ScheduleSearch() {
         if !this.closed
             SetTimer(this.searchTimer, -180)
+    }
+    ClearSearchEntry() {
+        this.search.Value := ""
+        this.RunSearch()
+        this.search.Focus()
     }
 
     RunSearch() {
@@ -646,8 +656,9 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                         binding.inputs.Push(button)
                     this.y += helper.extraHeight
                 case "slider":
-                    slider := this.MainFrame.AddSlider("x20 y" (this.y - 3) " w" Max(100, width - 90) " h32 Range" field.min "-" field.max " AltSubmit TickInterval" Max(1, Round((field.max - field.min) / 10)) " Line5 Page" Max(5, Round((field.max - field.min) / 10)), value)
-                    control := this.MainFrame.AddEdit("x" (width - 62) " y" this.y " w82 h26", display)
+                    sliderWidth := Min(260, Max(100, width - SettingsWorkbench.NumericFieldWidth - 8))
+                    slider := this.MainFrame.AddSlider("x20 y" (this.y - 3) " w" sliderWidth " h32 Range" field.min "-" field.max " AltSubmit TickInterval" Max(1, Round((field.max - field.min) / 10)) " Line5 Page" Max(5, Round((field.max - field.min) / 10)), value)
+                    control := this.MainFrame.AddEdit("x" (28 + sliderWidth) " y" this.y " w" SettingsWorkbench.NumericFieldWidth " h26", display)
                     slider.OnEvent("Change", ObjBindMethod(this, "SliderChanged", binding, slider, control))
                     SettingsLayout.SliderTicks(this.MainFrame, slider)
                     binding.slider := slider
@@ -664,7 +675,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                     control.OnEvent("Change", ObjBindMethod(this, "TextChanged", binding))
                     this.y += 124
                 default:
-                    editWidth := field.kind = "directory" ? Max(100, inputWidth - 108) : field.kind = "color" ? Min(156, Max(72, inputWidth - 126)) : Min(240, inputWidth)
+                    editWidth := field.kind = "directory" ? Max(100, inputWidth - 108) : field.kind = "color" ? Min(156, Max(72, inputWidth - 126)) : field.kind = "integer" || field.kind = "number" ? Min(SettingsWorkbench.NumericFieldWidth, inputWidth) : Min(240, inputWidth)
                     control := this.MainFrame.AddEdit("x" inputX " y" this.y " w" editWidth " h26", display)
                     control.OnEvent("Change", ObjBindMethod(this, "TextChanged", binding))
                     control.OnEvent("LoseFocus", ObjBindMethod(this, "CommitField", binding))
@@ -870,15 +881,16 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         if !this.HasOwnProp("status") || this.closed
             return
         invalid := this.errors.Count + this.relationIssues.Length + this.tableErrors.Count + this.shortcutErrors.Count
+        dirty := this.model.Dirty, editing := this.GridEditing()
         status := message != "" ? message : invalid ? "Fix " invalid " invalid field(s) before applying."
-            : this.model.Dirty || this.GridEditing() ? "Unsaved draft. Apply & restart activates the changes." : "No pending changes. Running profile: " this.owner.LastUsedProfile
+            : dirty || editing ? this.model.ChangeCount " settings changed, apply to save." : "No pending changes. Running profile: " this.owner.LastUsedProfile
         if this.HasOwnProp("defaultEditContext")
             status := "Editing DEFAULT. " status
         this.theme.Font(this.status, invalid ? "cB42318" : "c444444")
         SettingsTheme.Assign(this.status, "Value", status)
         this.status.ToolTip := this.status.Value
-        SettingsTheme.Assign(this.applyButton, "Enabled", (this.model.Dirty || this.GridEditing()) && !invalid)
-        SettingsTheme.Assign(this.discardButton, "Enabled", !!this.HasDraftChanges())
+        SettingsTheme.Assign(this.applyButton, "Enabled", (dirty || editing) && !invalid)
+        SettingsTheme.Assign(this.discardButton, "Enabled", !!(dirty || editing || this.pending.Count || this.tableErrors.Count || this.shortcutErrors.Count))
         SettingsTheme.Assign(this.undoButton, "Text", invalid ? "Fix fields" : "Undo")
         this.undoButton.ToolTip := invalid ? "Go to the first invalid setting, including unfinished edits in another profile." : "Restore the most recently removed row, group, profile or library reference."
         SettingsTheme.Assign(this.undoButton, "Enabled", invalid || this.model.undo.Length > 0)

@@ -66,7 +66,7 @@ public sealed partial class MainWindow
         foreach (var section in session.Metadata!.Sections.Where(s => s.Text("group") != ""))
         {
             var id = section.Text("id");
-            var check = new CheckBox { Content = section.Text("page") + " · " + section.Text("title"), IsChecked = flags.Bool(id) };
+            var check = new CheckBox { Content = section.Text("title"), IsChecked = flags.Bool(id) };
             check.IsCheckedChanged += (_, _) => flags[id] = check.IsChecked == true; content.Children.Add(check);
         }
         await Dialogs.ChoiceAsync(this, "Create profile", content, [("Create", "create"), ("Cancel", "cancel")], async choice =>
@@ -76,33 +76,43 @@ public sealed partial class MainWindow
     }
     private void RenderInheritance()
     {
+        var template = session.Profile == "Default";
         var panel = new StackPanel { Spacing = 10 };
-        panel.Children.Add(Muted(session.Profile == "Default" ? "Default supplies the values for other profiles. Configure the creation template below." : "Inherited sections follow Default. Customize restores the profile's stored values."));
-        if (session.Profile != "Default")
-        {
-            string previousPage = "";
-            foreach (var section in session.Metadata!.Sections.Where(s => s.Text("group") != ""))
-            {
-                if (previousPage != section.Text("page")) { previousPage = section.Text("page"); panel.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0, 12, 0, 4) }); panel.Children.Add(SearchText(previousPage)); }
+        panel.Children.Add(Muted(template ? "Choose which categories new profiles inherit from Default. Existing profiles keep their current sources." : "Choose each category's source. Custom values are retained when you switch to Default."));
+        var sections = session.Metadata!.Sections.Where(s => s.Text("group") != "").ToArray();
+        var flags = session.Snapshot.Object(template ? "creationInheritance" : "inheritance").Copy();
+        var presets = new WrapPanel();
+        foreach (var (label, mode) in new[] { ("Inherit all", "all"), ("Customize all", "none"), ("Use new-profile template", "template") }) {
+            if(template && mode == "template")continue;
+            var button = ActionButton(label, async () => {
+                var values = new JsonObject();
+                foreach(var section in sections) values[section.Text("id")] = mode == "all" || mode == "template" && session.Snapshot.Object("creationInheritance").Bool(section.Text("id"));
+                if(template) await session.MutateAsync("creation-inheritance", new() { ["flags"] = values });
+                else foreach(var section in sections) await SetInheritanceAsync(section.Text("id"), values.Bool(section.Text("id")));
+            });
+            button.Margin = new Thickness(0,0,8,8);presets.Children.Add(button);
+        }
+        panel.Children.Add(presets);
+        foreach(var group in sections.GroupBy(s=>s.Text("page"))) {
+            panel.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0,12,0,4) });
+            panel.Children.Add(new TextBlock { Text = group.Key, FontWeight = FontWeight.SemiBold });
+            foreach(var section in group) {
                 var id = section.Text("id");
-                var check = new CheckBox { Content = section.Text("page") + " · " + section.Text("title"), IsChecked = session.Snapshot.Object("inheritance").Bool(id) };
-                check.IsCheckedChanged += async (_, _) => await RunAsync(async () => { await session.MutateAsync("inheritance", new() { ["section"] = id, ["enabled"] = check.IsChecked == true }); });
-                panel.Children.Add(check);
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,250") };
+                row.Children.Add(SearchText(section.Text("title")));
+                var choice = new ComboBox { ItemsSource = new[] { "Default", template ? "Own settings" : session.Profile }, SelectedIndex = flags.Bool(id) ? 0 : 1, HorizontalAlignment = HorizontalAlignment.Stretch };
+                var initial = choice.SelectedIndex;
+                choice.SelectionChanged += async (_,_) => {
+                    if(choice.SelectedIndex == initial)return;
+                    await RunAsync(async () => {
+                        if(template) { flags[id] = choice.SelectedIndex == 0;await session.MutateAsync("creation-inheritance",new(){["flags"]=flags.DeepClone()}); }
+                        else await SetInheritanceAsync(id,choice.SelectedIndex == 0);
+                    });
+                };
+                Grid.SetColumn(choice,1);row.Children.Add(choice);panel.Children.Add(row);
             }
         }
         page.Children.Add(Card(panel));
-        var template = new StackPanel { Spacing = 10 };
-        template.Children.Add(new TextBlock { Text = "New profile inheritance template", FontWeight = FontWeight.SemiBold });
-        var templateKey = EditKey("creation-template");
-        var flags = (session.GetPending(templateKey)?.Arguments["flags"] as JsonObject ?? session.Snapshot.Object("creationInheritance")).Copy();
-        string templatePage = "";
-        foreach (var section in session.Metadata!.Sections.Where(s => s.Text("group") != ""))
-        {
-            if (templatePage != section.Text("page")) { templatePage = section.Text("page"); template.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0, 12, 0, 4) }); template.Children.Add(SearchText(templatePage)); }
-            var id = section.Text("id"); var check = new CheckBox { Content = section.Text("page") + " · " + section.Text("title"), IsChecked = flags.Bool(id) };
-            check.IsCheckedChanged += (_, _) => { flags[id] = check.IsChecked == true; Stage(templateKey, "Creation inheritance template", "creation-inheritance", new() { ["flags"] = flags.DeepClone() }); }; template.Children.Add(check);
-        }
-        page.Children.Add(Card(template));
     }
     private async void LoadGroupEditor(StackPanel host, string kind, bool inherited, int generation)
     {

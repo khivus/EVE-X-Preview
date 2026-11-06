@@ -26,6 +26,7 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
     public string SessionId => Snapshot.Text("session");
     public string Profile => Snapshot.Text("profile", "Default");
     public bool Dirty => Snapshot.Bool("dirty") || HasLocalProtectedWork;
+    public int ChangeCount => Snapshot.Int("changeCount") + pending.Values.Count(edit => !PendingAlreadyCounted(edit));
     public bool HasActiveModal => modalCount != 0;
     private bool HasLocalProtectedWork => pending.Count != 0 || modalCount != 0;
     public IReadOnlyCollection<PendingEdit> Pending => pending.Values;
@@ -37,6 +38,7 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
         await operations.WaitAsync(cancellation);
         try
         {
+            var selectedProfile = Snapshot.Text("profile");
             if (transport.HasUncertainApply)
             {
                 var outcome = await transport.RecoverApplyAsync(cancellation);
@@ -61,13 +63,32 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
             var begin = new JsonObject { ["clientPid"] = Environment.ProcessId };
             if (recovery is not null && !appliedAwaitingReconnect && !skipRecoveryAfterConfirmedApply) begin["recovery"] = recovery.DeepClone();
             Accept(await transport.SendAsync("begin", "", begin, cancellation));
+            if (selectedProfile != "" && selectedProfile != Profile && Snapshot.Array("profiles").Any(p => p.Text("name") == selectedProfile))
+                Accept(await transport.SendAsync("select-profile", SessionId, new JsonObject { ["name"] = selectedProfile }, cancellation));
             appliedAwaitingReconnect = false;
             skipRecoveryAfterConfirmedApply = false;
             Connected = true; Error = null;
+            Validation = new();
             Accept(await transport.SendAsync("client-state", SessionId, new JsonObject { ["dirty"] = HasLocalProtectedWork }, cancellation));
         }
         catch (Exception error) { Connected = false; Error = error.Message; throw; }
         finally { operations.Release(); Changed?.Invoke(); }
+    }
+
+    private bool PendingAlreadyCounted(PendingEdit edit)
+    {
+        var draft = Snapshot.Object("draft");
+        if (draft["baseline"] is null) return false;
+        JsonNode? baseline = draft["baseline"];
+        JsonNode? current = draft["config"];
+        string[] path;
+        if (edit.Method == "set" && Metadata?.Field(edit.Arguments.Text("id")) is { } field)
+            path = (field.Bool("global") ? Array.Empty<string>() : new[] { "_Profiles", edit.Profile }).Concat(field.Array("path").Select(JsonExtensions.Display)).ToArray();
+        else if (edit.Method == "event")
+            path = ["_Profiles", edit.Profile, "Game Logs Monitoring", "monitoredEvents", edit.Arguments.Text("id"), edit.Arguments.Object("values").First().Key];
+        else return false;
+        foreach (var key in path) { baseline = (baseline as JsonObject)?[key]; current = (current as JsonObject)?[key]; }
+        return !JsonNode.DeepEquals(baseline, current);
     }
 
     private async Task<JsonObject> WaitForReadyHostAsync(CancellationToken cancellation)

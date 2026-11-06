@@ -54,6 +54,10 @@ internal static class Program
         var local=SettingProblems.Build([pending],new(),metadata).Single();
         Check(local.Section=="appearance" && local.Message=="Invalid color","unfinished invalid text is listed with its original category");
         Check(SettingProblems.Build([],new(),metadata).Count==0,"valid settings have no active problems");
+        var overlaps=SettingProblems.Build([],new(){["issues"]=new JsonArray(
+            new JsonObject {["id"]="character:1",["kind"]="shortcut-conflict",["profile"]="Other",["message"]="Shortcut overlaps: Character Bob"},
+            new JsonObject {["id"]="group:Fleet:ForwardsHotkey",["kind"]="shortcut-conflict",["profile"]="Other",["message"]="Shortcut overlaps: Group Fleet"})},metadata);
+        Check(overlaps.Count==2 && overlaps[0].Section=="character-shortcuts" && overlaps[1].Section=="character-groups","shortcut overlaps link to their actual character or group category");
     }
     private static void ProtocolTests()
     {
@@ -123,8 +127,11 @@ internal static class Program
         editor.Stage(gainKey, "Gain", "sound", new() { ["action"] = "gain", ["path"] = "C:\\Audio\\alert.wav", ["volume"] = "unfinished" });
         await ThrowsAsync<BridgeException>(() => editor.MutateAsync("sound", new() { ["action"] = "remove", ["path"] = "C:\\Audio\\alert.wav" }), "sound removal cannot orphan unfinished file gain");
         await editor.DiscardPendingAsync(gainKey); Check(editor.GetPending(gainKey) is null, "individual pending edit can be discarded without discarding canonical draft");
+        transport.ResetProfileOnBegin = true;
         transport.DisconnectNext = true; await ThrowsAsync<BridgeException>(() => editor.ReadAsync("snapshot"), "connection loss surfaced");
         Check(!editor.Connected, "connection failure disables mutation"); await editor.ConnectAsync(); Check(transport.Recovered, "reconnect restores opaque canonical draft");
+        Check(editor.Profile=="Other","reconnect keeps the edited profile when the new runtime starts on Default");
+        Check(editor.Validation.Array("issues").Count==0,"reconnect clears stale validation before the new host is validated");
         editor.Stage(key, "Opaque field", "set", new() { ["id"] = "opaque-field", ["value"] = "still unfinished" }); await editor.DiscardAsync(); Check(!editor.Dirty && editor.Pending.Count == 0, "explicit Discard clears canonical and unfinished state");
         await editor.MutateAsync("set", new() { ["id"] = "opaque-field", ["value"] = "saved" });
         transport.FailSave = true; await ThrowsAsync<BridgeException>(() => editor.ApplyAsync(), "failed save surfaced"); Check(editor.Dirty, "failed save preserves editable canonical draft");
@@ -250,6 +257,7 @@ internal sealed class ScriptedTransport : IBridgeTransport
     public int Pid = 501, BeginCount;
     public int NotReadyHellos,HelloCount;
     public bool LoseApplyResponse;
+    public bool ResetProfileOnBegin;
     public int DelayedRecoveryAttempts;
     private JsonObject? retainedApply;
     public bool HasUncertainApply => retainedApply is not null;
@@ -259,7 +267,7 @@ internal sealed class ScriptedTransport : IBridgeTransport
         var outcome = retainedApply; retainedApply = null; return Task.FromResult(outcome);
     }
     public Task EnsureAvailableAsync(CancellationToken cancellation = default) => Task.CompletedTask;
-    private JsonObject Snapshot() => new() { ["session"] = "fixture-session", ["profile"] = profile, ["dirty"] = dirty || ClientDirty, ["clientDirty"] = ClientDirty, ["draft"] = new JsonObject { ["opaque"] = "canonical-only", ["dirty"] = dirty } };
+    private JsonObject Snapshot() => new() { ["session"] = "fixture-session", ["profile"] = profile, ["profiles"] = new JsonArray(new JsonObject {["name"]="Default"},new JsonObject {["name"]="Other"}), ["dirty"] = dirty || ClientDirty, ["clientDirty"] = ClientDirty, ["draft"] = new JsonObject { ["opaque"] = "canonical-only", ["dirty"] = dirty } };
     public Task<JsonObject> SendAsync(string method, string session, JsonObject? arguments = null, CancellationToken cancellation = default)
     {
         if (DisconnectNext) { DisconnectNext = false; throw new BridgeException("timeout", "Fixture disconnect"); }
@@ -267,7 +275,7 @@ internal sealed class ScriptedTransport : IBridgeTransport
         {
             case "hello": HelloCount++;return Task.FromResult(new JsonObject { ["bridgeVersion"] = 1, ["schemaVersion"] = 1, ["ready"] = NotReadyHellos--<=0, ["role"] = "runtime", ["pid"] = Pid });
             case "metadata": return Task.FromResult(new JsonObject { ["bridgeVersion"] = 1, ["schemaVersion"] = 1 });
-            case "begin": BeginCount++; RecoveredOnLastBegin = arguments?["recovery"] is not null; Recovered |= RecoveredOnLastBegin; break;
+            case "begin": BeginCount++;if(ResetProfileOnBegin)profile="Default"; RecoveredOnLastBegin = arguments?["recovery"] is not null; Recovered |= RecoveredOnLastBegin; break;
             case "client-state": ClientDirty = arguments.Bool("dirty"); break;
             case "select-profile": profile = arguments.Text("name"); break;
             case "set": if (RejectSet) throw new BridgeException("validation", "Invalid input"); LastSetProfile = profile; dirty = true; break;

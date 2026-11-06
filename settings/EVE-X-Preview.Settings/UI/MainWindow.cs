@@ -20,6 +20,12 @@ public sealed partial class MainWindow : Window
     private readonly ScrollViewer pageScroll = new() { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
     private readonly ComboBox profiles = new() { MinWidth = 175, MaxWidth = 320, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox search = new() { PlaceholderText = "Search settings", Margin = new Thickness(16, 12), InnerLeftContent = new TextBlock { Text = "⌕", FontSize = 22, Margin = new Thickness(10, 0) } };
+    private readonly Button clearSearch = new() { Content = "×", Width = 26, Height = 26, MinHeight = 0, Padding = new Thickness(0), Margin = new Thickness(2, 0, 5, 0), Background = Brushes.Transparent, BorderThickness = new Thickness(0), IsVisible = false };
+    private readonly Border connectionBanner = new() { IsVisible = false, Padding = new Thickness(26, 12), Background = new SolidColorBrush(Color.Parse("#553717")) };
+    private readonly TextBlock connectionMessage = new() { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White };
+    private readonly DispatcherTimer connectionPoll = new() { Interval = TimeSpan.FromSeconds(2) };
+    private string? defaultEditProfile, defaultEditSection;
+    private string SelectedProfile => defaultEditProfile ?? session.Profile;
     private readonly TextBlock draft = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock error = new() { Classes = { "error" }, IsVisible = false, Margin = new Thickness(28, 8) };
     private readonly TextBlock notice = Muted("");
@@ -41,16 +47,21 @@ public sealed partial class MainWindow : Window
         Width = 1180; Height = 820; MinWidth = 760; MinHeight = 560;
         Title = "EVE-X-Preview · Settings";
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        var root = workbench = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto"),IsVisible=false };
+        var root = workbench = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto"),IsVisible=false };
         root.Children.Add(CreateHeader());
+        connectionBanner.Child = connectionMessage; Grid.SetRow(connectionBanner, 1); root.Children.Add(connectionBanner);
+        search.InnerRightContent = clearSearch;
+        Avalonia.Automation.AutomationProperties.SetName(clearSearch, "Clear search");
+        ToolTip.SetTip(clearSearch, "Clear search");
+        clearSearch.Click += (_, _) => { search.Text = ""; search.Focus(); };
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("242,*") };
         var sidebar = new DockPanel(); DockPanel.SetDock(search, Dock.Top); sidebar.Children.Add(search); sidebar.Children.Add(new ScrollViewer { Content = navigation });
         body.Children.Add(new Border { Child = sidebar, Classes = { "sidebar" }, BorderThickness = new Thickness(0, 1, 1, 1), Opacity = 0.99 });
-        pageScroll.Content = page; Grid.SetColumn(pageScroll, 1); body.Children.Add(pageScroll); Grid.SetRow(body, 1); root.Children.Add(body);
-        Grid.SetRow(error, 2); root.Children.Add(error);
+        pageScroll.Content = page; Grid.SetColumn(pageScroll, 1); body.Children.Add(pageScroll); Grid.SetRow(body, 2); root.Children.Add(body);
+        Grid.SetRow(error, 3); root.Children.Add(error);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(26, 16) };
         var state = new StackPanel { Spacing = 5, VerticalAlignment = VerticalAlignment.Center }; state.Children.Add(draft); state.Children.Add(notice);state.Children.Add(releaseNotice); footer.Children.Add(state);
-        releaseNotice.Click+=(_,_)=>{SaveScroll();search.Text="";sectionId="about";RenderNavigation();RenderPage();};
+        releaseNotice.Click+=async (_,_)=>await RunAsync(async()=>{search.Text="";await NavigateToAsync("about");});
         updatePoll.Tick+=async (_,_)=>await PollUpdatesAsync();
         var actions = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, MaxWidth=Math.Max(400,Width-260) };
         SizeChanged+=(_,_)=>actions.MaxWidth=Math.Max(400,ClientSize.Width-260);
@@ -62,22 +73,26 @@ public sealed partial class MainWindow : Window
         apply = ActionButton("Apply & restart", ApplyAsync, false); apply.Classes.Add("accent");
         problems.Click+=async (_,_)=>await RunAsync(ShowProblemsAsync,false,false);
         foreach (var button in new[] { reconnect, problems, undo, accept, discard, apply }) { button.Margin = new Thickness(6, 3, 0, 3); actions.Children.Add(button); }
-        Grid.SetColumn(actions, 1); footer.Children.Add(actions); Grid.SetRow(footer, 3); root.Children.Add(footer);
+        Grid.SetColumn(actions, 1); footer.Children.Add(actions); Grid.SetRow(footer, 4); root.Children.Add(footer);
         var loading=new StackPanel {Spacing=16,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
         loading.Children.Add(new TextBlock {Text="EVE-X-Preview",FontSize=24,FontWeight=FontWeight.SemiBold,HorizontalAlignment=HorizontalAlignment.Center});
         loading.Children.Add(new ProgressBar {IsIndeterminate=true,Width=220,Height=4});
         loading.Children.Add(Muted("Loading settings…"));
         loadingView=new Border {Child=loading};Content=new Grid {Children={root,loadingView}};
-        search.TextChanged += (_, _) => { RenderNavigation(); RenderPage(); };
+        search.TextChanged += async (_, _) => { clearSearch.IsVisible = !string.IsNullOrEmpty(search.Text); if(defaultEditProfile is not null)await RunAsync(EndDefaultEditingAsync); RenderNavigation(); RenderPage(); };
         profiles.SelectionChanged += async (_, _) =>
         {
-            if (updatingProfiles || profiles.SelectedItem is not string profile || profile == session.Profile) return;
-            SaveScroll(); await RunAsync(async () => { await session.MutateAsync("select-profile", new() { ["name"] = profile }); });
+            if (updatingProfiles || profiles.SelectedItem is not string profile || profile == SelectedProfile) return;
+            SaveScroll(); await RunAsync(async () => { defaultEditProfile = defaultEditSection = null; await session.MutateAsync("select-profile", new() { ["name"] = profile }); });
         };
         session.Changed += () => Dispatcher.UIThread.Post(UpdateStatus);
         instance.ActivationRequested += ActivateRequested;
         Closing += OnClosing;
-        Closed += async (_, _) => {updatePoll.Stop();instance.ActivationRequested -= ActivateRequested; await session.DisposeAsync(); };
+        connectionPoll.Tick += async (_, _) => {
+            if(closing || busy || !session.Connected || session.HasActiveModal || liveEdits.CurrentCount == 0)return;
+            try { await session.ReadAsync("snapshot"); } catch(Exception) { UpdateStatus(); }
+        };
+        Closed += async (_, _) => {connectionPoll.Stop();updatePoll.Stop();instance.ActivationRequested -= ActivateRequested; await session.DisposeAsync(); };
         Opened += async (_, _) =>
         {
             if(Program.CaptureDirectory is {} startupDirectory) {
@@ -110,9 +125,11 @@ public sealed partial class MainWindow : Window
     {
         await session.ConnectAsync();
         await session.ValidateAsync();
+        connectionPoll.Start();
         if(!session.Dirty && session.Metadata is {} metadata)ThemeController.RememberTheme(session.Snapshot.Object("values").Object("SettingsTheme").Text("value","system"),metadata);
         if (session.Metadata?.Sections.All(s => s.Text("id") != sectionId) == true) sectionId = session.Metadata.Sections.FirstOrDefault().Text("id");
         RenderNavigation(); RenderPage();
+        foreach(var edit in session.Pending.ToArray())QueueValidation(edit.Key);
         _=StartBackgroundUpdatesAsync();
     }
     private Button ActionButton(string label, Func<Task> action, bool render = true)
@@ -126,7 +143,7 @@ public sealed partial class MainWindow : Window
         if (busy || closing) return;
         busy = true; error.IsVisible = false; UpdateStatus();
         var previousDraft = session.Snapshot.Object("draft").Copy();
-        try { await action(); if (recordHistory && previousDraft["config"] is not null && !JsonNode.DeepEquals(previousDraft.Object("config"), session.Snapshot.Object("draft").Object("config"))) editHistory.Push(previousDraft); if (render) { RenderNavigation(); RenderPage(); } }
+        try { await action(); if(session.Connected && render)await session.ValidateAsync(); if (recordHistory && previousDraft["config"] is not null && !JsonNode.DeepEquals(previousDraft.Object("config"), session.Snapshot.Object("draft").Object("config"))) editHistory.Push(previousDraft); if (render) { RenderNavigation(); RenderPage(); } }
         catch (Exception e) { ShowError(e); }
         finally { busy = false; UpdateStatus(); }
     }
@@ -142,14 +159,16 @@ public sealed partial class MainWindow : Window
     private void UpdateStatus()
     {
         var pending = session.Pending.Count;
-        draft.Text = pending != 0 ? $"{pending} invalid or validating field{(pending == 1 ? "" : "s")}" : session.Dirty ? "Unapplied changes" : "All changes applied";
+        var changed = session.ChangeCount;
+        draft.Text = changed != 0 ? $"{changed} setting{(changed == 1 ? "" : "s")} changed, apply to save" : "All changes applied";
         notice.Text = busy ? "Working" : pending != 0 ? "Correct the highlighted fields before applying." : activity;
         if (!busy && session.Pending.FirstOrDefault(p => p.Error is not null) is { } invalid)
             notice.Text = "Invalid: " + invalid.Profile + " / " + invalid.Label;
         else if (!busy && session.Validation.Array("issues").FirstOrDefault(i => i.Text("severity") == "error") is { } issue)
             notice.Text = "Invalid: " + issue.Text("profile") + " / " + (session.Metadata?.Fields.FirstOrDefault(f => f.Text("id") == issue.Text("id")).Text("label", issue.Text("id")) ?? issue.Text("id"));
         var issues=CurrentProblems();var blocking=issues.Any(p=>p.Severity=="error");
-        draft.Foreground=blocking?Brushes.OrangeRed:null;notice.Foreground=blocking?Brushes.OrangeRed:null;
+        if(blocking) {draft.Foreground=Brushes.OrangeRed;notice.Foreground=Brushes.OrangeRed;}
+        else {draft.ClearValue(TextBlock.ForegroundProperty);notice.ClearValue(TextBlock.ForegroundProperty);}
         notice.MaxHeight=48;ToolTip.SetTip(notice,notice.Text);
         problems.Content=issues.Count==0?"Problems":"Problems ("+issues.Count+")";
         problems.IsEnabled=!busy&&session.Connected&&issues.Count>0;
@@ -158,7 +177,10 @@ public sealed partial class MainWindow : Window
         discard.IsEnabled = !busy && session.Connected && session.Dirty;
         undo.IsEnabled = !busy && session.Connected && (editHistory.Count != 0 || pending != 0);
         reconnect.IsVisible = !session.Connected; reconnect.IsEnabled = !busy;
+        connectionBanner.IsVisible = !session.Connected;
+        connectionMessage.Text = "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue." + (session.Error is { Length: > 0 } reason ? "\n" + reason : "");
         profiles.IsEnabled = !busy && session.Connected;
+        search.IsEnabled = !busy && session.Connected;
         page.IsEnabled = !busy && session.Connected;
         RefreshAboutControls();
         if (!rendering)
@@ -166,7 +188,7 @@ public sealed partial class MainWindow : Window
             updatingProfiles = true;
             var names = session.Snapshot.Array("profiles").Select(item => item is JsonObject ? item.Text("name") : JsonExtensions.Display(item)).ToArray();
             if (!names.SequenceEqual((profiles.ItemsSource as string[]) ?? [])) profiles.ItemsSource = names;
-            profiles.SelectedItem = session.Profile; updatingProfiles = false;
+            profiles.SelectedItem = SelectedProfile; updatingProfiles = false;
         }
         if (session.Snapshot.Object("values")["SettingsTheme"] is { } theme)
         {
@@ -194,7 +216,7 @@ public sealed partial class MainWindow : Window
                 var id = section.Text("id");
                 var button = new Button { Content = SearchText(section.Text("title")), Classes = { "nav" } };
                 if (id == sectionId) button.Classes.Add("selected");
-                button.Click += (_, _) => { SaveScroll(); sectionId = id; RenderNavigation(); RenderPage(); };
+                button.Click += async (_, _) => await RunAsync(() => NavigateToAsync(id));
                 navigation.Children.Add(button);
             }
         }
@@ -212,12 +234,7 @@ public sealed partial class MainWindow : Window
         var titleBlock = SearchText(section.Text("title")); titleBlock.Classes.Add("heading"); page.Children.Add(titleBlock);
         if (section.Text("help") is { Length: > 0 } help) page.Children.Add(SearchText(help));
         var inherited = session.Snapshot.Object("inheritance").Bool(sectionId);
-        if (section.Text("group") != "" && session.Profile != "Default")
-        {
-            var inherit = new CheckBox { Content = "Use Default settings for this section", IsChecked = inherited };
-            inherit.IsCheckedChanged += async (_, _) => await RunAsync(async () => { await session.MutateAsync("inheritance", new() { ["section"] = sectionId, ["enabled"] = inherit.IsChecked == true }); });
-            page.Children.Add(inherit);
-        }
+        RenderSources(section);
         var fields = new StackPanel { Spacing = 16 };
         foreach (var field in metadata.SectionFields(section)) {
             if(sectionId=="events" && field.Text("id")=="shootingInterval")continue;
@@ -249,6 +266,57 @@ public sealed partial class MainWindow : Window
         }
         rendering = false; UpdateStatus();
         Dispatcher.UIThread.Post(() => pageScroll.Offset = offset, DispatcherPriority.Loaded);
+    }
+    private async Task NavigateToAsync(string id)
+    {
+        SaveScroll();
+        if(defaultEditProfile is not null && id != defaultEditSection)await EndDefaultEditingAsync();
+        sectionId = id; RenderNavigation(); RenderPage();
+    }
+    private async Task EndDefaultEditingAsync()
+    {
+        if(defaultEditProfile is not {} selected)return;
+        await session.MutateAsync("select-profile",new(){["name"]=selected});
+        defaultEditProfile = defaultEditSection = null;
+    }
+    private async Task SetInheritanceAsync(string group, bool enabled)
+    {
+        if(enabled) foreach(var edit in session.Pending.Where(p=>p.Profile==session.Profile &&
+            (p.Key.Split('|').ElementAtOrDefault(1)==group || session.Metadata?.Field(p.Arguments.Text("id"))?.Text("group")==group)).ToArray()) {
+            if(validationTimers.TryGetValue(edit.Key,out var timer))timer.Cancel();
+            await session.DiscardPendingAsync(edit.Key);
+        }
+        await session.MutateAsync("inheritance",new(){["section"]=group,["enabled"]=enabled});
+    }
+    private void RenderSources(JsonObject section)
+    {
+        if(defaultEditProfile is not null) {
+            var context = new StackPanel { Spacing = 8 };
+            context.Children.Add(Muted("Editing Default. Changes affect every profile inheriting this category. Selected profile: " + defaultEditProfile));
+            context.Children.Add(ActionButton("Done editing Default",EndDefaultEditingAsync));
+            page.Children.Add(Card(context));return;
+        }
+        var groups = new[] { section.Text("group") }.Concat(session.Metadata!.SectionFields(section).Where(f=>!f.Bool("global")).Select(f=>f.Text("group")));
+        if(sectionId == "quick-group")groups = groups.Append("mouse-actions");
+        foreach(var group in groups.Where(g=>g!="").Distinct()) {
+            var label = session.Metadata.Sections.FirstOrDefault(s=>s.Text("id")==group).Text("title",group);
+            if(session.Profile == "Default") { page.Children.Add(Muted("Source: Default profile · " + label));continue; }
+            var source = new StackPanel { Spacing = 8 };
+            source.Children.Add(Muted("Settings source: " + label));
+            var inherited = session.Snapshot.Object("inheritance").Bool(group);
+            var choice = new ComboBox { ItemsSource = new[] { "Use Default profile settings", "Customize for this profile" }, SelectedIndex = inherited ? 0 : 1, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
+            choice.SelectionChanged += async (_,_) => {
+                if(choice.SelectedIndex == (inherited ? 0 : 1))return;
+                await RunAsync(()=>SetInheritanceAsync(group,choice.SelectedIndex==0));
+            };
+            source.Children.Add(choice);
+            if(inherited)source.Children.Add(ActionButton(group==sectionId?"Edit Default here":"Edit Default " + label,async()=> {
+                SaveScroll();defaultEditProfile = session.Profile;defaultEditSection = group;sectionId = group;
+                try {await session.MutateAsync("select-profile",new(){["name"]="Default"});}
+                catch {defaultEditProfile = defaultEditSection = null;throw;}
+            }));
+            page.Children.Add(source);
+        }
     }
     private async Task RunCommandAsync(JsonObject command, JsonObject? arguments = null)
     {

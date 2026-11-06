@@ -66,6 +66,8 @@ class SettingsHostOwner {
         SetTimer(this.timer, 500)
     }
     CheckParent() {
+        if this.HasOwnProp("settingsDownloader") && (this.settingsDownloader.busy || this.settingsDownloader.HasOwnProp("handoffPending"))
+            return
         if DllCall("WaitForSingleObject", "Ptr", this.parentHandle, "UInt", 0, "UInt") != 0x102
             ExitApp()
         ; Keep the endpoint just long enough for the editor to receive

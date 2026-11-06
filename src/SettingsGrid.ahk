@@ -213,17 +213,23 @@ class SettingsGrid {
         x := (lParam & 0xFFFF) << 48 >> 48
         y := ((lParam >> 16) & 0xFFFF) << 48 >> 48
         if message = 0x201 {
-            this.CommitEditor()
-            cell := this.CellAt(x, y)
-            if !IsObject(cell)
-                return 0
-            extend := !!(wParam & 4), toggle := !!(wParam & 8)
-            previous := this.selected.Clone()
-            this.Select(cell.row, cell.column, extend, toggle)
-            this.list.Focus()
-            this.drag := {x: x, y: y, start: [cell.row, cell.column], previous: previous,
-                extend: extend, toggle: toggle, moved: false, actual: cell.actual, endRow: 0, endColumn: 0}
-            DllCall("SetCapture", "Ptr", this.list.Hwnd, "Ptr")
+            ; Committing a previous cell can pump messages. Complete pointer
+            ; setup before a queued button-up can observe an unfinished drag.
+            previousCritical := A_IsCritical
+            Critical(true)
+            try {
+                this.CommitEditor()
+                cell := this.CellAt(x, y)
+                if !IsObject(cell)
+                    return 0
+                extend := !!(wParam & 4), toggle := !!(wParam & 8)
+                previous := this.selected.Clone()
+                this.Select(cell.row, cell.column, extend, toggle)
+                this.list.Focus()
+                this.drag := {x: x, y: y, start: [cell.row, cell.column], previous: previous,
+                    extend: extend, toggle: toggle, moved: false, actual: cell.actual, endRow: 0, endColumn: 0}
+                DllCall("SetCapture", "Ptr", this.list.Hwnd, "Ptr")
+            } finally Critical(previousCritical)
             return 0
         }
         if !IsObject(this.drag)

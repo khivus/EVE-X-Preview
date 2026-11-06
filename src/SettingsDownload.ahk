@@ -1,6 +1,7 @@
 ; The optional editor follows the main release version. Downloads are staged
 ; beside the application and replaced only after the complete EXE is verified.
 class SettingsDownload {
+    static ShouldSuggest(config, path, compiled := A_IsCompiled) => compiled && !FileExist(path) && !config.Get("SettingsDownloadSuggested", false)
     busy := false
     status := ""
     __New(owner) => this.owner := owner
@@ -20,7 +21,7 @@ class SettingsDownload {
         if SettingsEditor(this.owner).InternalDraft()
             throw Error("Apply or discard the internal settings draft before downloading the editor.")
         this.busy := true, this.status := "Downloading settings editor…"
-        this.stagedReady := false, this.closeRequestedAt := 0
+        this.stagedReady := false, this.closeRequestedAt := 0, this.closingPid := 0
         this.tag := tag, this.startedAt := A_TickCount
         try {
             this.request := ComObject("WinHttp.WinHttpRequest.5.1")
@@ -59,11 +60,17 @@ class SettingsDownload {
                     throw Error("Apply or discard the settings draft before replacing the editor.")
                 if !this.closeRequestedAt {
                     this.closeRequestedAt := A_TickCount
+                    this.closingPid := bridge.ExternalPid
                     this.status := "Download complete. Closing the previous settings editor…"
                     PostMessage(0x10, 0, 0,, "ahk_pid " bridge.ExternalPid)
                 }
                 if A_TickCount - this.closeRequestedAt > 10000
                     throw Error("Close the previous settings editor, then retry the download.")
+                return
+            }
+            if this.HasOwnProp("closingPid") && this.closingPid && ProcessExist(this.closingPid) {
+                if A_TickCount - this.closeRequestedAt > 10000
+                    throw Error("The previous settings editor is still closing. Retry the download from internal settings.")
                 return
             }
             backup := this.Path ".previous"
@@ -78,6 +85,7 @@ class SettingsDownload {
             }
             if existed
                 try FileDelete(backup)
+            this.handoffPending := true
             this.Finish("Settings editor downloaded. Opening settings…")
             ; Return the bridge response before changing editor ownership.
             SetTimer(ObjBindMethod(this, "Launch"), -300)
@@ -87,6 +95,10 @@ class SettingsDownload {
         }
     }
     Launch() {
+        if this.owner.HasOwnProp("parentHandle") {
+            Run('"' this.Path '" --installation "' this.Directory '"', this.Directory)
+            ExitApp()
+        }
         editor := SettingsEditor(this.owner)
         if editor.InternalDraft()
             return

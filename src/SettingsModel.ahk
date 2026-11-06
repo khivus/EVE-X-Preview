@@ -56,12 +56,36 @@ class SettingsModel {
         this.undo := []
         this.MigrateInheritance()
         this.saved := JSON.Dump(this.config)
+        this.savedConfig := this.Clone(this.config)
+        this.countSnapshot := this.saved, this.changeCountCache := 0
     }
 
     static Clone(value) => IsObject(value) ? JSON.Load(JSON.Dump(value)) : value
     static Equal(first, second) => JSON.Dump([first]) = JSON.Dump([second])
     Clone(value) => SettingsModel.Clone(value)
     Dirty => JSON.Dump(this.config) != this.saved
+    ChangeCount {
+        get {
+            current := JSON.Dump(this.config)
+            if current != this.countSnapshot {
+                this.changeCountCache := SettingsModel.CountChanges(this.savedConfig, this.config)
+                this.countSnapshot := current
+            }
+            return this.changeCountCache
+        }
+    }
+
+    static CountChanges(before, after) {
+        if !(before is Map) || !(after is Map)
+            return before is Array || after is Array ? !this.Equal(before, after) : !(Type(before) = Type(after) && before == after)
+        count := 0
+        for key, value in before
+            count += after.Has(key) ? this.CountChanges(value, after[key]) : 1
+        for key in after
+            if !before.Has(key)
+                count += 1
+        return count
+    }
     Profiles => this.config["_Profiles"]
 
     LegacySource(group, name) {

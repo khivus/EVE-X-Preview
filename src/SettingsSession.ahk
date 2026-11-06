@@ -17,7 +17,7 @@ class SettingsSession {
     Dirty => this.model.Dirty || this.clientDirty
 
     Recovery() => Map("version", 1, "installation", this.InstallationId(), "original", this.model.original, "config", this.model.config,
-        "profile", this.model.profile, "profileOrigins", this.model.profileOrigins, "saved", this.model.saved,
+        "profile", this.model.profile, "profileOrigins", this.model.profileOrigins, "saved", this.model.saved, "baseline", this.model.savedConfig,
         "undo", SettingsContract.Wire(this.model.undo), "clientDirty", SettingsContract.Bool(this.clientDirty))
 
     Restore(state) {
@@ -37,7 +37,9 @@ class SettingsSession {
         this.model.config := SettingsModel.Clone(state["config"])
         this.model.profile := state["profile"]
         this.model.profileOrigins := SettingsModel.Clone(state["profileOrigins"])
-        this.model.saved := state["saved"]
+        this.model.savedConfig := state.Has("baseline") ? SettingsModel.Clone(state["baseline"]) : JSON.Load(state["saved"])
+        this.model.saved := JSON.Dump(this.model.savedConfig)
+        this.model.countSnapshot := ""
         this.model.undo := []
         for entry in state["undo"] {
             hydrated := {}
@@ -76,7 +78,7 @@ class SettingsSession {
         creation := Map()
         for group, value in this.model.CreationInheritance()
             creation[group] := SettingsContract.Bool(value)
-        return Map("session", this.id, "profile", this.model.profile, "profiles", profiles, "dirty", SettingsContract.Bool(this.Dirty),
+        return Map("session", this.id, "profile", this.model.profile, "profiles", profiles, "dirty", SettingsContract.Bool(this.Dirty), "changeCount", this.model.ChangeCount,
             "clientDirty", SettingsContract.Bool(this.clientDirty), "values", values, "canUndo", SettingsContract.Bool(this.model.undo.Length > 0),
             "runtime", SettingsContract.Bool(this.runtime), "draft", this.Recovery(), "inheritance", inheritance, "creationInheritance", creation)
     }
@@ -359,7 +361,7 @@ class SettingsSession {
         try {
             facade := this.Facade()
             for id, labels in HotkeyBindings.Conflicts(HotkeyBindings.Collect(facade))
-                issues.Push(Map("id", id, "profile", this.model.profile, "message", "Shortcut overlaps: " this.Join(labels), "severity", "warning", "kind", "shortcut-conflict"))
+                issues.Push(Map("id", id, "profile", this.model.profile, "section", HotkeyBindings.SectionFor(id), "message", "Shortcut overlaps: " this.Join(labels), "severity", "warning", "kind", "shortcut-conflict"))
         }
         hasErrors := false
         for issue in issues

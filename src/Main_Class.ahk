@@ -311,7 +311,7 @@
     }
 
     SuggestSettingsDownload(*) {
-        if !A_IsCompiled || FileExist(A_ScriptDir "\EVE-X-Preview-Settings.exe") || This._JSON.Get("SettingsDownloadSuggested", false)
+        if !SettingsDownload.ShouldSuggest(This._JSON, A_ScriptDir "\EVE-X-Preview-Settings.exe")
             return
         This._JSON["SettingsDownloadSuggested"] := 1
         This.SaveJsonToFile()

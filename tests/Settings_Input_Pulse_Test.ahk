@@ -117,6 +117,11 @@ SettingsRapidCellSwitchTest() {
             PostMessage(0x201, 1, point, grid.list)
             PostMessage(0x202, 0, point, grid.list)
             Sleep(35)
+            ; Posted input shares the test thread with native repaint and
+            ; validation callbacks. Wait briefly for that queued pair to finish.
+            deadline := A_TickCount + 200
+            while !IsObject(grid.editor) && A_TickCount < deadline
+                Sleep(10)
             AssertTrue(IsObject(grid.editor), "Every ordinary cell click must open an editor; target=" target[1] ":" target[2]
                 "; current=" grid.row ":" grid.column "; focus=" DllCall("GetFocus", "Ptr") "; dragging=" IsObject(grid.drag) "; disposed=" grid.disposed)
             AssertEqual(target, [grid.editRow, grid.editColumn])

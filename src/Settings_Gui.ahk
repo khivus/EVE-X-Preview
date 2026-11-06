@@ -2037,6 +2037,7 @@ Class Settings_Gui extends SoundSettingsGui {
             "Hide Thumbnails",
             "Lock Thumbnail Positions",
             "Anonymize Thumbnails",
+            "Pause Live Previews",
             "Show Thumbnails Always on Top",
             "Click Through Thumbnails",
             "Minimize Inactive Clients",

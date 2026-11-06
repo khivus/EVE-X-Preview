@@ -204,3 +204,22 @@ SettingsContractInternalEventParityTest() {
         AssertThrows(() => bridgeSession.Event("underAttackByPlayer", Map("soundVolume", "301")), "0 to 300")
     } finally app.Dispose()
 }
+TestRunner.Register("Settings change counts track distinct values and return to zero after undo", SettingsChangeCountTest)
+SettingsChangeCountTest() {
+    model := SettingsModel(JSON.Load(default_JSON))
+    AssertEqual(0, model.ChangeCount)
+    original := model.Get("ThumbnailOpacity")
+    model.Set("ThumbnailOpacity", original - 1)
+    AssertEqual(1, model.ChangeCount)
+    model.Set("ThumbnailOpacity", original - 2)
+    AssertEqual(1, model.ChangeCount, "Repeated edits to one setting count once.")
+    model.Set("ThumbnailTextSize", model.Get("ThumbnailTextSize") + 1)
+    AssertEqual(2, model.ChangeCount)
+    model.Set("ThumbnailOpacity", original)
+    AssertEqual(1, model.ChangeCount)
+    AssertEqual("character-shortcuts", HotkeyBindings.SectionFor("character:2"))
+    AssertEqual("character-groups", HotkeyBindings.SectionFor("group:Fleet:ForwardsHotkey"))
+    AssertEqual("profiles", HotkeyBindings.SectionFor("profile:Mining"))
+    AssertEqual(0, JSON.Load(default_JSON)["_Profiles"]["Default"]["Tray Menu Settings"]["TrayMenuShortcuts"]["Pause Live Previews"])
+    AssertTrue(SettingsSchema.Fields.Has("TrayCommand:Pause Live Previews"), "Both editors receive the optional tray command from the schema.")
+}

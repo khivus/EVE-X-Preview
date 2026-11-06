@@ -164,6 +164,7 @@
                     "Hide Thumbnails": 1,
                     "Lock Thumbnail Positions": 0,
                     "Anonymize Thumbnails": 0,
+                    "Pause Live Previews": 0,
                     "Minimize Inactive Clients": 0,
                     "Close all EVE Clients": 1,
                     "Restore Client Positions": 1,

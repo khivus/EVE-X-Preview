@@ -12,8 +12,8 @@ public sealed partial class MainWindow
     private readonly Button problems = new(){Content="Problems"};
     private IReadOnlyList<SettingProblem> CurrentProblems()=>SettingProblems.Build(session.Pending,session.Validation,session.Metadata);
     private async Task ShowProblemsAsync() {
-        await session.ValidateAsync();var issues=CurrentProblems();
-        if(issues.Count==0)return;
+        var issues=CurrentProblems();
+        if(issues.Count==0) {await Dialogs.MessageAsync(this,"Settings problems","No settings problems remain.");return;}
         var panel=new StackPanel {Spacing=12};var target=-1;
         for(var i=0;i<issues.Count;i++) {
             var issue=issues[i];var index=i;var row=new StackPanel {Spacing=5};
@@ -24,7 +24,7 @@ public sealed partial class MainWindow
         }
         await Dialogs.ChoiceAsync(this,"Settings problems",panel,[("Close","close")]);
         if(target>=0) {
-            var issue=issues[target];if(issue.Profile!="" && issue.Profile!=session.Profile)await session.MutateAsync("select-profile",new(){["name"]=issue.Profile});
+            var issue=issues[target];await EndDefaultEditingAsync();if(issue.Profile!="" && issue.Profile!=session.Profile)await session.MutateAsync("select-profile",new(){["name"]=issue.Profile});
             search.Text="";SaveScroll();sectionId=issue.Section;scrollPositions[ScrollKey]=default;RenderNavigation();RenderPage();
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(()=>{},Avalonia.Threading.DispatcherPriority.Loaded);
             var key=issue.Id;

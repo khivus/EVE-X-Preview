@@ -116,9 +116,11 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Check("Anonymize Thumbnails")
         }
 
-        TrayMenu.Add("Recover off-screen thumbnails", ObjBindMethod(This, "RecoverOffscreenThumbnails"))
-        This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
-        TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
+        if This.TrayMenuShortcuts.Get("Pause Live Previews", 0) {
+            This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+            TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
+        } else if This.HasOwnProp("trayPreviewLabel")
+            This.DeleteProp("trayPreviewLabel")
         TrayMenu.Add("Reload", (*) => This.RequestRuntimeAction("reload"))
         TrayMenu.Add("Exit", (*) => This.RequestRuntimeAction("exit"))
         TrayMenu.Default := "Open"

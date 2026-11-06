@@ -1,5 +1,18 @@
 ﻿; Read-only conflict checks: never register, disable or rewrite the user's binds.
 class HotkeyBindings {
+    static SectionFor(id) {
+        if InStr(id, "character:") = 1
+            return "character-shortcuts"
+        if InStr(id, "group:") = 1
+            return "character-groups"
+        if InStr(id, "nonGroup:") = 1
+            return "app-groups"
+        if InStr(id, "nonApp:") = 1
+            return "app-shortcuts"
+        if InStr(id, "profile:") = 1
+            return "profiles"
+        return id = "quick" ? "quick-group" : "shortcuts"
+    }
     static ForWindowSwitch(key, automatic := true) {
         ; Custom combinations already have wildcard behavior; an explicit *
         ; before their prefix key is rejected by AHK. Preserve existing text.

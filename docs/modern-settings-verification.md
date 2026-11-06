@@ -91,3 +91,22 @@ The companion is now one self-contained EXE (~102 MiB) with native runtime libra
 Checks passed: 63 managed assertions (including readiness retries before lease acquisition), 65 final compiled single-file UI checks, 19 real source-host integration assertions, and targeted native runs of 20 update tests, 8 canonical tests and 3 editor tests. Update selection tests use mocked responses and cover draft/foreign-URL rejection and the internal About download action. UI checks cover the quiet inline stable-release notice, About navigation, both download metadata and larger event color text. No automated check clicked a real browser download or installed a release. Network-failure handling remains quiet and reports status in About.
 
 Final outputs: `.vs/build/v1.7.0.3-single-file-final/EVE-X-Preview.exe`, `EVE-X-Preview-Settings.exe`, `EVE-X-Preview-Updater.exe`, and `EVE-X-Preview-v1.7.0.3-win-x64.zip`. Main/settings versions remain 1.7.0.3; updater retains its independent 1.6.0 version. The ZIP contains exactly the three executables. The intermediate AHK host stays in the build cache and is not a separate distribution dependency. Commit text is saved under `.vs/single-file-followup/COMMIT_MESSAGE.txt`; nothing was committed, pushed or released.
+
+
+## v1.7.0.4 settings review — 2026-11-06
+
+Implemented direct, staged companion downloads with a first-launch suggestion and launch handoff; shared main/editor/host/updater versions; and transactional main-plus-settings updates that preserve installations without the optional editor. About places the download below pre-release installation and disables it when the latest editor is installed.
+
+The companion now supports category source selectors and scoped Default editing, retains the edited profile through Apply/reconnect, links shortcut warnings to their actual category, counts distinct unapplied values, and explains disconnection with a persistent banner. Reconnection refreshes validation and retries unfinished input. Event options appear below the table in categories and follow event-enabled state. Search has a clear button; numeric fields share 128 px widths (156 px for long ranges), and sliders sit beside their percentage fields. Disabled spinner outlines are removed. Both editors expose the default-hidden Pause Live Previews tray option; recovery remains in Layout and is removed from the tray.
+
+Checks used disposable installation/configuration folders under `.vs/v1704` and ordinary same-user Windows IPC access. No production configuration was edited.
+
+- Full native AHK suite: **382 passed, zero failed**. Includes download placement/version/launch fixtures, optional updater components, failed download and replacement rollback, change counts, inheritance, and native control behavior.
+- Managed protocol/state/clipboard/problem navigation checks: **66 assertions passed**.
+- Source-host UI checks: **78 passed**. Generated 70 light/Graphite captures across representative pages, 850×650 and 1100×800 sizes, and 100%/simulated 150% rendering. Inspected compact numeric/disabled controls, event options and search clearing.
+- Final self-contained settings EXE alone in a fresh folder: **78 UI checks passed**, including embedded-host creation, Apply/profile retention, deliberate host termination, draft recovery and refreshed Problems state. No source, adjacent host or DLLs were supplied to that folder.
+- All three release executables report **1.7.0.4**. The portable ZIP contains exactly the main, settings and updater EXEs.
+
+The native rapid-click check now waits up to 200 ms for posted input callbacks to finish rather than assuming a fixed 35 ms completion time. Pointer setup is atomic, and the change counter caches unchanged state to avoid repeated serialization during input.
+
+Final output: `.vs/build/EVE-X-Preview-v1.7.0.4-win-x64.zip`. Live GitHub installation/download, live EVE behavior, and physical mixed-DPI/multi-monitor behavior were not exercised. Nothing was pushed or published.

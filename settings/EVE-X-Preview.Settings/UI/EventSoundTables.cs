@@ -30,36 +30,58 @@ public sealed partial class MainWindow
     }
     private async void LoadEventOverview(StackPanel table,int generation) {
         try {
-            const string columns="1.5*,44,1.2*,1.2*,Auto";
-            TableHeading(table,columns,"Event","On","Color","Sound","Options");
+            const string columns="1.5*,44,1.2*,1.2*";
+            TableHeading(table,columns,"Event","On","Color","Sound");
+            var events = new List<(JsonObject descriptor,JsonObject data,CheckBox enabled)>();
             foreach(var descriptor in session.Metadata!.Events) {
                 var id=descriptor.Text("id");var data=await session.ReadAsync("event",new(){["id"]=id});if(generation!=pageGeneration)return;
                 var row=TableLine(columns);row.Children.Add(TableCell(SearchText(descriptor.Text("label")),0));
                 var enabled=new CheckBox {IsChecked=JsonExtensions.IsTrue(EventValue(id,"enabled",data)),VerticalAlignment=VerticalAlignment.Center,IsEnabled=!data.Bool("inherited")};
-                enabled.IsCheckedChanged+=(_,_)=>StageEvent(id,descriptor.Text("label"),"enabled",JsonValue.Create(enabled.IsChecked==true));row.Children.Add(TableCell(enabled,1));
+                Avalonia.Automation.AutomationProperties.SetName(enabled,descriptor.Text("label")+" enabled");
+                enabled.IsCheckedChanged+=(_,_)=> {
+                    data.Object("values")["enabled"] = enabled.IsChecked == true;
+                    StageEvent(id,descriptor.Text("label"),"enabled",JsonValue.Create(enabled.IsChecked==true));
+                };
+                row.Children.Add(TableCell(enabled,1));
                 var colorHost=new StackPanel {Spacing=2};var color=TypedInput(new(){["kind"]="color"},EventValue(id,"color",data),v=>StageEvent(id,descriptor.Text("label"),"color",v),true);color.IsEnabled=!data.Bool("inherited");colorHost.Children.Add(color);EventFeedback(colorHost,id,"color",color);row.Children.Add(TableCell(colorHost,2));
                 if(color is Grid colorInput && colorInput.Children.OfType<TextBox>().FirstOrDefault() is {} colorText) {colorText.FontSize=14;colorText.Padding=new Thickness(6,4);}
-                var soundPath=data.Object("values").Text("sound");var sound=ActionButton(SoundName(soundPath),()=>{selections["sound-event"]=id;SaveScroll();sectionId="sounds";return System.Threading.Tasks.Task.CompletedTask;});
-                sound.HorizontalAlignment=HorizontalAlignment.Stretch;sound.MinWidth=0;sound.Padding=new Thickness(5);ToolTip.SetTip(sound,"Manage sound assignment in Sound library\n"+soundPath);row.Children.Add(TableCell(sound,3));
-                var options=ActionButton("Options",()=>EditEventOptionsAsync(id),false);options.MinWidth=0;options.Padding=new Thickness(6);row.Children.Add(TableCell(options,4));table.Children.Add(row);
+                var soundPath=data.Object("values").Text("sound");var sound=ActionButton(SoundName(soundPath),async()=>{selections["sound-event"]=id;await NavigateToAsync("sounds");});
+                sound.HorizontalAlignment=HorizontalAlignment.Stretch;sound.MinWidth=0;sound.Padding=new Thickness(5);ToolTip.SetTip(sound,"Manage sound assignment in Sound library\n"+soundPath);row.Children.Add(TableCell(sound,3));table.Children.Add(row);
+                events.Add((descriptor,data,enabled));
+            }
+            var options = new StackPanel { Spacing = 16 };
+            foreach(var category in events.GroupBy(e=>e.descriptor.Text("category"))) {
+                var categoryPanel = new StackPanel { Spacing = 14 };
+                categoryPanel.Children.Add(new TextBlock { Text = category.Key, FontWeight = FontWeight.SemiBold, FontSize = 16 });
+                foreach(var (descriptor,data,enabled) in category) {
+                    var fields = data.Array("fields").OfType<JsonObject>().Where(f=>f.Text("id") is not ("enabled" or "color" or "sound" or "soundVolume")).ToArray();
+                    if(fields.Length == 0)continue;
+                    var id = descriptor.Text("id");
+                    var eventPanel = new StackPanel { Spacing = 10 };
+                    eventPanel.Children.Add(new TextBlock { Text = descriptor.Text("label"), FontWeight = FontWeight.SemiBold });
+                    var controls = new StackPanel { Spacing = 10, IsEnabled = !data.Bool("inherited") && enabled.IsChecked == true };
+                    enabled.IsCheckedChanged += (_,_) => controls.IsEnabled = !data.Bool("inherited") && enabled.IsChecked == true;
+                    foreach(var field in fields) {
+                        var key = field.Text("id");var fieldPanel = new StackPanel { Spacing = 5 };
+                        fieldPanel.Children.Add(SearchText(field.Text("label")));
+                        var control = TypedInput(field,EventValue(id,key,data),v=>StageEvent(id,descriptor.Text("label"),key,v));
+                        Avalonia.Automation.AutomationProperties.SetName(control,descriptor.Text("label")+" / "+field.Text("label"));
+                        fieldPanel.Children.Add(control);EventFeedback(fieldPanel,id,key,control);controls.Children.Add(fieldPanel);
+                    }
+                    eventPanel.Children.Add(controls);categoryPanel.Children.Add(eventPanel);
+                }
+                if(categoryPanel.Children.Count > 1)options.Children.Add(Card(categoryPanel));
+            }
+            if(generation == pageGeneration && options.Children.Count > 0) {
+                options.Children.Insert(0,new TextBlock { Text = "Event options", FontSize = 18, FontWeight = FontWeight.SemiBold });
+                page.Children.Add(options);
             }
         } catch(Exception e) {if(generation==pageGeneration)table.Children.Add(new TextBlock {Text=e.Message,Classes={"error"}});}
     }
-    private async Task EditEventOptionsAsync(string id) {
-        var data=await session.ReadAsync("event",new(){["id"]=id});var panel=new StackPanel {Spacing=10};
-        foreach(var field in data.Array("fields").OfType<JsonObject>().Where(f=>f.Text("id") is not ("enabled" or "color" or "sound" or "soundVolume"))) {
-            var key=field.Text("id");panel.Children.Add(SearchText(field.Text("label")));
-            var control=TypedInput(field,EventValue(id,key,data),v=>StageEvent(id,data.Text("label"),key,v));control.IsEnabled=!data.Bool("inherited");panel.Children.Add(control);EventFeedback(panel,id,key,control);
-        }
-        if(panel.Children.Count==0)panel.Children.Add(Muted("This event has no additional conditions."));
-        await Dialogs.ChoiceAsync(this,data.Text("label")+" options",panel,[("Close","close")]);
-    }
     private Control VolumeInput(JsonNode? value,Action<JsonNode?> changed) {
         var generated=(StackPanel)TypedInput(new(){["kind"]="slider",["min"]=0,["max"]=300,["unit"]="%"},value,changed,true);
-        var slider=generated.Children.OfType<Slider>().Single();var numeric=generated.Children.OfType<NumericUpDown>().Single();generated.Children.Clear();
-        numeric.Width=118;numeric.MinWidth=118;numeric.Height=34;numeric.VerticalAlignment=VerticalAlignment.Center;numeric.Padding=new Thickness(6,4);numeric.Margin=new Thickness(8,0,0,0);slider.MinWidth=20;slider.Height=34;slider.MinHeight=0;slider.HorizontalAlignment=HorizontalAlignment.Stretch;slider.VerticalAlignment=VerticalAlignment.Center;
-        var grid=new Grid {ColumnDefinitions=new ColumnDefinitions("*,126")};grid.Children.Add(slider);Grid.SetColumn(numeric,1);grid.Children.Add(numeric);
-        numeric.ValueChanged+=(_,_)=>{if(numeric.Value is {} n && n>=0&&n<=300)slider.Value=(double)n;};ToolTip.SetTip(grid,"Volume: 0–300%; above 100% boosts the sound");return grid;
+        var grid=generated.Children.OfType<Grid>().Single();generated.Children.Clear();
+        ToolTip.SetTip(grid,"Volume: 0–300%; above 100% boosts the sound");return grid;
     }
     private async void LoadSoundOverview(StackPanel host,int generation) {
         try {

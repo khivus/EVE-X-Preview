@@ -5,6 +5,11 @@
     <Style Selector="Button"><Setter Property="MinHeight" Value="34" /><Setter Property="CornerRadius" Value="6" /></Style>
     <Style Selector="TextBox"><Setter Property="MinHeight" Value="34" /></Style>
     <Style Selector="ComboBox"><Setter Property="MinHeight" Value="34" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner /template/ RepeatButton"><Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="NumericUpDown:disabled"><Setter Property="BorderThickness" Value="0" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ TextBox"><Setter Property="BorderThickness" Value="0" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner"><Setter Property="BorderThickness" Value="0" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner /template/ Border"><Setter Property="BorderThickness" Value="0" /></Style>
     <Style Selector="Button.color-swatch"><Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}" /></Style>
     <Style Selector="TextBlock.color-swatch-icon"><Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" /></Style>
     <Style Selector="Border.color-swatch-icon-background"><Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" /></Style>

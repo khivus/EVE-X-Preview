@@ -185,6 +185,8 @@ ReleaseInstallerComponentsTest() {
         installer.Install(status)
         AssertEqual("new-EVE-X-Preview.exe", FileRead(main))
         AssertFalse(FileExist(editor), "Optional settings must not be installed implicitly.")
+        FileDelete(main)
+        FileAppend("installed-main-before-update", main)
         FileAppend("old-editor", editor)
         installer := ReleaseInstallerFixture(main, "1.7.0.4")
         AssertEqual(2, installer.files.Length)
@@ -194,7 +196,7 @@ ReleaseInstallerComponentsTest() {
         catch
             failed := true
         AssertTrue(failed)
-        AssertEqual("new-EVE-X-Preview.exe", FileRead(main), "Both downloads must finish before either installed file changes.")
+        AssertEqual("installed-main-before-update", FileRead(main), "Both downloads must finish before either installed file changes.")
         AssertEqual("old-editor", FileRead(editor))
         installer.rejectEditor := false
         lock := DllCall("CreateFileW", "Str", editor, "UInt", 0x80000000, "UInt", 0, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
@@ -204,7 +206,7 @@ ReleaseInstallerComponentsTest() {
             catch
                 failed := true
             AssertTrue(failed, "A locked companion must fail the transaction.")
-            AssertEqual("new-EVE-X-Preview.exe", FileRead(main), "Replacement failure restores the original main executable.")
+            AssertEqual("installed-main-before-update", FileRead(main), "Replacement failure restores the original main executable.")
         } finally DllCall("CloseHandle", "Ptr", lock)
         installer.Install(status)
         AssertEqual("new-EVE-X-Preview-Settings.exe", FileRead(editor))
@@ -222,4 +224,36 @@ class ReleaseInstallerFixture extends ReleaseInstaller {
         if this.rejectEditor && InStr(path, "Settings.exe")
             throw Error("Simulated incomplete editor download")
     }
+}
+
+TestRunner.Register("Updates download settings into the installation verify completion and launch without a browser", SettingsDirectDownloadTest)
+SettingsDirectDownloadTest() {
+    folder := A_Temp "\EveX-download-test-" A_TickCount
+    DirCreate(folder)
+    downloader := SettingsDownloadFixture({settingsBridge: {installation: folder, HasExternal: false}})
+    try {
+        AssertTrue(SettingsDownload.ShouldSuggest(Map(), downloader.Path, true))
+        AssertFalse(SettingsDownload.ShouldSuggest(Map("SettingsDownloadSuggested", 1), downloader.Path, true))
+        AssertFalse(SettingsDownload.ShouldSuggest(Map(), downloader.Path, false))
+        stream := ComObject("ADODB.Stream")
+        try {
+            stream.Type := 1, stream.Open(), stream.LoadFromFile(A_AhkPath)
+            downloader.request := {Status: 200, ResponseBody: stream.Read(), WaitForResponse: (*) => true, Abort: (*) => 0}
+        } finally stream.Close()
+        downloader.tag := FileGetVersion(A_AhkPath), downloader.startedAt := A_TickCount
+        downloader.stagedReady := false, downloader.closeRequestedAt := 0, downloader.busy := true
+        downloader.Poll()
+        AssertFalse(downloader.busy)
+        AssertTrue(FileExist(downloader.Path))
+        AssertEqual(FileGetVersion(A_AhkPath), FileGetVersion(downloader.Path))
+        AssertTrue(downloader.Current(downloader.tag))
+        AssertFalse(SettingsDownload.ShouldSuggest(Map(), downloader.Path, true))
+        Sleep(350)
+        AssertEqual(1, downloader.launches)
+        AssertFalse(FileExist(downloader.Path ".download"))
+    } finally DirDelete(folder, true)
+}
+class SettingsDownloadFixture extends SettingsDownload {
+    launches := 0
+    Launch() => this.launches++
 }

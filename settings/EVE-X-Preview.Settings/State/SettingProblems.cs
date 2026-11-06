@@ -5,10 +5,13 @@ public sealed record SettingProblem(string Severity,string Profile,string Sectio
 public static class SettingProblems
 {
     public static IReadOnlyList<SettingProblem> Build(IEnumerable<PendingEdit> pending,JsonObject validation,Metadata? metadata) {
-        var result=new List<SettingProblem>();var shortcuts=new List<string>();
+        var result=new List<SettingProblem>();var shortcuts=new List<SettingProblem>();
         foreach(var edit in pending.Where(p=>p.Error is not null))result.Add(new("error",edit.Profile,edit.Key.Split('|').ElementAtOrDefault(1)??"",edit.Arguments.Text("id",edit.Arguments.Text("kind")),edit.Label,edit.Error!));
         foreach(var issue in validation.Array("issues")) {
-            if(issue.Text("kind")=="shortcut-conflict" || issue.Text("message").StartsWith("Shortcut overlaps:",StringComparison.Ordinal)) {shortcuts.Add(issue.Text("message"));continue;}
+            if(issue.Text("kind")=="shortcut-conflict" || issue.Text("message").StartsWith("Shortcut overlaps:",StringComparison.Ordinal)) {
+                var shortcutSection=issue.Text("section",ShortcutSection(issue.Text("id")));
+                shortcuts.Add(new("warning",issue.Text("profile"),shortcutSection,issue.Text("id"),"Shortcut conflicts — saving is allowed",issue.Text("message"),true));continue;
+            }
             var id=issue.Text("id");var field=metadata?.Field(id);var section=field?.Text("section")??metadata?.Tables.FirstOrDefault(t=>t.Text("kind")==id).Text("section")??"";
             if(section=="" && metadata?.Events.Any(e=>id==e.Text("id") || id.StartsWith(e.Text("id")+":"))==true)section="events";
             var descriptor=metadata?.Events.FirstOrDefault(e=>id==e.Text("id") || id.StartsWith(e.Text("id")+":"));
@@ -18,7 +21,11 @@ public static class SettingProblems
         }
         foreach(var conflict in validation.Array("conflicts"))result.Add(new("error","","profiles","","Concurrent settings change",JsonExtensions.Display(conflict)));
         var ordered=result.DistinctBy(p=>(p.Profile,p.Id,p.Message)).OrderBy(p=>p.Severity=="error"?0:1).ToList();
-        if(shortcuts.Count>0)ordered.Add(new("warning","","shortcuts","","Shortcut conflicts — saving is allowed",string.Join("\n",shortcuts.Distinct())+"\nYou can save these settings as they are. Overlapping shortcuts can trigger different actions depending on context; their behavior is not guaranteed.",true));
+        foreach(var group in shortcuts.GroupBy(p=>(p.Profile,p.Section)))
+            ordered.Add(group.First() with {Message=string.Join("\n",group.Select(p=>p.Message).Distinct())+"\nYou can save these settings as they are. Overlapping shortcuts can trigger different actions depending on context; their behavior is not guaranteed."});
         return ordered;
     }
+    private static string ShortcutSection(string id) => id.Split(':')[0] switch {
+        "character"=>"character-shortcuts", "group"=>"character-groups", "nonGroup"=>"app-groups", "nonApp"=>"app-shortcuts", "profile"=>"profiles", "quick"=>"quick-group", _=>"shortcuts"
+    };
 }

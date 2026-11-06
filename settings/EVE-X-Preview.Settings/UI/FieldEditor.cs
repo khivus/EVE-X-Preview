@@ -14,6 +14,9 @@ namespace EveX.Settings.UI;
 
 public sealed partial class MainWindow
 {
+    private const double NumericFieldWidth = 128;
+    private const double WideNumericFieldWidth = 156;
+    private const double SliderFieldWidth = 420;
     private Control CreateField(JsonObject field, bool horizontal = false)
     {
         var id = field.Text("id"); var label = field.Text("label");
@@ -25,7 +28,7 @@ public sealed partial class MainWindow
         panel.Children.Add(heading);
         if (field.Text("help") is { Length: > 0 } help) panel.Children.Add(SearchText(help));
         void Change(JsonNode? value) => Stage(key, label, "set", new() { ["id"] = id, ["value"] = value?.DeepClone() });
-        var input = horizontal && field.Text("kind")=="slider" ? VolumeInput(current,Change) : TypedInput(field, current, Change, horizontal);
+        var input = TypedInput(field, current, Change, horizontal);
         AutomationProperties.SetName(input, label);
         AutomationProperties.SetHelpText(input, field.Text("help"));
         input.IsEnabled = !state.Bool("inherited") && state.Bool("enabled", true);
@@ -33,7 +36,7 @@ public sealed partial class MainWindow
         BindFeedback(key, id, feedback, input);
         if(horizontal) {
             var controls=new StackPanel {Spacing=6};controls.Children.Add(input);
-            if(field.Text("kind")=="slider")controls.Children.Add(Muted(field.Number("min")+" – "+field.Number("max")+" "+field.Text("unit")));
+
             controls.Children.Add(feedback);
             var row=new Grid {ColumnDefinitions=new ColumnDefinitions("*,240")};panel.Margin=new Thickness(0,0,18,0);
             row.Children.Add(panel);Grid.SetColumn(controls,1);row.Children.Add(controls);return row;
@@ -82,27 +85,36 @@ public sealed partial class MainWindow
         if (kind == "multiline") { text.AcceptsReturn = true; text.TextWrapping = TextWrapping.Wrap; text.MinHeight = 120; text.MaxHeight = 320; return text; }
         if (kind is "integer" or "number" or "slider")
         {
-            var group = new StackPanel { Spacing = 6 };
+            var group = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Stretch };
             var range = field.Number("min").ToString(CultureInfo.InvariantCulture) + " – " + field.Number("max").ToString(CultureInfo.InvariantCulture) + " " + field.Text("unit");
-            text.PlaceholderText = range; text.MaxWidth = 220; text.HorizontalAlignment = HorizontalAlignment.Left;
-            if (kind == "slider")
-            {
-                var slider = new Slider { Minimum = field.Number("min"), Maximum = Math.Max(field.Number("min") + 1, field.Number("max")), Value = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : field.Number("min"), TickFrequency = 5, MaxWidth = 600, HorizontalAlignment = HorizontalAlignment.Stretch };
-                slider.PropertyChanged += (_, args) => { if (args.Property == Slider.ValueProperty) text.Text = Math.Round(slider.Value).ToString(CultureInfo.InvariantCulture); };
-                group.Children.Add(slider);
-            }
-            var numeric = new NumericUpDown { Width = compact ? double.NaN : 220, HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left,
+            var width = Math.Max(Math.Abs(field.Number("min")), Math.Abs(field.Number("max"))) > 99999 ? WideNumericFieldWidth : NumericFieldWidth;
+            var numeric = new NumericUpDown { Width = width, Height = 34, Padding = new Thickness(6,4), HorizontalAlignment = HorizontalAlignment.Left,
                 Minimum = decimal.MinValue, Maximum = decimal.MaxValue, Increment = kind == "number" ? .1m : 1m,
                 FormatString = kind == "number" ? "0.###" : "0", ClipValueToMinMax = false,
                 Value = decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var initial) ? initial : null };
             numeric.ValueChanged += (_, _) => changed(JsonValue.Create(numeric.Value?.ToString(CultureInfo.InvariantCulture) ?? ""));
-            text.TextChanged += (_, _) => { if (decimal.TryParse(text.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var next) && numeric.Value != next) numeric.Value = next; };
-            numeric.ValueChanged += (_, _) => { if (group.Children.OfType<Slider>().FirstOrDefault() is { } slider && numeric.Value is { } next && slider.Value != (double)next) slider.Value = (double)next; };
             numeric.AddHandler(TextBox.TextChangedEvent, (_, _) => {
                 var editor = numeric.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
                 if (editor is not null) changed(JsonValue.Create(editor.Text ?? ""));
             }, Avalonia.Interactivity.RoutingStrategies.Bubble);
-            group.Children.Add(numeric); group.Children.Add(Muted(range)); return group;
+            if (kind == "slider") {
+                var slider = new Slider { Minimum = field.Number("min"), Maximum = Math.Max(field.Number("min") + 1, field.Number("max")), Value = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : field.Number("min"), TickFrequency = 5, MinWidth = 20, Height = 34, MinHeight = 0, VerticalAlignment = VerticalAlignment.Center };
+                var synchronizing = false;
+                slider.PropertyChanged += (_, args) => {
+                    if(args.Property != Slider.ValueProperty || synchronizing)return;
+                    synchronizing = true;numeric.Value = (decimal)Math.Round(slider.Value);synchronizing = false;
+                };
+                numeric.ValueChanged += (_,_) => {
+                    if(synchronizing || numeric.Value is not {} next || next < (decimal)slider.Minimum || next > (decimal)slider.Maximum)return;
+                    synchronizing = true;slider.Value = (double)next;synchronizing = false;
+                };
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), MaxWidth = SliderFieldWidth, HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left, Width = compact ? double.NaN : SliderFieldWidth };
+                numeric.Margin = new Thickness(8,0,0,0);numeric.VerticalAlignment = VerticalAlignment.Center;
+                row.Children.Add(slider);Grid.SetColumn(numeric,1);row.Children.Add(numeric);
+                var unit = new TextBlock { Text = field.Text("unit"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5,0,0,0) };Grid.SetColumn(unit,2);row.Children.Add(unit);
+                group.Children.Add(row);
+            } else group.Children.Add(numeric);
+            group.Children.Add(Muted(range));return group;
         }
         if (kind is "directory" or "folder" or "file" or "sound")
         {

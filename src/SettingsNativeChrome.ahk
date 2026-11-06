@@ -318,8 +318,9 @@ class SettingsNativeChrome {
             part := Buffer(16, 0)
             NumPut("Int", horizontal && index = 2 ? width // 2 : 0, "Int", !horizontal && index = 2 ? height // 2 : 0,
                 "Int", horizontal && index = 1 ? width // 2 : width, "Int", !horizontal && index = 1 ? height // 2 : height, part)
-            SettingsTheme.Fill(dc, part, item.HasOwnProp("pressed") && item.pressed = index ? "3D4859" : "30343B")
-            SettingsTheme.Fill(dc, part, this.theme.line, true)
+            SettingsTheme.Fill(dc, part, !item.control.Enabled ? this.theme.input : item.HasOwnProp("pressed") && item.pressed = index ? "3D4859" : "30343B")
+            if item.control.Enabled
+                SettingsTheme.Fill(dc, part, this.theme.line, true)
             this.Arrow(dc, part, direction, item.control.Enabled ? this.theme.foreground : this.theme.muted)
         }
     }
