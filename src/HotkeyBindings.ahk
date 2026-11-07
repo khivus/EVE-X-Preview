@@ -20,12 +20,14 @@ class HotkeyBindings {
     }
 
     static Settings := Map(
-        "Suspend_Hotkeys_Hotkey", "Suspend all hotkeys", "HideThumbnailsHotkey", "Hide thumbnails",
+        "Suspend_Hotkeys_Hotkey", "Pause EVE switching hotkeys", "Suspend_All_Hotkeys_Hotkey", "Pause all hotkeys", "HideThumbnailsHotkey", "Hide thumbnails",
         "ToggleLivePreviewsHotkey", "Pause/resume live previews", "ClickThroughHotkey", "Click through thumbnails",
         "SwitchToPreviousWindow_Hotkey", "Previous window", "CycleEveryLoggedIn_Hotkey", "Cycle logged-in windows",
         "Login_Screen_Cycle_Hotkey", "Cycle login screens", "Close_Active_EVE_Win_Hotkey", "Close active EVE window",
         "Close_All_EVE_Win_Hotkey", "Close all EVE windows", "Reload_Program_Hotkey", "Reload program",
         "Exit_Program_Hotkey", "Exit program")
+
+    static TrayLabel(name) => name = "Suspend Hotkeys" ? "Pause EVE switching hotkeys" : name = "Suspend All Hotkeys" ? "Pause all hotkeys" : name
 
     static Collect(app) {
         entries := []
@@ -134,6 +136,9 @@ class HotkeyBindings {
     }
 
     static IntentionalOverlap(first, second) {
+        if (first.id = "quick" && (InStr(second.id, "group:") = 1 || InStr(second.id, "character:") = 1))
+            || (second.id = "quick" && (InStr(first.id, "group:") = 1 || InStr(first.id, "character:") = 1))
+            return true
         direct := InStr(first.id, "character:") = 1 ? first : InStr(second.id, "character:") = 1 ? second : 0
         group := InStr(first.id, "group:") = 1 || first.id = "quick" ? first
             : InStr(second.id, "group:") = 1 || second.id = "quick" ? second : 0

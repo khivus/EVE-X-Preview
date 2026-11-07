@@ -25,8 +25,16 @@ Class TrayMenu extends Settings_Gui {
         TrayMenu.Add("Profiles", Profiles_Submenu)
         TrayMenu.Add() ; Seperator
 
-        if This.TrayMenuShortcuts["Suspend Hotkeys"]
-            TrayMenu.Add("Suspend Hotkeys", MenuHandler)
+        if This.TrayMenuShortcuts["Suspend Hotkeys"] {
+            TrayMenu.Add("Pause EVE switching hotkeys", ObjBindMethod(This, "Suspend_Hotkeys"))
+            if This.activationHotkeysSuspended
+                TrayMenu.Check("Pause EVE switching hotkeys")
+        }
+        if This.TrayMenuShortcuts.Get("Suspend All Hotkeys", 1) {
+            TrayMenu.Add("Pause all hotkeys", ObjBindMethod(This, "Suspend_All_Hotkeys"))
+            if A_IsSuspended
+                TrayMenu.Check("Pause all hotkeys")
+        }
 
         if This.TrayMenuShortcuts["Hide Thumbnails"] {
             TrayMenu.Add("Hide Thumbnails", MenuHandler)
@@ -180,13 +188,6 @@ Class TrayMenu extends Settings_Gui {
             }
             Else if (ItemName = "Open") {
                 This.ShowSettings()
-            }
-            Else If (ItemName = "Suspend Hotkeys") {
-                Suspend(-1)
-                if A_IsSuspended
-                    TrayMenu.check("Suspend Hotkeys")
-                else
-                    TrayMenu.Uncheck("Suspend Hotkeys")
             }
         }
     }

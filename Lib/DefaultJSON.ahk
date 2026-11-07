@@ -95,6 +95,7 @@
             },
             "Hotkeys Settings": {
                 "Suspend_Hotkeys_Hotkey": "",
+                "Suspend_All_Hotkeys_Hotkey": "",
                 "Global_Hotkeys": 1,
                 "SwitchToPreviousWindow_Hotkey": "",
                 "CycleEveryLoggedIn_Hotkey": "",
@@ -162,6 +163,7 @@
             "Tray Menu Settings": {
                 "TrayMenuShortcuts": {
                     "Suspend Hotkeys": 1,
+                    "Suspend All Hotkeys": 1,
                     "Hide Thumbnails": 1,
                     "Lock Thumbnail Positions": 0,
                     "Anonymize Thumbnails": 0,

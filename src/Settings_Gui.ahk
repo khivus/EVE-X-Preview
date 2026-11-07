@@ -667,8 +667,10 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Pause EVE switching hotkeys:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Pause all hotkeys:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_All_Hotkeys_Hotkey", This.Suspend_All_Hotkeys_Hotkey)
         ; captBtn1 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn1
 
@@ -731,6 +733,7 @@ Class Settings_Gui extends SoundSettingsGui {
         HotkeysSettings.Push HKKeylist
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["Suspend_All_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["ToggleLivePreviewsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["ClickThroughHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -762,6 +765,9 @@ Class Settings_Gui extends SoundSettingsGui {
         cHotkeys_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.name = "Suspend_All_Hotkeys_Hotkey") {
+                This.Suspend_All_Hotkeys_Hotkey := Trim(obj.value, "`n ")
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
@@ -2039,6 +2045,7 @@ Class Settings_Gui extends SoundSettingsGui {
 
         This.TrayMenuShortcutsOrder := [
             "Suspend Hotkeys",
+            "Suspend All Hotkeys",
             "Hide Thumbnails",
             "Lock Thumbnail Positions",
             "Anonymize Thumbnails",
@@ -2063,7 +2070,7 @@ Class Settings_Gui extends SoundSettingsGui {
 
         for TMI in This.TrayMenuShortcutsOrder {
             TMI_ := StrReplace(TMI, A_Space, "_")
-            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), TMI ":")
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), HotkeyBindings.TrayLabel(TMI) ":")
             arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vTM" TMI_ " Checked" This.TrayMenuShortcuts[TMI], "On/Off")
             This.MainFrame["TM" TMI_].OnEvent("Click", (obj, *) => EventHandler(obj))
         }
@@ -2396,6 +2403,7 @@ Class Settings_Gui extends SoundSettingsGui {
 
         ;Hotkeys
         This.MainFrame["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
+        This.MainFrame["Suspend_All_Hotkeys_Hotkey"].value := This.Suspend_All_Hotkeys_Hotkey
         This.MainFrame["HideThumbnailsHotkey"].value := This.HideThumbnailsHotkey
         This.MainFrame["ToggleLivePreviewsHotkey"].value := This.ToggleLivePreviewsHotkey
         This.MainFrame["ClickThroughHotkey"].value := This.ClickThroughHotkey

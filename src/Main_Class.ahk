@@ -1,4 +1,4 @@
-﻿Class Main_Class extends ThumbWindow {
+Class Main_Class extends ThumbWindow {
     Static  WM_DESTROY := 0x02,
             WM_SIZE := 0x05,
             WM_NCCALCSIZE := 0x83,
@@ -18,6 +18,8 @@
     ;! This key is for the internal Hotkey to bring the Window in forgeround 
     ;! it is possible this key needs to be changed if Windows updates and changes the unused virtual keys 
     static virtualKey := "vk0xE8"
+    activationHotkeysSuspended := false
+    QuickGroupEnabled := false
     pendingEVEActivation := 0
     unfocusedBorderSince := -1
 
@@ -80,34 +82,23 @@
         ;Register all posible modifire combinations 
         prefixArr := ["","^","!", "#", "+", "+^", "+#", "+!", "^#", "^!","#!", "^+!", "^+#", "^#!", "+!#","^+#!"]
         for index, prefix in prefixArr
-            Hotkey(  prefix . Main_Class.virtualKey, ObjBindMethod(This, "ActivateForgroundWindow"), "S P1")
+            Hotkey(  prefix . Main_Class.virtualKey, ObjBindMethod(This, "ActivateForgroundWindow"), "S0 P1")
 
         This.Save_Settings_Delay_Timer := ObjBindMethod(This, "SaveJsonToFile")
 
-        ; Register Hotkey for Puase Hotkeys if the user has is Set
-        if (This.Suspend_Hotkeys_Hotkey != "") {
-            HotIf (*) => !HotkeyCapture.Active && This.anyWinExists()
-            if !This.SwitchLangOnErr {
-                try
-                    Hotkey This.Suspend_Hotkeys_Hotkey, ( * ) => This.Suspend_Hotkeys(), "S1"
-                catch ValueError as e
-                    MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Suspend All Hotkeys - Hotkey" )
-            }
-            else
-                This.RegisterHotkeyWithLanguageRetry(This.Suspend_Hotkeys_Hotkey, (*) => This.Suspend_Hotkeys(), "S1", "Suspend hotkeys")
-        }
+        This.RegisterPauseHotkeys()
 
         ; Register Hotkey for Hide Thumbnails if the user has is Set
         if (This.HideThumbnailsHotkey != "") {
             HotIf (*) => !HotkeyCapture.Active && This.anyWinExists()
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S1"
+                    Hotkey This.HideThumbnailsHotkey, ( * ) => This.ShowHideThumbnails(), "S0"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Hide Thumbnails - Hotkey" )
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.HideThumbnailsHotkey, (*) => This.ShowHideThumbnails(), "S1", "Hide thumbnails")
+                This.RegisterHotkeyWithLanguageRetry(This.HideThumbnailsHotkey, (*) => This.ShowHideThumbnails(), "S0", "Hide thumbnails")
         }
 
         ; Register Hotkey for Click Through if the user has is Set
@@ -115,20 +106,20 @@
             HotIf (*) => !HotkeyCapture.Active && This.anyWinExists()
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S1"
+                    Hotkey This.ClickThroughHotkey, ( * ) => This.Toggle_ClickThrough(), "S0"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Click Through Thumbnails - Hotkey" )
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.ClickThroughHotkey, (*) => This.Toggle_ClickThrough(), "S1", "Click through thumbnails")
+                This.RegisterHotkeyWithLanguageRetry(This.ClickThroughHotkey, (*) => This.Toggle_ClickThrough(), "S0", "Click through thumbnails")
         }
 
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.SwitchToPreviousWindow_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "Previous window")
             catch ValueError as e
@@ -138,9 +129,9 @@
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.CycleEveryLoggedIn_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "Cycle logged in windows")
             catch ValueError as e
@@ -150,9 +141,9 @@
         ; Register Hotkey for Login Screen Cycle Hotkey if user set
         if (This.Login_Screen_Cycle_Hotkey != "") {
             if This.Global_Hotkeys
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinExist(This.EVEExe)
             else
-                HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
+                HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
             try This.RegisterWindowHotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "Cycle login screens")
             catch ValueError as e
@@ -190,34 +181,34 @@
             HotIf (*) => !HotkeyCapture.Active && This.anyWinExists()
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.Reload_Program_Hotkey, ( * ) => This.RequestRuntimeAction("reload"), "S1"
+                    Hotkey This.Reload_Program_Hotkey, ( * ) => This.RequestRuntimeAction("reload"), "S0"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Reload EVE-X-Preview - Hotkey")
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => This.RequestRuntimeAction("reload"), "S1", "Reload program")
+                This.RegisterHotkeyWithLanguageRetry(This.Reload_Program_Hotkey, (*) => This.RequestRuntimeAction("reload"), "S0", "Reload program")
         }
 
         HotIf (*) => !HotkeyCapture.Active && !This.SettingsEditingActive() ; Available without EVE, outside settings editors.
         if (This.ToggleLivePreviewsHotkey != "") {
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1"
+                    Hotkey This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S0"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Pause/Resume Live Previews - Hotkey")
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S1", "Toggle live previews")
+                This.RegisterHotkeyWithLanguageRetry(This.ToggleLivePreviewsHotkey, ObjBindMethod(This, "ToggleLivePreviews"), "S0", "Toggle live previews")
         }
         if (This.Exit_Program_Hotkey != "") {
             if !This.SwitchLangOnErr {
                 try
-                    Hotkey This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S1"
+                    Hotkey This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S0"
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Exit EVE-X-Preview - Hotkey")
             }
             else
-                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S1", "Exit program")
+                This.RegisterHotkeyWithLanguageRetry(This.Exit_Program_Hotkey, (*) => This.RequestRuntimeAction("exit"), "S0", "Exit program")
         }
 
         This.RegisterProfileHotkeys()
@@ -363,6 +354,26 @@
                 ProgramLog.Add("Updater cleanup skipped; path=" path "; " err.Message, "WARN")
             }
         }
+    }
+
+    RegisterPauseHotkeys() {
+        This.pauseHotkeyCondition := (*) => !HotkeyCapture.Active
+        HotIf(This.pauseHotkeyCondition)
+        try {
+            for name, method in Map("Suspend_Hotkeys_Hotkey", "Suspend_Hotkeys", "Suspend_All_Hotkeys_Hotkey", "Suspend_All_Hotkeys") {
+                key := This.%name%
+                if key = ""
+                    continue
+                options := name = "Suspend_All_Hotkeys_Hotkey" ? "S1" : "S0"
+                try {
+                    if This.SwitchLangOnErr
+                        This.RegisterHotkeyWithLanguageRetry(key, ObjBindMethod(This, method), options, HotkeyBindings.Settings[name])
+                    else
+                        Hotkey(key, ObjBindMethod(This, method), options)
+                } catch ValueError as err
+                    MsgBox(err.Message ": " key " — " HotkeyBindings.Settings[name])
+            }
+        } finally HotIf()
     }
 
     RegisterProfileHotkeys() {
@@ -743,9 +754,9 @@
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     
         if This.Global_Hotkeys
-            HotIf (*) => !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && !This.SettingsEditingActive()
+            HotIf (keyName) => !This.activationHotkeysSuspended && !This.QuickGroupShortcutAvailable(keyName) && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && !This.SettingsEditingActive()
         else    
-            HotIf (*) => !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !This.SettingsEditingActive()
+            HotIf (keyName) => !This.activationHotkeysSuspended && !This.QuickGroupShortcutAvailable(keyName) && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !This.SettingsEditingActive()
     
         try This.RegisterWindowHotkey(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "Activate " title)
         catch ValueError as e
@@ -1022,28 +1033,40 @@
         names := Map("^", ["LControl", "RControl"], "!", ["LAlt", "RAlt"], "+", ["LShift", "RShift"], "#", ["LWin", "RWin"])
         return (side & 1 && GetKeyState(names[symbol][1])) || (side & 2 && GetKeyState(names[symbol][2]))
     }
-    DirectShortcutAvailable(keyName) {
-        if keyName = "" || !This.ShortcutScopeActive()
+    ShortcutMatches(key, keyName) {
+        if key = "" || keyName = ""
             return false
+        binding := HotkeyBindings.Parse(HotkeyBindings.ForWindowSwitch(key, This.AutoWildcardWindowHotkeys))
         incoming := HotkeyBindings.Parse(keyName)
+        if !HotkeyBindings.SameKey(binding.key, incoming.key) || binding.up != incoming.up
+            return false
+        if IsObject(binding.prefix) && !GetKeyState(binding.prefix.name)
+            return false
+        for symbol, side in binding.mods
+            if (side && !This.ShortcutModifierDown(symbol, side))
+                || (!side && !binding.wildcard && This.ShortcutModifierDown(symbol, 3))
+                return false
+        return true
+    }
+    QuickGroupTargetAvailable(hwnd) => !!WinExist("ahk_id " hwnd)
+    QuickGroupShortcutAvailable(keyName) {
+        if This.activationHotkeysSuspended || !This.QuickGroupEnabled || !This.ShortcutScopeActive()
+            || !This.ShortcutMatches(This.QuickGroupHotkey, keyName)
+            return false
+        for hwnd in This.QuickGroupChars
+            if This.QuickGroupTargetAvailable(hwnd)
+                return true
+        return false
+    }
+
+    DirectShortcutAvailable(keyName) {
+        if This.activationHotkeysSuspended || keyName = "" || !This.ShortcutScopeActive() || This.QuickGroupShortcutAvailable(keyName)
+            return false
         for item in This._Hotkeys
             for title, key in item {
                 if key = "" || !This.ShortcutTargetAvailable(title)
                     continue
-                binding := HotkeyBindings.Parse(HotkeyBindings.ForWindowSwitch(key, This.AutoWildcardWindowHotkeys))
-                if !HotkeyBindings.SameKey(binding.key, incoming.key) || binding.up != incoming.up
-                    continue
-                if IsObject(binding.prefix) && !GetKeyState(binding.prefix.name)
-                    continue
-                matches := true
-                for symbol, side in binding.mods {
-                    if (side && !This.ShortcutModifierDown(symbol, side))
-                        || (!side && !binding.wildcard && This.ShortcutModifierDown(symbol, 3)) {
-                        matches := false
-                        break
-                    }
-                }
-                if matches
+                if This.ShortcutMatches(key, keyName)
                     return true
             }
         return false
@@ -1053,11 +1076,8 @@
         if !This.QuickGroupEnabled || !This.QuickGroupHotkey
             return
 
-        if This.Global_Hotkeys
-            HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && !This.DirectShortcutAvailable(keyName) && WinExist(This.EVEExe)
-        else
-            HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && !This.DirectShortcutAvailable(keyName) && WinActive(This.EVEExe)
-        
+        HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && This.QuickGroupShortcutAvailable(keyName)
+
         try This.RegisterWindowHotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "Quick group")
         catch ValueError as e
             MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnails Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
@@ -1243,11 +1263,11 @@
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
     OnWinExist(Arr, keyName := "", *) {
-        if HotkeyCapture.Active || This.SettingsEditingActive() || This.DirectShortcutAvailable(keyName)
+        if This.activationHotkeysSuspended || HotkeyCapture.Active || This.SettingsEditingActive() || This.QuickGroupShortcutAvailable(keyName) || This.DirectShortcutAvailable(keyName)
             return false
         for index, Name in Arr {
             ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !This.SettingsEditingActive() && !This.PreserveHotkeysOnLogout) {
-            If ( WinExist(Name " Ahk_Exe exefile.exe") && !This.SettingsEditingActive() ) {
+            If (This.ShortcutTargetAvailable(Name) && !This.SettingsEditingActive()) {
                 return true
             }
             else if This.hasMathcingOldTitle(Name) && !This.SettingsEditingActive() {

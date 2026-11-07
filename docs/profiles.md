@@ -10,7 +10,7 @@ The sidebar selector chooses the **profile to edit**. It does not activate that 
 
 Creating a profile can copy the current profile's effective settings or start from application defaults. Before creating it, choose **Use inheritance defaults**, **Disable all** or **Enable all**, then adjust individual subsection rows. The preset buttons change which sections inherit; the starting-values choice supplies the custom sections. Copying effective settings retains what you currently see even when you disable inheritance. Its activation shortcut starts empty. Renaming preserves assignments. Default cannot be renamed or removed. Removed profiles can be restored with Undo before Apply.
 
-Activation shortcuts are independent of section inheritance and use the same recorder/clear/Advanced workflow as other shortcuts. They are available without EVE, follow Suspend Hotkeys and pause while Settings is focused. If a profile is activated from the tray or a shortcut while the workbench is open, activation is staged in the workbench so the existing draft remains intact.
+Activation shortcuts are independent of section inheritance and use the same recorder/clear/Advanced workflow as other shortcuts. They are available without EVE, follow Pause all hotkeys and pause while Settings is focused. If a profile is activated from the tray or a shortcut while the workbench is open, activation is staged in the workbench so the existing draft remains intact.
 
 ## Inheritance
 

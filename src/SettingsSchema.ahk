@@ -170,7 +170,7 @@ class SettingsSchema {
         this.Section("Application", "tray", "Tray menu commands", "Tray Menu Settings", "Checked commands appear in the tray menu. These checks do not turn the features themselves on.")
         ; Ordinary metadata is generated from the canonical default command list.
         for name, visible in JSON.Load(default_JSON)["_Profiles"]["Default"]["Tray Menu Settings"]["TrayMenuShortcuts"]
-            this.Field("TrayCommand:" name, name, "bool",,,, "Show this command in the tray menu.", ["Tray Menu Settings", "TrayMenuShortcuts", name])
+            this.Field("TrayCommand:" name, HotkeyBindings.TrayLabel(name), "bool",,,, "Show this command in the tray menu.", ["Tray Menu Settings", "TrayMenuShortcuts", name])
         this.Section("Application", "performance", "Advanced", "Other")
         this.Field("ThumbnailPollingInterval", "Time between window and focus checks", "integer", 50, 1000, "ms", "Higher values reduce window checks and delay client and focus updates.", ["Thumbnails Behavior", "ThumbnailPollingInterval"], "Thumbnails Behavior")
         this.Field("SlowThumbnailCreation", "Stagger preview creation at startup", "bool",,,, "Wait 3 seconds, then create ready previews gradually to reduce startup GPU pressure.")

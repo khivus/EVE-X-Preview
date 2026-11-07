@@ -666,6 +666,10 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.FieldProfile("Suspend_Hotkeys_Hotkey", This.ProfileHotkeysSettings)]["Hotkeys Settings"]["Suspend_Hotkeys_Hotkey"]
         set => This._JSON["_Profiles"][This.FieldProfile("Suspend_Hotkeys_Hotkey", This.ProfileHotkeysSettings)]["Hotkeys Settings"]["Suspend_Hotkeys_Hotkey"] := value
     }
+    Suspend_All_Hotkeys_Hotkey {
+        get => This.Profiles[This.FieldProfile("Suspend_All_Hotkeys_Hotkey", This.ProfileHotkeysSettings)]["Hotkeys Settings"].Get("Suspend_All_Hotkeys_Hotkey", "")
+        set => This.Profiles[This.FieldProfile("Suspend_All_Hotkeys_Hotkey", This.ProfileHotkeysSettings)]["Hotkeys Settings"]["Suspend_All_Hotkeys_Hotkey"] := value
+    }
     
     Global_Hotkeys {
         get => This._JSON["_Profiles"][This.ProfileHotkeysSettings]["Hotkeys Settings"]["Global_Hotkeys"]
@@ -1054,13 +1058,13 @@ class Propertys extends TrayMenu {
 
 
     Suspend_Hotkeys(*) {
-        static state := 0
-        ToolTip()
-        state := !state
-        state ? ToolTip("Hotkeys disabled") : ToolTip("Hotkeys enabled")
-        Suspend(-1)
+        This.activationHotkeysSuspended := !This.activationHotkeysSuspended
+        This.TrayMenu()
+    }
 
-        SetTimer((*) => ToolTip(), -1500)
+    Suspend_All_Hotkeys(*) {
+        Suspend(-1)
+        This.TrayMenu()
     }
 
     Delete_Profile(*) {

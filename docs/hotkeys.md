@@ -13,7 +13,13 @@ Open **Switching → Keyboard shortcuts** for application commands and window sw
 
 Conflicts include effective bindings in the editing profile and every profile activation shortcut. **Review shortcut conflicts** lists overlapping assignments. Intentional overlaps remain allowed. Invalid key names are rejected before a row or setting can be saved to the draft.
 
-A character shortcut may share a key with a character-group or Quick Group shortcut. The direct shortcut takes priority while its character window is available; otherwise the group shortcut can run. These supported pairs do not produce conflict warnings.
+A character, character-group and Quick Group shortcut may share a key. A Quick Group containing an available window takes priority. When it is empty or its windows have closed, the direct character shortcut runs if its window is available; otherwise the character group can run. These supported overlaps do not produce conflict warnings.
+
+**Pause EVE switching hotkeys** pauses character, character-group, Quick Group, previous-window, logged-in-window and login-screen switching shortcuts. Utility commands, profile shortcuts and non-EVE application shortcuts remain available. The previous suspend binding keeps its assignment and now has this narrower scope.
+
+**Pause all hotkeys** pauses every application hotkey except its own resume binding. The tray remains usable. The two pause states are independent: resuming all hotkeys preserves a separate pause of EVE switching. Both commands have optional tray entries under Application → Tray menu commands.
+
+Under **Switching → Switching behavior**, the minimum interval while holding a group shortcut accepts **30–10000 ms**; the default remains 100 ms.
 
 A plain-key switching shortcut can also coexist with a more-specific modifier combination, such as backtick for a group and Alt+backtick for cycling login screens. Automatic wildcard matching does not make this pair a conflict. The checker still warns for duplicate modifier chords, key aliases and ambiguous overlapping combinations; it does not change shortcut registration.
 
