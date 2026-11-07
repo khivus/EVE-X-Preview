@@ -23,6 +23,8 @@ Command hotkeys show a brief confirmation near the pointer with the resulting st
 
 Switching uses the v1.7.0.3 activation, callback priority, key timing and group-focus behavior. The newer candidate-list cache, pending-target cycling shortcut and activation border callbacks have been removed. EVE-only pause is a boolean guard; Quick Group priority is resolved after a matching shortcut fires. The configurable border-clearing delay stays in normal polling and does not add a delay when switching directly between EVE clients.
 
+A separate foreground-thumbnail timer runs at the same priority as switching, using the configured thumbnail polling interval. It updates only a changed focused preview and border, so held switching callbacks do not starve visual refresh. It skips paused/hidden previews, DWM activity and incomplete/released previews; window discovery and log work remain on the normal-priority main timer. Hiding the active thumbnail restores and refreshes the previous preview when focus moves.
+
 Under **Switching → Switching behavior**, the minimum interval while holding a group shortcut accepts **30–10000 ms**; the default remains 100 ms.
 
 A plain-key switching shortcut can also coexist with a more-specific modifier combination, such as backtick for a group and Alt+backtick for cycling login screens. Automatic wildcard matching does not make this pair a conflict. The checker still warns for duplicate modifier chords, key aliases and ambiguous overlapping combinations; it does not change shortcut registration.

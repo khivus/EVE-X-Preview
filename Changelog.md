@@ -20,6 +20,7 @@
 * Search clearing, compact numeric fields, slider alignment, disabled color previews and folder-field alignment are more consistent. Performance and compatibility is now named Advanced. Off-screen recovery stays in Layout; the optional Pause Live Previews tray command is hidden by default, and Diagnostics names the current pause/resume action.
 
 ### Fixed
+* A small foreground-thumbnail refresh can run while switching hotkeys are held, updating the focused preview and border without raising the main discovery/log timer priority or changing restored switching behavior.
 * Restored v1.7.0.3 switching activation, priority, key timing and group-focus handling. Quick Group priority is routed only after a matching shortcut fires. Border clearing stays in normal foreground polling, with no additional drawing callbacks in the activation path.
 * Settings automatically retries reconnecting up to five times with delays after Apply/restart or an unexpected connection loss, retaining the edited profile and draft. A further connection drop can recover automatically too.
 * Changing a mouse gesture affects only that action, including after selecting multiple cells. Restoring a gesture clears its former duplicate warning, and pending Default edits retain their original profile.

@@ -277,6 +277,7 @@ Class Main_Class extends ThumbWindow {
         OnMessage(0x031E, ObjBindMethod(This, "OnDwmCompositionChanged"))
         ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), This.ThumbnailPollingInterval)
+        This.StartForegroundThumbnailRefresh()
         OnExit(ObjBindMethod(This, "CloseLivePreviews"))
         
         ;Timer property to remove Thumbnails for closed EVE windows 
@@ -546,6 +547,51 @@ Class Main_Class extends ThumbWindow {
         )
     }
 
+
+    StartForegroundThumbnailRefresh() {
+        if !This.HasOwnProp("foregroundRefreshTimer")
+            This.foregroundRefreshTimer := ObjBindMethod(This, "RefreshForegroundThumbnail")
+        ; Match switching priority so held P1 callbacks cannot starve this small
+        ; refresh. Keep window discovery and other main-timer work at priority 0.
+        SetTimer(This.foregroundRefreshTimer, This.ThumbnailPollingInterval, 1)
+    }
+
+    RefreshForegroundThumbnail() {
+        if (This.HasOwnProp("foregroundRefreshBusy") && This.foregroundRefreshBusy)
+            || This.livePreviewsPaused || This.releasingLivePreviews || This.previewDwmCalls
+            || This.HideThumbnails
+            return
+        This.foregroundRefreshBusy := true
+        try {
+            hwnd := This._GetForegroundHwnd()
+            if !hwnd || !This.ThumbWindows.HasOwnProp(hwnd)
+                return
+            thumb := This.ThumbWindows.%hwnd%
+            if !thumb.Has("Window") || !thumb.Has("Thumbnail") || !thumb.Has("Border")
+                return
+            if !thumb["Thumbnail"].THUMB_ID
+                return
+            if This.HideThumbForActiveWin {
+                previous := This.HasOwnProp("foregroundHiddenThumb") ? This.foregroundHiddenThumb : 0
+                if previous = hwnd
+                    return
+                if previous && This.ThumbWindows.HasOwnProp(previous) {
+                    This.ShowThumb(previous, "Show")
+                    This.UpdateThumb_AfterActivation(, previous)
+                }
+                This.ShowThumb(hwnd, "Hide")
+                This.foregroundHiddenThumb := hwnd
+                return
+            }
+            if hwnd = This.BorderActive
+                return
+            This.ShowActiveBorder(hwnd)
+            This.UpdateThumb_AfterActivation(, hwnd)
+            This.BorderActive := hwnd
+        } catch as err {
+            ProgramLog.Error(err, "Foreground thumbnail refresh")
+        } finally This.foregroundRefreshBusy := false
+    }
 
     HandleMainTimer() {
         if This.HasOwnProp("previewTimerBusy") && This.previewTimerBusy
@@ -1802,6 +1848,8 @@ Class Main_Class extends ThumbWindow {
     }
 
     CloseLivePreviews(reason, code) {
+        if This.HasOwnProp("foregroundRefreshTimer")
+            SetTimer(This.foregroundRefreshTimer, 0)
         This.livePreviewsPaused := true
         This.previewGeneration += 1
         if This.HasOwnProp("pausedPreviewReleaseTimer")

@@ -9,6 +9,160 @@ class Update1704ShortcutFixture extends DirectPriorityFixture {
     TrayMenu() => this.trayRefreshes++
 }
 
+class HeldRefreshFixture extends Update1704ShortcutFixture {
+    foreground := 101
+    refreshed := []
+    borders := []
+    during := 0
+    held := false
+    complete := false
+    visibility := []
+    _GetForegroundHwnd() => this.foreground
+    ShowActiveBorder(hwnd) => this.borders.Push(hwnd)
+    ShowThumb(hwnd, state) => this.visibility.Push([hwnd,state])
+    UpdateThumb_AfterActivation(event?, hwnd?) {
+        this.refreshed.Push(hwnd)
+        if this.held
+            this.during++
+    }
+    __New() {
+        super.__New()
+        this.ThumbnailPollingInterval := 50
+        this.BorderActive := 0
+        this.HideThumbnails := false
+        this.HideThumbForActiveWin := false
+        this.ThumbWindows := {}
+        for hwnd in [101,102,103,104]
+            this.ThumbWindows.%hwnd% := Map("Window",{},"Thumbnail",{THUMB_ID:1},"Border",{})
+    }
+    Hold(*) {
+        this.held := true
+        for hwnd in [101,102,103,104] {
+            this.foreground := hwnd
+            Sleep(90)
+        }
+        this.held := false
+        this.complete := true
+    }
+}
+TestRunner.Register("HeldThumbnailRefresh foreground refresh progresses inside a P1 switching callback", HeldThumbnailRefreshPriorityTest)
+HeldThumbnailRefreshPriorityTest() {
+    app := HeldRefreshFixture()
+    enabled := {value:true}
+    condition := (*) => enabled.value
+    level := A_SendLevel
+    HotIf(condition)
+    try {
+        app.StartForegroundThumbnailRefresh()
+        app.RegisterWindowHotkey("F18",ObjBindMethod(app,"Hold"),"Held thumbnail regression")
+        SendLevel(1)
+        SendEvent("{F18}")
+        Sleep(550)
+        AssertTrue(app.complete)
+        AssertTrue(app.during>=3,"Refresh must progress before the held switching callback ends.")
+        AssertEqual(104,app.refreshed[-1])
+        AssertTrue(app.refreshed.Length<=4,"Unchanged foreground must not trigger repeated DWM work.")
+    } finally {
+        enabled.value := false
+        SetTimer(app.foregroundRefreshTimer,0)
+        try Hotkey("*F18","Off")
+        HotIf()
+        SendLevel(level)
+    }
+}
+TestRunner.Register("HeldThumbnailRefresh pause hidden incomplete and DWM-busy states skip refresh", HeldThumbnailRefreshGuardTest)
+HeldThumbnailRefreshGuardTest() {
+    app := HeldRefreshFixture()
+    for property in ["livePreviewsPaused","releasingLivePreviews","previewDwmCalls","HideThumbnails"] {
+        app.%property% := true
+        app.RefreshForegroundThumbnail()
+        app.%property% := false
+    }
+    AssertEqual(0,app.refreshed.Length)
+    app.foreground := 999
+    app.RefreshForegroundThumbnail()
+    app.ThumbWindows.999 := Map("Window",{})
+    app.RefreshForegroundThumbnail()
+    AssertEqual(0,app.refreshed.Length)
+    app.foreground := 101
+    app.ThumbWindows.101["Thumbnail"].THUMB_ID := 0
+    app.RefreshForegroundThumbnail()
+    AssertEqual(0,app.refreshed.Length)
+    app.ThumbWindows.101["Thumbnail"].THUMB_ID := 1
+    app.foreground := 101
+    app.RefreshForegroundThumbnail()
+    app.RefreshForegroundThumbnail()
+    AssertEqual([101],app.refreshed)
+}
+TestRunner.Register("HeldThumbnailRefresh hiding the active thumbnail restores and refreshes the previous one", HeldThumbnailRefreshHiddenTest)
+HeldThumbnailRefreshHiddenTest() {
+    app := HeldRefreshFixture()
+    app.HideThumbForActiveWin := true
+    app.RefreshForegroundThumbnail()
+    app.foreground := 102
+    app.RefreshForegroundThumbnail()
+    app.RefreshForegroundThumbnail()
+    AssertEqual([[101,"Hide"],[101,"Show"],[102,"Hide"]],app.visibility)
+    AssertEqual([101],app.refreshed)
+}
+
+class RealHeldRefreshFixture extends ThumbnailForegroundPollFixture {
+    held := false
+    during := 0
+    completed := false
+    sequence := []
+    UpdateThumb_AfterActivation(event?, hwnd?) {
+        thumbnail := this.ThumbWindows.%hwnd%["Thumbnail"]
+        thumbnail.THUMB_UPDATED := false
+        super.UpdateThumb_AfterActivation(,hwnd)
+        if this.held && thumbnail.THUMB_UPDATED
+            this.during++
+    }
+    Hold(*) {
+        this.held := true
+        for hwnd in this.sequence {
+            this.foreground := hwnd
+            Sleep(100)
+        }
+        this.held := false
+        this.completed := true
+    }
+}
+TestRunner.Register("HeldThumbnailRefresh real DWM previews update before a held P1 callback finishes", HeldThumbnailRefreshDwmTest)
+HeldThumbnailRefreshDwmTest() {
+    previous := A_DetectHiddenWindows, level := A_SendLevel
+    DetectHiddenWindows(true)
+    app := RealHeldRefreshFixture(), sources := [], enabled := {value:true}
+    condition := (*) => enabled.value
+    try {
+        loop 3 {
+            source := app.CreateSource("EVE - Held DWM " A_Index)
+            sources.Push(source)
+            app.EVE_WIN_Created(source.Hwnd,source.Title)
+            app.sequence.Push(source.Hwnd)
+        }
+        app.foreground := app.sequence[1]
+        app.StartForegroundThumbnailRefresh()
+        HotIf(condition)
+        app.RegisterWindowHotkey("F19",ObjBindMethod(app,"Hold"),"Real held DWM regression")
+        SendLevel(1)
+        SendEvent("{F19}")
+        Sleep(550)
+        AssertTrue(app.completed)
+        AssertTrue(app.during>=2,"Real DWM update calls must complete while switching remains held.")
+    } finally {
+        enabled.value := false
+        if app.HasOwnProp("foregroundRefreshTimer")
+            SetTimer(app.foregroundRefreshTimer,0)
+        HotIf(condition)
+        try Hotkey("*F19","Off")
+        HotIf()
+        app.Cleanup(sources)
+        DetectHiddenWindows(previous)
+        SendLevel(level)
+    }
+}
+
 class FeedbackCommandFixture extends Update1704ShortcutFixture {
     messages := []
     HotkeyFeedback(message) => this.messages.Push(message)
