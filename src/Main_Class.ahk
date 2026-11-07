@@ -23,6 +23,9 @@ Class Main_Class extends ThumbWindow {
     pendingEVEActivation := 0
     unfocusedBorderSince := -1
     shortcutMatchCache := Map()
+    directKeyCandidates := Map()
+    directKeySource := 0
+    directKeyCount := -1
 
     LISTENERS := [
         Main_Class.WM_LBUTTONDOWN,
@@ -303,8 +306,7 @@ Class Main_Class extends ThumbWindow {
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             SetTimer((*) => This.HotkeyFeedback(feedback), -300)
         }
-        if This._JSON.Get("RecoveryGuidanceShown", "") != "1.7.0.4" {
-            This._JSON["RecoveryGuidanceShown"] := "1.7.0.4"
+        if SettingsBackup.TakeFirstRunNotice(This._JSON) {
             SetTimer(This.Save_Settings_Delay_Timer, -200)
             SetTimer((*) => SettingsBackup.ShowGuidance(A_ScriptDir), -700)
         }
@@ -765,6 +767,7 @@ Class Main_Class extends ThumbWindow {
 
     ;Register set Hotkeys by the user in settings
     RegisterHotkeys(title) {
+        This.directKeyCandidates.Clear()
         if !This._Hotkeys[title]
             return
         
@@ -1101,13 +1104,27 @@ Class Main_Class extends ThumbWindow {
     DirectShortcutAvailable(keyName) {
         if This.activationHotkeysSuspended || keyName = "" || !This.ShortcutScopeActive() || This.QuickGroupShortcutAvailable(keyName)
             return false
-        for item in This._Hotkeys
-            for title, key in item {
-                if key = "" || !This.ShortcutMatches(key, keyName)
-                    continue
-                if This.ShortcutTargetAvailable(title)
-                    return true
-            }
+        bindings := This._Hotkeys
+        if This.directKeySource != bindings || This.directKeyCount != bindings.Length {
+            This.directKeyCandidates.Clear()
+            This.directKeySource := bindings
+            This.directKeyCount := bindings.Length
+        }
+        if !This.directKeyCandidates.Has(keyName) {
+            incoming := This.ParsedShortcut(keyName), candidates := []
+            for item in bindings
+                for title, key in item {
+                    if key = ""
+                        continue
+                    binding := This.ParsedShortcut(key)
+                    if binding.up = incoming.up && HotkeyBindings.SameKey(binding.key, incoming.key)
+                        candidates.Push({title:title, key:key})
+                }
+            This.directKeyCandidates[keyName] := candidates
+        }
+        for candidate in This.directKeyCandidates[keyName]
+            if This.ShortcutMatches(candidate.key, keyName) && This.ShortcutTargetAvailable(candidate.title)
+                return true
         return false
     }
 
@@ -2146,7 +2163,7 @@ Class Main_Class extends ThumbWindow {
         ; return when the user tries to bring a window to foreground which is already in foreground 
         if (WinActive("Ahk_id " hwnd)) {
             This.pendingEVEActivation := 0
-            This.RefreshActivatedThumbnail(hwnd)
+            This.QueueActivatedThumbnail(hwnd)
             return true
         }
 
@@ -2210,12 +2227,21 @@ Class Main_Class extends ThumbWindow {
                 This.ShowWindowAsync(This.ActivateHwnd, 3)
         }       
         This._ObserveEVEActivation(This._GetForegroundHwnd())
-        This.RefreshActivatedThumbnail(This.ActivateHwnd)
+        This.QueueActivatedThumbnail(This.ActivateHwnd)
         Return
+    }
+
+    QueueActivatedThumbnail(hwnd) {
+        This.pendingBorderFocus := hwnd
+        if !This.HasOwnProp("activationBorderTimer")
+            This.activationBorderTimer := (*) => This.RefreshActivatedThumbnail(This.pendingBorderFocus)
+        SetTimer(This.activationBorderTimer, -1)
     }
 
     RefreshActivatedThumbnail(hwnd) {
         if This._GetForegroundHwnd() != hwnd || !This.ThumbWindows.HasOwnProp(hwnd)
+            return
+        if This.BorderActive = hwnd && This.ThumbWindows.%hwnd%.Has("Border") && This.ThumbWindows.%hwnd%["Border"].HasOwnProp("ActiveHighlight") && This.ThumbWindows.%hwnd%["Border"].ActiveHighlight
             return
         This.UpdateThumbnailFocusLoss(hwnd)
         This.ShowActiveBorder(hwnd)

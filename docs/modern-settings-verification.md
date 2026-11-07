@@ -178,3 +178,13 @@ Verification used disposable configurations under `.vs/recovery-followup`:
 - The companion build completed with zero warnings/errors. The final `.vs/build/v1.7.0.4-recovery-responsive/` folder contains exactly the three **1.7.0.4** EXEs; no ZIP was created.
 
 Real EVE held-key cadence, render responsiveness and focus timing still need the short live-session checks in [the recheck guide](releases/v1.7.0.4-recheck.md). No production configuration was edited, and nothing was pushed or published.
+
+## First-ever notice and remaining switching overhead — 2026-11-07
+
+Recovery guidance is now eligible only when creating the first configuration without previous backup history. A shared AppData marker suppresses it for existing users, upgrades and additional installation folders; an offline-created first-ever configuration can retain a pending notice until the main app opens. The old version-based notice condition is no longer used. Corruption-recovery instructions remain available independently.
+
+Review against earlier revisions found a full character-binding scan still running on repeated hotkey predicates, plus border drawing newly added inside the high-priority foreground callback. Incoming keys now retain only matching candidates, with invalidation on binding replacement/registration or profile-list changes. Modifier and target availability checks remain live. Activation queues a one-shot normal-priority border refresh and coalesces requests to the latest target instead of drawing within the high-priority callback; already-painted focused borders skip redundant work.
+
+Seventeen targeted native checks passed: two new first-ever/deferred-border tests, four recovery/switching checks, nine update checks, window-hotkey registration, and direct/group priority. The 500-binding regression confirms repeated lookups do not rescan unrelated bindings and replacement invalidates cached candidates. The AppData marker is consumed before displaying the notice, so restoring an old first-run snapshot cannot repeat it. An isolated synthetic benchmark of 100 warmed unrelated-key lookups measured **448.497 ms** with the preceding scan and **0.359 ms** with cached candidates. This measures predicate work, not end-to-end EVE focus latency.
+
+The rebuilt standalone editor passed 41 focused and 87 regression UI checks with the updated embedded host. Output is `.vs/build/v1.7.0.4-first-ever-final/`, containing exactly three v1.7.0.4 EXEs, without a ZIP. The full native suite was not repeated; its previously documented rapid-cell failure remains outside this correction. Live EVE timing still needs a brief check of direct shortcuts, held groups and Quick Group; existing configurations should not show the recovery notice.

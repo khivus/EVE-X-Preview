@@ -784,7 +784,10 @@ class Propertys extends TrayMenu {
             if !(IsSet(Key))
                 return This._JSON["_Profiles"][This.CharacterShortcutsProfile]["Hotkeys Settings"]["CharacterHotkeys"]
         }
-        set => This._JSON["_Profiles"][This.CharacterShortcutsProfile]["Hotkeys Settings"]["CharacterHotkeys"] := Value
+        set {
+            This.directKeyCandidates.Clear()
+            This._JSON["_Profiles"][This.CharacterShortcutsProfile]["Hotkeys Settings"]["CharacterHotkeys"] := Value
+        }
     }
 
     ; Tray Menu Settings ##############################

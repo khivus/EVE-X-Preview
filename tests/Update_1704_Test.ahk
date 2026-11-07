@@ -47,6 +47,11 @@ CommandFeedbackRuntimeTest() {
 
 class ShortcutLookupCountFixture extends Update1704ShortcutFixture {
     lookups := 0
+    parses := 0
+    ParsedShortcut(key) {
+        this.parses++
+        return super.ParsedShortcut(key)
+    }
     ShortcutTargetAvailable(title) {
         this.lookups++
         return true
@@ -61,8 +66,45 @@ RecoveryFollowupLookupTest() {
     loop 20
         AssertFalse(app.DirectShortcutAvailable("*F22"))
     AssertEqual(0,app.lookups)
+    AssertTrue(app.parses<=501,"Repeated keys must reuse their candidate list rather than scanning 500 unrelated bindings again.")
     AssertTrue(app.DirectShortcutAvailable("*F23"))
     AssertEqual(1,app.lookups)
+    app._Hotkeys := [Map("EVE - New binding","F22")]
+    AssertTrue(app.DirectShortcutAvailable("*F22"),"Replacing bindings must invalidate the candidate list.")
+}
+
+class DeferredBorderFixture extends Update1704ShortcutFixture {
+    refreshed := []
+    RefreshActivatedThumbnail(hwnd) => this.refreshed.Push(hwnd)
+}
+TestRunner.Register("FirstEverFollowup activation border work is deferred and coalesces to the latest target", FirstEverDeferredBorderTest)
+FirstEverDeferredBorderTest() {
+    app := DeferredBorderFixture()
+    app.QueueActivatedThumbnail(100)
+    AssertEqual(0,app.refreshed.Length)
+    app.QueueActivatedThumbnail(200)
+    Sleep(40)
+    AssertEqual([200],app.refreshed)
+}
+TestRunner.Register("FirstEverFollowup recovery notice excludes existing users updates and additional installations", FirstEverNoticeTest)
+FirstEverNoticeTest() {
+    previous := SettingsBackup.Root
+    folder := A_ScriptDir "\..\.vs\update1704-tests\first-ever-" A_TickCount
+    SettingsBackup.Root := folder "\new-user"
+    try {
+        AssertTrue(SettingsBackup.PrepareFirstRun(folder "\install-one",false))
+        AssertTrue(SettingsBackup.TakeFirstRunNotice(Map("RecoveryGuidancePending",true)))
+        AssertFalse(SettingsBackup.TakeFirstRunNotice(Map("RecoveryGuidancePending",true)),"Restoring an old first-run snapshot must not repeat the notice.")
+        AssertFalse(SettingsBackup.PrepareFirstRun(folder "\install-one",true))
+        AssertFalse(SettingsBackup.PrepareFirstRun(folder "\install-two",false))
+        SettingsBackup.Root := folder "\existing-user"
+        AssertFalse(SettingsBackup.PrepareFirstRun(folder "\existing-install",true))
+        AssertFalse(SettingsBackup.TakeFirstRunNotice(Map("RecoveryGuidancePending",true)))
+        AssertFalse(SettingsBackup.PrepareFirstRun(folder "\new-install",false))
+        SettingsBackup.Root := folder "\lost-settings"
+        DirCreate(SettingsBackup.Directory(folder "\lost-install"))
+        AssertFalse(SettingsBackup.PrepareFirstRun(folder "\lost-install",false))
+    } finally SettingsBackup.Root := previous
 }
 
 TestRunner.Register("CommandFeedback command hotkeys confirm their resulting states and exclude switching", CommandFeedbackStateTest)

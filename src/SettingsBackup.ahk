@@ -4,6 +4,33 @@ class SettingsBackup {
     static sequence := 0
     static SuggestedRepair := ""
 
+    static PrepareFirstRun(installation, hadConfig) {
+        root := this.Root != "" ? this.Root : EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Backups"
+        marker := root "\.recovery-guidance-seen"
+        first := !hadConfig && !FileExist(marker) && !DirExist(this.Directory(installation))
+        try {
+            DirCreate(root)
+            if !FileExist(marker)
+                FileAppend(first ? "pending" : "seen", marker, "UTF-8")
+        }
+        return first
+    }
+    static TakeFirstRunNotice(config) {
+        pending := config.Get("RecoveryGuidancePending", false)
+        if config.Has("RecoveryGuidancePending")
+            config.Delete("RecoveryGuidancePending")
+        marker := (this.Root != "" ? this.Root : EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Backups") "\.recovery-guidance-seen"
+        try {
+            if !pending || FileRead(marker,"UTF-8") != "pending"
+                return false
+            file := FileOpen(marker,"w","UTF-8")
+            file.Write("seen")
+            file.Close()
+            return true
+        }
+        return false
+    }
+
     static LatestValid(installation) {
         installation := SettingsBridge.NormalizeInstallation(installation)
         candidates := ""

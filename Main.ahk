@@ -115,9 +115,11 @@ Load_JSONUnlocked(interactive := true) {
     DJSON := JSON.Load(defaultPath)
     SettingsBackup.CollectMigrationBackups(A_WorkingDir)
     SettingsBackup.SuggestedRepair := SettingsBackup.LatestValid(A_WorkingDir)
+    firstEverLaunch := SettingsBackup.PrepareFirstRun(A_WorkingDir, !!FileExist(userPath))
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
+        DJSON["RecoveryGuidancePending"] := firstEverLaunch
         ProgramLog.Add("Settings missing; creating defaults")
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
         SettingsBackup.Capture(userPath)
