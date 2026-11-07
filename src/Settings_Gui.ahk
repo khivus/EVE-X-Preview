@@ -1,4 +1,4 @@
-﻿#Include "UpdateChecker.ahk"
+#Include "UpdateChecker.ahk"
 
 #Include "SoundSettings.ahk"
 #Include "SettingsScrollPane.ahk"
@@ -548,8 +548,8 @@ Class Settings_Gui extends SoundSettingsGui {
                 This.KeepGroupsPositions := obj.value
             }
             else if (obj.name = "GroupsHoldDelay") {
-                if obj.value < 75 || !IsInteger(obj.value)
-                    This.GroupsHoldDelay := 75
+                if obj.value < 30 || !IsInteger(obj.value)
+                    This.GroupsHoldDelay := 30
                 else
                     This.GroupsHoldDelay := obj.value
             }
@@ -1186,6 +1186,11 @@ Class Settings_Gui extends SoundSettingsGui {
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Client Highlight Border:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowClientHighlightBorder Checked" This.ShowClientHighlightBorder, "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Clear unfocused border after (ms):")
+        unfocusedDelay := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Number vUnfocusedBorderClearDelay", This.UnfocusedBorderClearDelay)
+        arr.Push(unfocusedDelay)
+        This.RegisterThumbnailOption(unfocusedDelay, "Thumbnails Visuals")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event / Active Border Layout:")
         borderMode := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vEventActiveBorderMode Choose" This.EventActiveBorderMode,
@@ -2018,7 +2023,7 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     SaveThumbnailOption(control, *) {
-        if control.Name = "ThumbnailPollingInterval" && control.Value = ""
+        if (control.Name = "ThumbnailPollingInterval" || control.Name = "UnfocusedBorderClearDelay") && control.Value = ""
             return
         This.%control.Name% := control.Value
         if control.Name = "AnonymizeThumbnails"
@@ -2448,6 +2453,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.RedrawColorPreview(This.MainFrame["ClientHighligtColor"])
         This.MainFrame["ClientHighligtBorderthickness"].value := This.ClientHighligtBorderthickness
         This.MainFrame["ShowClientHighlightBorder"].value := This.ShowClientHighlightBorder
+        This.MainFrame["UnfocusedBorderClearDelay"].value := This.UnfocusedBorderClearDelay
         This.MainFrame["EventActiveBorderMode"].Choose(This.EventActiveBorderMode)
         This.MainFrame["AutoSaveThumbnailPositions"].value := This.AutoSaveThumbnailPositions
         This.MainFrame["HideThumbnails"].value := This.HideThumbnails

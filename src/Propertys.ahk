@@ -369,6 +369,10 @@ class Propertys extends TrayMenu {
         get => This._JSON["_Profiles"][This.FieldProfile("ShowClientHighlightBorder", This.ProfileThumbnailsVisuals)]["Thumbnails Visuals"]["ShowClientHighlightBorder"]
         set => This._JSON["_Profiles"][This.FieldProfile("ShowClientHighlightBorder", This.ProfileThumbnailsVisuals)]["Thumbnails Visuals"]["ShowClientHighlightBorder"] := value
     }
+    UnfocusedBorderClearDelay {
+        get => This.Profiles[This.FieldProfile("UnfocusedBorderClearDelay", This.ProfileThumbnailsVisuals)]["Thumbnails Visuals"].Get("UnfocusedBorderClearDelay", 1000)
+        set => This.Profiles[This.FieldProfile("UnfocusedBorderClearDelay", This.ProfileThumbnailsVisuals)]["Thumbnails Visuals"]["UnfocusedBorderClearDelay"] := value
+    }
 
     EventActiveBorderMode {
         get {

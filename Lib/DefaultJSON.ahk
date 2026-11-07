@@ -79,6 +79,7 @@
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,
+                "UnfocusedBorderClearDelay": 1000,
                 "EventActiveBorderMode": 1,
                 "ClientHighligtColor": "E36A0D",
                 "ClientHighligtBorderthickness": 4,

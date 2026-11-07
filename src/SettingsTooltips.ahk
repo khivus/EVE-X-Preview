@@ -23,7 +23,7 @@ class SettingsTooltips {
         "AutoWildcardWindowHotkeys", "Let switching shortcuts work while extra modifier keys are held. Saved shortcuts stay unchanged.",
         "PreserveHotkeysOnLogout", "Keep a character's switching shortcuts linked to its client after logout.",
         "KeepGroupsPositions", "Remember your place in each group when switching between groups.",
-        "GroupsHoldDelay", "Minimum time between group switches while holding a shortcut. Minimum: 75 ms.",
+        "GroupsHoldDelay", "Minimum time between group switches while holding a shortcut. Minimum: 30 ms.",
         "MaxActiveWindowRetries", "Focus checks after a recent group switch. Set to 1 to skip waiting.",
         "ActiveWindowRetryInterval", "Milliseconds between focus checks after a group switch.",
         "HotkeyGroupDDL", "Choose the character group to edit.",

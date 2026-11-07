@@ -5,6 +5,7 @@
 #Include "Lib/LiveThumb.ahk"
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
+#Include "src/SettingsBackup.ahk"
 #Include "src/PreviewStartupQueue.ahk"
 #Include "src/ThumbnailRecovery.ahk"
 #Include "src/NPCDatabase.ahk"
@@ -116,9 +117,12 @@ Load_JSONUnlocked(interactive := true) {
     if !FileExist(userPath) {
         ProgramLog.Add("Settings missing; creating defaults")
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+        SettingsBackup.Capture(userPath)
         return JSON.Load(FileRead(userPath))
     }
 
+    ; Preserve the original bytes before startup migration or normalization.
+    SettingsBackup.Capture(userPath)
     ; Try reading & merging
     try {
         UJSON := JSON.Load(FileRead(userPath))  ; may throw if corrupted

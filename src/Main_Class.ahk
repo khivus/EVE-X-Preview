@@ -19,6 +19,7 @@
     ;! it is possible this key needs to be changed if Windows updates and changes the unused virtual keys 
     static virtualKey := "vk0xE8"
     pendingEVEActivation := 0
+    unfocusedBorderSince := -1
 
     LISTENERS := [
         Main_Class.WM_LBUTTONDOWN,
@@ -520,7 +521,7 @@
     PollMainWindows() {
         ; Reconcile painted highlights even when activation/event code reset the
         ; polling cache, and before any window-discovery work can fail or defer.
-        This.ReconcileActiveThumbnailBorders(This._GetForegroundHwnd())
+        This.UpdateThumbnailFocusLoss(This._GetForegroundHwnd())
         ; if This.ProfActive ; Profiling
         static __t1 := 0
         __t0 := A_TickCount
@@ -643,8 +644,7 @@
                         This.BorderActive := Ahwnd
                     }
                 }
-                if !This.ThumbWindows.HasProp(Ahwnd)
-                    This.ClearActiveThumbnailBorder()
+                This.UpdateThumbnailFocusLoss(Ahwnd)
                 LastActiveHWND := Ahwnd
             }
             catch as err {
@@ -3325,6 +3325,18 @@
         This.LockThumbnailPositions := !This.LockThumbnailPositions
         This.TrayMenu()
         SetTimer(This.Save_Settings_Delay_Timer, -200)
+    }
+
+    UpdateThumbnailFocusLoss(foregroundHwnd, tick := A_TickCount) {
+        if This.ThumbWindows.HasOwnProp(foregroundHwnd) {
+            This.unfocusedBorderSince := -1
+            This.ReconcileActiveThumbnailBorders(foregroundHwnd)
+            return
+        }
+        if This.unfocusedBorderSince < 0
+            This.unfocusedBorderSince := tick
+        if !This.ShowClientHighlightBorder || tick - This.unfocusedBorderSince >= This.UnfocusedBorderClearDelay
+            This.ClearActiveThumbnailBorder()
     }
 
     ClearActiveThumbnailBorder() {

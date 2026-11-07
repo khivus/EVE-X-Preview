@@ -270,6 +270,7 @@ ThumbnailForegroundPollingTest() {
     previous := A_DetectHiddenWindows
     DetectHiddenWindows(true)
     app := ThumbnailForegroundPollFixture(), sources := []
+    app.UnfocusedBorderClearDelay := 0
     outside := Gui()
     try {
         source := app.CreateSource("EVE - Focus polling")

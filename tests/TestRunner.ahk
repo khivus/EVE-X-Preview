@@ -11,6 +11,7 @@ global __EVE_X_PREVIEW_TESTING__ := true
 #Include "..\Main.ahk"
 
 global TestRunner := TestRunnerClass()
+SettingsBackup.Root := A_ScriptDir "\..\.vs\test-settings-backups"
 if A_Args.Length && A_Args[1] = "--headless"
     OnError(HeadlessTestError)
 HeadlessTestError(err, mode) {
@@ -241,4 +242,5 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 #Include "Settings_Bridge_Test.ahk"
 #Include "Settings_Editor_Test.ahk"
 #Include "Settings_Themes_Test.ahk"
+#Include "Update_1704_Test.ahk"
 TestRunner.RunAll()
