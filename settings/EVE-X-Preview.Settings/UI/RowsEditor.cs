@@ -105,12 +105,10 @@ public sealed partial class MainWindow
                     while(values.Count<=ci) values.Add("");
                     var control=TypedInput(columns[c],values[c],value=> {
                         values[ci]=value?.DeepClone();
-                        var mirrored=selected.Where(p=>p.column==ci && p.row!=ri && p.row<rows.Count && !Blank(rows[p.row])).ToArray();
-                        foreach(var address in mirrored)rows[address.row]![ci]=value?.DeepClone();
-                        if(kind=="gestures")foreach(var address in mirrored) {
-                            if(cells.TryGetValue(address,out var target) && target.Child is ComboBox choice)
-                                choice.SelectedIndex=Array.FindIndex(session.Metadata!.Value.Array("gestures").OfType<JsonObject>().Select(g=>JsonExtensions.Display(g["value"])).ToArray(),v=>v==JsonExtensions.Display(value));
-                        }
+                        // A gesture dropdown assigns one action. Table selection is
+                        // reserved for explicit clipboard/clear operations here.
+                        if(kind!="gestures")
+                            foreach(var address in selected.Where(p=>p.column==ci && p.row!=ri && p.row<rows.Count && !Blank(rows[p.row])))rows[address.row]![ci]=value?.DeepClone();
                         StageRows();
                         if(!readOnlyRows && ri==rows.Count-1 && !Blank(values)) {
                             rows.Add(BlankRow());
@@ -119,7 +117,7 @@ public sealed partial class MainWindow
                     }, true);
                     control.MinWidth=0; control.MaxWidth=double.PositiveInfinity; control.HorizontalAlignment=columns[c].Text("kind") is "bool" or "boolean" ? HorizontalAlignment.Center : HorizontalAlignment.Stretch; control.VerticalAlignment=VerticalAlignment.Center; control.IsEnabled=editable;
                     var cell=new Border { Child=control, BorderBrush=ThemeController.Line, BorderThickness=new Thickness(0,0,1,1), Padding=new Thickness(4,3), MinHeight=42 };
-                    cell.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_,e)=>{ selectingRange = true; Select(ri,ci,e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift),e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)); },Avalonia.Interactivity.RoutingStrategies.Tunnel);
+                    cell.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_,e)=>{ if(!e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed)return; selectingRange = kind!="gestures"; Select(ri,ci,e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift),e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)); },Avalonia.Interactivity.RoutingStrategies.Tunnel);
                     cell.PointerEntered += (_,e)=> { if(selectingRange && e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed) Select(ri,ci,true,false); };
                     cells[(r,c)]=cell; Grid.SetColumn(cell,c+1); line.Children.Add(cell);
                 }
@@ -228,7 +226,9 @@ public sealed partial class MainWindow
             }
         },Avalonia.Interactivity.RoutingStrategies.Tunnel,true);
         host.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent,(_,e)=>{selectingRange=false;if(selectingRows){selectingRows=false;e.Pointer.Capture(null);}},Avalonia.Interactivity.RoutingStrategies.Tunnel,true);
-        host.Children.Add(Muted("Shift-click or drag to select a range. Ctrl-click adds cells. Ctrl+A/C/V selects, copies and pastes. Paste one value to fill a range. Drag row numbers to select complete rows; Delete removes them. Enter moves down. Paste newline-separated names into the character column."));
+        host.Children.Add(Muted(kind=="gestures"
+            ? "Each gesture dropdown changes only its own action. Shift-click selects a range; Ctrl-click adds cells. Ctrl+A/C/V selects, copies and pastes. Paste one value to fill a selected range. Enter moves down."
+            : "Shift-click or drag to select a range. Ctrl-click adds cells. Ctrl+A/C/V selects, copies and pastes. Paste one value to fill a range. Drag row numbers to select complete rows; Delete removes them. Enter moves down. Paste newline-separated names into the character column."));
         host.Children.Add(new ScrollViewer { Content=list,MaxHeight=520,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled });
         RenderRows();
     }

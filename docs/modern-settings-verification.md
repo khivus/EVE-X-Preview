@@ -141,3 +141,11 @@ Verification used disposable configurations under `.vs/ui-polish`; no production
 Inspected profile creation, inherited color/disabled numeric fields, search/chrome and sound-control captures. The final output is the fresh `.vs/build/v1.7.0.4-ui-polish-final/` folder, containing exactly `EVE-X-Preview.exe`, `EVE-X-Preview-Settings.exe` and `EVE-X-Preview-Updater.exe`, all **1.7.0.4**. **No ZIP was created or updated for this follow-up.** The generated host remains an embedded dependency in the Settings EXE.
 
 See [the focused recheck list](settings-review-recheck.md) for the affected user flows. Live EVE behavior, physical mixed-DPI/multi-monitor behavior and real GitHub downloads/installation were not exercised. Nothing was pushed or published.
+
+## Independent gesture assignments — 2026-11-07
+
+Corrected the gesture dropdowns' use of the shared table multi-cell edit path. Changing a dropdown now updates only its own action, including when a range is still selected. Gesture dropdown pointer presses no longer begin table drag selection. Shift/Ctrl selection and explicit clipboard operations remain available; other table editors retain their existing multi-cell editing behavior.
+
+The focused checks now assert that other visible dropdowns and their underlying draft rows remain unchanged, then edit entries back and forth and confirm duplicate validation clears after restoration while editing Default in place. **36 focused UI checks passed** from source and **36 passed** from the rebuilt standalone Settings EXE with its embedded host. The existing **86 companion regression checks passed**, covering related table selection/paste, profile/Default editing, validation and reconnect behavior. The C# build completed with zero warnings and zero errors. No AHK runtime implementation changed, so the native suite was not repeated for this correction.
+
+Output: `.vs/build/v1.7.0.4-gesture-fix/`, containing only the three **1.7.0.4** executables; no ZIP. Tests used disposable configurations under `.vs/gesture-fix`. Recheck Mouse actions by assigning several entries independently, including entries previously Disabled, then restore a deliberate duplicate and verify Problems clears. No production configuration, push or release was involved.

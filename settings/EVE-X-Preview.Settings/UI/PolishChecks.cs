@@ -85,9 +85,13 @@ public sealed partial class MainWindow
             var cell=(Border)gestures[index].Parent!;
             cell.RaiseEvent(new PointerPressedEventArgs(cell,pointer,this,new Point(0,0),0,pressed,extend?KeyModifiers.Shift:KeyModifiers.None,1));
         }
+        var initialChoices=gestures.Select(c=>c.SelectedIndex).ToArray();
         SelectGesture(0,false);SelectGesture(secondIndex,true);gestures[0].SelectedIndex=0;
-        Check(gestures[secondIndex].SelectedIndex==0,"Bulk gesture changes update every affected dropdown so hidden duplicates cannot remain in the row buffer");
-        SelectGesture(0,false);gestures[0].SelectedIndex=original;SelectGesture(secondIndex,false);gestures[secondIndex].SelectedIndex=secondOriginal;await Task.Delay(450);
+        Check(gestures.Skip(1).Select(c=>c.SelectedIndex).SequenceEqual(initialChoices.Skip(1)),"A gesture dropdown changes only its own entry even with a selected range");
+        var stagedRows=session.Pending.Single(p=>p.Key.Contains("rows|gestures")).Arguments.Array("rows");
+        Check(stagedRows.Skip(1).Zip(rows.Array("rows").Skip(1)).All(pair=>JsonNode.DeepEquals(pair.First,pair.Second)),"Independent gesture editing leaves all other staged action assignments unchanged");
+        gestures[0].SelectedIndex=original;gestures[secondIndex].SelectedIndex=0;gestures[secondIndex].SelectedIndex=secondOriginal;await Task.Delay(450);
+        Check(gestures.Select(c=>c.SelectedIndex).SequenceEqual(initialChoices),"Gesture entries remain independently editable when changed back and forth");
         Check(!session.Pending.Any(e=>e.Key.Contains("gestures")),"Restoring independently edited gesture cells leaves a valid canonical table");
         SelectGesture(0,false);
         gestures[0].SelectedIndex=duplicate;await Task.Delay(400);
