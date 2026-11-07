@@ -21,7 +21,7 @@ A character, character-group and Quick Group shortcut may share a key. A Quick G
 
 Command hotkeys show a brief confirmation near the pointer with the resulting state or a blocked-action explanation. A newer confirmation replaces the previous one and restarts its 1.5-second timeout. Reload and Exit show their request before a short delay and recheck Settings draft protection before proceeding. Profile activation confirms after its restart. Window-switching shortcuts and thumbnail mouse gestures do not produce these confirmations.
 
-Held character-group and Quick Group shortcuts advance using a still-valid pending activation without waiting for focus confirmation. Their callbacks run at normal priority so thumbnail timers can continue; the internal foreground activation remains higher priority. Confirmed EVE activation updates its thumbnail border immediately, independent of the delay used when switching away from EVE.
+Switching uses the v1.7.0.3 activation, callback priority, key timing and group-focus behavior. The newer candidate-list cache, pending-target cycling shortcut and activation border callbacks have been removed. EVE-only pause is a boolean guard; Quick Group priority is resolved after a matching shortcut fires. The configurable border-clearing delay stays in normal polling and does not add a delay when switching directly between EVE clients.
 
 Under **Switching → Switching behavior**, the minimum interval while holding a group shortcut accepts **30–10000 ms**; the default remains 100 ms.
 

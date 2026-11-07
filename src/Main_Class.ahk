@@ -23,9 +23,6 @@ Class Main_Class extends ThumbWindow {
     pendingEVEActivation := 0
     unfocusedBorderSince := -1
     shortcutMatchCache := Map()
-    directKeyCandidates := Map()
-    directKeySource := 0
-    directKeyCount := -1
 
     LISTENERS := [
         Main_Class.WM_LBUTTONDOWN,
@@ -125,7 +122,7 @@ Class Main_Class extends ThumbWindow {
             else
                 HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
-            try This.RegisterWindowHotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "Previous window")
+            try This.RegisterEVESwitchHotkey(This.SwitchToPreviousWindow_Hotkey, ObjBindMethod(This, "SwitchToPrevWin"), "Previous window")
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Switch to Previous Window - Hotkey")
         }
@@ -137,7 +134,7 @@ Class Main_Class extends ThumbWindow {
             else
                 HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
-            try This.RegisterWindowHotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "Cycle logged in windows")
+            try This.RegisterEVESwitchHotkey(This.CycleEveryLoggedIn_Hotkey, ObjBindMethod(This, "CycleEveryLoggedInWin"), "Cycle logged in windows")
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Every Logged in Window - Hotkey")
         }
@@ -149,7 +146,7 @@ Class Main_Class extends ThumbWindow {
             else
                 HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && !This.SettingsEditingActive() && WinActive(This.EVEExe)
             
-            try This.RegisterWindowHotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "Cycle login screens")
+            try This.RegisterEVESwitchHotkey(This.Login_Screen_Cycle_Hotkey, ObjBindMethod(This, "Cycle_Login_Windows"), "Cycle login screens")
             catch ValueError as e
                 MsgBox(e.Message ": --> " e.Extra " <-- in: Hotkeys Settings -> Cycle Login Screens - Hotkey")
         }
@@ -466,11 +463,22 @@ Class Main_Class extends ThumbWindow {
 
     HotkeyFeedback(message) => HotkeyFeedback.Show(message)
 
+    RegisterEVESwitchHotkey(keyName, callback, context) {
+        return This.RegisterWindowHotkey(keyName, ObjBindMethod(This, "DispatchEVESwitchHotkey", callback), context)
+    }
+    DispatchEVESwitchHotkey(callback, keyName) {
+        if This.activationHotkeysSuspended
+            return
+        if This.QuickGroupShortcutAvailable(keyName)
+            return This.CycleQuickGroup()
+        return callback.Call(keyName)
+    }
+
     RegisterWindowHotkey(keyName, callback, context) {
         keyName := HotkeyBindings.ForWindowSwitch(keyName, This.AutoWildcardWindowHotkeys)
         if This.SwitchLangOnErr
-            return This.RegisterHotkeyWithLanguageRetry(keyName, callback, "P0 S0", context)
-        Hotkey(keyName, callback, "P0 S0")
+            return This.RegisterHotkeyWithLanguageRetry(keyName, callback, "P1 S0", context)
+        Hotkey(keyName, callback, "P1 S0")
         return true
     }
 
@@ -767,7 +775,6 @@ Class Main_Class extends ThumbWindow {
 
     ;Register set Hotkeys by the user in settings
     RegisterHotkeys(title) {
-        This.directKeyCandidates.Clear()
         if !This._Hotkeys[title]
             return
         
@@ -777,11 +784,11 @@ Class Main_Class extends ThumbWindow {
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
     
         if This.Global_Hotkeys
-            HotIf (keyName) => !This.activationHotkeysSuspended && !This.QuickGroupShortcutAvailable(keyName) && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && !This.SettingsEditingActive()
+            HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && !This.SettingsEditingActive()
         else    
-            HotIf (keyName) => !This.activationHotkeysSuspended && !This.QuickGroupShortcutAvailable(keyName) && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !This.SettingsEditingActive()
+            HotIf (*) => !This.activationHotkeysSuspended && !HotkeyCapture.Active && WinExist(title " " This.EVEExe) && WinActive(This.EVEExe) && !This.SettingsEditingActive()
     
-        try This.RegisterWindowHotkey(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "Activate " title)
+        try This.RegisterEVESwitchHotkey(SelectedHotkey, (*) => This.ActivateEVEWindow(, title), "Activate " title)
         catch ValueError as e
             MsgBox(e.Message ": --> " e.Extra " <-- in Hotkey Settings - " This.LastUsedProfile " Hotkeys")
     }    
@@ -815,13 +822,13 @@ Class Main_Class extends ThumbWindow {
 
             HotIf ObjBindMethod(This, method, This.HotkGroups[index])
             for direction, key in keys {
-                try This.RegisterWindowHotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "Hotkey group " k " " direction)
+                try This.RegisterEVESwitchHotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "Hotkey group " k " " direction)
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - " k "  - " direction)
             }
 
             if v["FirstCharHotkey"] != "" && v["Characters"].Length > 0 {
-                try This.RegisterWindowHotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "First character in hotkey group " k)
+                try This.RegisterEVESwitchHotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "First character in hotkey group " k)
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - First Active Character Hotkey")
             }
@@ -868,7 +875,7 @@ Class Main_Class extends ThumbWindow {
             This.ResetPosAfterQuickGroupTrigger := false
         } else {
             ; Derive from active window, reset to start if not found
-            currentIndex := This._GetCycleGroupIndex(arr)
+            currentIndex := This._GetCurrentGroupIndex(arr)
             index := currentIndex = -1 ? 0 : currentIndex
         }
 
@@ -928,16 +935,7 @@ Class Main_Class extends ThumbWindow {
 
     ; Retry only for a recent activation into this group that has not focused yet.
     ; arr: can be either array of titles or hwnds
-    _GetCycleGroupIndex(arr) {
-        hwnd := This._GetForegroundHwnd()
-        pending := This._ObserveEVEActivation(hwnd)
-        if IsObject(pending) {
-            index := This._FindGroupWindowIndex(arr, pending.hwnd)
-            if index != -1
-                return index
-        }
-        return This._FindGroupWindowIndex(arr, hwnd)
-    }
+
 
     _GetCurrentGroupIndex(arr) {
         loop This.MaxActiveWindowRetries {
@@ -1092,7 +1090,7 @@ Class Main_Class extends ThumbWindow {
     }
     QuickGroupTargetAvailable(hwnd) => !!WinExist("ahk_id " hwnd)
     QuickGroupShortcutAvailable(keyName) {
-        if This.activationHotkeysSuspended || !This.QuickGroupEnabled || !This.ShortcutScopeActive()
+        if This.activationHotkeysSuspended || !This.QuickGroupEnabled || !This.QuickGroupChars.Count || !This.ShortcutScopeActive()
             || !This.ShortcutMatches(This.QuickGroupHotkey, keyName)
             return false
         for hwnd in This.QuickGroupChars
@@ -1102,29 +1100,29 @@ Class Main_Class extends ThumbWindow {
     }
 
     DirectShortcutAvailable(keyName) {
-        if This.activationHotkeysSuspended || keyName = "" || !This.ShortcutScopeActive() || This.QuickGroupShortcutAvailable(keyName)
+        if This.activationHotkeysSuspended || keyName = "" || !This.ShortcutScopeActive()
             return false
-        bindings := This._Hotkeys
-        if This.directKeySource != bindings || This.directKeyCount != bindings.Length {
-            This.directKeyCandidates.Clear()
-            This.directKeySource := bindings
-            This.directKeyCount := bindings.Length
-        }
-        if !This.directKeyCandidates.Has(keyName) {
-            incoming := This.ParsedShortcut(keyName), candidates := []
-            for item in bindings
-                for title, key in item {
-                    if key = ""
-                        continue
-                    binding := This.ParsedShortcut(key)
-                    if binding.up = incoming.up && HotkeyBindings.SameKey(binding.key, incoming.key)
-                        candidates.Push({title:title, key:key})
+        incoming := HotkeyBindings.Parse(keyName)
+        for item in This._Hotkeys
+            for title, key in item {
+                if key = "" || !This.ShortcutTargetAvailable(title)
+                    continue
+                binding := HotkeyBindings.Parse(HotkeyBindings.ForWindowSwitch(key, This.AutoWildcardWindowHotkeys))
+                if !HotkeyBindings.SameKey(binding.key, incoming.key) || binding.up != incoming.up
+                    continue
+                if IsObject(binding.prefix) && !GetKeyState(binding.prefix.name)
+                    continue
+                matches := true
+                for symbol, side in binding.mods {
+                    if (side && !This.ShortcutModifierDown(symbol, side))
+                        || (!side && !binding.wildcard && This.ShortcutModifierDown(symbol, 3)) {
+                        matches := false
+                        break
+                    }
                 }
-            This.directKeyCandidates[keyName] := candidates
-        }
-        for candidate in This.directKeyCandidates[keyName]
-            if This.ShortcutMatches(candidate.key, keyName) && This.ShortcutTargetAvailable(candidate.title)
-                return true
+                if matches
+                    return true
+            }
         return false
     }
 
@@ -1134,7 +1132,7 @@ Class Main_Class extends ThumbWindow {
 
         HotIf (keyName) => !HotkeyCapture.Active && !This.SettingsEditingActive() && This.QuickGroupShortcutAvailable(keyName)
 
-        try This.RegisterWindowHotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "Quick group")
+        try This.RegisterEVESwitchHotkey(This.QuickGroupHotkey, ObjBindMethod(This, "CycleQuickGroup"), "Quick group")
         catch ValueError as e
             MsgBox(e.Message ": --> " e.Extra " <-- in: Thumbnails Interactions - " This.LastUsedProfile " - Quick Group - Hotkey")
     }
@@ -1156,7 +1154,7 @@ Class Main_Class extends ThumbWindow {
             return
 
         ; Derive from active window, reset to start if not found
-        currentIndex := This._GetCycleGroupIndex(arr)
+        currentIndex := This._GetCurrentGroupIndex(arr)
         index := currentIndex = -1 ? 0 : currentIndex
 
         index += 1
@@ -1321,7 +1319,7 @@ Class Main_Class extends ThumbWindow {
 
      ; To Check if atleast One Win stil Exist in the Array for the cycle groups hotkeys
     OnWinExist(Arr, keyName := "", *) {
-        if This.activationHotkeysSuspended || HotkeyCapture.Active || This.SettingsEditingActive() || This.QuickGroupShortcutAvailable(keyName) || This.DirectShortcutAvailable(keyName)
+        if This.activationHotkeysSuspended || HotkeyCapture.Active || This.SettingsEditingActive() || This.DirectShortcutAvailable(keyName)
             return false
         for index, Name in Arr {
             ; If ( WinExist("EVE - " Name " Ahk_Exe exefile.exe") && !This.SettingsEditingActive() && !This.PreserveHotkeysOnLogout) {
@@ -2163,7 +2161,6 @@ Class Main_Class extends ThumbWindow {
         ; return when the user tries to bring a window to foreground which is already in foreground 
         if (WinActive("Ahk_id " hwnd)) {
             This.pendingEVEActivation := 0
-            This.QueueActivatedThumbnail(hwnd)
             return true
         }
 
@@ -2185,7 +2182,6 @@ Class Main_Class extends ThumbWindow {
         Else {    
             ; Use the virtual key to trigger the internal Hotkey.        
             This.ActivateHwnd := hwnd
-            SetKeyDelay(-1)
             SendEvent("{Blind}{" Main_Class.virtualKey "}")            
         }
 
@@ -2227,26 +2223,12 @@ Class Main_Class extends ThumbWindow {
                 This.ShowWindowAsync(This.ActivateHwnd, 3)
         }       
         This._ObserveEVEActivation(This._GetForegroundHwnd())
-        This.QueueActivatedThumbnail(This.ActivateHwnd)
         Return
     }
 
-    QueueActivatedThumbnail(hwnd) {
-        This.pendingBorderFocus := hwnd
-        if !This.HasOwnProp("activationBorderTimer")
-            This.activationBorderTimer := (*) => This.RefreshActivatedThumbnail(This.pendingBorderFocus)
-        SetTimer(This.activationBorderTimer, -1)
-    }
 
-    RefreshActivatedThumbnail(hwnd) {
-        if This._GetForegroundHwnd() != hwnd || !This.ThumbWindows.HasOwnProp(hwnd)
-            return
-        if This.BorderActive = hwnd && This.ThumbWindows.%hwnd%.Has("Border") && This.ThumbWindows.%hwnd%["Border"].HasOwnProp("ActiveHighlight") && This.ThumbWindows.%hwnd%["Border"].ActiveHighlight
-            return
-        This.UpdateThumbnailFocusLoss(hwnd)
-        This.ShowActiveBorder(hwnd)
-        This.BorderActive := hwnd
-    }
+
+
 
     ; Minimize All windows after Activting one with the exception of Titels in the DontMinimize Wintitels
     ; gets called by the timer to run async

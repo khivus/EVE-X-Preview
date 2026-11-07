@@ -45,47 +45,6 @@ CommandFeedbackRuntimeTest() {
     AssertTrue(InStr(app.messages[-1],"cancelled"))
 }
 
-class ShortcutLookupCountFixture extends Update1704ShortcutFixture {
-    lookups := 0
-    parses := 0
-    ParsedShortcut(key) {
-        this.parses++
-        return super.ParsedShortcut(key)
-    }
-    ShortcutTargetAvailable(title) {
-        this.lookups++
-        return true
-    }
-}
-TestRunner.Register("RecoveryFollowup unrelated direct bindings do not cause window lookups on every repeat", RecoveryFollowupLookupTest)
-RecoveryFollowupLookupTest() {
-    app := ShortcutLookupCountFixture(), bindings := []
-    loop 500
-        bindings.Push(Map("EVE - Unrelated " A_Index,"F23"))
-    app._Hotkeys := bindings
-    loop 20
-        AssertFalse(app.DirectShortcutAvailable("*F22"))
-    AssertEqual(0,app.lookups)
-    AssertTrue(app.parses<=501,"Repeated keys must reuse their candidate list rather than scanning 500 unrelated bindings again.")
-    AssertTrue(app.DirectShortcutAvailable("*F23"))
-    AssertEqual(1,app.lookups)
-    app._Hotkeys := [Map("EVE - New binding","F22")]
-    AssertTrue(app.DirectShortcutAvailable("*F22"),"Replacing bindings must invalidate the candidate list.")
-}
-
-class DeferredBorderFixture extends Update1704ShortcutFixture {
-    refreshed := []
-    RefreshActivatedThumbnail(hwnd) => this.refreshed.Push(hwnd)
-}
-TestRunner.Register("FirstEverFollowup activation border work is deferred and coalesces to the latest target", FirstEverDeferredBorderTest)
-FirstEverDeferredBorderTest() {
-    app := DeferredBorderFixture()
-    app.QueueActivatedThumbnail(100)
-    AssertEqual(0,app.refreshed.Length)
-    app.QueueActivatedThumbnail(200)
-    Sleep(40)
-    AssertEqual([200],app.refreshed)
-}
 TestRunner.Register("FirstEverFollowup recovery notice excludes existing users updates and additional installations", FirstEverNoticeTest)
 FirstEverNoticeTest() {
     previous := SettingsBackup.Root
@@ -164,60 +123,6 @@ CommandFeedbackTooltipTest() {
         Sleep(1000)
         AssertFalse(visible("Latest command receipt"))
     } finally HotkeyFeedback.Hide()
-}
-
-TestRunner.Register("RecoveryFollowup cycle requests advance without waiting for foreground confirmation", RecoveryFollowupCycleTest)
-RecoveryFollowupCycleTest() {
-    previous := A_DetectHiddenWindows
-    DetectHiddenWindows(true)
-    app := GroupActivationFixture(), a := Gui(), b := Gui()
-    try {
-        app.foregrounds := [a.Hwnd]
-        app.MaxActiveWindowRetries := 100
-        app.ActiveWindowRetryInterval := 100
-        loop 20 {
-            app.pendingEVEActivation := {hwnd:b.Hwnd, source:a.Hwnd, expires:A_TickCount+250}
-            AssertEqual(2, app._GetCycleGroupIndex([a.Hwnd,b.Hwnd]))
-        }
-        AssertEqual(20, app.reads, "One foreground read per repeated cycle; no wait/retry loop.")
-        app.foregrounds := [b.Hwnd]
-        AssertEqual(2, app._GetCycleGroupIndex([a.Hwnd,b.Hwnd]))
-        AssertEqual(0, app.pendingEVEActivation)
-    } finally {
-        a.Destroy(), b.Destroy()
-        DetectHiddenWindows(previous)
-    }
-}
-
-TestRunner.Register("RecoveryFollowup switch hotkeys allow thumbnail timers to run during a held callback", RecoveryFollowupPriorityTest)
-RecoveryFollowupPriorityTest() {
-    app := WindowHotkeyRegistrationFixture()
-    state := {ticks:0, during:0, complete:false, active:true}
-    condition := (*) => state.active
-    timer := (*) => state.ticks++
-    callback(*) {
-        before := state.ticks
-        Sleep(120)
-        state.during := state.ticks-before
-        state.complete := true
-    }
-    previousLevel := A_SendLevel
-    HotIf(condition)
-    try {
-        app.RegisterWindowHotkey("F18", callback, "Responsive group regression")
-        SetTimer(timer,10)
-        SendLevel(1)
-        SendEvent("{F18}")
-        Sleep(300)
-        AssertTrue(state.complete)
-        AssertTrue(state.during>=2,"Thumbnail-priority timers must not be starved by the switching callback.")
-    } finally {
-        state.active := false
-        SetTimer(timer,0)
-        try Hotkey("*F18","Off")
-        HotIf()
-        SendLevel(previousLevel)
-    }
 }
 
 TestRunner.Register("RecoveryFollowup guidance chooses a readable backup and skips damaged newer copies", RecoveryFollowupSuggestionTest)
@@ -328,7 +233,7 @@ Update1704QuickPriorityTest() {
     AssertFalse(app.QuickGroupShortcutAvailable("*CapsLock"), "A closed/stale HWND must not reserve the key.")
     app.quickWindows[123] := true
     AssertTrue(app.QuickGroupShortcutAvailable("*CapsLock"))
-    AssertFalse(app.DirectShortcutAvailable("*CapsLock"))
+    AssertTrue(app.DirectShortcutAvailable("*CapsLock"), "Quick Group priority is resolved in the callback, not in this predicate.")
     AssertFalse(app.OnWinExist(["EVE - Fleet"], "*CapsLock"))
     AssertFalse(app.DirectShortcutAvailable("*F23"))
     app.quickWindows.Clear()
@@ -519,7 +424,7 @@ Update1704BorderDelayTest() {
         app.UpdateThumbnailFocusLoss(second.Hwnd, 2300)
         AssertFalse(border.ActiveHighlight, "Another tracked client clears the previous active border immediately.")
         app.foreground := second.Hwnd
-        app.RefreshActivatedThumbnail(second.Hwnd)
+        app.ShowActiveBorder(second.Hwnd)
         AssertTrue(app.ThumbWindows.%second.Hwnd%["Border"].ActiveHighlight, "Confirmed EVE activation refreshes its border immediately.")
         app.foreground := first.Hwnd
         app.ShowActiveBorder(first.Hwnd)
