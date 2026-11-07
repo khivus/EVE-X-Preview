@@ -12,7 +12,7 @@ internal static class Program
             if (args.Length == 2 && args[0] == "--integration") await IntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--retry-integration") await RetryIntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--handoff-integration") await HandoffIntegrationAsync(Path.GetFullPath(args[1]));
-            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync(); }
+            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync(); }
             else throw new ArgumentException("Use no arguments for unit tests or --integration <isolated installation directory>.");
             Console.WriteLine($"PASS: {passed} assertions."); return 0;
         }
@@ -22,6 +22,18 @@ internal static class Program
     {
         if (!condition) throw new Exception(label);
         passed++; Console.WriteLine("PASS " + label);
+    }
+    private static async Task ProfileMutationIsolationAsync() {
+        var gate=new GatedTransport();await using var editor=new EditorSession(gate);await editor.ConnectAsync();
+        await editor.MutateAsync("select-profile",new(){["name"]="Other"});
+        editor.Stage("Default|mouse-actions|rows","Gestures","set",new(){["id"]="opaque-field",["value"]="saved"});
+        gate.Block=true;var accepting=editor.AcceptPendingAsync();await gate.Entered.Task;
+        editor.Stage("Other|appearance|next","Next edit","set",new(){["id"]="opaque-field",["value"]="next"});
+        Check(editor.Pending.Single(e=>e.Key.StartsWith("Other|")).Profile=="Other","pending edits keep their rendered profile during a temporary Default mutation");
+        var selecting=editor.MutateAsync("select-profile",new(){["name"]="Other"});gate.Release.TrySetResult();
+        await accepting;await selecting;
+        Check(gate.Inner.LastSetProfile=="Default" && editor.Profile=="Other","profile navigation cannot interleave with accepting and restoring an edit's original profile");
+        await editor.DiscardAsync();await editor.EndAsync(false);
     }
     private static async Task StartupReadinessTestAsync() {
         var transport=new ScriptedTransport {NotReadyHellos=2};await using var editor=new EditorSession(transport);
@@ -292,4 +304,18 @@ internal sealed class ScriptedTransport : IBridgeTransport
         return Task.FromResult(Snapshot());
     }
     public void Dispose() { }
+}
+
+internal sealed class GatedTransport : IBridgeTransport {
+    public ScriptedTransport Inner {get;}=new();
+    public bool RuntimeAvailable=>true;
+    public bool Block;
+    public TaskCompletionSource Entered {get;}=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource Release {get;}=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task EnsureAvailableAsync(CancellationToken cancellation=default)=>Task.CompletedTask;
+    public async Task<JsonObject> SendAsync(string method,string session,JsonObject? arguments=null,CancellationToken cancellation=default) {
+        if(Block && method=="set") {Block=false;Entered.TrySetResult();await Release.Task;}
+        return await Inner.SendAsync(method,session,arguments,cancellation);
+    }
+    public void Dispose()=>Inner.Dispose();
 }

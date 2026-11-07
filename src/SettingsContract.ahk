@@ -70,6 +70,7 @@ class SettingsContract {
             ["show-log", "Show application log", "diagnostics", false, false],
             ["export-diagnostics", "Export diagnostic snapshot", "diagnostics", true, false],
             ["toggle-live-previews", "Pause/resume live previews", "diagnostics", true, false],
+            ["live-preview-status", "Live preview status", "", true, false],
             ["preview-sound", "Preview sound", "sounds", false, false],
             ["stop-sound", "Stop sound preview", "sounds", false, false],
             ["check-updates", "Check for updates", "about", false, false],

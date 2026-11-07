@@ -118,8 +118,8 @@ class SettingsSchema {
         this.Field("gameLogsDirectory", "Game-log folder", "directory",,,, "Leave blank for automatic detection.")
         this.Field("chatLogsDirectory", "Chat-log folder", "directory",,,, "Used by solar-system tracking; leave blank for automatic detection.")
         this.Field("monitoringInterval", "Time between log scans", "integer", 50, 60000, "ms", "Longer intervals reduce scanning and delay alerts.")
-        this.Field("monitorOnlySelectedChars", "Monitor only selected characters", "bool")
         this.Section("Monitoring & alerts", "monitored-characters", "Monitored characters", "Game Logs Monitoring", "This list filters alerts and DPS when Monitor only selected characters is enabled.")
+        this.Field("monitorOnlySelectedChars", "Monitor only selected characters", "bool")
         this.Section("Monitoring & alerts", "systems", "Solar systems", "Game Logs Monitoring")
         this.Field("systemTrackingEnabled", "Show each character's solar system from Local chat logs", "bool")
         this.Field("systemColorsEnabled", "Use a consistent color for each solar system", "bool")
@@ -169,7 +169,7 @@ class SettingsSchema {
         ; Ordinary metadata is generated from the canonical default command list.
         for name, visible in JSON.Load(default_JSON)["_Profiles"]["Default"]["Tray Menu Settings"]["TrayMenuShortcuts"]
             this.Field("TrayCommand:" name, name, "bool",,,, "Show this command in the tray menu.", ["Tray Menu Settings", "TrayMenuShortcuts", name])
-        this.Section("Application", "performance", "Performance and compatibility", "Other")
+        this.Section("Application", "performance", "Advanced", "Other")
         this.Field("ThumbnailPollingInterval", "Time between window and focus checks", "integer", 50, 1000, "ms", "Higher values reduce window checks and delay client and focus updates.", ["Thumbnails Behavior", "ThumbnailPollingInterval"], "Thumbnails Behavior")
         this.Field("SlowThumbnailCreation", "Stagger preview creation at startup", "bool",,,, "Wait 3 seconds, then create ready previews gradually to reduce startup GPU pressure.")
         this.Field("AutoPauseOnDwmFailure", "Pause previews if Windows composition fails", "bool",,,, "Resume previews with the tray command or preview shortcut.")
@@ -191,8 +191,6 @@ class SettingsSchema {
                     field.group := section.id
             }
         }
-        ; Reuse the Log sources fields and their inheritance source on this page.
-        this.FindSection("monitored-characters").fields.Push("gameLogsMonitoringEnabled", "monitorOnlySelectedChars")
 
     }
 

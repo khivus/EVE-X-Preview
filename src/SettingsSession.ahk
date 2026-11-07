@@ -477,7 +477,11 @@ class SettingsSession {
                 if facade.ownsPreviewOwner
                     facade.S_Gui.Show("NoActivate x0 y0 w1 h1")
                 facade.settingsThumbnail := SettingsThumbnailPreview(facade)
-            case "toggle-live-previews": this.owner.ToggleLivePreviews()
+            case "live-preview-status", "toggle-live-previews":
+                if name = "toggle-live-previews"
+                    this.owner.ToggleLivePreviews()
+                paused := this.owner.HasOwnProp("livePreviewsPaused") && this.owner.livePreviewsPaused
+                return Map("paused", SettingsContract.Bool(paused), "label", paused ? "Resume live previews" : "Pause live previews", "message", paused ? "Live previews are paused." : "Live previews are running.")
             case "show-log": ProgramLog.ShowOwned(facade.S_Gui.Hwnd)
             case "export-diagnostics": SetTimer((*) => ProgramLog.ExportDialog(), -20)
             case "preview-sound":

@@ -109,7 +109,8 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
     public PendingEdit? GetPending(string key) => pending.GetValueOrDefault(key);
     public void Stage(string key, string label, string method, JsonObject arguments)
     {
-        pending[key] = new PendingEdit(key, Profile, label, method, arguments.Copy());
+        var origin = key.Split('|')[0];
+        pending[key] = new PendingEdit(key, origin is "global" or "" ? Profile : origin, label, method, arguments.Copy());
         Changed?.Invoke();
     }
     public void AppendPendingRows(string key, string label, string kind, string group, JsonArray canonicalRows, JsonArray additions)
@@ -137,29 +138,36 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
     }
     public async Task AcceptPendingAsync(string? key = null)
     {
-        var edits = pending.Values.Where(edit => key is null || edit.Key == key).ToArray();
+        await operations.WaitAsync();
         var selectedProfile = Profile;
-        try
-        {
-            foreach (var edit in edits)
-            {
-                try
-                {
-                    if (Profile != edit.Profile) await MutateAsync("select-profile", new() { ["name"] = edit.Profile });
-                    await MutateAsync(edit.Method, edit.Arguments);
-                    // Do not remove a newer edit made while the server was working.
-                    if (pending.GetValueOrDefault(edit.Key) == edit) pending.Remove(edit.Key);
+        try {
+            foreach(var edit in pending.Values.Where(edit=>key is null || edit.Key==key).ToArray()) {
+                try {
+                    if(Profile!=edit.Profile)await SendMutationAsync("select-profile",new(){["name"]=edit.Profile});
+                    await SendMutationAsync(edit.Method,edit.Arguments);
+                    if(pending.GetValueOrDefault(edit.Key)==edit)pending.Remove(edit.Key);
+                } catch(Exception error) {
+                    if(pending.GetValueOrDefault(edit.Key)==edit)pending[edit.Key]=edit with {Error=error.Message};
+                    throw;
                 }
-                catch (Exception error) { if (pending.GetValueOrDefault(edit.Key) == edit) pending[edit.Key] = edit with { Error = error.Message }; Changed?.Invoke(); throw; }
             }
+            Accept(await transport.SendAsync("client-state",SessionId,new(){["dirty"]=HasLocalProtectedWork}));
+        } catch(Exception error) {HandleError(error);throw;}
+        finally {
+            try {
+                if(Connected && Profile!=selectedProfile)await SendMutationAsync("select-profile",new(){["name"]=selectedProfile});
+            } catch(Exception error) {HandleError(error);throw;}
+            finally {operations.Release();Changed?.Invoke();}
         }
-        finally
-        {
-            if (Connected && Profile != selectedProfile) await MutateAsync("select-profile", new() { ["name"] = selectedProfile });
-        }
-        await ProtectPendingAsync(); Changed?.Invoke();
     }
     public async Task<JsonObject> MutateAsync(string method, JsonObject arguments)
+    {
+        await operations.WaitAsync();
+        try {return await SendMutationAsync(method,arguments);}
+        catch(Exception error) {HandleError(error);throw;}
+        finally {operations.Release();Changed?.Invoke();}
+    }
+    private async Task<JsonObject> SendMutationAsync(string method, JsonObject arguments)
     {
         if (method == "profile" && arguments.Text("action") is "rename" or "delete" && pending.Values.Any(edit => edit.Profile == Profile))
             throw new BridgeException("pending-edit", "Correct or undo invalid fields for this profile before renaming or removing it.");
@@ -167,19 +175,12 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
             throw new BridgeException("pending-edit", "Correct or undo invalid group member and shortcut fields before renaming or removing this group.");
         if (method == "sound" && arguments.Text("action") == "remove" && pending.Values.Any(edit => edit.Method == "sound" && edit.Arguments.Text("path").Equals(arguments.Text("path"), StringComparison.OrdinalIgnoreCase)))
             throw new BridgeException("pending-edit", "Correct or undo this sound's invalid gain before removing its library reference.");
-        await operations.WaitAsync();
-        try
-        {
-            RequireConnection();
-            if (HasLocalProtectedWork) await transport.SendAsync("client-state", SessionId, new JsonObject { ["dirty"] = true });
-            var result = await transport.SendAsync(method, SessionId, arguments.Copy());
-            if (result["session"] is not null) Accept(result);
-            else if (result["snapshot"] is JsonObject snapshot) Accept(snapshot);
-            Error = null;
-            return result;
-        }
-        catch (Exception error) { HandleError(error); throw; }
-        finally { operations.Release(); Changed?.Invoke(); }
+        RequireConnection();
+        if(HasLocalProtectedWork)await transport.SendAsync("client-state",SessionId,new(){["dirty"]=true});
+        var result=await transport.SendAsync(method,SessionId,arguments.Copy());
+        if(result["session"] is not null)Accept(result);
+        else if(result["snapshot"] is JsonObject snapshot)Accept(snapshot);
+        Error=null;return result;
     }
     public async Task<JsonObject> ReadAsync(string method, JsonObject? arguments = null)
     {

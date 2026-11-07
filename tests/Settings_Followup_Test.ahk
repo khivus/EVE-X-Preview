@@ -1,4 +1,4 @@
-TestRunner.Register("Settings followup sidebar uses pane scrollbar dragging without changing navigation selection", SettingsFollowupTreeDragTest)
+﻿TestRunner.Register("Settings followup sidebar uses pane scrollbar dragging without changing navigation selection", SettingsFollowupTreeDragTest)
 SettingsFollowupTreeDragTest() {
     app := SettingsWorkbenchFixture()
     try {
@@ -154,34 +154,59 @@ SettingsFollowupConflictsTest() {
     } finally app.Dispose()
 }
 
-TestRunner.Register("Settings followup monitored character switches share values and inheritance with log sources", SettingsFollowupMonitoringTest)
+TestRunner.Register("Settings followup monitored character filters own one source independently of log reading", SettingsFollowupMonitoringTest)
 SettingsFollowupMonitoringTest() {
     app := SettingsWorkbenchFixture()
     try {
+        app.model.Set("gameLogsMonitoringEnabled", 1)
         app.Navigate("monitored-characters")
-        for id in ["gameLogsMonitoringEnabled", "monitorOnlySelectedChars"] {
-            binding := app.Binding(id)
-            AssertTrue(binding.control.Enabled)
-            binding.control.Value := 1
-            app.BooleanChanged(binding, binding.control)
-        }
-        AssertTrue(InStr(app.monitoringNotice.Value, "Only the listed"), "Enabled monitoring status: " app.monitoringNotice.Value)
+        AssertEqual(1, app.bindings.Length)
+        binding := app.Binding("monitorOnlySelectedChars")
+        binding.control.Value := 1
+        app.BooleanChanged(binding, binding.control)
+        AssertTrue(InStr(app.monitoringNotice.Value, "Only the listed"))
+        AssertEqual("monitored-characters", SettingsSchema.Fields["monitorOnlySelectedChars"].group)
         app.Navigate("sources")
+        AssertEqual(4, app.bindings.Length)
         AssertEqual(1, app.Binding("gameLogsMonitoringEnabled").control.Value)
-        AssertEqual(1, app.Binding("monitorOnlySelectedChars").control.Value)
         app.CreateProfile("Fleet")
         app.SetSectionInheritance("sources", true)
+        app.SetSectionInheritance("monitored-characters", false)
         app.Navigate("monitored-characters")
-        AssertFalse(app.Binding("monitorOnlySelectedChars").control.Enabled)
-        app.SetSectionInheritance("sources", false)
+        AssertTrue(app.Binding("monitorOnlySelectedChars").control.Enabled)
+        app.SetSectionInheritance("monitored-characters", true)
         app.Render()
-        AssertTrue(app.Binding("monitorOnlySelectedChars").control.Enabled, "Custom source switch must become editable.")
+        AssertFalse(app.Binding("monitorOnlySelectedChars").control.Enabled)
+        app.SetSectionInheritance("monitored-characters", false)
+        app.Render()
         app.Binding("monitorOnlySelectedChars").control.Value := 0
         app.BooleanChanged(app.Binding("monitorOnlySelectedChars"), app.Binding("monitorOnlySelectedChars").control)
-        AssertTrue(InStr(app.monitoringNotice.Value, "All detected"), "Disabled filter status: " app.monitoringNotice.Value)
+        AssertTrue(InStr(app.monitoringNotice.Value, "All detected"))
         AssertEqual(1, app.model.Profiles["Default"]["Game Logs Monitoring"]["monitorOnlySelectedChars"])
         AssertEqual(0, app.owner.saves)
     } finally app.Dispose()
+}
+
+TestRunner.Register("Settings followup character-filter migration preserves mixed effective sources", SettingsCharacterFilterMigrationTest)
+SettingsCharacterFilterMigrationTest() {
+    for pair in [[1,0],[0,1],[1,1],[0,0]] {
+        model := SettingsModel(JSON.Load(default_JSON))
+        model.AddProfile("Mixed")
+        defaultLogs := model.Profiles["Default"]["Game Logs Monitoring"]
+        localLogs := model.Profiles["Mixed"]["Game Logs Monitoring"]
+        defaultLogs["monitorOnlySelectedChars"] := 1, defaultLogs["charsToMonitor"] := ["Default pilot"]
+        localLogs["monitorOnlySelectedChars"] := 0, localLogs["charsToMonitor"] := ["Local pilot"]
+        profile := model.Profiles["Mixed"]
+        profile["SettingsSectionsVersion"] := 1
+        profile["SettingsInheritance"]["sources"] := pair[1]
+        profile["SettingsInheritance"]["monitored-characters"] := pair[2]
+        migrated := SettingsModel(model.config)
+        migrated.SelectProfile("Mixed")
+        AssertEqual(pair[1], migrated.Get("monitorOnlySelectedChars"))
+        AssertDeepEqual([[pair[2] ? "Default pilot" : "Local pilot"]], migrated.Rows("monitored-characters"))
+        AssertEqual(2, migrated.Profiles["Mixed"]["SettingsSectionsVersion"])
+        AssertFalse(migrated.Dirty)
+    }
 }
 
 TestRunner.Register("Settings followup Apply captures and restores the selected page window and scroll once", SettingsFollowupResumeTest)

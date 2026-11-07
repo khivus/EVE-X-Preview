@@ -141,6 +141,23 @@ class SettingsModel {
                 profile["SettingsMigrationBackup"] := backup
             profile["SettingsSectionsVersion"] := 1
         }
+        ; The character filter now belongs to the same source as its list.
+        ; Materialize mixed old sources so their effective values survive.
+        snapshots := this.Clone(this.Profiles)
+        for name, profile in this.Profiles {
+            if profile.Get("SettingsSectionsVersion", 0) >= 2
+                continue
+            flags := profile["SettingsInheritance"]
+            if name != "Default" && !!flags.Get("sources", 0) != !!flags.Get("monitored-characters", 0) {
+                logs := profile["Game Logs Monitoring"], backup := profile.Get("SettingsMigrationBackup", Map())
+                backup["monitored-characters-v2"] := Map("monitorOnlySelectedChars", logs["monitorOnlySelectedChars"], "charsToMonitor", this.Clone(logs["charsToMonitor"]))
+                logs["monitorOnlySelectedChars"] := snapshots[flags.Get("sources", 0) ? "Default" : name]["Game Logs Monitoring"]["monitorOnlySelectedChars"]
+                logs["charsToMonitor"] := this.Clone(snapshots[flags.Get("monitored-characters", 0) ? "Default" : name]["Game Logs Monitoring"]["charsToMonitor"])
+                flags["monitored-characters"] := 0
+                profile["SettingsMigrationBackup"] := backup
+            }
+            profile["SettingsSectionsVersion"] := 2
+        }
     }
 
     Source(group, profile?) {

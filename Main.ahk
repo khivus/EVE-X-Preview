@@ -146,6 +146,7 @@ Load_JSONUnlocked(interactive := true) {
         MigrateThumbnailNameSettings(UJSON)
         SettingsFonts.NormalizeLegacyDefaults(UJSON)
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
+        _JSON := SettingsModel(_JSON).config
 
         ; Atomic write: write to tmp file then move/rename to target
         if FileExist(tmpPath)
