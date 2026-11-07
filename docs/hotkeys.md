@@ -19,6 +19,10 @@ A character, character-group and Quick Group shortcut may share a key. A Quick G
 
 **Pause all hotkeys** pauses every application hotkey except its own resume binding. The tray remains usable. The two pause states are independent: resuming all hotkeys preserves a separate pause of EVE switching. Both commands have optional tray entries under Application → Tray menu commands.
 
+Command hotkeys show a brief confirmation near the pointer with the resulting state or a blocked-action explanation. A newer confirmation replaces the previous one and restarts its 1.5-second timeout. Reload and Exit show their request before a short delay and recheck Settings draft protection before proceeding. Profile activation confirms after its restart. Window-switching shortcuts and thumbnail mouse gestures do not produce these confirmations.
+
+Held character-group and Quick Group shortcuts advance using a still-valid pending activation without waiting for focus confirmation. Their callbacks run at normal priority so thumbnail timers can continue; the internal foreground activation remains higher priority. Confirmed EVE activation updates its thumbnail border immediately, independent of the delay used when switching away from EVE.
+
 Under **Switching → Switching behavior**, the minimum interval while holding a group shortcut accepts **30–10000 ms**; the default remains 100 ms.
 
 A plain-key switching shortcut can also coexist with a more-specific modifier combination, such as backtick for a group and Alt+backtick for cycling login screens. Automatic wildcard matching does not make this pair a conflict. The checker still warns for duplicate modifier chords, key aliases and ambiguous overlapping combinations; it does not change shortcut registration.

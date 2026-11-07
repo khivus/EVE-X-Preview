@@ -2,6 +2,60 @@
 class SettingsBackup {
     static Root := ""
     static sequence := 0
+    static SuggestedRepair := ""
+
+    static LatestValid(installation) {
+        installation := SettingsBridge.NormalizeInstallation(installation)
+        candidates := ""
+        backupDirectory := this.Directory(installation)
+        for directory in [backupDirectory, installation] {
+            pattern := directory = backupDirectory ? "*.json" : "EVE-X-Preview*.json"
+            loop files directory "\" pattern, "F" {
+                if A_LoopFileFullPath = installation "\EVE-X-Preview.json" || InStr(A_LoopFileName, ".tmp")
+                    continue
+                try candidates .= FileGetTime(A_LoopFileFullPath, "M") "`t" A_LoopFileFullPath "`n"
+            }
+        }
+        for item in StrSplit(RTrim(Sort(candidates, "R"), "`n"), "`n") {
+            if item = ""
+                continue
+            path := SubStr(item, InStr(item, "`t") + 1)
+            try {
+                if FileGetSize(path) > 16777216
+                    continue
+                config := JSON.Load(FileRead(path, "UTF-8"))
+                if config is Map && config.Has("_Profiles") && config["_Profiles"] is Map && config["_Profiles"].Has("Default") && config["_Profiles"]["Default"] is Map {
+                    SettingsModel(config)
+                    return path
+                }
+            }
+        }
+        return ""
+    }
+
+    static HelpText(installation) {
+        candidate := this.SuggestedRepair
+        return "If settings are lost or corrupted, check automatic snapshots and migration backups in:`n" this.Directory(installation)
+            . "`n`nAlso check EVE-X-Preview*.json beside the app, especially in an older installation."
+            . "`n`n" (candidate != "" ? "Latest readable saved copy suggested for repair:`n" candidate : "No readable saved copy was found automatically. Check older installation folders too.")
+            . "`n`nTo repair: close EVE-X-Preview and Settings, keep a copy of the current config, copy a backup into the app folder as EVE-X-Preview.json, then reopen the app. Try an older snapshot or migration copy if needed."
+            . "`n`nIf recovery still fails, report the problem to khivus on GitHub or Discord:`nhttps://github.com/khivus/EVE-X-Preview/issues/new`nhttps://discord.gg/d9EzgUXnT6"
+    }
+
+    static ShowGuidance(installation) {
+        window := Gui(, "EVE-X-Preview — Settings recovery")
+        window.SetFont("s10", "Segoe UI")
+        window.AddText("w640", this.HelpText(installation))
+        window.AddButton("w155", "Open settings backups").OnEvent("Click", (*) => this.Open(installation))
+        window.AddButton("x+8 w140", "Open app folder").OnEvent("Click", (*) => Run('explorer.exe "' installation '"'))
+        window.AddButton("x+8 w100", "GitHub").OnEvent("Click", (*) => Run("https://github.com/khivus/EVE-X-Preview/issues/new"))
+        window.AddButton("x+8 w100", "Discord").OnEvent("Click", (*) => Run("https://discord.gg/d9EzgUXnT6"))
+        window.AddButton("x+8 w70 Default", "Close").OnEvent("Click", (*) => window.Destroy())
+        window.OnEvent("Close", (*) => window.Destroy())
+        window.OnEvent("Escape", (*) => window.Destroy())
+        window.Show()
+        return window
+    }
 
     static Directory(installation) => (this.Root != "" ? this.Root : EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Backups") "\" SettingsBridge.InstallationId(installation)
 

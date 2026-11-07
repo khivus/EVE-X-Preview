@@ -9,6 +9,202 @@ class Update1704ShortcutFixture extends DirectPriorityFixture {
     TrayMenu() => this.trayRefreshes++
 }
 
+class FeedbackCommandFixture extends Update1704ShortcutFixture {
+    messages := []
+    HotkeyFeedback(message) => this.messages.Push(message)
+    ShowHideThumbnails() => this.HideThumbnails := !this.HideThumbnails
+    Toggle_ClickThrough(*) => this.ClickThroughActive := !this.ClickThroughActive
+    ToggleLivePreviews(*) => this.livePreviewsPaused := !this.livePreviewsPaused
+    CloseActiveEVEWin(*) => false
+    CloseAllEVEWindows(*) => 2
+    RequestRuntimeAction(action, hotkey := false) => false
+}
+
+class FeedbackRuntimeFixture extends SettingsWorkbenchOwnerFixture {
+    messages := []
+    HotkeyFeedback(message) => this.messages.Push(message)
+}
+class FeedbackBlockingEditor {
+    closed := false
+    activeDialog := true
+    UpdateStatus(*) {
+    }
+}
+TestRunner.Register("CommandFeedback reload and exit receipts defer execution and recheck draft protection", CommandFeedbackRuntimeTest)
+CommandFeedbackRuntimeTest() {
+    app := FeedbackRuntimeFixture()
+    AssertTrue(app.RequestRuntimeAction("reload",true))
+    AssertEqual("Reload requested",app.messages[-1])
+    AssertEqual(0,app.lifecycleActions.Length)
+    Sleep(800)
+    AssertEqual(["reload"],app.lifecycleActions)
+    AssertTrue(app.RequestRuntimeAction("exit",true))
+    app.settingsWorkbench := FeedbackBlockingEditor()
+    Sleep(800)
+    AssertEqual(["reload"],app.lifecycleActions)
+    AssertTrue(InStr(app.messages[-1],"cancelled"))
+}
+
+class ShortcutLookupCountFixture extends Update1704ShortcutFixture {
+    lookups := 0
+    ShortcutTargetAvailable(title) {
+        this.lookups++
+        return true
+    }
+}
+TestRunner.Register("RecoveryFollowup unrelated direct bindings do not cause window lookups on every repeat", RecoveryFollowupLookupTest)
+RecoveryFollowupLookupTest() {
+    app := ShortcutLookupCountFixture(), bindings := []
+    loop 500
+        bindings.Push(Map("EVE - Unrelated " A_Index,"F23"))
+    app._Hotkeys := bindings
+    loop 20
+        AssertFalse(app.DirectShortcutAvailable("*F22"))
+    AssertEqual(0,app.lookups)
+    AssertTrue(app.DirectShortcutAvailable("*F23"))
+    AssertEqual(1,app.lookups)
+}
+
+TestRunner.Register("CommandFeedback command hotkeys confirm their resulting states and exclude switching", CommandFeedbackStateTest)
+CommandFeedbackStateTest() {
+    app := FeedbackCommandFixture()
+    try {
+        HotkeyFeedback.Run(app,"Suspend_Hotkeys_Hotkey")
+        AssertEqual("EVE switching hotkeys paused",app.messages[-1])
+        HotkeyFeedback.Run(app,"Suspend_Hotkeys_Hotkey")
+        AssertEqual("EVE switching hotkeys resumed",app.messages[-1])
+        HotkeyFeedback.Run(app,"Suspend_All_Hotkeys_Hotkey")
+        AssertTrue(A_IsSuspended)
+        AssertTrue(InStr(app.messages[-1],"same shortcut"))
+        HotkeyFeedback.Run(app,"Suspend_All_Hotkeys_Hotkey")
+        AssertFalse(A_IsSuspended)
+        AssertEqual("All hotkeys resumed",app.messages[-1])
+        HotkeyFeedback.Run(app,"HideThumbnailsHotkey")
+        AssertEqual("Thumbnails hidden",app.messages[-1])
+        HotkeyFeedback.Run(app,"HideThumbnailsHotkey")
+        AssertEqual("Thumbnails shown",app.messages[-1])
+        HotkeyFeedback.Run(app,"ClickThroughHotkey")
+        AssertEqual("Thumbnail click-through enabled",app.messages[-1])
+        HotkeyFeedback.Run(app,"ToggleLivePreviewsHotkey")
+        AssertEqual("Live previews paused",app.messages[-1])
+        HotkeyFeedback.Run(app,"ToggleLivePreviewsHotkey")
+        AssertEqual("Live previews resumed",app.messages[-1])
+        HotkeyFeedback.Run(app,"Close_Active_EVE_Win_Hotkey")
+        AssertEqual("No focused EVE client to close",app.messages[-1])
+        HotkeyFeedback.Run(app,"Close_All_EVE_Win_Hotkey")
+        AssertEqual("Close requested for 2 EVE clients",app.messages[-1])
+        HotkeyFeedback.Run(app,"Reload_Program_Hotkey")
+        AssertTrue(InStr(app.messages[-1],"blocked"))
+        HotkeyFeedback.Run(app,"Exit_Program_Hotkey")
+        AssertTrue(InStr(app.messages[-1],"blocked"))
+        count := app.messages.Length
+        for id in ["SwitchToPreviousWindow_Hotkey","CycleEveryLoggedIn_Hotkey","Login_Screen_Cycle_Hotkey","QuickGroupHotkey","ActivateThumbnail"]
+            HotkeyFeedback.Run(app,id)
+        AssertEqual(count,app.messages.Length)
+    } finally Suspend(false)
+}
+
+TestRunner.Register("CommandFeedback a newer receipt replaces the previous tooltip and restarts its expiry", CommandFeedbackTooltipTest)
+CommandFeedbackTooltipTest() {
+    visible(text) {
+        for hwnd in WinGetList("ahk_class tooltips_class32 ahk_pid " DllCall("GetCurrentProcessId"))
+            if InStr(WinGetTitle("ahk_id " hwnd),text)
+                return true
+        return false
+    }
+    try {
+        HotkeyFeedback.Show("First command receipt")
+        AssertTrue(visible("First command receipt"))
+        Sleep(1000)
+        HotkeyFeedback.Show("Latest command receipt")
+        Sleep(650)
+        AssertTrue(visible("Latest command receipt"))
+        Sleep(1000)
+        AssertFalse(visible("Latest command receipt"))
+    } finally HotkeyFeedback.Hide()
+}
+
+TestRunner.Register("RecoveryFollowup cycle requests advance without waiting for foreground confirmation", RecoveryFollowupCycleTest)
+RecoveryFollowupCycleTest() {
+    previous := A_DetectHiddenWindows
+    DetectHiddenWindows(true)
+    app := GroupActivationFixture(), a := Gui(), b := Gui()
+    try {
+        app.foregrounds := [a.Hwnd]
+        app.MaxActiveWindowRetries := 100
+        app.ActiveWindowRetryInterval := 100
+        loop 20 {
+            app.pendingEVEActivation := {hwnd:b.Hwnd, source:a.Hwnd, expires:A_TickCount+250}
+            AssertEqual(2, app._GetCycleGroupIndex([a.Hwnd,b.Hwnd]))
+        }
+        AssertEqual(20, app.reads, "One foreground read per repeated cycle; no wait/retry loop.")
+        app.foregrounds := [b.Hwnd]
+        AssertEqual(2, app._GetCycleGroupIndex([a.Hwnd,b.Hwnd]))
+        AssertEqual(0, app.pendingEVEActivation)
+    } finally {
+        a.Destroy(), b.Destroy()
+        DetectHiddenWindows(previous)
+    }
+}
+
+TestRunner.Register("RecoveryFollowup switch hotkeys allow thumbnail timers to run during a held callback", RecoveryFollowupPriorityTest)
+RecoveryFollowupPriorityTest() {
+    app := WindowHotkeyRegistrationFixture()
+    state := {ticks:0, during:0, complete:false, active:true}
+    condition := (*) => state.active
+    timer := (*) => state.ticks++
+    callback(*) {
+        before := state.ticks
+        Sleep(120)
+        state.during := state.ticks-before
+        state.complete := true
+    }
+    previousLevel := A_SendLevel
+    HotIf(condition)
+    try {
+        app.RegisterWindowHotkey("F18", callback, "Responsive group regression")
+        SetTimer(timer,10)
+        SendLevel(1)
+        SendEvent("{F18}")
+        Sleep(300)
+        AssertTrue(state.complete)
+        AssertTrue(state.during>=2,"Thumbnail-priority timers must not be starved by the switching callback.")
+    } finally {
+        state.active := false
+        SetTimer(timer,0)
+        try Hotkey("*F18","Off")
+        HotIf()
+        SendLevel(previousLevel)
+    }
+}
+
+TestRunner.Register("RecoveryFollowup guidance chooses a readable backup and skips damaged newer copies", RecoveryFollowupSuggestionTest)
+RecoveryFollowupSuggestionTest() {
+    root := SettingsBackup.Root
+    folder := A_ScriptDir "\..\.vs\update1704-tests\suggestion-" A_TickCount
+    DirCreate(folder)
+    SettingsBackup.Root := folder "\backups"
+    try {
+        good := folder "\EVE-X-Preview.old.backup.json"
+        FileAppend(default_JSON,good,"UTF-8")
+        bad := folder "\EVE-X-Preview.new.backup.json"
+        FileAppend("broken json",bad,"UTF-8")
+        FileSetTime("20250101000000",good,"M")
+        FileSetTime("20260101000000",bad,"M")
+        AssertEqual(SettingsBridge.NormalizeInstallation(good),SettingsBridge.NormalizeInstallation(SettingsBackup.LatestValid(folder)))
+        SettingsBackup.CollectMigrationBackups(folder)
+        SettingsBackup.SuggestedRepair := SettingsBackup.LatestValid(folder)
+        AssertTrue(InStr(SettingsBridge.NormalizeInstallation(SettingsBackup.SuggestedRepair),SettingsBridge.NormalizeInstallation(SettingsBackup.Directory(folder))))
+        text := SettingsBackup.HelpText(folder)
+        AssertTrue(InStr(text,"discord.gg/d9EzgUXnT6"))
+        AssertTrue(InStr(text,"github.com/khivus/EVE-X-Preview/issues/new"))
+        AssertTrue(InStr(text,"older installation"))
+        window := SettingsBackup.ShowGuidance(folder)
+        AssertTrue(DllCall("IsWindowVisible","Ptr",window.Hwnd))
+        window.Destroy()
+    } finally SettingsBackup.Root := root
+}
+
 class Update1704DispatchFixture extends Update1704ShortcutFixture {
     shortcutTestActive := true
     calls := []
@@ -280,6 +476,9 @@ Update1704BorderDelayTest() {
         app.ShowActiveBorder(first.Hwnd)
         app.UpdateThumbnailFocusLoss(second.Hwnd, 2300)
         AssertFalse(border.ActiveHighlight, "Another tracked client clears the previous active border immediately.")
+        app.foreground := second.Hwnd
+        app.RefreshActivatedThumbnail(second.Hwnd)
+        AssertTrue(app.ThumbWindows.%second.Hwnd%["Border"].ActiveHighlight, "Confirmed EVE activation refreshes its border immediately.")
         app.foreground := first.Hwnd
         app.ShowActiveBorder(first.Hwnd)
         app.UnfocusedBorderClearDelay := 0

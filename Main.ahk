@@ -6,6 +6,7 @@
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
 #Include "src/SettingsBackup.ahk"
+#Include "src/HotkeyFeedback.ahk"
 #Include "src/PreviewStartupQueue.ahk"
 #Include "src/ThumbnailRecovery.ahk"
 #Include "src/NPCDatabase.ahk"
@@ -113,6 +114,7 @@ Load_JSONUnlocked(interactive := true) {
     ; Load default JSON (throws on failure)
     DJSON := JSON.Load(defaultPath)
     SettingsBackup.CollectMigrationBackups(A_WorkingDir)
+    SettingsBackup.SuggestedRepair := SettingsBackup.LatestValid(A_WorkingDir)
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
@@ -166,7 +168,7 @@ Load_JSONUnlocked(interactive := true) {
             throw e
         MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
-        value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")
+        value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.`n`n" SettingsBackup.HelpText(A_WorkingDir),, "YesNo")
         if (value = "No") {
             ProgramLog.Add("Settings recovery declined; exiting")
             ExitApp()

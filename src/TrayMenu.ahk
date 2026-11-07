@@ -221,6 +221,8 @@ Class TrayMenu extends Settings_Gui {
             SetTimer(This.Save_Settings_Delay_Timer, 0)
             ProgramLog.Add(source " profile switch requested; from=" This.LastUsedProfile "; to=" profileName)
             This.LastUsedProfile := profileName
+            if source = "Hotkey"
+                This._JSON["HotkeyFeedbackOnStartup"] := "Profile activated: " profileName
             This.SaveJsonToFile()
             This.ReloadForProfile()
         } finally {
@@ -233,7 +235,11 @@ Class TrayMenu extends Settings_Gui {
         Reload()
     }
 
-    RequestRuntimeAction(action) {
+    RequestRuntimeAction(action, hotkey := false) {
+        if hotkey && This.HasOwnProp("pendingCommandHotkey") && This.pendingCommandHotkey {
+            This.HotkeyFeedback("A reload or exit is already requested.")
+            return true
+        }
         if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
             return false
         if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
@@ -252,8 +258,19 @@ Class TrayMenu extends Settings_Gui {
         if This.HasOwnProp("Save_Settings_Delay_Timer")
             SetTimer(This.Save_Settings_Delay_Timer, 0)
         This.SaveJsonToFile()
-        This.PerformRuntimeAction(action)
+        if hotkey {
+            This.pendingCommandHotkey := true
+            This.HotkeyFeedback(action = "exit" ? "Exit requested" : "Reload requested")
+            SetTimer(ObjBindMethod(This, "CompleteCommandHotkey", action), -650)
+        } else
+            This.PerformRuntimeAction(action)
         return true
+    }
+
+    CompleteCommandHotkey(action) {
+        This.pendingCommandHotkey := false
+        if !This.RequestRuntimeAction(action)
+            This.HotkeyFeedback("Command cancelled: finish, apply or discard Settings first.")
     }
 
     PerformRuntimeAction(action) {
@@ -274,6 +291,7 @@ Class TrayMenu extends Settings_Gui {
     }
 
     CloseAllEVEWindows(*) {
+        requested := 0
         try {
             list := WinGetList(This.EVEExe)
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
@@ -287,8 +305,10 @@ Class TrayMenu extends Settings_Gui {
                     continue
 
                 PostMessage 0x0112, 0xF060, , , hwnd
+                requested++
                 Sleep(50)
             }
         }
+        return requested
     }
 }
