@@ -293,11 +293,20 @@ public sealed partial class MainWindow
         Check(search.Text=="" && !clearSearch.IsVisible,"Search clear button restores the complete navigation");
         var retainedSize=session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value");
         await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=retainedSize+1});
+        connectionPoll.Stop();
+        reconnecting=true;
         var host=await session.ReadAsync("hello");using(var hostProcess=System.Diagnostics.Process.GetProcessById(host.Int("pid"))) {hostProcess.Kill();await hostProcess.WaitForExitAsync();}
-        await Task.Delay(2600);UpdateStatus();
+        try {await session.ReadAsync("snapshot");}catch(BridgeException) {} UpdateStatus();
         Check(!session.Connected && connectionBanner.IsVisible && connectionMessage.Text!.Contains("draft") && !page.IsEnabled,"Unexpected disconnection displays a persistent explanation and retains the draft");
-        await ConnectAsync();UpdateStatus();
-        Check(session.Profile=="Review fixture" && session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value")==retainedSize+1 && !connectionBanner.IsVisible && !problems.IsEnabled,"Reconnect restores the edited profile and draft without stale Problems");
+        reconnecting=false;connectionPoll.Start();
+        var reconnectWatch=System.Diagnostics.Stopwatch.StartNew();
+        while((!session.Connected || reconnecting) && reconnectWatch.Elapsed<TimeSpan.FromSeconds(30))await Task.Delay(100);
+        UpdateStatus();
+        Check(session.Connected && session.Profile=="Review fixture" && session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value")==retainedSize+1 && !connectionBanner.IsVisible && !problems.IsEnabled,"Automatic reconnect restores the edited profile and draft without stale Problems");
+        host=await session.ReadAsync("hello");using(var hostProcess=System.Diagnostics.Process.GetProcessById(host.Int("pid"))) {hostProcess.Kill();await hostProcess.WaitForExitAsync();}
+        await Task.Delay(2300);reconnectWatch.Restart();
+        while((!session.Connected || reconnecting) && reconnectWatch.Elapsed<TimeSpan.FromSeconds(30))await Task.Delay(100);
+        Check(session.Connected && session.Snapshot.Object("values").Object("ThumbnailTextSize").Number("value")==retainedSize+1,"A second connection loss recovers automatically without losing the retained draft");
         await session.MutateAsync("set",new(){["id"]="ThumbnailTextSize",["value"]=retainedSize});
         await session.MutateAsync("select-profile",new(){["name"]="Default"});
         await session.MutateAsync("set",new(){["id"]="ThumbnailOpacity",["value"]=opacity});

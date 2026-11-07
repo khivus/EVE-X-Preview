@@ -22,6 +22,7 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
     public JsonObject Snapshot { get; private set; } = new();
     public JsonObject Validation { get; private set; } = new();
     public bool Connected { get; private set; }
+    public bool AwaitingRestart => appliedAwaitingReconnect;
     public string Role { get; private set; } = "";
     public string SessionId => Snapshot.Text("session");
     public string Profile => Snapshot.Text("profile", "Default");
@@ -32,6 +33,17 @@ public sealed class EditorSession(IBridgeTransport transport) : IAsyncDisposable
     public IReadOnlyCollection<PendingEdit> Pending => pending.Values;
     public event Action? Changed;
     public string? Error { get; private set; }
+
+    public async Task ReconnectAsync(Func<int,Task>? beforeAttempt=null, CancellationToken cancellation=default)
+    {
+        for(var attempt=1;attempt<=5;attempt++) {
+            if(beforeAttempt is not null)await beforeAttempt(attempt);
+            try {await ConnectAsync(cancellation);await ValidateAsync();return;}
+            catch(Exception error) when(attempt<5 && (error is IOException || error is BridgeException bridge && bridge.IsDisconnected)) {
+                await Task.Delay(TimeSpan.FromSeconds(attempt),cancellation);
+            }
+        }
+    }
 
     public async Task ConnectAsync(CancellationToken cancellation = default)
     {

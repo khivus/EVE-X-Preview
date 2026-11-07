@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     private string sectionId = "appearance";
     private bool busy, controlsLocked, closing, closePromptOpen, updatingProfiles, rendering, suppressSearchRefresh;
     private int navigationRequest;
+    private bool reconnecting;
+    private int automaticReconnectFailures;
     private string? renderedScrollKey;
     private Vector requestedScroll;
     private string activity = "";
@@ -69,7 +71,7 @@ public sealed partial class MainWindow : Window
         var actions = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, MaxWidth=Math.Max(400,Width-260) };
         SizeChanged+=(_,_)=>actions.MaxWidth=Math.Max(400,ClientSize.Width-260);
         draft.TextWrapping=Avalonia.Media.TextWrapping.Wrap;
-        reconnect = ActionButton("Reconnect", () => ConnectAsync(), false);
+        reconnect = ActionButton("Reconnect", () => AutoReconnectAsync(), false);
         undo = ActionButton("Undo last edit", UndoLastAsync, true);
         accept = ActionButton("Undo this category", UndoCategoryAsync, true);
         discard = ActionButton("Discard all", DiscardAsync, true);
@@ -92,8 +94,9 @@ public sealed partial class MainWindow : Window
         instance.ActivationRequested += ActivateRequested;
         Closing += OnClosing;
         connectionPoll.Tick += async (_, _) => {
-            if(closing || busy || !session.Connected || session.HasActiveModal || liveEdits.CurrentCount == 0)return;
-            try { await session.ReadAsync("snapshot");if(sectionId=="diagnostics")await RefreshPreviewStatusAsync(); } catch(Exception) { UpdateStatus(); }
+            if(closing || busy || reconnecting || session.HasActiveModal || liveEdits.CurrentCount == 0)return;
+            if(!session.Connected) {if(automaticReconnectFailures==0)await AutoReconnectAsync();return;}
+            try { await session.ReadAsync("snapshot");if(sectionId=="diagnostics")await RefreshPreviewStatusAsync(); } catch(Exception) { UpdateStatus();await AutoReconnectAsync(); }
         };
         Closed += async (_, _) => {connectionPoll.Stop();updatePoll.Stop();instance.ActivationRequested -= ActivateRequested; await session.DisposeAsync(); };
         Opened += async (_, _) =>
@@ -128,6 +131,7 @@ public sealed partial class MainWindow : Window
     {
         await session.ConnectAsync();
         await session.ValidateAsync();
+        automaticReconnectFailures=0;
         connectionPoll.Start();
         if(!session.Dirty && session.Metadata is {} metadata)ThemeController.RememberTheme(session.Snapshot.Object("values").Object("SettingsTheme").Text("value","system"),metadata);
         if (session.Metadata?.Sections.All(s => s.Text("id") != sectionId) == true) sectionId = session.Metadata.Sections.FirstOrDefault().Text("id");
@@ -182,10 +186,10 @@ public sealed partial class MainWindow : Window
         undo.IsEnabled = !busy && session.Connected && (editHistory.Count != 0 || pending != 0);
         reconnect.IsVisible = !session.Connected; reconnect.IsEnabled = !busy;
         connectionBanner.IsVisible = !session.Connected;
-        connectionMessage.Text = "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue." + (session.Error is { Length: > 0 } reason ? "\n" + reason : "");
-        profiles.IsEnabled = !controlsLocked && session.Connected;
-        search.IsEnabled = !controlsLocked && session.Connected;
-        page.IsEnabled = !controlsLocked && session.Connected;
+        connectionMessage.Text = (session.AwaitingRestart && automaticReconnectFailures==0 ? "Settings saved. Waiting for the application to restart and reconnecting automatically. Your selected profile is retained." : reconnecting ? "Reconnecting automatically. Your draft and unfinished entries are retained." : "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue.") + (session.Error is { Length: > 0 } reason ? "\n" + reason : "");
+        profiles.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
+        search.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
+        page.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
         RefreshAboutControls();
         if (!rendering)
         {
@@ -347,15 +351,33 @@ public sealed partial class MainWindow : Window
         if (restart)
         {
             notice.Text = "Settings saved. Waiting for the application to restart";
-            for (var attempt = 0; attempt < 16; attempt++)
-            {
-                await Task.Delay(500);
-                try { await ConnectAsync(); return; }
-                catch (BridgeException e) when (e.IsDisconnected) { }
-            }
-            throw new BridgeException("disconnected", "Settings were saved, but the application has not reconnected. Use Reconnect; page and window state are retained.");
+            automaticReconnectFailures=0;
+            await Task.Delay(750);
+            await AutoReconnectAsync();
+            return;
         }
         RenderPage();
+    }
+
+    private async Task AutoReconnectAsync()
+    {
+        if(reconnecting || closing)return;
+        reconnecting=true;UpdateStatus();
+        try {
+            await session.ReconnectAsync(attempt=> {notice.Text=$"Reconnecting ({attempt}/5)…";return Task.CompletedTask;});
+            automaticReconnectFailures=0;
+            await ConnectPresentationAsync();
+        } catch(Exception e) {automaticReconnectFailures++;ShowError(e);}
+        finally {reconnecting=false;UpdateStatus();}
+    }
+    private Task ConnectPresentationAsync()
+    {
+        error.IsVisible=false;
+        connectionPoll.Start();
+        RenderNavigation();RenderPage();
+        foreach(var edit in session.Pending.ToArray())QueueValidation(edit.Key);
+        _=StartBackgroundUpdatesAsync();
+        return Task.CompletedTask;
     }
     private async Task DiscardAsync()
     {

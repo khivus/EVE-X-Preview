@@ -12,11 +12,28 @@ internal static class Program
             if (args.Length == 2 && args[0] == "--integration") await IntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--retry-integration") await RetryIntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--handoff-integration") await HandoffIntegrationAsync(Path.GetFullPath(args[1]));
-            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync(); }
+            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync();await ReconnectRetriesAsync(); }
             else throw new ArgumentException("Use no arguments for unit tests or --integration <isolated installation directory>.");
             Console.WriteLine($"PASS: {passed} assertions."); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine("FAIL: " + error); return 1; }
+    }
+    private static async Task ReconnectRetriesAsync() {
+        var transport=new ScriptedTransport();await using var editor=new EditorSession(transport);
+        await editor.ConnectAsync();await editor.MutateAsync("select-profile",new(){["name"]="Other"});
+        editor.Stage("Other|appearance|value","Retained value","set",new(){["id"]="value",["value"]="pending"});
+        transport.MetadataFailures=2;var attempts=new List<int>();
+        await editor.ReconnectAsync(attempt=>{attempts.Add(attempt);return Task.CompletedTask;});
+        Check(attempts.SequenceEqual(new[]{1,2,3}) && editor.Connected && editor.Profile=="Other" && editor.Pending.Count==1,"automatic reconnect retries transient failures and retains profile and unfinished input");
+        transport.MetadataFailures=5;attempts.Clear();
+        await ThrowsAsync<BridgeException>(()=>editor.ReconnectAsync(attempt=>{attempts.Add(attempt);return Task.CompletedTask;}),"automatic reconnect stops after five attempts");
+        Check(attempts.Count==5 && !editor.Connected && editor.Pending.Count==1,"exhausted reconnect preserves unfinished input for a manual retry");
+        transport.MetadataFailures=0;await editor.ReconnectAsync();
+        Check(editor.Connected,"manual retry can reconnect after the automatic budget is exhausted");
+        await editor.DiscardAsync();await editor.MutateAsync("select-profile",new(){["name"]="Other"});
+        transport.Restart=true;transport.ResetProfileOnBegin=true;await editor.ApplyAsync();attempts.Clear();
+        await editor.ReconnectAsync(attempt=>{attempts.Add(attempt);if(attempt==3)transport.Pid++;return Task.CompletedTask;});
+        Check(attempts.Count==3 && editor.Connected && editor.Profile=="Other" && !transport.RecoveredOnLastBegin,"Apply reconnect waits for the new runtime and retains the edited profile without replaying the saved draft");
     }
     private static void Check(bool condition, string label)
     {
@@ -267,7 +284,7 @@ internal sealed class ScriptedTransport : IBridgeTransport
     private string profile = "Default";
     public string LastSetProfile = "";
     public int Pid = 501, BeginCount;
-    public int NotReadyHellos,HelloCount;
+    public int NotReadyHellos,HelloCount,MetadataFailures;
     public bool LoseApplyResponse;
     public bool ResetProfileOnBegin;
     public int DelayedRecoveryAttempts;
@@ -286,7 +303,7 @@ internal sealed class ScriptedTransport : IBridgeTransport
         switch (method)
         {
             case "hello": HelloCount++;return Task.FromResult(new JsonObject { ["bridgeVersion"] = 1, ["schemaVersion"] = 1, ["ready"] = NotReadyHellos--<=0, ["role"] = "runtime", ["pid"] = Pid });
-            case "metadata": return Task.FromResult(new JsonObject { ["bridgeVersion"] = 1, ["schemaVersion"] = 1 });
+            case "metadata": if(MetadataFailures-->0)throw new BridgeException("timeout","Transient metadata failure");return Task.FromResult(new JsonObject { ["bridgeVersion"] = 1, ["schemaVersion"] = 1 });
             case "begin": BeginCount++;if(ResetProfileOnBegin)profile="Default"; RecoveredOnLastBegin = arguments?["recovery"] is not null; Recovered |= RecoveredOnLastBegin; break;
             case "client-state": ClientDirty = arguments.Bool("dirty"); break;
             case "select-profile": profile = arguments.Text("name"); break;

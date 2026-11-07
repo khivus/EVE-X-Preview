@@ -3,6 +3,8 @@
 ## v1.7.0.4
 
 ### Added
+* First-launch settings recovery guidance suggests the latest readable saved copy, explains automatic/migration backups and older application folders, and links to GitHub and Discord support.
+* Command hotkeys show brief state confirmations, including both pause modes, visibility, click-through, live previews, close requests and protected Reload/Exit actions. Window switching and thumbnail mouse gestures remain quiet.
 * Automatic startup settings backups under `%LOCALAPPDATA%\EVE-X-Preview\Backups`, retaining the latest five copies for each installation before migration or normalization. About opens the backup folder in both editors. Migration/recovery backups are stored there too, including existing migration copies moved from the application folder; these archives are retained separately.
 * Separate **Pause EVE switching hotkeys** and **Pause all hotkeys** controls. The full-pause shortcut remains available to resume hotkeys; both commands can be shown or hidden in the tray menu.
 * Configurable delay before clearing the focused-thumbnail border when switching away from EVE, defaulting to one second. Switching between clients still updates the highlight immediately.
@@ -18,6 +20,8 @@
 * Search clearing, compact numeric fields, slider alignment, disabled color previews and folder-field alignment are more consistent. Performance and compatibility is now named Advanced. Off-screen recovery stays in Layout; the optional Pause Live Previews tray command is hidden by default, and Diagnostics names the current pause/resume action.
 
 ### Fixed
+* Held character/Quick Group cycling no longer waits on foreground confirmation or starves thumbnail-refresh timers. Shortcut checks skip unrelated window lookups, reuse parsed bindings and update confirmed-client borders immediately.
+* Settings automatically retries reconnecting up to five times with delays after Apply/restart or an unexpected connection loss, retaining the edited profile and draft. A further connection drop can recover automatically too.
 * Changing a mouse gesture affects only that action, including after selecting multiple cells. Restoring a gesture clears its former duplicate warning, and pending Default edits retain their original profile.
 * Apply/restart retains the profile being edited. Shortcut-overlap warnings open the correct category, and reconnect refreshes Problems without losing the draft.
 * Inheritance changes and sound preview actions retain the current scroll position. Theme changes refresh the top bar, Graphite toggle hover remains readable, disabled numeric fields have an even background, and the search-clear icon is centered.
