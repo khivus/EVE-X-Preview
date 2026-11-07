@@ -17,7 +17,7 @@ public sealed partial class MainWindow
     {
         if (session.Dirty) throw new InvalidOperationException("Capture needs a clean isolated fixture draft.");
         Directory.CreateDirectory(directory);
-        await VerifyEditingAsync(directory);
+        if(Program.VerifyPolish)await VerifyPolishAsync(directory);else await VerifyEditingAsync(directory);
         if (Program.VerifyOnly) { await session.EndAsync(false); closing = true; Close(); return; }
         var sections = Program.CaptureTables ? new[] {"character-appearance","character-shortcuts","close-protection","sources","appearance","events","sounds","about"} : new[] { "appearance", "character-appearance", "layout", "character-shortcuts", "character-groups", "events", "sounds", "profiles", "inheritance", "interface", "diagnostics", "about" };
         var themes = Program.CaptureTables ? new[] {"light","graphite"} : new[] { "light", "dark" }.Concat(session.Metadata!.Value.Array("themes").Select(p => p.Text("id"))).Distinct();

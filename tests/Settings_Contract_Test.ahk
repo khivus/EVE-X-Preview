@@ -1,5 +1,23 @@
 TestRunner.Register("Settings contract exports every scalar and canonical specialized workflow", SettingsContractMetadataTest)
 TestRunner.Register("Settings canonical accepts the first exported installed font and keeps update labels canonical", SettingsFontAndVersionMetadataTest)
+TestRunner.Register("Settings canonical preview commands expose the current pause state and matching action", SettingsPreviewPauseStateTest)
+SettingsPreviewPauseStateTest() {
+    owner := SettingsPauseStateFixture(JSON.Load(default_JSON))
+    session := SettingsSession(owner, 0, true)
+    try {
+        status := session.Command("live-preview-status")
+        AssertFalse(status["paused"])
+        AssertEqual("Pause live previews", status["label"])
+        status := session.Command("toggle-live-previews")
+        AssertTrue(status["paused"])
+        AssertEqual("Resume live previews", status["label"])
+        AssertFalse(session.Command("toggle-live-previews")["paused"])
+    } finally session.Dispose()
+}
+class SettingsPauseStateFixture extends SettingsServiceFixture {
+    livePreviewsPaused := false
+    ToggleLivePreviews() => this.livePreviewsPaused := !this.livePreviewsPaused
+}
 TestRunner.Register("Settings canonical defaults use an installed font and only migrate the missing legacy factory font", SettingsFontDefaultMigrationTest)
 SettingsFontDefaultMigrationTest() {
     config := JSON.Load(default_JSON)

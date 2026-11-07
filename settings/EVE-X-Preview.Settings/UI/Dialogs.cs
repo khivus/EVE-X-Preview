@@ -21,16 +21,18 @@ internal static class Dialogs
         var text = new TextBox { Text = initial, PlaceholderText = "Name", MinWidth = 350 };
         await ChoiceAsync(owner, title, text, [("Save to draft", "save"), ("Cancel", "cancel")], async choice => { if (choice == "save") await save(text.Text ?? ""); });
     }
-    public static async Task<string> ChoiceAsync(Window owner, string title, Control content, (string Label, string Value)[] choices, Func<string, Task>? onChoice = null)
+    public static async Task<string> ChoiceAsync(Window owner, string title, Control content, (string Label, string Value)[] choices, Func<string, Task>? onChoice = null, Control? fixedContent = null)
     {
         if (owner is MainWindow modern) await modern.ProtectModalAsync(true);
         try
         {
-        var dialog = new Window { Title = title, Width = 560, MaxHeight = 750, MinWidth = 400, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, CanResize = true, ShowInTaskbar = false, WindowDecorations = WindowDecorations.Full };
+        var workArea=owner.Screens.ScreenFromWindow(owner)?.WorkingArea;
+        var maxHeight=workArea is {} area?Math.Clamp(area.Height/owner.RenderScaling-48,300,750):750;
+        var dialog = new Window { Title = title, Width = 560, MaxHeight = maxHeight, MinWidth = 400, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, CanResize = true, ShowInTaskbar = false, WindowDecorations = WindowDecorations.Full };
         var panel = new StackPanel { Spacing = 20, Margin = new Thickness(24) };
         ThemeController.AttachNativeFrame(dialog);
         panel.Children.Add(new TextBlock {Text=title,FontSize=18,FontWeight=FontWeight.SemiBold});
-        panel.Children.Add(content);
+        if(fixedContent is not null)panel.Children.Add(fixedContent);
         var feedback = new TextBlock { Classes = { "error" }, IsVisible = false }; panel.Children.Add(feedback);
         var buttons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right };
         foreach (var choice in choices)
@@ -44,8 +46,11 @@ internal static class Dialogs
                 finally { buttons.IsEnabled = true; }
             }; buttons.Children.Add(button);
         }
-        panel.Children.Add(buttons);
-        dialog.Content=new ScrollViewer {Content=panel};
+        var footer=new StackPanel {Spacing=10,Margin=new Thickness(24,12)};panel.Children.Remove(feedback);footer.Children.Add(feedback);footer.Children.Add(buttons);
+        var layout=new Grid {RowDefinitions=new RowDefinitions("Auto,*,Auto")};
+        var header=new Border {Child=panel,Classes={"chrome"},BorderThickness=new Thickness(0,0,0,1)};layout.Children.Add(header);
+        var scroll=new ScrollViewer {Content=content,Margin=new Thickness(24,16),HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled};Grid.SetRow(scroll,1);layout.Children.Add(scroll);
+        var footerBand=new Border {Child=footer,Classes={"chrome"},BorderThickness=new Thickness(0,1,0,0)};Grid.SetRow(footerBand,2);layout.Children.Add(footerBand);dialog.Content=layout;
         return await dialog.ShowDialog<string?>(owner) ?? "cancel";
         }
         finally { if (owner is MainWindow modernOwner) await modernOwner.ProtectModalAsync(false); }

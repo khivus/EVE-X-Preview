@@ -25,7 +25,7 @@ class SettingsContract {
         for key, item in value {
             if context = "inheritance" || context = "creationInheritance"
                 result[key] := item ? JSON.true : JSON.false
-            else if RegExMatch(key, "^(ready|dirty|clientDirty|inherited|enabled|canUndo|runtime|canApply|applied|restartRequired|closed|active|global|runtimeOnly|destructive|busy)$") && !IsObject(item)
+            else if RegExMatch(key, "^(ready|dirty|clientDirty|inherited|enabled|canUndo|runtime|canApply|applied|restartRequired|closed|active|global|runtimeOnly|destructive|busy|paused)$") && !IsObject(item)
                 result[key] := item ? JSON.true : JSON.false
             else
                 result[key] := this.JsonFlags(item, key)

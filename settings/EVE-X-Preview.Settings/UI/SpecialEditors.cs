@@ -75,18 +75,18 @@ public sealed partial class MainWindow
             };
             presets.Children.Add(button);
         }
-        content.Children.Add(presets);content.Children.Add(choices);
-        await Dialogs.ChoiceAsync(this, "Create profile", content, [("Create", "create"), ("Cancel", "cancel")], async choice =>
+        content.Children.Add(presets);
+        await Dialogs.ChoiceAsync(this, "Create profile", choices, [("Create", "create"), ("Cancel", "cancel")], async choice =>
         {
             if (choice == "create") await session.MutateAsync("profile", new() { ["action"] = "add", ["name"] = name.Text, ["copyCurrent"] = copy.IsChecked == true, ["inheritance"] = flags.DeepClone() });
-        });
+        }, fixedContent: content);
     }
     private (StackPanel Panel, Dictionary<string,CheckBox> Checks) InheritanceChoices(JsonObject flags, Func<string,bool,Task>? save = null)
     {
         var panel = new StackPanel { Spacing = 8 };
         var checks = new Dictionary<string,CheckBox>();
         foreach(var category in session.Metadata!.Sections.Where(s=>s.Text("group")!="").GroupBy(s=>s.Text("page"))) {
-            panel.Children.Add(new Border { Height = 1, Background = Brushes.Gray, Margin = new Thickness(0,12,0,4) });
+            panel.Children.Add(new Border { Height = 1, Background = ThemeController.Line, Margin = new Thickness(0,12,0,4) });
             panel.Children.Add(new TextBlock { Text = category.Key, FontWeight = FontWeight.SemiBold });
             foreach(var section in category) {
                 var id = section.Text("id");

@@ -10,13 +10,19 @@
     <Style Selector="NumericUpDown:disabled /template/ TextBox"><Setter Property="BorderThickness" Value="0" /></Style>
     <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner"><Setter Property="BorderThickness" Value="0" /></Style>
     <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner /template/ Border"><Setter Property="BorderThickness" Value="0" /></Style>
-    <Style Selector="Button.color-swatch"><Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}" /></Style>
-    <Style Selector="TextBlock.color-swatch-icon"><Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" /></Style>
-    <Style Selector="Border.color-swatch-icon-background"><Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" /></Style>
+    <Style Selector="NumericUpDown:disabled"><Setter Property="Background" Value="{DynamicResource EveDisabledBrush}" /><Setter Property="CornerRadius" Value="4" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ TextBox#PART_TextBox"><Setter Property="Margin" Value="0" /><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /></Style>
+    <Style Selector="NumericUpDown:disabled /template/ ButtonSpinner /template/ RepeatButton /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+    <Style Selector="Button.color-swatch:disabled /template/ ContentPresenter"><Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" /><Setter Property="Opacity" Value="1" /></Style>
+    <Style Selector="Button.color-swatch:disabled"><Setter Property="Opacity" Value="1" /></Style>
+    <Style Selector="Button.color-swatch"><Setter Property="BorderBrush" Value="{DynamicResource EveAccentBrush}" /></Style>
+    <Style Selector="TextBlock.color-swatch-icon"><Setter Property="Foreground" Value="{DynamicResource EveForegroundBrush}" /></Style>
+    <Style Selector="Border.color-swatch-icon-background"><Setter Property="Background" Value="{DynamicResource EveInputBrush}" /></Style>
     <Style Selector="TextBlock.muted"><Setter Property="Opacity" Value="0.7" /><Setter Property="TextWrapping" Value="Wrap" /></Style>
     <Style Selector="TextBlock.heading"><Setter Property="FontSize" Value="23" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
     <Style Selector="TextBlock.error"><Setter Property="Foreground" Value="#DF704E" /><Setter Property="TextWrapping" Value="Wrap" /></Style>
-    <Style Selector="Border.card"><Setter Property="CornerRadius" Value="10" /><Setter Property="Padding" Value="20" /><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" /><Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" /></Style>
+    <Style Selector="Border.card"><Setter Property="CornerRadius" Value="10" /><Setter Property="Padding" Value="20" /><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" /><Setter Property="Background" Value="{DynamicResource EveInputBrush}" /></Style>
     <Style Selector="Button.nav"><Setter Property="HorizontalContentAlignment" Value="Left" /><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="Padding" Value="12,7" /><Setter Property="Background" Value="Transparent" /></Style>
     <Style Selector="Button.nav.selected"><Setter Property="Background" Value="{DynamicResource SystemControlHighlightListAccentLowBrush}" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
   </Application.Styles>

@@ -20,6 +20,7 @@ public sealed partial class MainWindow
             var data = await session.ReadAsync("rows", new() { ["kind"] = kind, ["group"] = group });
             if (generation != pageGeneration) return;
             BuildRowsEditor(host, kind, group, data, inherited);
+            RestoreLoadedScroll(generation);
         }
         catch (Exception e) { if (generation == pageGeneration) { host.Children.Clear(); host.Children.Add(new TextBlock { Text = e.Message, Classes = { "error" } }); } }
     }
@@ -65,9 +66,9 @@ public sealed partial class MainWindow
         }
         void PaintSelection()
         {
-            foreach(var (row,header) in rowHeaders) header.Background=wholeRows.Contains(row)?new SolidColorBrush(Color.FromArgb(90,110,160,210)):Brushes.Transparent;
+            foreach(var (row,header) in rowHeaders) header.Background=wholeRows.Contains(row)?ThemeController.TableSelection(true):Brushes.Transparent;
             foreach (var (address, border) in cells)
-                border.Background = selected.Contains(address) ? new SolidColorBrush(Color.FromArgb(65, 110, 160, 210)) : Brushes.Transparent;
+                border.Background = selected.Contains(address) ? ThemeController.TableSelection(false) : Brushes.Transparent;
         }
         void Select(int row, int column, bool extend, bool toggle)
         {
@@ -104,7 +105,12 @@ public sealed partial class MainWindow
                     while(values.Count<=ci) values.Add("");
                     var control=TypedInput(columns[c],values[c],value=> {
                         values[ci]=value?.DeepClone();
-                        foreach(var address in selected.Where(p=>p.column==ci && p.row!=ri && p.row<rows.Count && !Blank(rows[p.row]))) rows[address.row]![ci]=value?.DeepClone();
+                        var mirrored=selected.Where(p=>p.column==ci && p.row!=ri && p.row<rows.Count && !Blank(rows[p.row])).ToArray();
+                        foreach(var address in mirrored)rows[address.row]![ci]=value?.DeepClone();
+                        if(kind=="gestures")foreach(var address in mirrored) {
+                            if(cells.TryGetValue(address,out var target) && target.Child is ComboBox choice)
+                                choice.SelectedIndex=Array.FindIndex(session.Metadata!.Value.Array("gestures").OfType<JsonObject>().Select(g=>JsonExtensions.Display(g["value"])).ToArray(),v=>v==JsonExtensions.Display(value));
+                        }
                         StageRows();
                         if(!readOnlyRows && ri==rows.Count-1 && !Blank(values)) {
                             rows.Add(BlankRow());
@@ -112,7 +118,7 @@ public sealed partial class MainWindow
                         }
                     }, true);
                     control.MinWidth=0; control.MaxWidth=double.PositiveInfinity; control.HorizontalAlignment=columns[c].Text("kind") is "bool" or "boolean" ? HorizontalAlignment.Center : HorizontalAlignment.Stretch; control.VerticalAlignment=VerticalAlignment.Center; control.IsEnabled=editable;
-                    var cell=new Border { Child=control, BorderBrush=Brushes.Gray, BorderThickness=new Thickness(0,0,1,1), Padding=new Thickness(4,3), MinHeight=42 };
+                    var cell=new Border { Child=control, BorderBrush=ThemeController.Line, BorderThickness=new Thickness(0,0,1,1), Padding=new Thickness(4,3), MinHeight=42 };
                     cell.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_,e)=>{ selectingRange = true; Select(ri,ci,e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift),e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)); },Avalonia.Interactivity.RoutingStrategies.Tunnel);
                     cell.PointerEntered += (_,e)=> { if(selectingRange && e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed) Select(ri,ci,true,false); };
                     cells[(r,c)]=cell; Grid.SetColumn(cell,c+1); line.Children.Add(cell);

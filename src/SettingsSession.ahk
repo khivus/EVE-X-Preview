@@ -455,6 +455,7 @@ class SettingsSession {
         if descriptor["runtimeOnly"] && !this.runtime
             throw SettingsServiceError("runtime-unavailable", "Start EVE-X-Preview to use this runtime action.")
         facade := this.Facade()
+        facade.message := ""
         switch name {
             case "recover-offscreen-thumbnails": facade.RecoverRuntimeThumbnails()
             case "reset-thumbnail-sizes":

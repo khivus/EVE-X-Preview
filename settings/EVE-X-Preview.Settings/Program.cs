@@ -11,6 +11,7 @@ internal static class Program
     public static string? CaptureDirectory { get; private set; }
     public static bool VerifyOnly { get; private set; }
     public static bool CaptureTables { get; private set; }
+    public static bool VerifyPolish { get; private set; }
 
     [STAThread]
     public static int Main(string[] args)
@@ -32,6 +33,7 @@ internal static class Program
                 if (args[i] == "--installation") Installation = args[i + 1];
                 else if (args[i] == "--capture-fixtures") CaptureDirectory = Path.GetFullPath(args[i + 1]);
                 else if (args[i] == "--verify-ui") { CaptureDirectory = Path.GetFullPath(args[i + 1]); VerifyOnly = true; }
+                else if (args[i] == "--verify-polish") { CaptureDirectory = Path.GetFullPath(args[i + 1]); VerifyOnly = true; VerifyPolish = true; }
                 else if (args[i] == "--capture-tables") { CaptureDirectory = Path.GetFullPath(args[i + 1]); CaptureTables = true; }
                 else throw new ArgumentException("Use --installation <directory>, --capture-fixtures <directory> or --probe <response-file>.");
             }

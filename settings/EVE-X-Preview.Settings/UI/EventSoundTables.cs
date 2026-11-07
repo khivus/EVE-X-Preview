@@ -11,7 +11,7 @@ public sealed partial class MainWindow
 {
     private static string SoundName(string path) => string.IsNullOrWhiteSpace(path) ? "None" : Path.GetFileNameWithoutExtension(path);
     private static Border TableCell(Control child,int column) {
-        var cell=new Border {Child=child,Padding=new Thickness(4),BorderThickness=new Thickness(0,0,0,1),BorderBrush=new SolidColorBrush(Color.FromArgb(45,128,128,128))};
+        var cell=new Border {Child=child,Padding=new Thickness(4),BorderThickness=new Thickness(0,0,0,1),BorderBrush=ThemeController.Line};
         Grid.SetColumn(cell,column);return cell;
     }
     private static Grid TableLine(string columns) {
@@ -74,7 +74,8 @@ public sealed partial class MainWindow
             }
             if(generation == pageGeneration && options.Children.Count > 0) {
                 options.Children.Insert(0,new TextBlock { Text = "Event options", FontSize = 18, FontWeight = FontWeight.SemiBold });
-                page.Children.Add(options);
+                if(!session.Snapshot.Object("inheritance").Bool("events"))options.Children.Insert(1,Muted("Enable an event in the table above to edit its options."));
+                page.Children.Add(options);RestoreLoadedScroll(generation);
             }
         } catch(Exception e) {if(generation==pageGeneration)table.Children.Add(new TextBlock {Text=e.Message,Classes={"error"}});}
     }
@@ -111,9 +112,9 @@ public sealed partial class MainWindow
                 choose.SelectionChanged+=(_,_)=>{if(choose.SelectedIndex>=0)StageEvent(id,descriptor.Text("label"),"sound",JsonValue.Create(paths[choose.SelectedIndex]));};ToolTip.SetTip(choose,current);row.Children.Add(TableCell(choose,1));
                 var volumeHost=new StackPanel {Spacing=2};var volume=VolumeInput(EventValue(id,"soundVolume",data),v=>StageEvent(id,descriptor.Text("label"),"soundVolume",v));volume.IsEnabled=!data.Bool("inherited");Avalonia.Automation.AutomationProperties.SetName(volume,descriptor.Text("label")+" volume");volumeHost.Children.Add(volume);EventFeedback(volumeHost,id,"soundVolume",volume);row.Children.Add(TableCell(volumeHost,2));
                 row.Children.Add(TableCell(ActionButton("Play",async()=>{var preview=session.Metadata!.Commands.First(c=>c.Text("id")=="preview-sound");await RunCommandAsync(preview,new(){["event"]=id});},false),3));
-                if(selections.GetValueOrDefault("sound-event")==id)row.Background=new SolidColorBrush(Color.FromArgb(40,110,160,210));assignments.Children.Add(row);
+                if(selections.GetValueOrDefault("sound-event")==id)row.Background=ThemeController.TableSelection(true);assignments.Children.Add(row);
             }
-            host.Children.Add(Card(assignments));
+            host.Children.Add(Card(assignments));RestoreLoadedScroll(generation);
         } catch(Exception e){if(generation==pageGeneration)host.Children.Add(new TextBlock {Text=e.Message,Classes={"error"}});}
     }
     private async Task AddSoundFilesAsync() {

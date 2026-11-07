@@ -123,3 +123,21 @@ Verification uses disposable configurations under `.vs/inheritance-followup`. So
 The broad native run reported **380 passed, 3 failed, 383 total**. The failures were existing desktop-sensitive checks for covered-preview stacking, repeated table-cell focus and rapid table clicks. All three passed unchanged in isolated reruns. The extended real font-file migration check also passed separately. No production configuration was edited.
 
 The rebuilt standalone settings EXE also passed **86 UI checks** in a fresh folder using its embedded canonical host. All three rebuilt executables retain version **1.7.0.4**. The updated package replaces `.vs/build/EVE-X-Preview-v1.7.0.4-win-x64.zip`; no push or release was performed.
+
+## Theme, navigation and editing follow-up — 2026-11-07
+
+Changed the companion's shared theme brushes, header/footer separators, category navigation and scroll restoration; pinned profile creation controls; centered search clearing; unified disabled numeric fills; preserved disabled color previews; and aligned all sound sliders with their value fields. Category-level explanations now cover inheritance and controlling toggles, including event sound assignments with scoped Default editing in Sound library. Runtime commands avoid rebuilding the current page. Diagnostics reads the actual paused state and names the next action.
+
+Pending draft acceptance now serializes its original profile mutation and restoration. Gesture changes to selected cells synchronize every affected dropdown. Monitored characters owns its selection toggle and list under one source; a versioned migration preserves the old effective values for all four combinations of the former filter/list inheritance sources. The schema renames Performance and compatibility to Advanced in both editors.
+
+Verification used disposable configurations under `.vs/ui-polish`; no production configuration was edited.
+
+- Managed protocol/state checks: **68 assertions passed**, including a gated concurrent navigation/original-profile mutation check.
+- Existing source-host companion regression checks: **86 passed**.
+- New focused real companion checks: **34 passed** from source and **34 passed** using the final single-file executable alone with its embedded host. Coverage includes actual theme selection, five theme transitions without replacing controls, checked-toggle hover contrast, clear-icon centering, enabled navigation controls, pinned dialog controls, disabled numeric/color rendering, gesture duplicate restoration, current inheritance scroll, sound-source explanation and scoped editing, all master/file/event slider centers, Stop preview scroll and pause/resume labels.
+- Targeted native follow-up checks: **7/7 passed**. Canonical contract checks: **10/10 passed**, including actual owner pause state and next-action strings. Migration checks preserve the old filter/list effective values and dormant local backups.
+- Broad native suite: **383 passed, 2 failed, 385 total**. The failures were internal-editor shortcut recording and rapid cell switching. Rapid cell switching passed unchanged in isolation. Recording was intermittent in isolation, then passed in an instrumented disposable copy of the current native code; the previous-commit baseline passed the same diagnostic comparison. No production recording behavior was changed to accommodate these desktop-sensitive tests.
+
+Inspected profile creation, inherited color/disabled numeric fields, search/chrome and sound-control captures. The final output is the fresh `.vs/build/v1.7.0.4-ui-polish-final/` folder, containing exactly `EVE-X-Preview.exe`, `EVE-X-Preview-Settings.exe` and `EVE-X-Preview-Updater.exe`, all **1.7.0.4**. **No ZIP was created or updated for this follow-up.** The generated host remains an embedded dependency in the Settings EXE.
+
+See [the focused recheck list](settings-review-recheck.md) for the affected user flows. Live EVE behavior, physical mixed-DPI/multi-monitor behavior and real GitHub downloads/installation were not exercised. Nothing was pushed or published.

@@ -24,7 +24,7 @@ public sealed partial class MainWindow
         var key = field.Bool("global") ? "global|" + sectionId + "|" + id : EditKey(id); var pending = session.GetPending(key);
         var current = pending?.Arguments["value"] ?? state["value"] ?? field["default"];
         var panel = new StackPanel { Spacing = 6 };
-        var heading = SearchText(label + (field.Bool("global") && !horizontal ? "  ·  All profiles" : state.Bool("inherited") ? "  ·  From Default" : "")); heading.FontWeight = FontWeight.SemiBold;
+        var heading = SearchText(label + (field.Bool("global") && !horizontal ? "  ·  All profiles" : "")); heading.FontWeight = FontWeight.SemiBold;
         panel.Children.Add(heading);
         if (field.Text("help") is { Length: > 0 } help) panel.Children.Add(SearchText(help));
         void Change(JsonNode? value) => Stage(key, label, "set", new() { ["id"] = id, ["value"] = value?.DeepClone() });
@@ -99,6 +99,7 @@ public sealed partial class MainWindow
             }, Avalonia.Interactivity.RoutingStrategies.Bubble);
             if (kind == "slider") {
                 var slider = new Slider { Minimum = field.Number("min"), Maximum = Math.Max(field.Number("min") + 1, field.Number("max")), Value = double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : field.Number("min"), TickFrequency = 5, MinWidth = 20, Height = 34, MinHeight = 0, VerticalAlignment = VerticalAlignment.Center };
+                slider.Resources["SliderPreContentMargin"]=new GridLength(7);slider.Resources["SliderPostContentMargin"]=new GridLength(7);
                 var synchronizing = false;
                 slider.PropertyChanged += (_, args) => {
                     if(args.Property != Slider.ValueProperty || synchronizing)return;
@@ -118,8 +119,8 @@ public sealed partial class MainWindow
         }
         if (kind is "directory" or "folder" or "file" or "sound")
         {
-            text.MinWidth=0;text.MaxWidth=double.PositiveInfinity;text.HorizontalAlignment=HorizontalAlignment.Stretch;
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), MaxWidth = 600, HorizontalAlignment = HorizontalAlignment.Stretch };
+            text.MinWidth=250;text.MaxWidth=double.PositiveInfinity;text.HorizontalAlignment=HorizontalAlignment.Stretch;
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), MaxWidth = 600, HorizontalAlignment = HorizontalAlignment.Left };
             row.Children.Add(text);
             var browse = new Button { Content = "Browse", Margin = new Thickness(8, 0, 0, 0) }; Grid.SetColumn(browse, 1); row.Children.Add(browse);
             browse.Click += async (_, _) =>
@@ -173,7 +174,7 @@ public sealed partial class MainWindow
         var cleaned = initial.Replace("0x", "", StringComparison.OrdinalIgnoreCase).TrimStart('#');
         var chosen = Color.TryParse("#" + cleaned, out var existing) ? existing : Colors.White;
         var content = new StackPanel { Spacing = 14 };
-        var preview = new Border { Height = 65, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(chosen), BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1) }; content.Children.Add(preview);
+        var preview = new Border { Height = 65, CornerRadius = new CornerRadius(8), Background = new SolidColorBrush(chosen), BorderBrush = ThemeController.Line, BorderThickness = new Thickness(1) }; content.Children.Add(preview);
         var red = new Slider { Minimum = 0, Maximum = 255, Value = chosen.R, TickFrequency = 1 };
         var green = new Slider { Minimum = 0, Maximum = 255, Value = chosen.G, TickFrequency = 1 };
         var blue = new Slider { Minimum = 0, Maximum = 255, Value = chosen.B, TickFrequency = 1 };
