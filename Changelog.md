@@ -3,30 +3,20 @@
 ## v1.7.0.4
 
 ### Added
-* First-ever-launch settings recovery guidance (skipped for existing installations and updates) suggests the latest readable saved copy, explains automatic/migration backups and older application folders, and links to GitHub and Discord support.
-* Command hotkeys show brief state confirmations, including both pause modes, visibility, click-through, live previews, close requests and protected Reload/Exit actions. Window switching and thumbnail mouse gestures remain quiet.
-* Automatic startup settings backups under `%LOCALAPPDATA%\EVE-X-Preview\Backups`, retaining the latest five copies for each installation before migration or normalization. About opens the backup folder in both editors. Migration/recovery backups are stored there too, including existing migration copies moved from the application folder; these archives are retained separately.
-* Separate **Pause EVE switching hotkeys** and **Pause all hotkeys** controls. The full-pause shortcut remains available to resume hotkeys; both commands can be shown or hidden in the tray menu.
-* Configurable delay before clearing the focused-thumbnail border when switching away from EVE, defaulting to one second. Switching between clients still updates the highlight immediately.
-* A count of unapplied settings changes, clearer disabled-setting explanations, and a persistent disconnection banner with draft recovery.
+* Five rotating startup settings backups, retained migration/recovery copies, backup-folder access and first-ever recovery guidance with support links.
+* Separate EVE-switching/all-hotkey pause controls, brief command confirmations and a configurable border-clearing delay when leaving EVE.
+* Unapplied-change counts, disabled-setting explanations and automatic reconnect with up to five attempts.
 
 ### Changed
-* Settings editor downloads go directly beside the application and launch automatically. The update suggests the optional editor when missing; About disables the download when it is current. Main-app updates also update an installed editor, while installations without it remain unchanged. All executables share the main release version.
-* Quick Group takes priority over shared character/group shortcuts only while it contains an available window. Empty or closed Quick Group members leave the key available to the usual character or group shortcut.
-* Group shortcut hold delay now accepts values down to **30 ms**.
-* Settings themes update existing controls immediately, with clear header, sidebar, content and footer divisions. Category navigation keeps the surrounding controls available.
-* Profile creation keeps the name and actions visible, groups inheritance choices and offers all/none/current-profile presets. Section inheritance keeps one-click checkboxes, and inherited settings support editing Default in place.
-* Event options appear below their table in categories. Sound assignments explain inheritance and support editing Default on the same page. Monitored characters owns its filter switch and list under one inheritance source, preserving existing effective values.
-* Search clearing, compact numeric fields, slider alignment, disabled color previews and folder-field alignment are more consistent. Performance and compatibility is now named Advanced. Off-screen recovery stays in Layout; the optional Pause Live Previews tray command is hidden by default, and Diagnostics names the current pause/resume action.
+* Settings editor downloads install directly beside the app and launch automatically. App updates refresh an installed editor; all executables share the release version.
+* Profile creation has grouped inheritance presets and pinned name/actions. Inherited settings support editing Default in place.
+* Event options sit below the table; Sound library explains assignment inheritance. Monitored characters owns its filter and list under one source.
+* Quick Group takes shared-key priority only with available members. Group hold delay accepts 30 ms. Off-screen recovery stays in Layout; the optional Pause Live Previews tray entry defaults off.
 
 ### Fixed
-* A small foreground-thumbnail refresh can run while switching hotkeys are held, updating the focused preview and border without raising the main discovery/log timer priority or changing restored switching behavior.
-* Restored v1.7.0.3 switching activation, priority, key timing and group-focus handling. Quick Group priority is routed only after a matching shortcut fires. Border clearing stays in normal foreground polling, with no additional drawing callbacks in the activation path.
-* Settings automatically retries reconnecting up to five times with delays after Apply/restart or an unexpected connection loss, retaining the edited profile and draft. A further connection drop can recover automatically too.
-* Changing a mouse gesture affects only that action, including after selecting multiple cells. Restoring a gesture clears its former duplicate warning, and pending Default edits retain their original profile.
-* Apply/restart retains the profile being edited. Shortcut-overlap warnings open the correct category, and reconnect refreshes Problems without losing the draft.
-* Inheritance changes and sound preview actions retain the current scroll position. Theme changes refresh the top bar, Graphite toggle hover remains readable, disabled numeric fields have an even background, and the search-clear icon is centered.
-* New configurations use an installed default font; missing legacy Gill Sans MT defaults migrate safely while custom font choices are retained.
+* Independent gesture assignments, accurate conflict links/warnings, installed default fonts, and retained profiles/scroll positions through Apply and reconnect.
+* Immediate theme updates, smoother navigation, centered search clearing and consistent numeric, slider, folder and disabled-color controls.
+* Foreground thumbnails refresh during held switching, while preserving the restored v1.7.0.3 switching core.
 
 ## v1.7.0.3
 
