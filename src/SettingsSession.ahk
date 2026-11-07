@@ -457,6 +457,7 @@ class SettingsSession {
         facade := this.Facade()
         facade.message := ""
         switch name {
+            case "open-backups": SettingsBackup.Open(this.owner.HasOwnProp("installation") ? this.owner.installation : A_ScriptDir)
             case "recover-offscreen-thumbnails": facade.RecoverRuntimeThumbnails()
             case "reset-thumbnail-sizes":
                 facade.StageSizeReset()

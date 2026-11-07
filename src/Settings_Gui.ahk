@@ -2120,6 +2120,9 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
         arr.Push This.MainFrame.Add("Button", Format("x+{} yp", This.baseGrid) " vshowChangelogBtn", "Show Changelog")
         This.MainFrame["showChangelogBtn"].OnEvent("Click", (*) => ChangelogWindow.Show())
+        backupButton := This.MainFrame.Add("Button", Format("xs y+{}", This.baseGrid), "Open settings backups")
+        arr.Push(backupButton)
+        backupButton.OnEvent("Click", (*) => SettingsBackup.Open(A_WorkingDir))
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.captBtnH + This.contentGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
         arr.Push This.MainFrame.Add("Button", Format("xs+{} ys w{}", updBtnW + This.baseGrid, updBtnW) " vupdateToPreReleaseBtn", "Update to Pre-Release")

@@ -162,10 +162,37 @@ Update1704PauseSettingsTest() {
     app := HotkeySettingsFixture()
     try {
         AssertTrue(IsObject(app.Find("Suspend_All_Hotkeys_Hotkey")))
-        app.ApplyRecordedHotkey(app.Find("Suspend_All_Hotkeys_Hotkey"), "F24")
-        Sleep(40)
+        model := SettingsModel(app._JSON)
+        model.Set("Suspend_All_Hotkeys_Hotkey", "F24")
+        app._JSON := model.config
         AssertEqual("F24", app.Suspend_All_Hotkeys_Hotkey)
     } finally app.Dispose()
+}
+
+TestRunner.Register("Update1704 migration archives move into the backups folder and survive snapshot rotation", Update1704MigrationArchiveTest)
+Update1704MigrationArchiveTest() {
+    previousRoot := SettingsBackup.Root
+    folder := A_ScriptDir "\..\.vs\update1704-tests\archives-" A_TickCount
+    DirCreate(folder)
+    SettingsBackup.Root := folder "\snapshots"
+    try {
+        old := folder "\EVE-X-Preview.PreV1.6.0.20260101.backup.json"
+        FileAppend("original migration copy", old, "UTF-8-RAW")
+        SettingsBackup.CollectMigrationBackups(folder)
+        archive := SettingsBackup.Directory(folder) "\EVE-X-Preview.PreV1.6.0.20260101.backup.json"
+        AssertFalse(FileExist(old))
+        AssertEqual("original migration copy", FileRead(archive))
+        source := folder "\EVE-X-Preview.json"
+        FileAppend("current settings", source, "UTF-8-RAW")
+        loop 7
+            AssertTrue(SettingsBackup.Capture(source) != "")
+        AssertEqual("original migration copy", FileRead(archive))
+        AssertTrue(SettingsContract.Commands().Length > 0)
+        found := false
+        for descriptor in SettingsContract.Commands()
+            found := found || (descriptor["id"] = "open-backups" && !descriptor["runtimeOnly"])
+        AssertTrue(found)
+    } finally SettingsBackup.Root := previousRoot
 }
 
 TestRunner.Register("Update1704 startup backups retain the last five exact snapshots per installation", Update1704BackupRetentionTest)

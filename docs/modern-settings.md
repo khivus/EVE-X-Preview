@@ -50,6 +50,12 @@ If the main application starts during an offline edit, reconnect with the retain
 
 The main AHK application remains usable without companion files and uses internal settings. Back up `EVE-X-Preview.json` before replacing an installation.
 
+Opening the main application or the offline settings editor automatically snapshots the installation's settings before startup migration/normalization. The latest five copies are kept under `%LOCALAPPDATA%\EVE-X-Preview\Backups\<installation-id>`, separately for each installation. A backup error is logged and does not prevent startup. **About → Open settings backups** opens this folder in either editor, including offline mode. Migration/recovery backups go into the same folder and are retained separately from the five rotating startup snapshots. Existing `EVE-X-Preview.*.backup.json` files beside the application are moved there on startup without overwriting existing archives.
+
+Under **Thumbnails → Appearance**, **Delay before clearing the border when EVE loses focus** defaults to 1000 ms, accepts 0–60000 ms, and follows Appearance inheritance. Returning to EVE resets the delay; switching directly between tracked clients updates the active highlight immediately. **Switching → Switching behavior** accepts a group hold interval down to 30 ms.
+
+**Switching → Keyboard shortcuts** separates **Pause EVE switching hotkeys** from **Pause all hotkeys**. The existing pause binding retains its assignment with the narrower EVE-only scope. The full-pause binding is new and remains available to resume itself. Both commands have independent visibility controls under **Application → Tray menu commands**. See [hotkey priority and pause behavior](hotkeys.md).
+
 See [development](development.md), [bridge v1](settings-bridge.md) and [C# project notes](../settings/README.md). Synthetic checks do not establish live EVE rendering or physical multi-monitor/DPI behavior.
 
 Event alerts use a compact table for enabled state, border color and assigned sound filename without its extension. Additional conditions appear below the table, grouped by category and event, and become inactive while their event is disabled. Numeric fields share a compact width; sliders and percentage values occupy a single row. Sound library groups reusable sound files, batch and individual assignments, file gain, event volume, master volume and playback limits. Both the main editor and its dialogs use the native Windows dark caption and standard resize frame.

@@ -26,7 +26,7 @@ public sealed partial class MainWindow
         panel.Children.Add(Muted("Created by gonzo83. Maintained by khivus.\nContributions by mrmjstc and CJKondur."));
         versionStatus=Muted("");panel.Children.Add(versionStatus);
         var actions=new StackPanel {Spacing=10,Width=380,HorizontalAlignment=HorizontalAlignment.Left};
-        foreach(var id in new[]{"check-updates","install-stable","install-prerelease","download-settings","changelog","documentation","report-problem"}) {
+        foreach(var id in new[]{"check-updates","install-stable","install-prerelease","download-settings","changelog","open-backups","documentation","report-problem"}) {
             var command=session.Metadata!.Commands.FirstOrDefault(c=>c.Text("id")==id);if(command is null)continue;
             var button=ActionButton(command.Text("label"),()=>RunCommandAsync(command),false);
             button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Center;

@@ -79,6 +79,7 @@ class SettingsContract {
             ["install-stable", "Install stable version", "about", true, true],
             ["install-prerelease", "Install pre-release version", "about", true, true],
             ["changelog", "Read included changelog", "about", false, false],
+            ["open-backups", "Open settings backups", "about", false, false],
             ["documentation", "Open documentation", "about", false, false],
             ["report-problem", "Report a problem on GitHub", "about", false, false]]
             result.Push(Map("id", item[1], "label", item[2], "section", item[3], "runtimeOnly", this.Bool(item[4]), "destructive", this.Bool(item[5])))

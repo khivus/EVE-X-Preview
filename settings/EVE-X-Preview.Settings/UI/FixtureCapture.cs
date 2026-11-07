@@ -95,7 +95,7 @@ public sealed partial class MainWindow
         sectionId = "about"; RenderPage();
         await Task.Delay(200);
         Check(page.GetVisualDescendants().OfType<Button>().First(b => b.Content?.ToString() == "Check for updates").IsEnabled, "Update checks remain available with another category's invalid input");
-        Check(aboutButtons.Count==7 && aboutButtons.ContainsKey("download-settings") && versionLabels["installed"].Text?.StartsWith("v1.7.0.4")==true,"About shows installed/release versions and the settings editor download action");
+        Check(aboutButtons.Count==8 && aboutButtons.ContainsKey("open-backups") && aboutButtons.ContainsKey("download-settings") && versionLabels["installed"].Text?.StartsWith("v1.7.0.4")==true,"About shows installed/release versions and the settings editor download action");
         Check(aboutButtons.Values.Select(b=>b.Bounds.Width).Distinct().Count()==1 && aboutButtons.Values.All(b=>b.HorizontalContentAlignment==Avalonia.Layout.HorizontalAlignment.Center),"About actions share one width and centered labels");
         var realUpdateStatus=aboutStatus.Copy();
         SetAboutStatus(new(){["stable"]="9.0.0",["installed"]="1.7.0.4",["updateAvailable"]=true});

@@ -112,6 +112,7 @@ Load_JSONUnlocked(interactive := true) {
 
     ; Load default JSON (throws on failure)
     DJSON := JSON.Load(defaultPath)
+    SettingsBackup.CollectMigrationBackups(A_WorkingDir)
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
@@ -135,6 +136,7 @@ Load_JSONUnlocked(interactive := true) {
         uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
 
         if (uver != dver) {
+            backupPath := SettingsBackup.ArchivePath(userPath, backupPath)
             ProgramLog.Add("Migrating settings " uver " -> " dver "; backup=" backupPath)
             ; Create a timestamped backup of the existing file before merge
             FileMove(userPath, backupPath, true)
@@ -172,6 +174,7 @@ Load_JSONUnlocked(interactive := true) {
         ProgramLog.Add("Settings recovery accepted; backup=" backupPath)
 
         ; backup the corrupted file (if not already moved)
+        backupPath := SettingsBackup.ArchivePath(userPath, backupPath)
         try FileMove(userPath, backupPath, true)
         catch as backupError {
             ProgramLog.Error(backupError, "Backing up settings during recovery")

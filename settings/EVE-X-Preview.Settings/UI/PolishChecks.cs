@@ -24,7 +24,21 @@ public sealed partial class MainWindow
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateLayout,Avalonia.Threading.DispatcherPriority.Render);
             using var bitmap=new RenderTargetBitmap(new PixelSize((int)Bounds.Width,(int)Bounds.Height));bitmap.Render(this);bitmap.Save(Path.Combine(directory,name+".png"),PngBitmapEncoderOptions.Default);
         }
-        Width=1100;Height=800;await NavigateToAsync("interface");await Task.Delay(150);UpdateLayout();
+        Width=1100;Height=800;
+        await NavigateToAsync("about");
+        Check(page.GetVisualDescendants().OfType<Button>().Any(b=>b.Content?.ToString()=="Open settings backups" && b.IsEnabled),"About exposes the backup-folder button while editing offline");
+        await NavigateToAsync("shortcuts");UpdateLayout();
+        Check(page.GetVisualDescendants().OfType<HotkeyEditor>().Count(c=>Avalonia.Automation.AutomationProperties.GetName(c) is "Pause EVE switching hotkeys" or "Pause all hotkeys")==2,"Both independent hotkey pause assignments are visible in Keyboard shortcuts");
+        await Shot("pause-hotkeys");
+        await NavigateToAsync("appearance");UpdateLayout();
+        var delayInput=page.GetVisualDescendants().OfType<Control>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)==session.Metadata!.Field("UnfocusedBorderClearDelay").Text("label"));
+        Check(delayInput.GetVisualDescendants().OfType<NumericUpDown>().Single().Value==1000 && delayInput.IsEffectivelyEnabled,"The configurable unfocused-border delay is editable with a one-second default");
+        delayInput.BringIntoView();await Task.Delay(100);await Shot("focus-border-delay");
+        await NavigateToAsync("switching-behavior");
+        Check(session.Metadata!.Field("GroupsHoldDelay").Number("min")==30,"The companion exposes the 30 ms group hold-delay minimum");
+        await NavigateToAsync("tray");
+        Check(page.GetVisualDescendants().OfType<ToggleSwitch>().Count(c=>Avalonia.Automation.AutomationProperties.GetName(c) is "Pause EVE switching hotkeys" or "Pause all hotkeys")==2,"Both hotkey pause commands have independent tray visibility controls");
+        await NavigateToAsync("interface");await Task.Delay(150);UpdateLayout();
         var header=(Border)workbench.Children[0];var footer=(Border)workbench.Children.Last();
         var themeChoice=page.GetVisualDescendants().OfType<ComboBox>().Single(c=>Avalonia.Automation.AutomationProperties.GetName(c)==session.Metadata!.Field("SettingsTheme").Text("label"));
         var themeOptions=session.Metadata!.Field("SettingsTheme")!.Array("choices");

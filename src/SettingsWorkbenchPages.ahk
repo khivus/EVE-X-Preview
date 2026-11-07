@@ -827,6 +827,7 @@
         this.preInstall := this.Action("Install pre-release version...", (*) => this.InstallVersion(true), 360)
         this.settingsInstall := this.Action("Download latest settings editor", (*) => this.OpenSettingsDownload(), 360)
         this.Action("Read included changelog", (*) => ChangelogWindow.Show(false, this.S_Gui.Hwnd))
+        this.Action("Open settings backups", (*) => SettingsBackup.Open(A_WorkingDir))
         this.Action("Open documentation", (*) => Run("https://github.com/khivus/EVE-X-Preview/blob/dev/README.MD"))
         this.Action("Report a problem on GitHub", (*) => Run("https://github.com/khivus/EVE-X-Preview/issues/new"))
         this.UpdateVersionControls()

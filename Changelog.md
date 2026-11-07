@@ -1,5 +1,28 @@
 ﻿# Changelog
 
+## v1.7.0.4
+
+### Added
+* Automatic startup settings backups under `%LOCALAPPDATA%\EVE-X-Preview\Backups`, retaining the latest five copies for each installation before migration or normalization. About opens the backup folder in both editors. Migration/recovery backups are stored there too, including existing migration copies moved from the application folder; these archives are retained separately.
+* Separate **Pause EVE switching hotkeys** and **Pause all hotkeys** controls. The full-pause shortcut remains available to resume hotkeys; both commands can be shown or hidden in the tray menu.
+* Configurable delay before clearing the focused-thumbnail border when switching away from EVE, defaulting to one second. Switching between clients still updates the highlight immediately.
+* A count of unapplied settings changes, clearer disabled-setting explanations, and a persistent disconnection banner with draft recovery.
+
+### Changed
+* Settings editor downloads go directly beside the application and launch automatically. The update suggests the optional editor when missing; About disables the download when it is current. Main-app updates also update an installed editor, while installations without it remain unchanged. All executables share the main release version.
+* Quick Group takes priority over shared character/group shortcuts only while it contains an available window. Empty or closed Quick Group members leave the key available to the usual character or group shortcut.
+* Group shortcut hold delay now accepts values down to **30 ms**.
+* Settings themes update existing controls immediately, with clear header, sidebar, content and footer divisions. Category navigation keeps the surrounding controls available.
+* Profile creation keeps the name and actions visible, groups inheritance choices and offers all/none/current-profile presets. Section inheritance keeps one-click checkboxes, and inherited settings support editing Default in place.
+* Event options appear below their table in categories. Sound assignments explain inheritance and support editing Default on the same page. Monitored characters owns its filter switch and list under one inheritance source, preserving existing effective values.
+* Search clearing, compact numeric fields, slider alignment, disabled color previews and folder-field alignment are more consistent. Performance and compatibility is now named Advanced. Off-screen recovery stays in Layout; the optional Pause Live Previews tray command is hidden by default, and Diagnostics names the current pause/resume action.
+
+### Fixed
+* Changing a mouse gesture affects only that action, including after selecting multiple cells. Restoring a gesture clears its former duplicate warning, and pending Default edits retain their original profile.
+* Apply/restart retains the profile being edited. Shortcut-overlap warnings open the correct category, and reconnect refreshes Problems without losing the draft.
+* Inheritance changes and sound preview actions retain the current scroll position. Theme changes refresh the top bar, Graphite toggle hover remains readable, disabled numeric fields have an even background, and the search-clear icon is centered.
+* New configurations use an installed default font; missing legacy Gill Sans MT defaults migrate safely while custom font choices are retained.
+
 ## v1.7.0.3
 
 ### Added

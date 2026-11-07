@@ -5,6 +5,31 @@ class SettingsBackup {
 
     static Directory(installation) => (this.Root != "" ? this.Root : EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Backups") "\" SettingsBridge.InstallationId(installation)
 
+    static ArchivePath(source, name) {
+        SplitPath(SettingsBridge.NormalizeInstallation(source),, &installation)
+        SplitPath(name, &leaf)
+        directory := this.Directory(installation)
+        DirCreate(directory)
+        path := directory "\" leaf
+        while FileExist(path)
+            path := directory "\" (++this.sequence) "." leaf
+        return path
+    }
+
+    static CollectMigrationBackups(installation) {
+        loop files installation "\EVE-X-Preview.*.backup.json", "F" {
+            try FileMove(A_LoopFileFullPath, this.ArchivePath(installation "\EVE-X-Preview.json", A_LoopFileName), false)
+            catch as err
+                ProgramLog.Add("Migration backup move skipped: " err.Message, "WARN")
+        }
+    }
+
+    static Open(installation) {
+        directory := this.Directory(installation)
+        DirCreate(directory)
+        Run('explorer.exe "' directory '"')
+    }
+
     static Capture(source) {
         temporary := ""
         try {
@@ -20,7 +45,8 @@ class SettingsBackup {
             FileMove(temporary, destination, false)
             files := ""
             loop files directory "\EVE-X-Preview.*.json", "F"
-                files .= A_LoopFileFullPath "`n"
+                if !InStr(A_LoopFileName, ".backup.json")
+                    files .= A_LoopFileFullPath "`n"
             for index, path in StrSplit(RTrim(Sort(files, "R"), "`n"), "`n")
                 if index > 5
                     FileDelete(path)
