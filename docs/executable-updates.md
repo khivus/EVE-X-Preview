@@ -74,8 +74,11 @@ Verified in offline Windows Sandbox on 2026-11-10:
 | Real settings executable and embedded host | 2 inspection assertions passed; editor closed cleanly |
 | Window handoff | A delayed editor process released its lease before exiting; handoff waited for its exit, and refused closure while its draft was dirty |
 | Startup guards | Both compiled apps refused an incomplete transaction |
-| Full AHK suite | 405 passed, 1 failed in each of two connected-desktop runs; the unchanged rapid-cell-switch input test passed when run separately |
+| Full AHK suite | 411 passed, 0 failed, including the original rapid-cell-switch test and five new pointer/capture regressions |
+| Repeated rapid input | 120 passed, 0 failed: 20 runs each of rapid switching, queued release, release during commit, immediate capture, empty-table capture and overlapping presses |
 
 The reported recovery-before-download scenario is covered by the pending-journal/network-failure regression. The truncated-bundle case was reproduced against the previous validation before its fix. The settings-order regression also failed before replacing sorted-map enumeration with explicit ordered pairs. The three earlier layout fixes and their common-font checks remain in the AHK suite.
 
-The remaining full-suite failure is `Settings input pulse rapid cell switches always open the clicked editor and ignore stale focus loss`, an intermittent case also observed on the earlier upstream baseline. Its posted-input path sometimes retains a drag state. Neither `SettingsGrid.ahk` nor that test was changed, skipped or weakened. The initial disconnected guest run also lacked its virtual audio endpoint; the results above are from the reconnected desktop, where audio checks passed.
+The rapid-cell input failure was reproduced with a deterministic message-pumping fixture. Committing the old cell could dispatch button-up before button-down established its drag state; the earlier direct-click scroll callback could commit before pointer handling even began. Native mouse callbacks now capture input immediately and queue it for ordered processing through a buffered private message. Raw press state preserves capture for a newer held press, and release handling also clears capture when an empty fixed table has no cell to edit. Disposal drops pending input and releases owned capture.
+
+The original rapid-cell test remains unchanged. Five added regressions cover an already queued release, a release arriving during a commit, immediate mouse capture, an empty production window picker, and a newer press arriving before the old click finishes. Each regression was observed failing before its corresponding correction; no tests were skipped or weakened.
