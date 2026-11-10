@@ -501,17 +501,17 @@ Class Settings_Gui extends SoundSettingsGui {
         ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
         Hotkey_Groups.Push ddl
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Next Character Hotkey:")
         HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vForwardsKey")
         Hotkey_Groups.Push HKForwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn1", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Previous Character Hotkey:")
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vBackwardsdKey")
         Hotkey_Groups.Push HKBackwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn2", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Active Character Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Available Character Hotkey:")
         FirstCharHotkey := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vFirstCharHotkey")
         Hotkey_Groups.Push FirstCharHotkey
 
@@ -1034,7 +1034,7 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Thumbnails on Login Screen:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Logged-In Thumbnails (Unsaved):")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Unsaved Logged-In Thumbnails:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoggedInCharacters Checked" This.ShiftThumbsForLoggedInCharacters, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Enable Thumbnail Collision Avoidance:")
@@ -1420,11 +1420,10 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "This feature does not violate the EULA or ToS, but it is neither endorsed")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "nor supported by CCP. Use at your own risk. Performance impact")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "increases with the number of characters tracked simultaneously.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "This feature does not violate the EULA or ToS, but it is neither endorsed nor supported by CCP. Use at your own risk. Performance impact increases with the number of characters tracked simultaneously.")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
+        arr.Push This.MainFrame.Add("Text", Format("xs y+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Track Current System (Local Chat):")
@@ -1599,15 +1598,16 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enabling more options decreases performance. The effect increases")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "Enabling more options decreases performance. The effect increases with the number of characters currently being tracked.")
 
-        for event in monitoredEventsOrder {
+        for index, event in monitoredEventsOrder {
             attackEvent := event = "underAttackByPlayer" || event = "underAttackByNPC"
             label := event = "stoppedShooting" ? "Shooting idle (ms):" : event = "underAttackByPlayer" ? "Player attack" : event = "underAttackByNPC" ? "NPC attack" : This.monitoredEventsTexts[event]
             nextControlX := event = "stoppedShooting" ? secondOptionX : attackEvent ? firstOptionX : colorX
             labelWidth := nextControlX - This.contentGap - controlGap
-            arr.Push This.MainFrame.Add("CheckBox", Format("xs ys+{} w{} Section", This.xlGap, labelWidth) " vE" event, label)
+            rowPosition := index = 1 ? "y+" This.contentGap : "ys+" This.xlGap
+            arr.Push This.MainFrame.Add("CheckBox", Format("xs {} w{} Section", rowPosition, labelWidth) " vE" event, label)
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("x{} ys-{} w{}", secondOptionX, This.editOffset, optionW) " vshootingInterval")
@@ -2152,76 +2152,29 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
 
         processUpdateApp(preRelease?) {
-            if !IsSet(preRelease)
+            if !IsSet(preRelease) || (preRelease != "true" && preRelease != "false")
                 return
-            This.MainFrame["UpdateStatus"].Value := "Working..."
-
-            if preRelease = "false"
-                newTag := This.latestReleaseTag
-            else if preRelease = "true"
-                newTag := This.latestPreReleaseTag
-            else
-                return
-
-            ProgramLog.Add("App update requested; current=" This.programVersion "; target=" newTag "; pre-release=" preRelease "; admin=" A_IsAdmin)
-            ProgramLog.Flush()
-
-            SetWorkingDir(A_ScriptDir)
-
-            if !A_IsAdmin {
-                ans := MsgBox("EVE-X-Preview not running as admin!`n"
-                    "Updater might need admin rights to run!`n`n"
-                    "Do you want to try update without admin rights?", "Warning!", "YesNo")
-                if ans = "No" {
-                    ProgramLog.Add("App update cancelled at administrator prompt")
-                    This.MainFrame["UpdateStatus"].Value := "Updater not started."
-                    return
-                }
-            }
-
-            updaterExeName := "EVE-X-Preview-Updater.exe"
-            updaterExePath := A_Temp "\" updaterExeName
-            updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
-
-            try {
-            if FileExist(updaterExePath)
-                FileDelete(updaterExePath)
-
-            This.MainFrame["UpdateStatus"].Value := "Downloading Updater..."
-            ProgramLog.Add("Downloading updater: " updaterExeUrl)
-            ProgramLog.Flush()
-            Download(updaterExeUrl, updaterExePath) ; Download file from GitHub to temp folder
-
-            if !FileExist(updaterExePath)
-                Throw Error("Could not download EVE-X-Preview-Updater.exe!")
-            ProgramLog.Add("Updater downloaded; bytes=" FileGetSize(updaterExePath) "; path=" updaterExePath)
-            } catch as err {
-                ProgramLog.Error(err, "Updater download")
-                This.MainFrame["UpdateStatus"].Value := "Updater download failed."
-                MsgBox("Failed to download updater:`n" err.Message)
-                return
-            }
-            
-            Critical
-            This.MainFrame["UpdateStatus"].Value := "Starting Updater..."
-            This.First_Start_After_Update := 1 ; For showing update message
-
+            ; Legacy controls use the same close/guard/recovery handoff as both
+            ; maintained editors, rather than downloading a target-version updater.
+            session := 0, facade := 0
             try {
                 This.SaveJsonToFile()
-                ProgramLog.Add("Update settings saved; launching elevated updater; target=" newTag)
-                ProgramLog.Flush()
-                Run '*RunAs "' updaterExePath '" "' A_ScriptFullPath '" "' newTag '"'
+                session := SettingsSession.ForModel(This, SettingsModel(This._JSON))
+                facade := SettingsSessionRuntime(session)
+                facade.programVersion := This.programVersion
+                facade.updateChecker.releaseTag := This.latestReleaseTag
+                facade.updateChecker.preReleaseTag := This.latestPreReleaseTag
+                facade.InstallVersion(preRelease = "true")
+                This.MainFrame["UpdateStatus"].Value := facade.message
+            } catch as err {
+                ProgramLog.Error(err, "Legacy settings update")
+                This.MainFrame["UpdateStatus"].Value := "Updater could not be started. " err.Message
+            } finally {
+                if IsObject(facade)
+                    facade.Dispose()
+                if IsObject(session)
+                    session.Dispose()
             }
-            catch Error as e {
-                ProgramLog.Error(e, "Updater handoff")
-                This.MainFrame["UpdateStatus"].Value := "Updater launch failed."
-                MsgBox("Failed to start updater:`n" e.Message)
-                Critical false
-                return
-            }
-            ProgramLog.Add("Updater launched; exiting app for replacement")
-            ProgramLog.Flush()
-            ExitApp
         }
 
         helpButtonHandler() {

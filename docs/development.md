@@ -1,5 +1,7 @@
 # Development
 
+Release builds emit the existing standalone EXEs, with the settings editor optional. See [executable updates](executable-updates.md) for download selection, recovery and Sandbox integration tests.
+
 [Back to README](../README.MD)
 
 ## Run from source

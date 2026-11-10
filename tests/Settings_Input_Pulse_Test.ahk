@@ -134,6 +134,158 @@ SettingsRapidCellSwitchTest() {
     } finally app.Dispose()
 }
 
+class SettingsPumpingStatusFixture extends SettingsWorkbenchFixture {
+    pumpStatus := false
+    statusPumps := 0
+    duringStatus := 0
+    observeStatus := 0
+    UpdateStatus(message := "") {
+        super.UpdateStatus(message)
+        if IsObject(this.observeStatus)
+            this.observeStatus.Call()
+        if this.pumpStatus {
+            this.pumpStatus := false
+            this.statusPumps++
+            ; Native painting/validation can dispatch the queued release while
+            ; committing the old cell. Make that schedule deterministic.
+            if IsObject(this.duringStatus)
+                this.duringStatus.Call()
+            Sleep(35)
+        }
+    }
+    Dispose() {
+        this.duringStatus := 0
+        this.observeStatus := 0
+        super.Dispose()
+    }
+}
+
+TestRunner.Register("Settings input pulse queued button release survives committing the previous cell", SettingsQueuedCellReleaseTest.Bind(false))
+TestRunner.Register("Settings input pulse button release arriving during a commit opens the clicked editor", SettingsQueuedCellReleaseTest.Bind(true))
+SettingsQueuedCellReleaseTest(duringCommit) {
+    app := SettingsPumpingStatusFixture()
+    try {
+        app.model.SaveRows("character-shortcuts", [["Alpha", "F13"], ["Beta", "F14"]])
+        app.Navigate("character-shortcuts")
+        app.S_Gui.Show("NoActivate x-3000 y-3000 w1000 h740")
+        Sleep(180)
+        grid := app.grids[1]
+        grid.Select(1, 1)
+        grid.BeginEdit()
+        grid.editor.Value := "Renamed"
+        app.pumpStatus := true
+        point := GridTestPoint(grid, 2, 1)
+        if duringCommit
+            app.duringStatus := (*) => PostMessage(0x202, 0, point, grid.list)
+        PostMessage(0x201, 1, point, grid.list)
+        if !duringCommit
+            PostMessage(0x202, 0, point, grid.list)
+        Sleep(50)
+        deadline := A_TickCount + 300
+        while !IsObject(grid.editor) && A_TickCount < deadline
+            Sleep(10)
+        AssertEqual(1, app.statusPumps)
+        AssertEqual("Renamed", app.model.Rows("character-shortcuts")[1][1], "The previous edit must be committed.")
+        AssertTrue(IsObject(grid.editor), "The queued release must open the clicked cell; dragging=" IsObject(grid.drag))
+        AssertEqual([2, 1], [grid.editRow, grid.editColumn])
+        AssertFalse(IsObject(grid.drag), "A completed click must not retain mouse capture or a drag.")
+    } finally app.Dispose()
+}
+
+TestRunner.Register("Settings input pulse button down captures the mouse before deferred cell work", SettingsImmediateCellCaptureTest)
+SettingsImmediateCellCaptureTest() {
+    app := SettingsWorkbenchFixture()
+    previousCritical := A_IsCritical
+    try {
+        app.Navigate("character-shortcuts")
+        app.S_Gui.Show("NoActivate x-3000 y-3000 w1000 h740")
+        Sleep(180)
+        grid := app.grids[1]
+        point := GridTestPoint(grid, 1, 1)
+        Critical(true) ; Keep the deferred work pending until capture is checked.
+        grid.Pointer(1, point, 0x201, grid.list.Hwnd)
+        AssertEqual(grid.hwnd, DllCall("GetCapture", "Ptr"), "Releases outside the list must still return to the pressed grid.")
+        Critical(previousCritical)
+        PostMessage(0x202, 0, point, grid.list)
+        deadline := A_TickCount + 300
+        while DllCall("GetCapture", "Ptr") = grid.hwnd && A_TickCount < deadline
+            Sleep(10)
+        AssertFalse(IsObject(grid.drag))
+        AssertTrue(DllCall("GetCapture", "Ptr") != grid.hwnd)
+    } finally {
+        Critical(previousCritical)
+        app.Dispose()
+    }
+}
+
+class SettingsEmptyPickerFixture extends SettingsWorkbenchFixture {
+    RunningWindows(applications) => []
+}
+
+TestRunner.Register("Settings input pulse an empty fixed table releases mouse capture after a click", SettingsEmptyCellCaptureTest)
+SettingsEmptyCellCaptureTest() {
+    app := SettingsEmptyPickerFixture()
+    try {
+        app.PickRunningWindows(false, (*) => 0)
+        grid := app.grids[-1]
+        AssertEqual(0, grid.RowCount)
+        point := 10 | (40 << 16)
+        PostMessage(0x201, 1, point, grid.list)
+        PostMessage(0x202, 0, point, grid.list)
+        Sleep(50)
+        AssertFalse(IsObject(grid.editor))
+        AssertFalse(IsObject(grid.drag))
+        AssertTrue(DllCall("GetCapture", "Ptr") != grid.hwnd, "An empty table must not keep the mouse captured after release.")
+    } finally app.Dispose()
+}
+
+TestRunner.Register("Settings input pulse an older release keeps capture for a newer queued press", SettingsOverlappingCellCaptureTest)
+SettingsOverlappingCellCaptureTest() {
+    app := SettingsPumpingStatusFixture()
+    try {
+        app.model.SaveRows("character-shortcuts", [["Alpha", "F13"], ["Beta", "F14"], ["Gamma", "F15"]])
+        app.Navigate("character-shortcuts")
+        app.S_Gui.Show("NoActivate x-3000 y-3000 w1000 h740")
+        Sleep(180)
+        grid := app.grids[1]
+        grid.Select(1, 1)
+        grid.BeginEdit()
+        grid.editor.Value := "Renamed"
+        first := GridTestPoint(grid, 2, 1), second := GridTestPoint(grid, 3, 1)
+        state := {observed: false, capture: 0}
+        app.duringStatus := QueueNextPress
+        app.observeStatus := ObserveEditor
+        app.pumpStatus := true
+        PostMessage(0x201, 1, first, grid.list)
+        Sleep(100)
+        deadline := A_TickCount + 300
+        while (!IsObject(grid.editor) || grid.editRow != 3) && A_TickCount < deadline
+            Sleep(10)
+        AssertTrue(state.observed, "The first editor must open while the newer press is held.")
+        AssertEqual(grid.hwnd, state.capture, "Completing the older click must retain capture for the newer held press.")
+        AssertTrue(IsObject(grid.editor))
+        AssertEqual([3, 1], [grid.editRow, grid.editColumn])
+        AssertEqual("Renamed", app.model.Rows("character-shortcuts")[1][1])
+        AssertFalse(IsObject(grid.drag))
+        AssertTrue(DllCall("GetCapture", "Ptr") != grid.hwnd)
+    } finally app.Dispose()
+
+    QueueNextPress() {
+        PostMessage(0x202, 0, first, grid.list)
+        PostMessage(0x201, 1, second, grid.list)
+    }
+    ObserveEditor() {
+        if !state.observed && IsObject(grid.editor) && grid.editRow = 2 {
+            state.observed := true
+            state.capture := DllCall("GetCapture", "Ptr")
+            ; Model the newer release arriving outside the list during paint.
+            if state.capture = grid.hwnd
+                PostMessage(0x202, 0, second, grid.list)
+            Sleep(35)
+        }
+    }
+}
+
 TestRunner.Register("Settings input pulse dragging within an unchanged range does not repaint selected cells", SettingsDragNoopPaintingTest)
 SettingsDragNoopPaintingTest() {
     app := SettingsWorkbenchFixture(), observer := 0

@@ -1,5 +1,12 @@
 ﻿#Requires AutoHotkey v2.0
 
+; The installed executables are replaced in sequence. Refuse a manual
+; launch while replacement or recovery is pending, including after interruption.
+if A_IsCompiled && DirExist(A_ScriptDir "\.EVE-X-Preview-update") {
+    MsgBox("An update is in progress or needs recovery. Let the updater finish, or run EVE-X-Preview-Updater.exe --recover with this application's EXE path before starting the application.", "EVE-X-Preview update")
+    ExitApp(1)
+}
+
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
 #Include "Lib/LiveThumb.ahk"

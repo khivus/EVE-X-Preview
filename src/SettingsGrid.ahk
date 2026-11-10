@@ -1,6 +1,8 @@
 ﻿; Shared native spreadsheet interactions. Configuration remains staged in the
 ; workbench; invalid identified rows survive page changes and block Apply.
 class SettingsGrid {
+    static PointerMessage := DllCall("RegisterWindowMessageW", "Str", "EVE-X-Preview.SettingsGrid.Pointer", "UInt")
+
     __New(app, id, list, columns, rows, save, options?) {
         this.app := app, this.id := id, this.list := list, this.columns := columns, this.save := save
         this.hwnd := list.Hwnd
@@ -22,6 +24,10 @@ class SettingsGrid {
         this.charCallback := ObjBindMethod(this, "Character")
         this.scrollCallback := ObjBindMethod(this, "Scrolled")
         this.pointerCallback := ObjBindMethod(this, "Pointer")
+        this.pointerDispatchCallback := ObjBindMethod(this, "DispatchPointer")
+        this.pendingPointer := []
+        this.processingPointer := false
+        this.pointerDown := false
         this.drag := 0
         list.OnNotify(-2, this.clickCallback)
         list.OnNotify(-12, this.drawCallback)
@@ -32,6 +38,7 @@ class SettingsGrid {
             OnMessage(message, this.scrollCallback)
         for message in [0x201, 0x200, 0x202]
             OnMessage(message, this.pointerCallback)
+        OnMessage(SettingsGrid.PointerMessage, this.pointerDispatchCallback)
         list.ToolTip := "Click a cell to edit. Shift/Ctrl+click selects cells; Ctrl+C/V copies/pastes. Del clears; Ctrl+Del removes rows."
         list.SettingsHelp := list.ToolTip
         SendMessage(0x1036, 0x4001, app.theme.dark ? 0x4000 : 0x4001, list) ; Native grid lines are too bright on dark surfaces.
@@ -208,28 +215,73 @@ class SettingsGrid {
         return {row: Max(1, Min(this.RowCount, row + 1)), column: column, actual: actual}
     }
     Pointer(wParam, lParam, message, hwnd) {
+        if this.disposed || hwnd != this.hwnd
+            return
+        if message != 0x201 && !IsObject(this.drag) && !this.pendingPointer.Length && !this.processingPointer && !this.pointerDown
+            return
+        ; System mouse messages can interrupt a commit even in a Critical
+        ; thread. Capture them quickly; only the buffered private message may
+        ; change selection, commit values or create an editor.
+        previousCritical := A_IsCritical
+        Critical(true)
+        try {
+            this.pendingPointer.Push([wParam, lParam, message, hwnd])
+            ; Keep releases outside the list routed here while work is queued.
+            if message = 0x201 {
+                this.pointerDown := true
+                DllCall("SetCapture", "Ptr", this.hwnd, "Ptr")
+            } else if message = 0x202
+                this.pointerDown := false
+            PostMessage(SettingsGrid.PointerMessage, 0, 0, this.list)
+        } finally Critical(previousCritical)
+        return 0
+    }
+    DispatchPointer(wParam, lParam, message, hwnd) {
+        Critical(true)
+        if this.disposed || hwnd != this.hwnd
+            return
+        this.processingPointer := true
+        try {
+            while this.pendingPointer.Length && !this.disposed
+                this.ApplyPointer(this.pendingPointer.RemoveAt(1)*)
+        } finally this.processingPointer := false
+        return 0
+    }
+    ApplyPointer(wParam, lParam, message, hwnd) {
         if this.disposed || hwnd != this.list.Hwnd
             return
         x := (lParam & 0xFFFF) << 48 >> 48
         y := ((lParam >> 16) & 0xFFFF) << 48 >> 48
         if message = 0x201 {
-            ; Committing a previous cell can pump messages. Complete pointer
-            ; setup before a queued button-up can observe an unfinished drag.
-            previousCritical := A_IsCritical
-            Critical(true)
-            try {
-                this.CommitEditor()
-                cell := this.CellAt(x, y)
-                if !IsObject(cell)
-                    return 0
-                extend := !!(wParam & 4), toggle := !!(wParam & 8)
-                previous := this.selected.Clone()
-                this.Select(cell.row, cell.column, extend, toggle)
-                this.list.Focus()
-                this.drag := {x: x, y: y, start: [cell.row, cell.column], previous: previous,
-                    extend: extend, toggle: toggle, moved: false, actual: cell.actual, endRow: 0, endColumn: 0}
+            this.CommitEditor()
+            cell := this.CellAt(x, y)
+            if !IsObject(cell)
+                return 0
+            extend := !!(wParam & 4), toggle := !!(wParam & 8)
+            previous := this.selected.Clone()
+            this.Select(cell.row, cell.column, extend, toggle)
+            this.list.Focus()
+            this.drag := {x: x, y: y, start: [cell.row, cell.column], previous: previous,
+                extend: extend, toggle: toggle, moved: false, actual: cell.actual, endRow: 0, endColumn: 0}
+            if this.pointerDown
                 DllCall("SetCapture", "Ptr", this.list.Hwnd, "Ptr")
-            } finally Critical(previousCritical)
+            return 0
+        }
+        if message = 0x202 {
+            drag := this.drag
+            this.drag := 0
+            ; A newer raw press may already be queued. Its release must still
+            ; reach this list while opening the older click's editor pumps UI.
+            if !this.pointerDown && DllCall("GetCapture", "Ptr") = this.hwnd
+                DllCall("ReleaseCapture")
+            if !IsObject(drag)
+                return 0
+            if !drag.moved && !drag.extend && !drag.toggle && drag.actual {
+                if this.columns[this.column].kind = "bool" && this.row <= this.rows.Length && !this.readonly
+                    this.SetCells([[this.row, this.column, !this.rows[this.row][this.column]]])
+                else
+                    this.BeginEdit()
+            }
             return 0
         }
         if !IsObject(this.drag)
@@ -249,18 +301,6 @@ class SettingsGrid {
                     this.Select(cell.row, cell.column, true)
                 else
                     this.Select(cell.row, cell.column, true, false, drag.previous)
-            }
-            return 0
-        }
-        if message = 0x202 {
-            drag := this.drag
-            this.drag := 0
-            DllCall("ReleaseCapture")
-            if !drag.moved && !drag.extend && !drag.toggle && drag.actual {
-                if this.columns[this.column].kind = "bool" && this.row <= this.rows.Length && !this.readonly
-                    this.SetCells([[this.row, this.column, !this.rows[this.row][this.column]]])
-                else
-                    this.BeginEdit()
             }
             return 0
         }
@@ -786,6 +826,10 @@ class SettingsGrid {
         return 0
     }
     Scrolled(wParam, lParam, message, hwnd) {
+        ; Pointer owns direct list clicks. Committing here can dispatch their
+        ; queued button-up before Pointer has established the matching drag.
+        if message = 0x201 && hwnd = this.hwnd
+            return
         if !this.disposed && IsObject(this.editor) && (hwnd = this.list.Hwnd || lParam = this.list.Hwnd || DllCall("IsChild", "Ptr", this.list.Hwnd, "Ptr", hwnd))
             this.CommitEditor()
     }
@@ -793,7 +837,9 @@ class SettingsGrid {
         if this.disposed
             return
         this.disposed := true
-        if IsObject(this.drag) {
+        this.pendingPointer := []
+        this.pointerDown := false
+        if IsObject(this.drag) || DllCall("GetCapture", "Ptr") = this.hwnd {
             DllCall("ReleaseCapture")
             this.drag := 0
         }
@@ -803,6 +849,7 @@ class SettingsGrid {
             OnMessage(message, this.scrollCallback, 0)
         for message in [0x201, 0x200, 0x202]
             OnMessage(message, this.pointerCallback, 0)
+        OnMessage(SettingsGrid.PointerMessage, this.pointerDispatchCallback, 0)
         try this.list.OnNotify(-2, this.clickCallback, 0)
         try this.list.OnNotify(-12, this.drawCallback, 0)
     }
