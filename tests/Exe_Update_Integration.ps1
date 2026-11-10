@@ -4,6 +4,7 @@ param([Parameter(Mandatory)][string]$ReleaseDirectory,
 $ErrorActionPreference='Stop'
 if ($env:USERNAME -ne 'WDAGUtilityAccount') { throw 'Run compiled updater integration inside Windows Sandbox.' }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
+& (Join-Path $PSScriptRoot 'Update_Startup_Guard_Test.ps1') -OutputDirectory (Join-Path $OutputDirectory 'startup-guard-regressions')
 $source=Split-Path $PSScriptRoot -Parent
 $fixture=Join-Path $env:TEMP ('evex-compiled-update-' + [guid]::NewGuid().ToString('N'))
 $install=Join-Path $fixture 'installation with spaces'
@@ -71,8 +72,15 @@ try {
 
 # Protect both entry points from a partial update, then exercise compiled offline recovery.
 New-Item -ItemType Directory -Path (Join-Path $install '.EVE-X-Preview-update') | Out-Null
-$guard=Start-Process C:\Runtime\AutoHotkey64.exe -ArgumentList '/ErrorStdOut',('"'+(Join-Path $PSScriptRoot 'Update_Startup_Guard.ahk')+'"'),('"'+$main+'"'),('"'+(Join-Path $OutputDirectory 'checks.log')+'"') -WorkingDirectory $source -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'guard-stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'guard-stderr.log')
-if ($guard.ExitCode) { throw 'Compiled main startup guard failed.' }
+$guard=Start-Process C:\Runtime\AutoHotkey64.exe -ArgumentList '/ErrorStdOut',('"'+(Join-Path $PSScriptRoot 'Update_Startup_Guard.ahk')+'"'),('"'+$main+'"'),('"'+(Join-Path $OutputDirectory 'checks.log')+'"') -WorkingDirectory $source -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'guard-stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'guard-stderr.log')
+$null=$guard.Handle
+try {
+    if (-not $guard.WaitForExit(25000)) { throw 'Compiled main startup guard timed out.' }
+    if ($guard.ExitCode) { throw 'Compiled main startup guard failed.' }
+} finally {
+    if (-not $guard.HasExited) { Stop-Process -Id $guard.Id -Force }
+    Get-Process | Where-Object { try { $_.Path -eq $main } catch { $false } } | Stop-Process -Force
+}
 $blocked=Start-Process (Join-Path $install 'EVE-X-Preview-Settings.exe') -ArgumentList '--installation',('"'+$install+'"') -WindowStyle Hidden -PassThru
 $null=$blocked.Handle
 if (-not $blocked.WaitForExit(15000) -or $blocked.ExitCode -ne 1) { throw 'Settings startup guard failed.' }
