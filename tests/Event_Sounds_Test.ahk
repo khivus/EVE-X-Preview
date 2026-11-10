@@ -416,6 +416,36 @@ EventSoundNativePlaybackTest() {
     }
 }
 
+TestRunner.Register("Six native alerts start within one input-latency budget after audio preparation", EventSoundBurstStartupTest)
+EventSoundBurstStartupTest() {
+    path := CreateTestSound("burst startup", 4000)
+    preparationStarted := A_TickCount
+    warmup := EventSoundPlayer()
+    preparationMs := A_TickCount - preparationStarted
+    mixer := EventSoundMixer(Map("MaxSimultaneousSounds", 6, "SoundRepeatTimeout", 0))
+    try {
+        AssertTrue(warmup.Play(path), warmup.lastError)
+        warmup.Stop()
+        started := A_TickCount
+        loop 6
+            AssertTrue(mixer.Play(path), mixer.lastError)
+        elapsed := A_TickCount - started
+        AssertTrue(elapsed < 450, "Preparing output once must keep a six-alert burst responsive; elapsed=" elapsed " ms.")
+        TestRunner.Log("Audio startup: preparation=" preparationMs " ms; six-alert burst=" elapsed " ms.")
+        AssertEqual(6, mixer.ActiveCount(), "Overlapping alerts must retain independent playback.")
+        mixer.channels[1].player.Stop()
+        AssertEqual(5, mixer.ActiveCount(), "Stopping one alert must leave the other voices playing.")
+        mixer.Dispose()
+        FileDelete(path)
+        AssertFalse(FileExist(path), "Completed/disposed sources must release their original file.")
+    } finally {
+        warmup.Dispose()
+        mixer.Dispose()
+        if FileExist(path)
+            FileDelete(path)
+    }
+}
+
 TestRunner.Register("Master sound and event volumes multiply independently and retain backward-compatible defaults", EventSoundVolumeScopesTest)
 EventSoundVolumeScopesTest() {
     app := EventSoundRuntimeFixture()

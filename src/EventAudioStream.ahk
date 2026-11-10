@@ -1,10 +1,9 @@
+#Include "EventAudioOutput.ahk"
 ; Windows Media Foundation decodes short chunks; XAudio2 mixes them with real
 ; gain above 1.0. No file copies, bundled codecs or AHK callbacks on audio threads.
 class EventAudioStream {
     reader := 0
-    engine := 0
-    audioModule := 0
-    mastering := 0
+    output := 0
     voice := 0
     mediaStarted := false
     chunks := []
@@ -12,6 +11,8 @@ class EventAudioStream {
     endOfStream := false
     static maxQueuedBytes := 2 * 1024 * 1024
     static maxSampleBytes := 4 * 1024 * 1024
+    ; A borrowed handle is available only while this stream holds its owner.
+    engine => IsObject(this.output) ? this.output.engine : 0
 
     __New(path, volume) {
         partial := actual := waveFormat := 0
@@ -35,18 +36,9 @@ class EventAudioStream {
             DllCall("mfplat\MFCreateWaveFormatExFromMFMediaType", "Ptr", actual,
                 "Ptr*", &waveFormat, "UInt*", &formatSize, "UInt", 0, "HRESULT")
             this.bufferTarget := Min(EventAudioStream.maxQueuedBytes, Max(65536, NumGet(waveFormat, 8, "UInt")))
-            engine := 0
-            this.audioModule := DllCall("LoadLibraryW", "Str", "xaudio2_9.dll", "Ptr")
-            if !this.audioModule
-                throw Error("Windows XAudio2 is unavailable.")
-            DllCall("xaudio2_9\XAudio2Create", "Ptr*", &engine, "UInt", 0, "UInt", 0xFFFFFFFF, "HRESULT")
-            this.engine := engine
-            mastering := 0
-            ComCall(7, engine, "Ptr*", &mastering, "UInt", 0, "UInt", 0, "UInt", 0,
-                "Ptr", 0, "Ptr", 0, "Int", 6) ; GameEffects, default output device.
-            this.mastering := mastering
+            this.output := EventAudioOutput.Prepare()
             voice := 0
-            ComCall(5, engine, "Ptr*", &voice, "Ptr", waveFormat, "UInt", 0, "Float", 2.0,
+            ComCall(5, this.output.engine, "Ptr*", &voice, "Ptr", waveFormat, "UInt", 0, "Float", 2.0,
                 "Ptr", 0, "Ptr", 0, "Ptr", 0)
             this.voice := voice
             this.SetVolume(volume)
@@ -165,14 +157,6 @@ class EventAudioStream {
         for chunk in this.chunks
             this.ReleaseChunk(chunk)
         this.chunks := []
-        if this.mastering {
-            ComCall(18, this.mastering, "Int")
-            this.mastering := 0
-        }
-        if this.engine {
-            ObjRelease(this.engine)
-            this.engine := 0
-        }
         if this.reader {
             ObjRelease(this.reader)
             this.reader := 0
@@ -181,9 +165,6 @@ class EventAudioStream {
             DllCall("mfplat\MFShutdown", "HRESULT")
             this.mediaStarted := false
         }
-        if this.audioModule {
-            DllCall("FreeLibrary", "Ptr", this.audioModule)
-            this.audioModule := 0
-        }
+        this.output := 0
     }
 }
