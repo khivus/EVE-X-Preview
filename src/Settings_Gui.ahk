@@ -501,17 +501,17 @@ Class Settings_Gui extends SoundSettingsGui {
         ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
         Hotkey_Groups.Push ddl
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Next Character Hotkey:")
         HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vForwardsKey")
         Hotkey_Groups.Push HKForwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn1", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Previous Character Hotkey:")
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vBackwardsdKey")
         Hotkey_Groups.Push HKBackwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn2", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Active Character Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Available Character Hotkey:")
         FirstCharHotkey := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vFirstCharHotkey")
         Hotkey_Groups.Push FirstCharHotkey
 
@@ -2152,76 +2152,29 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
 
         processUpdateApp(preRelease?) {
-            if !IsSet(preRelease)
+            if !IsSet(preRelease) || (preRelease != "true" && preRelease != "false")
                 return
-            This.MainFrame["UpdateStatus"].Value := "Working..."
-
-            if preRelease = "false"
-                newTag := This.latestReleaseTag
-            else if preRelease = "true"
-                newTag := This.latestPreReleaseTag
-            else
-                return
-
-            ProgramLog.Add("App update requested; current=" This.programVersion "; target=" newTag "; pre-release=" preRelease "; admin=" A_IsAdmin)
-            ProgramLog.Flush()
-
-            SetWorkingDir(A_ScriptDir)
-
-            if !A_IsAdmin {
-                ans := MsgBox("EVE-X-Preview not running as admin!`n"
-                    "Updater might need admin rights to run!`n`n"
-                    "Do you want to try update without admin rights?", "Warning!", "YesNo")
-                if ans = "No" {
-                    ProgramLog.Add("App update cancelled at administrator prompt")
-                    This.MainFrame["UpdateStatus"].Value := "Updater not started."
-                    return
-                }
-            }
-
-            updaterExeName := "EVE-X-Preview-Updater.exe"
-            updaterExePath := A_Temp "\" updaterExeName
-            updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
-
-            try {
-            if FileExist(updaterExePath)
-                FileDelete(updaterExePath)
-
-            This.MainFrame["UpdateStatus"].Value := "Downloading Updater..."
-            ProgramLog.Add("Downloading updater: " updaterExeUrl)
-            ProgramLog.Flush()
-            Download(updaterExeUrl, updaterExePath) ; Download file from GitHub to temp folder
-
-            if !FileExist(updaterExePath)
-                Throw Error("Could not download EVE-X-Preview-Updater.exe!")
-            ProgramLog.Add("Updater downloaded; bytes=" FileGetSize(updaterExePath) "; path=" updaterExePath)
-            } catch as err {
-                ProgramLog.Error(err, "Updater download")
-                This.MainFrame["UpdateStatus"].Value := "Updater download failed."
-                MsgBox("Failed to download updater:`n" err.Message)
-                return
-            }
-            
-            Critical
-            This.MainFrame["UpdateStatus"].Value := "Starting Updater..."
-            This.First_Start_After_Update := 1 ; For showing update message
-
+            ; Legacy controls use the same close/guard/recovery handoff as both
+            ; maintained editors, rather than downloading a target-version updater.
+            session := 0, facade := 0
             try {
                 This.SaveJsonToFile()
-                ProgramLog.Add("Update settings saved; launching elevated updater; target=" newTag)
-                ProgramLog.Flush()
-                Run '*RunAs "' updaterExePath '" "' A_ScriptFullPath '" "' newTag '"'
+                session := SettingsSession.ForModel(This, SettingsModel(This._JSON))
+                facade := SettingsSessionRuntime(session)
+                facade.programVersion := This.programVersion
+                facade.updateChecker.releaseTag := This.latestReleaseTag
+                facade.updateChecker.preReleaseTag := This.latestPreReleaseTag
+                facade.InstallVersion(preRelease = "true")
+                This.MainFrame["UpdateStatus"].Value := facade.message
+            } catch as err {
+                ProgramLog.Error(err, "Legacy settings update")
+                This.MainFrame["UpdateStatus"].Value := "Updater could not be started. " err.Message
+            } finally {
+                if IsObject(facade)
+                    facade.Dispose()
+                if IsObject(session)
+                    session.Dispose()
             }
-            catch Error as e {
-                ProgramLog.Error(e, "Updater handoff")
-                This.MainFrame["UpdateStatus"].Value := "Updater launch failed."
-                MsgBox("Failed to start updater:`n" e.Message)
-                Critical false
-                return
-            }
-            ProgramLog.Add("Updater launched; exiting app for replacement")
-            ProgramLog.Flush()
-            ExitApp
         }
 
         helpButtonHandler() {

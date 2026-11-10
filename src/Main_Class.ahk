@@ -358,7 +358,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     CleanupUpdater(*) {
-        ; The adjacent updater is now a manifest-owned release component.
+        ; Keep the adjacent recovery updater for future updates and offline repair.
         for path in [A_Temp "\EVE-X-Preview-Updater.exe"] {
             try {
                 if FileExist(path)

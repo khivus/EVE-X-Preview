@@ -463,6 +463,34 @@ class SettingsBridge {
         return true
     }
 
+    CloseExternalForUpdate(timeout := 10000) {
+        this.CheckClient()
+        if IsObject(this.session) && this.session.Dirty {
+            this.FocusExternal()
+            return false
+        }
+        ; End releases the lease before Avalonia finishes shutting down. Keep
+        ; waiting for this exact PID even after ExternalPid becomes zero.
+        pid := this.ExternalPid
+        deadline := A_TickCount + timeout
+        nextClose := 0
+        while pid && ProcessExist(pid) {
+            if IsObject(this.session) && this.session.Dirty
+                return false
+            if A_TickCount >= deadline
+                return false
+            if A_TickCount >= nextClose {
+                for hwnd in WinGetList("ahk_pid " pid)
+                    if DllCall("IsWindowVisible", "Ptr", hwnd)
+                        PostMessage(0x10, 0, 0,, hwnd)
+                nextClose := A_TickCount + 250
+            }
+            Sleep(25)
+        }
+        this.CheckClient()
+        return true
+    }
+
     ConfirmOrphanRecovery() {
         return MsgBox("The modern settings editor closed while a draft was pending.`n`nYes: recover its accepted settings, undo history and profile changes in internal settings.`nNo: discard that draft and open the latest saved settings.`nCancel: keep the draft for a later modern-editor reconnect.`n`nUnfinished text held only by the closed editor cannot be recovered. No saved settings change until Apply.",
             "Recover disconnected settings draft", "YesNoCancel Icon?")

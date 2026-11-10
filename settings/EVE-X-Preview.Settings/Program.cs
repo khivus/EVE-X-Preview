@@ -39,7 +39,7 @@ internal static class Program
             }
             Installation = InstallationIdentity.Normalize(Installation);
             if (Directory.Exists(Path.Combine(Installation, ".EVE-X-Preview-update")))
-                throw new IOException("A package update is in progress or needs recovery. Run EVE-X-Preview-Updater.exe before opening settings.");
+                throw new IOException("An update is in progress or needs recovery. Run EVE-X-Preview-Updater.exe --recover with the main EXE path before opening settings.");
             Instance = new SingleInstance(Installation);
             if (!Instance.IsPrimary) { Instance.ActivateExisting(); Instance.Dispose(); return 0; }
             try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }

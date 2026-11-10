@@ -904,7 +904,7 @@
         installation := this.owner.HasOwnProp("settingsBridge") ? this.owner.settingsBridge.installation : A_ScriptDir
         mainPath := this.owner.HasOwnProp("parentHandle") ? installation "\EVE-X-Preview.exe" : A_ScriptFullPath
         if !A_IsCompiled || !FileExist(mainPath) {
-            this.ShowError("Only a compiled portable installation can be updated. Build or download its full release package first.")
+            this.ShowError("Only a compiled installation can be updated. Build or download the matching release EXEs first.")
             return
         }
         if this.HasDraftChanges() {
@@ -918,19 +918,30 @@
         updaterDirectory := A_Temp "\EVE-X-Preview-handoff-" ProcessExist() "-" A_TickCount
         DirCreate(updaterDirectory)
         updater := updaterDirectory "\EVE-X-Preview-Updater.exe"
+        hiddenSettings := 0
         try {
             ReleaseInstaller.StageUpdater(installation, updater, this.programVersion)
             this.owner.settingsUpdateHandoff := true
             ; The download may have allowed further client-state messages. Check
             ; the draft again and require a normal, acknowledged editor close.
-            if this.HasDraftChanges() || (this.owner.HasOwnProp("settingsBridge") && !this.owner.settingsBridge.TryOpenInternal())
+            if this.HasDraftChanges() || (this.owner.HasOwnProp("settingsBridge") && !this.owner.settingsBridge.CloseExternalForUpdate())
                 throw Error("Finish the open settings operation or apply/discard its draft, then retry.")
             this.owner.First_Start_After_Update := 1
             this.owner.SaveJsonToFile()
+            if this.owner.HasOwnProp("S_Gui") && IsObject(this.owner.S_Gui) {
+                try {
+                    if DllCall("IsWindowVisible", "Ptr", this.owner.S_Gui.Hwnd) {
+                        hiddenSettings := this.owner.S_Gui
+                        hiddenSettings.Hide()
+                    }
+                }
+            }
             Run '*RunAs "' updater '" "' mainPath '" "' tag '"'
             ExitApp()
         } catch as err {
             this.owner.settingsUpdateHandoff := false
+            if IsObject(hiddenSettings)
+                hiddenSettings.Show()
             this.ShowError("The installer could not be started. " err.Message)
         }
     }

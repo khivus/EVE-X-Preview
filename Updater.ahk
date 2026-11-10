@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
 #Include "Lib/json.ahk"
@@ -8,7 +8,7 @@
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
-;@Ahk2Exe-SetDescription EVE-X-Preview Package Updater (protocol 1)
+;@Ahk2Exe-SetDescription EVE-X-Preview Recovery Updater (protocol 2)
 ;@Ahk2Exe-SetProductName EVE-X-Preview Updater
 ;@Ahk2Exe-SetMainIcon res/Icon.ico
 ;@Ahk2Exe-AddResource res/Icon.ico, 160
@@ -20,130 +20,94 @@ VERSION := "1.7.0.4"
 if !A_IsCompiled
     TraySetIcon(A_ScriptDir "\res\Icon.ico",, true)
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
-ProgramLog.Add("Standalone updater version=" VERSION)
-OnError(UpdaterError)
-UpdaterError(err, mode) {
-    try ProgramLog.Error(err, "Unhandled updater " mode)
-    return 0
-}
 
 class UpdaterStatus {
     __New() {
         this.Gui := Gui("+AlwaysOnTop -MaximizeBox -MinimizeBox", "Updater v" VERSION)
-        this.ProgressBar := this.Gui.Add("Progress", "w300 h20")
-        this.Text := this.Gui.Add("Text", "h100 w300", "Starting...`n")
+        this.ProgressBar := this.Gui.Add("Progress", "w340 h20")
+        this.Text := this.Gui.Add("Text", "h160 w340", "Starting...`n")
         this.Gui.Show("Autosize")
     }
-
-    UpdateStatus(text) {
-        ProgramLog.Add("Updater: " text)
+    UpdateStatus(value) {
+        ProgramLog.Add("Updater: " value)
         ProgramLog.Flush()
-        this.ProgressBar.Value += 20
-        this.Text.Value .= text "`n"
+        this.ProgressBar.Value := Min(100, this.ProgressBar.Value + 15)
+        this.Text.Value .= value "`n"
     }
-
-    Close() {
-        this.Gui.Destroy()
-    }
+    Close() => this.Gui.Destroy()
 }
 
-A_TrayMenu.Delete()
-A_TrayMenu.Add("Exit", (*) => ExitApp())
+UpdaterFullPath(path) {
+    pathBuffer := Buffer(65536)
+    length := DllCall("GetFullPathNameW", "Str", path, "UInt", 32768, "Ptr", pathBuffer, "Ptr", 0, "UInt")
+    if !length || length >= 32768
+        throw Error("Invalid updater path.")
+    return StrGet(pathBuffer)
+}
+UpdaterArguments() {
+    if !A_Args.Length
+        return {mode: "latest", main: A_ScriptDir "\EVE-X-Preview.exe", version: "0.0", source: ""}
+    if A_Args.Length = 2 && (A_Args[1] = "--recover" || A_Args[1] = "--latest")
+        return {mode: A_Args[1] = "--recover" ? "recover" : "latest", main: UpdaterFullPath(A_Args[2]), version: "0.0", source: ""}
+    if (A_Args.Length != 2 && A_Args.Length != 3) || !RegExMatch(A_Args[2], "^\d+(\.\d+){1,3}$")
+        throw Error("Use <main EXE> <version> [local EXE directory], or --recover <main EXE>.")
+    return {mode: "install", main: UpdaterFullPath(A_Args[1]), version: A_Args[2], source: A_Args.Length = 3 ? UpdaterFullPath(A_Args[3]) : ""}
+}
+UpdaterLatestVersion() {
+    request := ComObject("WinHttp.WinHttpRequest.5.1")
+    request.SetTimeouts(5000, 5000, 15000, 15000)
+    request.Open("GET", "https://api.github.com/repos/khivus/EVE-X-Preview/releases/latest")
+    request.SetRequestHeader("User-Agent", "EVE-X-Preview")
+    request.SetRequestHeader("Accept", "application/vnd.github+json")
+    request.Send()
+    if request.Status != 200
+        throw Error("GitHub release lookup failed; HTTP " request.Status ".")
+    release := JSON.Load(request.ResponseText)
+    tag := RegExReplace(release.Get("tag_name", ""), "i)^v")
+    if release.Get("draft", true) || release.Get("prerelease", true) || !RegExMatch(tag, "^\d+(\.\d+){1,3}$")
+        throw Error("No supported stable release was found.")
+    return tag
+}
 
-status := UpdaterStatus()
-status.UpdateStatus("Getting last version...")
-
+status := 0, options := 0
 try {
-    oldScriptPath := A_Args[1]
-    
-    SplitPath(oldScriptPath, &name, &dir)
-    if dir = ""
-        oldScriptPath := A_ScriptDir "\" name
-
-    newTag := A_Args[2]
-    ProgramLog.Add("Updater arguments; destination=" oldScriptPath "; target=" newTag)
-}
-catch { ; If started without arguments we parse updates and get latest release version
-    ProgramLog.Add("Updater started without complete arguments; looking up latest release")
-    oldScriptPath := A_ScriptDir "\EVE-X-Preview.exe"
-
-    try {
-        ; Getting json of latest release
-        apiUrl := "https://api.github.com/repos/khivus/EVE-X-Preview/releases"
-        whr := ComObject("WinHttp.WinHttpRequest.5.1")
-        whr.Open("GET", apiUrl)
-        whr.SetRequestHeader("User-Agent", "AHK")
-        whr.Send()
-        whr.WaitForResponse()
-        ProgramLog.Add("Updater release lookup; HTTP " whr.Status)
-        if whr.Status != 200
-            throw Error("GitHub release lookup HTTP " whr.Status)
-        json_ans := whr.ResponseText
+    options := UpdaterArguments()
+    SplitPath(options.main,, &installation)
+    ; An installed updater relocates before opening its own replacement lock.
+    if A_IsCompiled && StrLower(A_ScriptDir) = StrLower(installation) {
+        temporary := A_Temp "\EVE-X-Preview-installer-" ProcessExist() "-" A_TickCount
+        DirCreate(temporary)
+        executable := temporary "\EVE-X-Preview-Updater.exe"
+        FileCopy(A_ScriptFullPath, executable)
+        arguments := options.mode = "install" ? '"' options.main '" "' options.version '"' (options.source != "" ? ' "' options.source '"' : "")
+            : '--' options.mode ' "' options.main '"'
+        Run('"' executable '" ' arguments, temporary)
+        ExitApp()
     }
-    catch as err {
-        ProgramLog.Error(err, "Updater release lookup")
-        MsgBox("GitHub not available or no internet connection!") ; Probably no internet connection
-        return
-    }
-
-    ; Finding tag of latest release
-    pattern := '"tag_name":\s*"v?V?([^"]+)",[\s\S]*?"prerelease":\s*(true|false),'
-    pos := 1
-    latestReleaseTag := ""
-    while matchPos := RegExMatch(json_ans, pattern, &match, pos) {
-        tag := match[1]
-        preRelease := match[2]
-
-        if preRelease = "false" {
-            latestReleaseTag := tag
-            break
-        }
-
-        pos := matchPos + match.Len ; Advance past this match
-    }
-
-    if latestReleaseTag != ''
-        newTag := latestReleaseTag
-    else {
-        ProgramLog.Add("Updater found no stable release; exiting", "WARN")
-        ProgramLog.Flush()
-        ExitApp
-    }
-}
-
-SplitPath(oldScriptPath, &oldScriptName, &oldScriptDir)
-archivePath := A_Args.Length >= 3 ? A_Args[3] : ""
-SetWorkingDir(oldScriptDir)
-ProgramLog.Add("Updater working directory=" oldScriptDir "; target=" newTag)
-; A standalone updater must leave the package before replacing its own file.
-; The normal application handoff already runs from a temporary directory.
-if A_IsCompiled && StrLower(A_ScriptDir) = StrLower(oldScriptDir) {
-    temporaryDirectory := A_Temp "\EVE-X-Preview-installer-" ProcessExist() "-" A_TickCount
-    DirCreate(temporaryDirectory)
-    temporaryUpdater := temporaryDirectory "\EVE-X-Preview-Updater.exe"
-    FileCopy(A_ScriptFullPath, temporaryUpdater)
-    Run('"' temporaryUpdater '" "' oldScriptPath '" "' newTag '"' (archivePath != "" ? ' "' archivePath '"' : ""), temporaryDirectory)
-    ExitApp()
-}
-
-try {
-    installer := ReleaseInstaller(oldScriptPath, newTag, archivePath)
-    ; The transaction waits for application/editor processes and image handles.
-    installer.Install(status)
-    status.UpdateStatus("Done! Launching " oldScriptName "!")
-    Run('"' oldScriptPath '"', oldScriptDir)
-    ProgramLog.Add("Updater relaunch requested successfully")
+    A_TrayMenu.Delete()
+    A_TrayMenu.Add("Exit", (*) => ExitApp())
+    status := UpdaterStatus()
+    installer := ReleaseInstaller(options.main, options.version, options.source)
+    if options.mode != "install"
+        installer.Recover(status) ; Works before any network request, including offline.
+    if options.mode = "latest"
+        installer.tag := UpdaterLatestVersion()
+    if options.mode != "recover"
+        installer.Install(status)
+    status.UpdateStatus("Done! Launching EVE-X-Preview…")
+    Run('"' options.main '"', installation)
     ProgramLog.Flush()
-    Sleep 1500
-}
-catch Error as e {
-    ProgramLog.Error(e, "Installing app update")
-    MsgBox("The update could not be installed.`n" e.Message)
-    ; Do not launch a mixed package if rollback retained its recovery journal.
-    if FileExist(oldScriptPath) && !DirExist(oldScriptDir "\.EVE-X-Preview-update")
-        try Run('"' oldScriptPath '"', oldScriptDir)
-}
-finally {
-    status.Close()
-    ExitApp
+    Sleep(1000)
+} catch as err {
+    ProgramLog.Error(err, "Executable update")
+    MsgBox("The update could not be completed.`n" err.Message, "EVE-X-Preview update")
+    if IsObject(options) {
+        SplitPath(options.main,, &installation)
+        if FileExist(options.main) && !DirExist(installation "\.EVE-X-Preview-update")
+            try Run('"' options.main '"', installation)
+    }
+} finally {
+    if IsObject(status)
+        status.Close()
+    ExitApp()
 }

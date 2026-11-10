@@ -172,32 +172,46 @@ UpdateSettingsAssetTest() {
     } finally app.Dispose()
 }
 
-TestRunner.Register("Updates install complete packages and preserve the optional editor choice", ReleaseInstallerComponentsTest)
+TestRunner.Register("Updates download separate EXEs and preserve the optional editor choice", ReleaseInstallerComponentsTest)
 ReleaseInstallerComponentsTest() {
     folder := A_Temp "\EveX-update-test-" A_TickCount
     DirCreate(folder)
     main := folder "\EVE-X-Preview.exe", editor := folder "\EVE-X-Preview-Settings.exe"
     status := {UpdateStatus: (*) => 0}
-    package := folder "\package", archive := folder "\release.zip"
+    version := FileGetVersion(A_AhkPath)
     try {
-        DirCreate(package)
-        for name in ["EVE-X-Preview.exe", "EVE-X-Preview-Updater.exe", "EVE-X-Preview-Settings.exe", "coreclr.dll"]
-            FileAppend("new-" name, package "\" name)
-        builder := A_ScriptDir "\..\tools\New-ReleasePackage.ps1"
-        code := RunWait('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' builder '" -Directory "' package '" -Version 1.7.0.4 -ArchivePath "' archive '"',, "Hide")
-        AssertEqual(0, code, "The real release fixture must build.")
+        probeFixture := folder "\settings-probe.exe"
+        helper := A_ScriptDir "\Exe_Update_Fixtures.ps1"
+        code := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' helper '" -Mode probe -Path "' probeFixture '" -FixtureVersion "' version '" -BaseExecutable "' A_AhkPath '"',, "Hide")
+        AssertEqual(0, code)
         FileAppend("old-main", main)
-        installer := ReleaseInstallerFixture(main, "1.7.0.4", archive)
+        FileAppend("personal settings", folder "\EVE-X-Preview.json")
+        installer := ReleaseInstallerFixture(main, version)
+        installer.settingsFixture := probeFixture
         AssertFalse(installer.includeSettings)
         installer.Install(status)
-        AssertEqual("new-EVE-X-Preview.exe", FileRead(main))
+        AssertEqual(version, FileGetVersion(main))
+        AssertEqual(["https://github.com/khivus/EVE-X-Preview/releases/download/v" version "/EVE-X-Preview.exe"], installer.downloads)
         AssertFalse(FileExist(editor), "Optional settings must not be installed implicitly.")
         FileDelete(main)
         FileAppend("installed-main-before-update", main)
         FileAppend("old-editor", editor)
-        installer := ReleaseInstallerFixture(main, "1.7.0.4", archive)
+        installer := ReleaseInstallerFixture(main, version)
+        installer.settingsFixture := probeFixture
         AssertTrue(installer.includeSettings)
-        lock := DllCall("CreateFileW", "Str", editor, "UInt", 0x80000000, "UInt", 0, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
+        code := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' helper '" -Mode interruption -Path "' main '"',, "Hide")
+        AssertEqual(0, code)
+        installer.failMain := true
+        AssertThrows(() => installer.Install(status))
+        AssertEqual("installed-main-before-update", FileRead(main), "Pending recovery must finish before a failing download.")
+        AssertFalse(DirExist(folder "\.EVE-X-Preview-update"))
+        installer.failMain := false
+        installer.failSettings := true
+        AssertThrows(() => installer.Install(status))
+        AssertEqual("installed-main-before-update", FileRead(main), "A failed settings download must leave main unchanged.")
+        AssertEqual("old-editor", FileRead(editor))
+        installer.failSettings := false
+        lock := DllCall("CreateFileW", "Str", editor, "UInt", 0x80000000, "UInt", 1, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
         try {
             failed := false
             try installer.Install(status)
@@ -206,26 +220,30 @@ ReleaseInstallerComponentsTest() {
             AssertTrue(failed, "A locked companion must fail the transaction.")
             AssertEqual("installed-main-before-update", FileRead(main), "Replacement failure restores the original main executable.")
         } finally DllCall("CloseHandle", "Ptr", lock)
+        installer.downloads := []
         installer.Install(status)
-        AssertEqual("new-EVE-X-Preview-Settings.exe", FileRead(editor))
-        AssertEqual("new-coreclr.dll", FileRead(folder "\coreclr.dll"), "Loose dependencies must be installed too.")
-        AssertTrue(FileExist(folder "\EVE-X-Preview.package.json"))
+        AssertEqual(version, FileGetVersion(editor))
+        AssertEqual(["https://github.com/khivus/EVE-X-Preview/releases/download/v" version "/EVE-X-Preview.exe",
+            "https://github.com/khivus/EVE-X-Preview/releases/download/v" version "/EVE-X-Preview-Settings.exe"], installer.downloads)
+        AssertEqual("personal settings", FileRead(folder "\EVE-X-Preview.json"))
+        AssertFalse(FileExist(folder "\EVE-X-Preview.package.json"))
         AssertFalse(DirExist(folder "\.EVE-X-Preview-update"))
     } finally DirDelete(folder, true)
 }
 class ReleaseInstallerFixture extends ReleaseInstaller {
-    __New(mainPath, tag, archive) {
-        super.__New(mainPath, tag)
-        this.archive := archive
-    }
+    downloads := []
+    failSettings := false
+    failMain := false
+    settingsFixture := ""
     DownloadAsset(url, path) {
-        source := this.archive (SubStr(url, -7) = ".sha256" ? ".sha256" : "")
-        if SubStr(url, -7) = ".sha256" {
-            ; The fixture ZIP has a local name, but the release asset has a stable name.
-            text := FileRead(source)
-            FileAppend(RegExReplace(text, "  [^\r\n]+", "  EVE-X-Preview-win-x64.zip"), path)
-        } else
-            FileCopy(source, path)
+        if !RegExMatch(url, "^https://github\.com/khivus/EVE-X-Preview/releases/download/v[\d.]+/EVE-X-Preview(?:-Settings)?\.exe$")
+            throw Error("Updater must request separate EXEs, without archive or sidecar assets: " url)
+        this.downloads.Push(url)
+        if this.failMain
+            throw Error("Simulated network failure")
+        if this.failSettings && InStr(url, "-Settings.exe")
+            throw Error("Simulated settings download failure")
+        FileCopy(InStr(url, "-Settings.exe") ? this.settingsFixture : A_AhkPath, path)
     }
 }
 

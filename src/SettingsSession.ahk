@@ -105,10 +105,10 @@ class SettingsSession {
             for name in groups
                 names.Push(name)
             if groups.Has(group) {
-                labels := kind = "group-members" ? Map("ForwardsHotkey", "Next character", "BackwardsHotkey", "Previous character", "FirstCharHotkey", "First available character")
-                    : Map("fkey", "Next application", "bkey", "Previous application")
-                for key, label in labels
-                    shortcuts.Push(Map("key", key, "label", label, "value", groups[group].Get(key, "")))
+                labels := kind = "group-members" ? [["ForwardsHotkey", "Next character"], ["BackwardsHotkey", "Previous character"], ["FirstCharHotkey", "First available character"]]
+                    : [["fkey", "Next application"], ["bkey", "Previous application"]]
+                for pair in labels
+                    shortcuts.Push(Map("key", pair[1], "label", pair[2], "value", groups[group].Get(pair[1], "")))
             }
         }
         return Map("columns", SettingsContract.Wire(SettingsTables.Columns(kind)), "rows", this.model.Rows(kind, group),

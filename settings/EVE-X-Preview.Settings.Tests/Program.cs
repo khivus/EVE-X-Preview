@@ -191,6 +191,11 @@ internal static class Program
         await editor.ConnectAsync(); Check(editor.Connected, "real WM_COPYDATA hello metadata begin");
         var metadata = editor.Metadata!;
         Check(metadata.Fields.Any() && metadata.Sections.Any() && metadata.Tables.Any() && metadata.Events.Any(), "real metadata covers fields sections tables events");
+        var orderedGroup = "Ordered shortcuts " + Guid.NewGuid().ToString("N")[..6];
+        await editor.MutateAsync("group", new() { ["kind"] = "characters", ["action"] = "add", ["name"] = orderedGroup });
+        var groupRows = await editor.ReadAsync("rows", new() { ["kind"] = "group-members", ["group"] = orderedGroup });
+        Check(groupRows.Array("groupShortcuts").Select(row => row.Text("key")).SequenceEqual(new[] { "ForwardsHotkey", "BackwardsHotkey", "FirstCharHotkey" }), "character group presentation order is Next Previous First");
+        await editor.MutateAsync("group", new() { ["kind"] = "characters", ["action"] = "delete", ["name"] = orderedGroup });
         var original = editor.Snapshot.Object("values").Object("SettingsTheme")["value"]!.DeepClone();
         var customThemes = metadata.Value.Array("themes").OfType<JsonObject>().ToArray();
         var next = customThemes.FirstOrDefault()?.Text("id") ?? (JsonExtensions.Display(original) == "dark" ? "light" : "dark");

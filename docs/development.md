@@ -1,6 +1,6 @@
 # Development
 
-Release builds also generate a manifest, portable ZIP and SHA-256 sidecar. Upload the full ZIP and sidecar with the standalone release executables so the updater can replace the whole package. See [package updates](package-updates.md) for the format, optional-editor behavior, recovery and Sandbox integration tests.
+Release builds emit the existing standalone EXEs, with the settings editor optional. See [executable updates](executable-updates.md) for download selection, recovery and Sandbox integration tests.
 
 [Back to README](../README.MD)
 
