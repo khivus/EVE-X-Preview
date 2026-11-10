@@ -66,6 +66,10 @@ class SettingsHostOwner {
         SetTimer(this.timer, 500)
     }
     CheckParent() {
+        ; Closing the clean modern editor is part of updater handoff. Keep the
+        ; canonical host alive until it saves and starts the detached installer.
+        if this.HasOwnProp("settingsUpdateHandoff") && this.settingsUpdateHandoff
+            return
         if this.HasOwnProp("settingsDownloader") && (this.settingsDownloader.busy || this.settingsDownloader.HasOwnProp("handoffPending"))
             return
         if DllCall("WaitForSingleObject", "Ptr", this.parentHandle, "UInt", 0, "UInt") != 0x102

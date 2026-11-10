@@ -38,6 +38,8 @@ internal static class Program
                 else throw new ArgumentException("Use --installation <directory>, --capture-fixtures <directory> or --probe <response-file>.");
             }
             Installation = InstallationIdentity.Normalize(Installation);
+            if (Directory.Exists(Path.Combine(Installation, ".EVE-X-Preview-update")))
+                throw new IOException("A package update is in progress or needs recovery. Run EVE-X-Preview-Updater.exe before opening settings.");
             Instance = new SingleInstance(Installation);
             if (!Instance.IsPrimary) { Instance.ActivateExisting(); Instance.Dispose(); return 0; }
             try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }

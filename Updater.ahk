@@ -1,13 +1,14 @@
 ﻿#Requires AutoHotkey v2.0
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
+#Include "Lib/json.ahk"
 #Include "src/ReleaseInstaller.ahk"
 
 ;@Ahk2Exe-Let U_version = 1.7.0.4
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
-;@Ahk2Exe-SetDescription EVE-X-Preview Updater
+;@Ahk2Exe-SetDescription EVE-X-Preview Package Updater (protocol 1)
 ;@Ahk2Exe-SetProductName EVE-X-Preview Updater
 ;@Ahk2Exe-SetMainIcon res/Icon.ico
 ;@Ahk2Exe-AddResource res/Icon.ico, 160
@@ -111,15 +112,23 @@ catch { ; If started without arguments we parse updates and get latest release v
 }
 
 SplitPath(oldScriptPath, &oldScriptName, &oldScriptDir)
+archivePath := A_Args.Length >= 3 ? A_Args[3] : ""
 SetWorkingDir(oldScriptDir)
 ProgramLog.Add("Updater working directory=" oldScriptDir "; target=" newTag)
-Sleep 500 ; Wait some time berfore doing anything
+; A standalone updater must leave the package before replacing its own file.
+; The normal application handoff already runs from a temporary directory.
+if A_IsCompiled && StrLower(A_ScriptDir) = StrLower(oldScriptDir) {
+    temporaryDirectory := A_Temp "\EVE-X-Preview-installer-" ProcessExist() "-" A_TickCount
+    DirCreate(temporaryDirectory)
+    temporaryUpdater := temporaryDirectory "\EVE-X-Preview-Updater.exe"
+    FileCopy(A_ScriptFullPath, temporaryUpdater)
+    Run('"' temporaryUpdater '" "' oldScriptPath '" "' newTag '"' (archivePath != "" ? ' "' archivePath '"' : ""), temporaryDirectory)
+    ExitApp()
+}
 
 try {
-    installer := ReleaseInstaller(oldScriptPath, newTag)
-    ; The settings window is asked to close by the app before the handoff.
-    ; Briefly allow Windows to release executable image handles.
-    Sleep(500)
+    installer := ReleaseInstaller(oldScriptPath, newTag, archivePath)
+    ; The transaction waits for application/editor processes and image handles.
     installer.Install(status)
     status.UpdateStatus("Done! Launching " oldScriptName "!")
     Run('"' oldScriptPath '"', oldScriptDir)
@@ -129,8 +138,9 @@ try {
 }
 catch Error as e {
     ProgramLog.Error(e, "Installing app update")
-    MsgBox("The update could not be installed. Existing files were retained or restored.`n" e.Message)
-    if FileExist(oldScriptPath)
+    MsgBox("The update could not be installed.`n" e.Message)
+    ; Do not launch a mixed package if rollback retained its recovery journal.
+    if FileExist(oldScriptPath) && !DirExist(oldScriptDir "\.EVE-X-Preview-update")
         try Run('"' oldScriptPath '"', oldScriptDir)
 }
 finally {

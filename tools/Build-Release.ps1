@@ -5,7 +5,8 @@ param(
     [string]$AutoHotkeyDirectory = 'C:\Program Files\AutoHotkey',
     [switch]$BuiltInOnly,
     [string]$DotNetPath = 'dotnet',
-    [switch]$NoRestore
+    [switch]$NoRestore,
+    [string]$ArchivePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,3 +93,17 @@ if (-not $BuiltInOnly) {
         Bytes = ($assets | Measure-Object -Property Length -Sum).Sum
     }
 }
+
+# Archive outside the package directory so the ZIP cannot contain itself.
+. (Join-Path $repository 'src\PackageUpdate.ps1')
+if (-not $ArchivePath) {
+    $asset = if ($BuiltInOnly) { 'EVE-X-Preview-built-in-win-x64.zip' } else { 'EVE-X-Preview-win-x64.zip' }
+    $ArchivePath = Join-Path (Split-Path -Parent $destination) $asset
+}
+$archiveFullPath = [IO.Path]::GetFullPath($ArchivePath)
+if ($archiveFullPath.StartsWith($destination.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'The release archive must be outside the package directory.'
+}
+$mainVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $destination 'EVE-X-Preview.exe')).FileVersion
+New-EveReleasePackage -Directory $destination -Version $mainVersion -ArchivePath $archiveFullPath
+[pscustomobject]@{ Archive=$archiveFullPath; Checksum=($archiveFullPath + '.sha256') }

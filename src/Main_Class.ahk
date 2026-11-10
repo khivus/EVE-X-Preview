@@ -358,7 +358,8 @@ Class Main_Class extends ThumbWindow {
     }
 
     CleanupUpdater(*) {
-        for path in [A_ScriptDir "\EVE-X-Preview-Updater.exe", A_Temp "\EVE-X-Preview-Updater.exe"] {
+        ; The adjacent updater is now a manifest-owned release component.
+        for path in [A_Temp "\EVE-X-Preview-Updater.exe"] {
             try {
                 if FileExist(path)
                     FileDelete(path)

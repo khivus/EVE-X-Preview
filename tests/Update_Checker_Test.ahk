@@ -172,33 +172,31 @@ UpdateSettingsAssetTest() {
     } finally app.Dispose()
 }
 
-TestRunner.Register("Updates stage all installed components and preserve the optional editor choice", ReleaseInstallerComponentsTest)
+TestRunner.Register("Updates install complete packages and preserve the optional editor choice", ReleaseInstallerComponentsTest)
 ReleaseInstallerComponentsTest() {
     folder := A_Temp "\EveX-update-test-" A_TickCount
     DirCreate(folder)
     main := folder "\EVE-X-Preview.exe", editor := folder "\EVE-X-Preview-Settings.exe"
     status := {UpdateStatus: (*) => 0}
+    package := folder "\package", archive := folder "\release.zip"
     try {
+        DirCreate(package)
+        for name in ["EVE-X-Preview.exe", "EVE-X-Preview-Updater.exe", "EVE-X-Preview-Settings.exe", "coreclr.dll"]
+            FileAppend("new-" name, package "\" name)
+        builder := A_ScriptDir "\..\tools\New-ReleasePackage.ps1"
+        code := RunWait('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' builder '" -Directory "' package '" -Version 1.7.0.4 -ArchivePath "' archive '"',, "Hide")
+        AssertEqual(0, code, "The real release fixture must build.")
         FileAppend("old-main", main)
-        installer := ReleaseInstallerFixture(main, "1.7.0.4")
-        AssertEqual(1, installer.files.Length)
+        installer := ReleaseInstallerFixture(main, "1.7.0.4", archive)
+        AssertFalse(installer.includeSettings)
         installer.Install(status)
         AssertEqual("new-EVE-X-Preview.exe", FileRead(main))
         AssertFalse(FileExist(editor), "Optional settings must not be installed implicitly.")
         FileDelete(main)
         FileAppend("installed-main-before-update", main)
         FileAppend("old-editor", editor)
-        installer := ReleaseInstallerFixture(main, "1.7.0.4")
-        AssertEqual(2, installer.files.Length)
-        installer.rejectEditor := true
-        failed := false
-        try installer.Install(status)
-        catch
-            failed := true
-        AssertTrue(failed)
-        AssertEqual("installed-main-before-update", FileRead(main), "Both downloads must finish before either installed file changes.")
-        AssertEqual("old-editor", FileRead(editor))
-        installer.rejectEditor := false
+        installer := ReleaseInstallerFixture(main, "1.7.0.4", archive)
+        AssertTrue(installer.includeSettings)
         lock := DllCall("CreateFileW", "Str", editor, "UInt", 0x80000000, "UInt", 0, "Ptr", 0, "UInt", 3, "UInt", 0, "Ptr", 0, "Ptr")
         try {
             failed := false
@@ -210,19 +208,24 @@ ReleaseInstallerComponentsTest() {
         } finally DllCall("CloseHandle", "Ptr", lock)
         installer.Install(status)
         AssertEqual("new-EVE-X-Preview-Settings.exe", FileRead(editor))
-        AssertFalse(FileExist(main ".update"))
-        AssertFalse(FileExist(editor ".previous"))
+        AssertEqual("new-coreclr.dll", FileRead(folder "\coreclr.dll"), "Loose dependencies must be installed too.")
+        AssertTrue(FileExist(folder "\EVE-X-Preview.package.json"))
+        AssertFalse(DirExist(folder "\.EVE-X-Preview-update"))
     } finally DirDelete(folder, true)
 }
 class ReleaseInstallerFixture extends ReleaseInstaller {
-    rejectEditor := false
-    DownloadAsset(url, path) {
-        SplitPath(RegExReplace(url, "^.*/"), &asset)
-        FileAppend("new-" asset, path)
+    __New(mainPath, tag, archive) {
+        super.__New(mainPath, tag)
+        this.archive := archive
     }
-    Verify(path) {
-        if this.rejectEditor && InStr(path, "Settings.exe")
-            throw Error("Simulated incomplete editor download")
+    DownloadAsset(url, path) {
+        source := this.archive (SubStr(url, -7) = ".sha256" ? ".sha256" : "")
+        if SubStr(url, -7) = ".sha256" {
+            ; The fixture ZIP has a local name, but the release asset has a stable name.
+            text := FileRead(source)
+            FileAppend(RegExReplace(text, "  [^\r\n]+", "  EVE-X-Preview-win-x64.zip"), path)
+        } else
+            FileCopy(source, path)
     }
 }
 

@@ -10,6 +10,7 @@ internal static class Program
         try
         {
             if (args.Length == 2 && args[0] == "--integration") await IntegrationAsync(Path.GetFullPath(args[1]));
+            else if (args.Length == 2 && args[0] == "--inspect-host") await InspectHostAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--retry-integration") await RetryIntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--handoff-integration") await HandoffIntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync();await ReconnectRetriesAsync(); }
@@ -222,6 +223,28 @@ internal static class Program
         await editor.MutateAsync("set", new() { ["id"] = "SettingsTheme", ["value"] = original });
         if (await editor.ApplyAsync()) await ReconnectAsync(editor);
         await editor.EndAsync(false); Check(!editor.Connected, "real clean end releases lease");
+    }
+    private static async Task InspectHostAsync(string installation)
+    {
+        using var transport = new BridgeTransport(installation);
+        // The production editor is still performing its initial metadata request.
+        // AHK allows one WM_COPYDATA handler at a time; retry this read-only observer.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await transport.EnsureAvailableAsync();
+                Protocol.VerifyHello(await transport.SendAsync("hello", ""));
+                Check(!transport.RuntimeAvailable, "production settings editor started a ready offline canonical host");
+                var metadata = new Metadata(await transport.SendAsync("metadata", ""));
+                Check(metadata.Fields.Any() && metadata.Sections.Any(), "embedded host exports usable canonical metadata without taking the editor lease");
+                return;
+            }
+            catch (BridgeException error) when (attempt < 20 && error.Code is "disconnected" or "timeout" or "not-ready")
+            {
+                await Task.Delay(500);
+            }
+        }
     }
     private static async Task ReconnectAsync(EditorSession editor)
     {
