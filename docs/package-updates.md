@@ -56,7 +56,8 @@ Verified on 2026-11-10 in an offline Windows Sandbox with read-only source/build
 | --- | --- |
 | Real filesystem package tests | 17 passed, including dependencies, nested libraries, config/user-file preservation, obsolete owned-file cleanup, hashes, unsafe/duplicate paths, junctions, locked-file rollback, renamed main, staging/interruption recovery and repackaging |
 | Installer termination | Stopped a real PowerShell installer after observing main-file replacement; next run restored the previous main and removed newly introduced files |
-| AHK suite on final source | 400 passed, 3 pre-existing layout failures, 403 total |
+| AHK suite after layout fixes | 404 passed, 0 failed, 404 total |
+| Legacy settings layout regressions | Original three failures reproduced before the fix and passed afterward; new wrapping/spacing regression passed with Segoe UI, Tahoma and Microsoft Sans Serif and failed against the previous UI code |
 | Managed protocol/state suite | 73 assertions passed |
 | Compiled updater | Upgraded the actual older portable build from 1.7.0.2 to 1.7.0.4, relocated the installed updater, replaced both applications and relaunched main; personal settings marker and unrelated file survived |
 | Updated runtime | 21 real bridge assertions passed, including Apply/restart and reconnect |
@@ -65,6 +66,8 @@ Verified on 2026-11-10 in an offline Windows Sandbox with read-only source/build
 | Offline editor closure during update | Actual host lifetime check failed before the handoff fix and passed afterward with a signalled parent handle |
 | Updater selection | Inspected the compiled protocol marker and staged the compatible installed updater without contacting a deliberately nonexistent target release |
 
-The three unchanged AHK failures are **Attack option controls fit the settings panel**, **System tracking controls fit in Game Logs Monitoring**, and **Logged-in shifting defaults on for older profiles, persists opt-out and sits beside login shifting**. The first upstream baseline run also failed **Settings input pulse rapid cell switches always open the clicked editor and ignore stale focus loss**; it passed in both subsequent full runs. Baseline was 399 passed/4 failed; both updated full runs were 400 passed/3 failed.
+The initial updater verification had three legacy layout failures: **Attack option controls fit the settings panel**, **System tracking controls fit in Game Logs Monitoring**, and **Logged-in shifting defaults on for older profiles, persists opt-out and sits beside login shifting**. At 96 DPI, two unbounded descriptions extended beyond the panel and the shifting label overlapped its checkbox by two pixels. Descriptions now wrap within the panel, subsequent settings rows follow their automatic height, and the shifting label retains its meaning in fewer characters. All three tests pass, and the full suite including the new common-font regression is green.
+
+The first upstream baseline run also failed **Settings input pulse rapid cell switches always open the clicked editor and ignore stale focus loss**; it passed in the subsequent full runs. Historical baseline was 399 passed/4 failed; initial updater verification was 400 passed/3 failed; final layout verification was 404 passed/0 failed.
 
 The compiled updater was exercised with a locally staged release ZIP through its production offline-install option. Live GitHub downloads, release publication and the interactive install-button/UAC flow were not exercised. All application, updater, host and test processes ran in Sandbox.

@@ -1034,7 +1034,7 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Thumbnails on Login Screen:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Logged-In Thumbnails (Unsaved):")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Unsaved Logged-In Thumbnails:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoggedInCharacters Checked" This.ShiftThumbsForLoggedInCharacters, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Enable Thumbnail Collision Avoidance:")
@@ -1420,11 +1420,10 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "This feature does not violate the EULA or ToS, but it is neither endorsed")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "nor supported by CCP. Use at your own risk. Performance impact")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "increases with the number of characters tracked simultaneously.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "This feature does not violate the EULA or ToS, but it is neither endorsed nor supported by CCP. Use at your own risk. Performance impact increases with the number of characters tracked simultaneously.")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
+        arr.Push This.MainFrame.Add("Text", Format("xs y+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Track Current System (Local Chat):")
@@ -1599,15 +1598,16 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enabling more options decreases performance. The effect increases")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "Enabling more options decreases performance. The effect increases with the number of characters currently being tracked.")
 
-        for event in monitoredEventsOrder {
+        for index, event in monitoredEventsOrder {
             attackEvent := event = "underAttackByPlayer" || event = "underAttackByNPC"
             label := event = "stoppedShooting" ? "Shooting idle (ms):" : event = "underAttackByPlayer" ? "Player attack" : event = "underAttackByNPC" ? "NPC attack" : This.monitoredEventsTexts[event]
             nextControlX := event = "stoppedShooting" ? secondOptionX : attackEvent ? firstOptionX : colorX
             labelWidth := nextControlX - This.contentGap - controlGap
-            arr.Push This.MainFrame.Add("CheckBox", Format("xs ys+{} w{} Section", This.xlGap, labelWidth) " vE" event, label)
+            rowPosition := index = 1 ? "y+" This.contentGap : "ys+" This.xlGap
+            arr.Push This.MainFrame.Add("CheckBox", Format("xs {} w{} Section", rowPosition, labelWidth) " vE" event, label)
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("x{} ys-{} w{}", secondOptionX, This.editOffset, optionW) " vshootingInterval")
