@@ -74,6 +74,7 @@ Class Main_Class extends ThumbWindow {
         This._JSON := Load_JSON()
         This.default_JSON := JSON.Load(default_JSON)
         This.runningProfile := This.LastUsedProfile
+        EventAudioOutput.WarmUp()
        
         This.ProfileOverride()
         This.TrayMenu()

@@ -61,6 +61,7 @@ class SettingsHostOwner {
                 ExitApp()
             this._JSON := Load_JSONUnlocked(false)
         } finally lock.Dispose()
+        EventAudioOutput.WarmUp()
         this.settingsBridge.ready := true
         this.timer := ObjBindMethod(this, "CheckParent")
         SetTimer(this.timer, 500)
