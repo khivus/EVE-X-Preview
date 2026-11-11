@@ -1,5 +1,15 @@
 ﻿# Changelog
 
+## v1.7.0.5
+
+### Changed
+* Updates install the full portable package, including Settings and updater executables, with rollback on failure and offline recovery before downloads.
+
+### Fixed
+* Event sounds reuse prepared audio output, reducing playback startup delay.
+* Rapid table-cell clicks no longer lose editors or leave mouse capture stuck.
+* Built-in Settings descriptions and labels stay within panel bounds.
+
 ## v1.7.0.4
 
 ### Added

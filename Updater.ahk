@@ -4,7 +4,7 @@
 #Include "Lib/json.ahk"
 #Include "src/ReleaseInstaller.ahk"
 
-;@Ahk2Exe-Let U_version = 1.7.0.4
+;@Ahk2Exe-Let U_version = 1.7.0.5
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
@@ -16,7 +16,7 @@
 ;@Ahk2Exe-AddResource res/Icon.ico, 207
 ;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 208
 
-VERSION := "1.7.0.4"
+VERSION := "1.7.0.5"
 if !A_IsCompiled
     TraySetIcon(A_ScriptDir "\res\Icon.ico",, true)
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
