@@ -468,6 +468,60 @@ DPSCompactIncomingLayoutTest() {
     }
 }
 
+TestRunner.Register("DPS responsive text retains both values and restores full labels after resizing", DPSResponsiveTextTest)
+DPSResponsiveTextTest() {
+    app := DPSLogFixture()
+    overlay := Gui("-Caption")
+    try {
+        overlay.MarginX := 3
+        overlay.MarginY := 3
+        overlay.SetFont("s12", "Segoe UI")
+        app.AddThumbnailTextControls(overlay, "MNI 2", 400, 100)
+        original := "DPS: In: 1234567 | Out: 9876543"
+        overlay["DPSText"].Text := original
+        overlay["DPSDamageText"].Text := "% EM 25 Th 25 Ki 25 Ex 25"
+        for width in [128, 110, 96, 400, 110, 400] {
+            app.LayoutThumbnailText(overlay, 0, width, 60)
+            control := overlay["DPSText"]
+            control.GetPos(&x, &y, &w, &h)
+            extent := app.MeasureThumbnailDPS(control, control.Text)
+            AssertTrue(h > 0 && y + h <= 57, "DPS must remain inside the small preview.")
+            AssertTrue(extent.w <= w && extent.h <= h, "Both numeric values must fit without ellipsis at width " width)
+            AssertTrue(RegExMatch(control.Text, "In: \d") && RegExMatch(control.Text, "Out: \d"))
+            if width = 400 {
+                AssertEqual(original, control.Text, "Growing restores exact values and full labels.")
+                AssertEqual(overlay.DPSBaseLineHeight, overlay.DPSTextHeight)
+            }
+        }
+    } finally {
+        overlay.Destroy()
+        app.Cleanup()
+    }
+}
+
+TestRunner.Register("DPS responsive text refits changing values without resizing", DPSResponsiveValueTest)
+DPSResponsiveValueTest() {
+    app := DPSLogFixture()
+    try {
+        app.LayoutThumbnailText(app.overlay, 0, 110, 80)
+        for text in ["DPS: Out: 1", "DPS: Out: 123456789", "DPS: In: 1234567 | Out: 9876543", "DPS: Out: 2"] {
+            app.updateThumbnailDPSText(text, app.client.Hwnd)
+            control := app.overlay["DPSText"]
+            control.GetPos(,, &w, &h)
+            AssertTrue(app.MeasureThumbnailDPS(control, control.Text).w <= w)
+            AssertTrue(h > 0)
+            AssertEqual(text, control.DPSSource)
+            ; A damage-mix-only update must not replace a fitted DPS label
+            ; with its full source text while reusing the previous fit.
+            app.updateThumbnailDPSText(text, app.client.Hwnd, "% EM 50 Th 50")
+            AssertTrue(app.MeasureThumbnailDPS(control, control.Text).w <= w)
+        }
+        app.updateThumbnailDPSText("", app.client.Hwnd)
+        AssertEqual("", app.overlay["DPSText"].Text)
+        AssertFalse(app.overlay["DPSText"].Visible)
+    } finally app.Cleanup()
+}
+
 TestRunner.Register("DPS settings migrate inherit profiles and fit their panel", DPSSettingsIntegrationTest)
 DPSSettingsIntegrationTest() {
     app := DPSLogFixture()

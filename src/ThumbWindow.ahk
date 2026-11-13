@@ -267,6 +267,10 @@ Class ThumbWindow extends Propertys {
         overlay.Add("Text", "vDPSText x0 y0 w1 r1 +0x4080 Background040101", "")
         overlay.Add("Text", "vDPSDamageText x0 y0 w1 r1 +0x4080 Background040101", "")
         overlay.DPSTextHeight := lineHeight
+        overlay.DPSBaseLineHeight := lineHeight
+        fontInfo := Buffer(92, 0)
+        DllCall("GetObjectW", "Ptr", SendMessage(0x31, 0, 0, overlay["DPSText"]), "Int", 92, "Ptr", fontInfo)
+        overlay.DPSBaseFontSize := Abs(NumGet(fontInfo, 0, "Int")) * 72 / A_ScreenDPI
         overlay.SystemTrackingEnabled := This.systemTrackingEnabled
         systemText := overlay.Add("Text", "vSystemText x0 y0 w1 r1 +0x4080 Background040101", "")
         systemText.Visible := overlay.SystemTrackingEnabled
@@ -289,16 +293,18 @@ Class ThumbWindow extends Propertys {
         ; complete line fits below it, with the system kept at the bottom.
         nameHeight := Min(available, This.MeasureThumbnailNameHeight(overlay, textWidth))
         remaining := Max(0, available - nameHeight)
-        systemHeight := overlay.SystemTrackingEnabled && remaining >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
+        This.FitThumbnailDPS(overlay, "DPSText", textWidth, remaining)
+        dpsHeight := overlay["DPSText"].Text != "" && remaining >= overlay.DPSTextHeight ? overlay.DPSTextHeight : 0
+        systemHeight := overlay.SystemTrackingEnabled && remaining - dpsHeight >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
         systemY := height - marginY - systemHeight
         remaining := Max(0, remaining - systemHeight)
         ; Active DPS takes the next utility line. Reserving an event line first
         ; hid incoming DPS entirely on compact thumbnails, even at threshold 0.
-        dpsHeight := overlay["DPSText"].Text != "" && remaining >= overlay.DPSTextHeight ? overlay.DPSTextHeight : 0
         eventHeight := overlay["EventText"].Text != "" && remaining - dpsHeight >= overlay.EventTextHeight ? overlay.EventTextHeight : 0
         eventY := systemY - eventHeight
         remaining := Max(0, remaining - eventHeight)
-        damageHeight := dpsHeight && overlay["DPSDamageText"].Text != "" && remaining - dpsHeight >= overlay.DPSTextHeight ? overlay.DPSTextHeight : 0
+        This.FitThumbnailDPS(overlay, "DPSDamageText", textWidth, Max(0, remaining - dpsHeight))
+        damageHeight := dpsHeight && overlay["DPSDamageText"].Text != "" && remaining - dpsHeight >= overlay.DPSDamageTextHeight ? overlay.DPSDamageTextHeight : 0
         damageY := eventY - damageHeight
         dpsY := damageY - dpsHeight
         overlay["OverlayText"].Move(marginX, marginY, textWidth, Max(0, dpsY - marginY))
@@ -310,6 +316,73 @@ Class ThumbWindow extends Propertys {
         overlay["SystemText"].Move(marginX, systemY, textWidth, systemHeight)
         overlay["EventText"].Visible := eventHeight > 0
         overlay["SystemText"].Visible := systemHeight > 0
+    }
+
+    FitThumbnailDPS(overlay, name, width, height) {
+        control := overlay[name]
+        ; Keep full source text separately so enlarging a preview restores it.
+        if !control.HasOwnProp("DPSRendered") || control.Text != control.DPSRendered
+            control.DPSSource := control.Text
+        original := control.DPSSource
+        key := original "|" width "|" height
+        if control.HasOwnProp("DPSFitKey") && control.DPSFitKey = key && control.Text = control.DPSRendered
+            return
+        control.DPSFitKey := key
+        text := original
+        base := overlay.DPSBaseFontSize
+        minimum := Min(base, 6)
+        fullMinimum := name = "DPSText" ? Min(base, 9) : minimum
+        size := base
+        loop {
+            control.SetFont("s" size)
+            extent := This.MeasureThumbnailDPS(control, text)
+            lineHeight := Max(extent.h, Ceil(overlay.DPSBaseLineHeight * size / base))
+            if (extent.w <= width && lineHeight <= height) || size <= fullMinimum
+                break
+            size := Max(fullMinimum, size - 1)
+        }
+        if (extent.w > width || lineHeight > height) && name = "DPSText" {
+            text := StrReplace(original, "DPS: ", "")
+            text := StrReplace(text, " | ", " ")
+            for direction in ["In", "Out"] {
+                if RegExMatch(text, direction ": (\d+)", &value) {
+                    number := value[1] + 0
+                    for unit in [[1000000000, "b"], [1000000, "m"], [1000, "k"]] {
+                        if number >= unit[1] {
+                            text := StrReplace(text, value[0], direction ": " Round(number / unit[1], 1) unit[2])
+                            break
+                        }
+                    }
+                }
+            }
+            ; Compact labels often permit a larger, more readable font again.
+            size := base
+            loop {
+                control.SetFont("s" size)
+                extent := This.MeasureThumbnailDPS(control, text)
+                lineHeight := Max(extent.h, Ceil(overlay.DPSBaseLineHeight * size / base))
+                if (extent.w <= width && lineHeight <= height) || size <= minimum
+                    break
+                size := Max(minimum, size - 1)
+            }
+        }
+        if control.Text != text
+            control.Text := text
+        control.DPSRendered := text
+        overlay.%(name "Height")% := lineHeight
+    }
+
+    MeasureThumbnailDPS(control, text) {
+        dc := DllCall("GetDC", "Ptr", control.Hwnd, "Ptr")
+        previous := DllCall("SelectObject", "Ptr", dc, "Ptr", SendMessage(0x31, 0, 0, control), "Ptr")
+        extent := Buffer(8, 0)
+        try {
+            DllCall("GetTextExtentPoint32W", "Ptr", dc, "Str", text = "" ? "Mg" : text, "Int", text = "" ? 2 : StrLen(text), "Ptr", extent)
+            return {w: NumGet(extent, 0, "Int") / (A_ScreenDPI / 96), h: Ceil(NumGet(extent, 4, "Int") / (A_ScreenDPI / 96))}
+        } finally {
+            DllCall("SelectObject", "Ptr", dc, "Ptr", previous)
+            DllCall("ReleaseDC", "Ptr", control.Hwnd, "Ptr", dc)
+        }
     }
 
     MeasureThumbnailNameHeight(overlay, width) {
@@ -366,13 +439,13 @@ Class ThumbWindow extends Propertys {
             overlay := This.ThumbWindows.%hwnd%["TextOverlay"]
             if !overlay.HasOwnProp("DPSTextHeight")
                 return
-            if overlay["DPSText"].Text = text && overlay["DPSDamageText"].Text = damageText
+            if overlay["DPSText"].HasOwnProp("DPSSource") && overlay["DPSText"].DPSSource = text && overlay["DPSDamageText"].DPSSource = damageText
                 return
-            relayout := (overlay["DPSText"].Text = "") != (text = "") || (overlay["DPSDamageText"].Text = "") != (damageText = "")
+            overlay["DPSText"].DPSSource := text
+            overlay["DPSDamageText"].DPSSource := damageText
             overlay["DPSText"].Text := text
             overlay["DPSDamageText"].Text := damageText
-            if relayout
-                This.RefreshThumbnailTextLayout(overlay)
+            This.RefreshThumbnailTextLayout(overlay)
         } finally {
             Critical(previousCritical)
         }
