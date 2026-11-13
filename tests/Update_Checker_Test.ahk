@@ -182,7 +182,7 @@ ReleaseInstallerComponentsTest() {
     try {
         probeFixture := folder "\settings-probe.exe"
         helper := A_ScriptDir "\Exe_Update_Fixtures.ps1"
-        code := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' helper '" -Mode probe -Path "' probeFixture '" -FixtureVersion "' version '" -BaseExecutable "' A_AhkPath '"',, "Hide")
+        code := RunUpdaterTestProcess('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' helper '" -Mode probe -Path "' probeFixture '" -FixtureVersion "' version '" -BaseExecutable "' A_AhkPath '"', "compile settings probe")
         AssertEqual(0, code)
         FileAppend("old-main", main)
         FileAppend("personal settings", folder "\EVE-X-Preview.json")
@@ -199,7 +199,7 @@ ReleaseInstallerComponentsTest() {
         installer := ReleaseInstallerFixture(main, version)
         installer.settingsFixture := probeFixture
         AssertTrue(installer.includeSettings)
-        code := RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' helper '" -Mode interruption -Path "' main '"',, "Hide")
+        code := RunUpdaterTestProcess('powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' helper '" -Mode interruption -Path "' main '"', "create interrupted update")
         AssertEqual(0, code)
         installer.failMain := true
         AssertThrows(() => installer.Install(status))
@@ -235,6 +235,10 @@ class ReleaseInstallerFixture extends ReleaseInstaller {
     failSettings := false
     failMain := false
     settingsFixture := ""
+    RunTransaction(engine, request) {
+        SplitPath(request, &phase)
+        return RunUpdaterTestProcess('"' A_WinDir '\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' engine '" -RequestPath "' request '"', "transaction " phase)
+    }
     DownloadAsset(url, path) {
         if !RegExMatch(url, "^https://github\.com/khivus/EVE-X-Preview/releases/download/v[\d.]+/EVE-X-Preview(?:-Settings)?\.exe$")
             throw Error("Updater must request separate EXEs, without archive or sidecar assets: " url)
@@ -245,6 +249,64 @@ class ReleaseInstallerFixture extends ReleaseInstaller {
             throw Error("Simulated settings download failure")
         FileCopy(InStr(url, "-Settings.exe") ? this.settingsFixture : A_AhkPath, path)
     }
+}
+
+RunUpdaterTestProcess(command, phase, timeoutMs := 120000) {
+    TestRunner.Log("RUN updater: " phase)
+    started := A_TickCount
+    Run(command,, "Hide", &pid)
+    process := DllCall("OpenProcess", "UInt", 0x100000 | 0x1000 | 1, "Int", false, "UInt", pid, "Ptr")
+    if !process {
+        failure := OSError()
+        if ProcessExist(pid) {
+            ProcessClose(pid)
+            if ProcessWaitClose(pid, 5)
+                throw Error("Could not stop updater test phase after handle failure: " phase)
+        }
+        throw failure
+    }
+    try {
+        loop {
+            state := DllCall("WaitForSingleObject", "Ptr", process, "UInt", 0, "UInt")
+            if state = 0
+                break
+            if state != 258
+                throw OSError()
+            if A_TickCount - started >= timeoutMs
+                throw Error("Updater test phase timed out: " phase " (" timeoutMs " ms)")
+            Sleep(25) ; Keep the test interpreter responsive while the child runs.
+        }
+        code := 0
+        if !DllCall("GetExitCodeProcess", "Ptr", process, "UInt*", &code)
+            throw OSError()
+        TestRunner.Log("DONE updater: " phase "; exit=" code "; elapsed=" (A_TickCount - started) " ms")
+        return code
+    } finally {
+        try {
+            if DllCall("WaitForSingleObject", "Ptr", process, "UInt", 0, "UInt") = 258 {
+                if !DllCall("TerminateProcess", "Ptr", process, "UInt", 1)
+                    throw OSError()
+                if DllCall("WaitForSingleObject", "Ptr", process, "UInt", 5000, "UInt") != 0
+                    throw Error("Could not stop updater test phase: " phase)
+            }
+        } finally DllCall("CloseHandle", "Ptr", process)
+    }
+}
+
+TestRunner.Register("Updater subprocess waits preserve exit codes and terminate a timed-out fixture", UpdaterProcessTimeoutTest)
+UpdaterProcessTimeoutTest() {
+    folder := A_Temp "\EveX-updater-timeout-" A_TickCount
+    DirCreate(folder)
+    script := folder "\child.ahk", marker := folder "\pid.txt"
+    FileAppend('#Requires AutoHotkey v2.0`n#NoTrayIcon`nFileAppend(ProcessExist(), A_Args[1])`nSleep(A_Args[2])`nExitApp(7)', script, "UTF-8")
+    command := '"' A_AhkPath '" /ErrorStdOut "' script '" "' marker '" '
+    try {
+        AssertEqual(7, RunUpdaterTestProcess(command "100", "exit-code fixture"))
+        FileDelete(marker)
+        AssertThrows(() => RunUpdaterTestProcess(command "60000", "timeout fixture", 2000), "Updater test phase timed out: timeout fixture")
+        AssertTrue(FileExist(marker), "The fixture must start before the timeout assertion.")
+        AssertFalse(ProcessExist(FileRead(marker) + 0), "The timed-out child must be terminated.")
+    } finally DirDelete(folder, true)
 }
 
 TestRunner.Register("Updates download settings into the installation verify completion and launch without a browser", SettingsDirectDownloadTest)

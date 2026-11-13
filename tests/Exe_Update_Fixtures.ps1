@@ -16,8 +16,17 @@ ExitApp(2)
 '@
     [IO.File]::WriteAllText($Path+'.ahk',$source.Replace('__VERSION__',$Version),[Text.UTF8Encoding]::new($true))
     $arguments='/in "{0}" /out "{1}" /base "{2}" /silent' -f ($Path+'.ahk'),$Path,$BaseExecutable
-    $process=Start-Process $compiler -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
-    if ($process.ExitCode -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw 'Settings probe fixture compilation failed.' }
+    $process=Start-Process $compiler -ArgumentList $arguments -WindowStyle Hidden -PassThru
+    $null=$process.Handle
+    try {
+        if (-not $process.WaitForExit(60000)) { throw 'Settings probe fixture compilation timed out after 60 seconds.' }
+        if ($process.ExitCode -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw 'Settings probe fixture compilation failed.' }
+    } finally {
+        if (-not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force
+            if (-not $process.WaitForExit(5000)) { throw 'Settings probe fixture compiler did not stop.' }
+        }
+    }
 }
 function New-EveInterruptedFixture([string]$MainPath) {
     $MainPath=[IO.Path]::GetFullPath($MainPath)
