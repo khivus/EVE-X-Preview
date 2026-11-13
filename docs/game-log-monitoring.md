@@ -28,6 +28,8 @@ Advanced file gain affects every event using that file across profiles. **Batch 
 
 ## DPS
 
+**DPS display order** under **Monitoring & alerts → DPS** chooses **Incoming first** (the default) or **Outgoing first** when both values are visible. The order is saved per profile and also applies to compact labels. If only one direction is enabled or meets its threshold, only that value appears. Use Apply & restart to activate the change.
+
 Enable game-log reading in **Monitoring & alerts → Log sources**, then enable incoming DPS, outgoing DPS or both under **DPS**. DPS shares the game-log directory, monitoring interval, and selected-character list. It works with event text and flashing borders disabled. The thumbnail text overlay must be enabled to see the values.
 
 Set **DPS averaging period** to choose the rolling averaging period for both directions (1-3600 seconds, default **10**). Each value is the damage recorded during that window divided by its duration, preserving the spacing of the log's timestamps. For artillery firing every 17 seconds, a 20-second or longer window keeps the previous volley included between shots. The live window aligns to newly appended combat records and advances using elapsed time, so a difference between Windows UTC and EVE's clock does not discard hits. Thresholds are the minimum DPS to display for each direction; 0 means no minimum. A value below its threshold or with no recent damage is hidden. Old log contents are skipped when monitoring starts. Neutralization, repairs, misses, and other notifications do not count as damage. Event-specific NPC/player and smartbomb filters do not filter DPS.

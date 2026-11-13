@@ -189,6 +189,7 @@
             },
             "DPS Monitoring": {
                 "dpsAverageSeconds": 10,
+                "dpsDisplayOrder": 1,
                 "incomingDPSEnabled": 0,
                 "incomingDPSThreshold": 0,
                 "showIncomingDPSResistances": 0,

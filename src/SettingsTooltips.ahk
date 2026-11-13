@@ -136,6 +136,7 @@ class SettingsTooltips {
         "outgoingDPSEnabled", "Show average damage per second dealt, calculated from game logs.",
         "outgoingDPSThreshold", "Show outgoing DPS only at or above this value. 0 shows any outgoing DPS.",
         "dpsAverageSeconds", "Seconds used to average DPS, from 1 to 3600. Longer windows smooth short bursts.",
+        "dpsDisplayOrder", "Show incoming or outgoing DPS first when both values are visible.",
         "NonEVEGroupsDDL", "Choose the application group to edit.",
         "NonEVEForwardsKey", "Activate the next available application in this group's list.",
         "NonEVEBackwardsdKey", "Activate the previous available application in this group's list.",
