@@ -4,7 +4,7 @@
 global __EVE_X_PREVIEW_TESTING__ := true
 #Include "Main.ahk"
 #SingleInstance Off
-;@Ahk2Exe-Let U_version = 1.7.0.5
+;@Ahk2Exe-Let U_version = 1.7.0.6
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetDescription EVE-X-Preview canonical settings host
