@@ -1,5 +1,19 @@
 ﻿# Changelog
 
+## v1.7.0.6
+
+### Added
+* Per-profile DPS display order under Monitoring & alerts → DPS: Incoming first (default) or Outgoing first, including compact labels (#19).
+
+### Changed
+* DPS text and the optional incoming damage-mix percentages scale down to fit smaller thumbnails.
+* DPS switches to shorter labels and k/m/b values (thousands/millions/billions) when full text would be too small. Enlarging the thumbnail restores full labels and whole-number values.
+* Active DPS takes priority over system and event text when thumbnail space is limited; the character name keeps priority.
+
+### Development
+* Held-thumbnail refresh tests no longer depend on synthetic keyboard input and check timer scheduling and real DWM refresh calls.
+* Updater tests report subprocess phases, exit codes and durations, with bounded waits and cleanup on timeout to prevent test hangs.
+
 ## v1.7.0.5
 
 ### Changed
