@@ -40,6 +40,10 @@ Run the Windows AutoHotkey v2 suite from the repository root:
 
 Tests use temporary windows and fixture settings. Live EVE checks and rebuilding a release are separate verification steps.
 
+The runner logs each test before starting it. Updater component tests also log their subprocess phase, exit code and duration: probe compilation, interrupted-update setup, recovery and installation. Test subprocess waits are limited to two minutes and terminate their owned child on timeout; probe compilation has its own one-minute limit and compiler cleanup. A timeout fixture verifies exit-code propagation and termination. These limits apply to disposable test installations, not production update transactions.
+
+The `HeldThumbnailRefresh` checks schedule held switching callbacks on one-shot priority-1 timers, so they work in Sandbox sessions without synthetic keyboard delivery. They verify refreshes during the hold, including real DWM update calls. A priority-0 control verifies starvation during the hold and resumption afterward. These are scheduling checks; keyboard delivery requires a separate interactive check.
+
 ## Avalonia companion and isolated development
 
 The optional companion uses .NET 10 LTS and stable Avalonia dependencies pinned in `settings/`. Its ordinary controls consume metadata from `SettingsSchema`, `SettingsTables` and canonical defaults. `SettingsSession` owns external draft operations and the shared Apply transaction. See [settings editors](modern-settings.md) and [bridge v1](settings-bridge.md).

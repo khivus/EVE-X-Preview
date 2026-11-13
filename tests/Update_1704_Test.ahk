@@ -48,27 +48,41 @@ class HeldRefreshFixture extends Update1704ShortcutFixture {
 TestRunner.Register("HeldThumbnailRefresh foreground refresh progresses inside a P1 switching callback", HeldThumbnailRefreshPriorityTest)
 HeldThumbnailRefreshPriorityTest() {
     app := HeldRefreshFixture()
-    enabled := {value:true}
-    condition := (*) => enabled.value
-    level := A_SendLevel
-    HotIf(condition)
     try {
         app.StartForegroundThumbnailRefresh()
-        app.RegisterWindowHotkey("F18",ObjBindMethod(app,"Hold"),"Held thumbnail regression")
-        SendLevel(1)
-        SendEvent("{F18}")
-        Sleep(550)
-        AssertTrue(app.complete)
+        RunHeldThumbnailCallback(app, "complete")
         AssertTrue(app.during>=3,"Refresh must progress before the held switching callback ends.")
         AssertEqual(104,app.refreshed[-1])
         AssertTrue(app.refreshed.Length<=4,"Unchanged foreground must not trigger repeated DWM work.")
     } finally {
-        enabled.value := false
         SetTimer(app.foregroundRefreshTimer,0)
-        try Hotkey("*F18","Off")
-        HotIf()
-        SendLevel(level)
     }
+}
+
+RunHeldThumbnailCallback(app, completionProperty) {
+    ; Exercise the same P1 scheduling as a held switching hotkey without relying
+    ; on synthetic keyboard input reaching a disconnected Sandbox desktop.
+    callback := ObjBindMethod(app, "Hold")
+    SetTimer(callback, -1, 1)
+    try {
+        deadline := A_TickCount + 2000
+        while !app.%completionProperty% && A_TickCount < deadline
+            Sleep(10)
+        AssertTrue(app.%completionProperty%, "The scheduled P1 held callback must complete.")
+    } finally SetTimer(callback, 0)
+}
+
+TestRunner.Register("HeldThumbnailRefresh priority-zero control cannot refresh during a P1 hold", HeldThumbnailRefreshStarvationTest)
+HeldThumbnailRefreshStarvationTest() {
+    app := HeldRefreshFixture()
+    try {
+        app.StartForegroundThumbnailRefresh()
+        SetTimer(app.foregroundRefreshTimer,, 0)
+        RunHeldThumbnailCallback(app, "complete")
+        AssertEqual(0, app.during, "A lower-priority timer must be starved until the P1 callback returns.")
+        Sleep(100)
+        AssertEqual(104, app.refreshed[-1], "The deferred refresh resumes after the held callback.")
+    } finally SetTimer(app.foregroundRefreshTimer, 0)
 }
 TestRunner.Register("HeldThumbnailRefresh pause hidden incomplete and DWM-busy states skip refresh", HeldThumbnailRefreshGuardTest)
 HeldThumbnailRefreshGuardTest() {
@@ -130,10 +144,9 @@ class RealHeldRefreshFixture extends ThumbnailForegroundPollFixture {
 }
 TestRunner.Register("HeldThumbnailRefresh real DWM previews update before a held P1 callback finishes", HeldThumbnailRefreshDwmTest)
 HeldThumbnailRefreshDwmTest() {
-    previous := A_DetectHiddenWindows, level := A_SendLevel
+    previous := A_DetectHiddenWindows
     DetectHiddenWindows(true)
-    app := RealHeldRefreshFixture(), sources := [], enabled := {value:true}
-    condition := (*) => enabled.value
+    app := RealHeldRefreshFixture(), sources := []
     try {
         loop 3 {
             source := app.CreateSource("EVE - Held DWM " A_Index)
@@ -143,23 +156,13 @@ HeldThumbnailRefreshDwmTest() {
         }
         app.foreground := app.sequence[1]
         app.StartForegroundThumbnailRefresh()
-        HotIf(condition)
-        app.RegisterWindowHotkey("F19",ObjBindMethod(app,"Hold"),"Real held DWM regression")
-        SendLevel(1)
-        SendEvent("{F19}")
-        Sleep(550)
-        AssertTrue(app.completed)
+        RunHeldThumbnailCallback(app, "completed")
         AssertTrue(app.during>=2,"Real DWM update calls must complete while switching remains held.")
     } finally {
-        enabled.value := false
         if app.HasOwnProp("foregroundRefreshTimer")
             SetTimer(app.foregroundRefreshTimer,0)
-        HotIf(condition)
-        try Hotkey("*F19","Off")
-        HotIf()
         app.Cleanup(sources)
         DetectHiddenWindows(previous)
-        SendLevel(level)
     }
 }
 

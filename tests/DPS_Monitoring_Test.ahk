@@ -44,6 +44,68 @@ DPSCompactTextTest() {
     AssertEqual("", meter.damageText)
 }
 
+TestRunner.Register("DPS display order follows the preference and preserves single-direction thresholds", DPSDisplayOrderTest)
+DPSDisplayOrderTest() {
+    settings := DPSSettings()
+    settings["showIncomingDPSResistances"] := 1
+    meter := DPSMeter(settings)
+    settings := meter.settings
+    now := DPSMeter.CurrentSecond()
+    meter.AddLine(DPSLine(now, 15000, "from", "Pilot", "Hammerhead I"), now)
+    meter.AddLine(DPSLine(now, 24000000, "to"), now)
+    AssertEqual("DPS: In: 1500 | Out: 2400000", meter.Text(now))
+    settings["dpsDisplayOrder"] := 2
+    AssertEqual("DPS: Out: 2400000 | In: 1500", meter.Text(now))
+    AssertEqual("% Th 100", meter.damageText)
+    settings["incomingDPSThreshold"] := 2000
+    AssertEqual("DPS: Out: 2400000", meter.Text(now))
+    AssertEqual("", meter.damageText)
+    settings["incomingDPSThreshold"] := 0
+    settings["outgoingDPSEnabled"] := 0
+    AssertEqual("DPS: In: 1500", meter.Text(now))
+    settings["outgoingDPSEnabled"] := 1
+    settings["incomingDPSEnabled"] := 0
+    AssertEqual("DPS: Out: 2400000", meter.Text(now))
+    settings["incomingDPSEnabled"] := 1
+    settings.Delete("dpsDisplayOrder")
+    AssertEqual("DPS: In: 1500 | Out: 2400000", meter.Text(now), "Older settings retain incoming-first order.")
+}
+
+TestRunner.Register("DPS display order is exported persisted and retained in compact overlays", DPSDisplayOrderSettingsTest)
+DPSDisplayOrderSettingsTest() {
+    config := JSON.Load(default_JSON)
+    model := SettingsModel(config)
+    AssertEqual(1, model.Get("dpsDisplayOrder"))
+    model.Set("dpsDisplayOrder", 2)
+    saved := JSON.Load(JSON.Dump(model.Merge(config)))
+    AssertEqual(2, SettingsModel(saved).Get("dpsDisplayOrder"))
+    AssertThrows(() => model.Set("dpsDisplayOrder", 3))
+    exported := false
+    for field in SettingsContract.Export()["fields"] {
+        if field["id"] = "dpsDisplayOrder" {
+            exported := true
+            AssertEqual("choice", field["kind"])
+            AssertEqual("Incoming first", field["choices"][1]["label"])
+            AssertEqual(2, field["choices"][2]["value"])
+        }
+    }
+    AssertTrue(exported, "Both settings editors must receive the order choice.")
+    app := DPSLogFixture()
+    try {
+        text := "DPS: Out: 2400000 | In: 1500"
+        for width in [96, 110, 128, 400] {
+            app.LayoutThumbnailText(app.overlay, 0, width, 80)
+            app.updateThumbnailDPSText(text, app.client.Hwnd)
+            rendered := app.overlay["DPSText"].Text
+            AssertTrue(InStr(rendered, "Out:") < InStr(rendered, "In:"))
+            app.overlay["DPSText"].GetPos(,, &w, &h)
+            AssertTrue(app.MeasureThumbnailDPS(app.overlay["DPSText"], rendered).w <= w)
+            if width = 400
+                AssertEqual(text, rendered)
+        }
+    } finally app.Cleanup()
+}
+
 TestRunner.Register("DPS sums damage by log time and expires during idle periods", DPSWindowTest)
 DPSWindowTest() {
     meter := DPSMeter(DPSSettings())
@@ -468,6 +530,60 @@ DPSCompactIncomingLayoutTest() {
     }
 }
 
+TestRunner.Register("DPS responsive text retains both values and restores full labels after resizing", DPSResponsiveTextTest)
+DPSResponsiveTextTest() {
+    app := DPSLogFixture()
+    overlay := Gui("-Caption")
+    try {
+        overlay.MarginX := 3
+        overlay.MarginY := 3
+        overlay.SetFont("s12", "Segoe UI")
+        app.AddThumbnailTextControls(overlay, "MNI 2", 400, 100)
+        original := "DPS: In: 1234567 | Out: 9876543"
+        overlay["DPSText"].Text := original
+        overlay["DPSDamageText"].Text := "% EM 25 Th 25 Ki 25 Ex 25"
+        for width in [128, 110, 96, 400, 110, 400] {
+            app.LayoutThumbnailText(overlay, 0, width, 60)
+            control := overlay["DPSText"]
+            control.GetPos(&x, &y, &w, &h)
+            extent := app.MeasureThumbnailDPS(control, control.Text)
+            AssertTrue(h > 0 && y + h <= 57, "DPS must remain inside the small preview.")
+            AssertTrue(extent.w <= w && extent.h <= h, "Both numeric values must fit without ellipsis at width " width)
+            AssertTrue(RegExMatch(control.Text, "In: \d") && RegExMatch(control.Text, "Out: \d"))
+            if width = 400 {
+                AssertEqual(original, control.Text, "Growing restores exact values and full labels.")
+                AssertEqual(overlay.DPSBaseLineHeight, overlay.DPSTextHeight)
+            }
+        }
+    } finally {
+        overlay.Destroy()
+        app.Cleanup()
+    }
+}
+
+TestRunner.Register("DPS responsive text refits changing values without resizing", DPSResponsiveValueTest)
+DPSResponsiveValueTest() {
+    app := DPSLogFixture()
+    try {
+        app.LayoutThumbnailText(app.overlay, 0, 110, 80)
+        for text in ["DPS: Out: 1", "DPS: Out: 123456789", "DPS: In: 1234567 | Out: 9876543", "DPS: Out: 2"] {
+            app.updateThumbnailDPSText(text, app.client.Hwnd)
+            control := app.overlay["DPSText"]
+            control.GetPos(,, &w, &h)
+            AssertTrue(app.MeasureThumbnailDPS(control, control.Text).w <= w)
+            AssertTrue(h > 0)
+            AssertEqual(text, control.DPSSource)
+            ; A damage-mix-only update must not replace a fitted DPS label
+            ; with its full source text while reusing the previous fit.
+            app.updateThumbnailDPSText(text, app.client.Hwnd, "% EM 50 Th 50")
+            AssertTrue(app.MeasureThumbnailDPS(control, control.Text).w <= w)
+        }
+        app.updateThumbnailDPSText("", app.client.Hwnd)
+        AssertEqual("", app.overlay["DPSText"].Text)
+        AssertFalse(app.overlay["DPSText"].Visible)
+    } finally app.Cleanup()
+}
+
 TestRunner.Register("DPS settings migrate inherit profiles and fit their panel", DPSSettingsIntegrationTest)
 DPSSettingsIntegrationTest() {
     app := DPSLogFixture()
@@ -478,20 +594,25 @@ DPSSettingsIntegrationTest() {
         merged := JsonMergeNoOverwrite(defaults, legacy)
         AssertEqual(0, merged["_Profiles"]["Default"]["DPS Monitoring"]["incomingDPSEnabled"])
         AssertEqual(10, merged["_Profiles"]["Default"]["DPS Monitoring"]["dpsAverageSeconds"])
+        AssertEqual(1, merged["_Profiles"]["Default"]["DPS Monitoring"]["dpsDisplayOrder"])
         app._JSON["_Profiles"]["Other"] := DeepClone(app._JSON["_Profiles"]["Default"])
         app.LastUsedProfile := "Other"
         app.ProfileOverride()
         app.dpsMonitoring["incomingDPSThreshold"] := 123.5
+        app.dpsMonitoring["dpsDisplayOrder"] := 2
+        AssertEqual(1, app._JSON["_Profiles"]["Default"]["DPS Monitoring"]["dpsDisplayOrder"])
         AssertEqual(0, app._JSON["_Profiles"]["Default"]["DPS Monitoring"]["incomingDPSThreshold"])
         app.Global_Groups["DPS Monitoring"] := 1
         app.ProfileOverride()
         AssertEqual("Default", app.ProfileDPSMonitoring)
+        AssertEqual(1, app.dpsMonitoring["dpsDisplayOrder"])
         AssertEqual(0, app.dpsMonitoring["incomingDPSThreshold"])
         app.SetState()
         app.MainFrame := Gui()
         app.MainFrame.Group := Map()
         try {
             app.DPSMonitoring_Ctrl()
+            AssertEqual("Incoming first", app.MainFrame["dpsDisplayOrder"].Text)
             for control in app.MainFrame.Group["DPS Monitoring"] {
                 control.GetPos(&x, &y, &w, &h)
                 AssertTrue(x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10, "DPS settings must fit the panel.")

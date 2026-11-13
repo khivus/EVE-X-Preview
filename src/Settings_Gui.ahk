@@ -1691,6 +1691,10 @@ Class Settings_Gui extends SoundSettingsGui {
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Average Window (seconds):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vdpsAverageSeconds")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "DPS Display Order:")
+        arr.Push This.MainFrame.Add("DropDownList", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vdpsDisplayOrder", ["Incoming first", "Outgoing first"])
+        This.MainFrame["dpsDisplayOrder"].Choose(This.dpsMonitoring.Get("dpsDisplayOrder", 1))
+        This.MainFrame["dpsDisplayOrder"].OnEvent("Change", (obj, *) => EventHandler(obj))
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} r5", This.xlGap, This.sepW), "Average window: 1-3600 seconds (default 10).`nThresholds set the minimum DPS shown (0 = no minimum).`nUses the Game Logs Monitoring interval and character list.`nTypes: drones, missiles, fighters and smartbombs.`nPercentages are estimates; ? means unknown damage.")
 
         for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"] {
@@ -2496,6 +2500,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.RefreshEventSoundButtons()
 
         ; DPS Monitoring
+        This.MainFrame["dpsDisplayOrder"].Choose(This.dpsMonitoring.Get("dpsDisplayOrder", 1))
         for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"]
             This.MainFrame[name].Value := This.dpsMonitoring[name]
 

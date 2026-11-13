@@ -70,6 +70,7 @@ class TestRunnerClass {
 
         for item in selected {
             try {
+                this.Log("RUN: " item["name"])
                 item["callback"].Call()
                 this.passed++
                 this.Log("PASS: " item["name"])

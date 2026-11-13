@@ -148,6 +148,8 @@ class SettingsSchema {
         this.Field("outgoingDPSEnabled", "Show outgoing DPS", "bool")
         this.Field("outgoingDPSThreshold", "Minimum outgoing DPS to display", "number", 0, 1000000000000, "DPS", "0 = show any outgoing DPS.")
         this.Depends("outgoingDPSThreshold", "outgoingDPSEnabled")
+        this.Field("dpsDisplayOrder", "DPS display order", "choice",,,, "Which value appears first when both incoming and outgoing DPS are visible.")
+        this.Choices("dpsDisplayOrder", "Incoming first", 1, "Outgoing first", 2)
         this.Field("dpsAverageSeconds", "DPS averaging period", "integer", 1, 3600, "seconds", "Longer periods smooth short bursts.")
         this.Field("hideDPSForFocused", "Hide DPS for the focused client", "bool",,,, "Keep counting damage while hiding DPS on the client currently in focus.", ["DPS Monitoring", "hideDPSForFocused"], "Focused-client DPS")
         this.Section("Monitoring & alerts", "sounds", "Sound library and playback", "", "Shared settings affect every profile. Event assignments and event volume belong to the event profile.")
