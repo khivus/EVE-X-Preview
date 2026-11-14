@@ -13,11 +13,33 @@ internal static class Program
             else if (args.Length == 2 && args[0] == "--inspect-host") await InspectHostAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--retry-integration") await RetryIntegrationAsync(Path.GetFullPath(args[1]));
             else if (args.Length == 2 && args[0] == "--handoff-integration") await HandoffIntegrationAsync(Path.GetFullPath(args[1]));
-            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync();await ReconnectRetriesAsync(); }
+            else if (args.Length == 0) { ProtocolTests(); ClipboardTests(); ProblemTests(); await ActionQueueTestsAsync(); await StartupReadinessTestAsync();await StateTestsAsync();await ProfileMutationIsolationAsync();await ReconnectRetriesAsync(); }
             else throw new ArgumentException("Use no arguments for unit tests or --integration <isolated installation directory>.");
             Console.WriteLine($"PASS: {passed} assertions."); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine("FAIL: " + error); return 1; }
+    }
+    private static async Task ActionQueueTestsAsync()
+    {
+        var queue = new EditorActionQueue();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var saved = new List<string>();
+        var first = queue.RunAsync(async () => { await release.Task; saved.Add("layout:on"); });
+        var second = queue.RunAsync(() => { saved.Add("appearance:on"); return Task.CompletedTask; });
+        var third = queue.RunAsync(() => { saved.Add("layout:off"); return Task.CompletedTask; });
+        Check(queue.PendingCount == 3 && saved.Count == 0, "rapid inheritance clicks remain queued while the first bridge reply is delayed");
+        release.SetResult();
+        await Task.WhenAll(first, second, third);
+        Check(saved.SequenceEqual(new[] { "layout:on", "appearance:on", "layout:off" }) && queue.PendingCount == 0,
+            "queued clicks save in order, including reversing an earlier change, before the final refresh");
+
+        release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var failing = queue.RunAsync(async () => { await release.Task; throw new InvalidOperationException("Rejected edit"); });
+        var following = queue.RunAsync(() => { saved.Add("events:on"); return Task.CompletedTask; });
+        release.SetResult();
+        await ThrowsAsync<InvalidOperationException>(() => failing, "a failed queued edit reports its error");
+        await following;
+        Check(saved.Last() == "events:on" && queue.PendingCount == 0, "a failed edit does not drop subsequent clicks or leave the queue busy");
     }
     private static async Task ReconnectRetriesAsync() {
         var transport=new ScriptedTransport();await using var editor=new EditorSession(transport);

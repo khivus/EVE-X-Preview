@@ -123,7 +123,11 @@ public sealed partial class MainWindow
         }
         panel.Children.Add(presets);
         var (choices, _) = InheritanceChoices(flags,async (id,enabled) => {
-            if(template)await session.MutateAsync("creation-inheritance",new(){["flags"]=flags.DeepClone()});
+            if(template) {
+                var values = session.Snapshot.Object("creationInheritance").Copy();
+                values[id] = enabled;
+                await session.MutateAsync("creation-inheritance",new(){["flags"]=values});
+            }
             else await SetInheritanceAsync(id,enabled);
         });
         panel.Children.Add(choices);

@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## v1.7.0.7
+
+### Fixed
+* Rapid changes in the modern Settings editor, including section inheritance checkboxes, are saved in order instead of being silently skipped or reverting after a refresh.
+
 ## v1.7.0.6
 
 ### Added

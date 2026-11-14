@@ -147,14 +147,32 @@ public sealed partial class MainWindow : Window
     }
     private async Task RunAsync(Func<Task> action, bool render = true, bool recordHistory = true, bool exclusive = false)
     {
-        if (busy || closing) return;
+        if (closing) return;
         if(render)SaveScroll();
-        busy = true; controlsLocked = exclusive; error.IsVisible = false; UpdateStatus();
-        var previousDraft = session.Snapshot.Object("draft").Copy();
-        try { await action(); if(session.Connected && render)await session.ValidateAsync(); if (recordHistory && previousDraft["config"] is not null && !JsonNode.DeepEquals(previousDraft.Object("config"), session.Snapshot.Object("draft").Object("config"))) editHistory.Push(previousDraft); if (render) { RenderNavigation(); RenderPage(); } }
-        catch (Exception e) { ShowError(e); }
-        finally { busy = false; controlsLocked = false; UpdateStatus(); }
+        refreshAfterActions |= render;
+        busy = true; controlsLocked |= exclusive; error.IsVisible = false; UpdateStatus();
+        try {
+            await actionQueue.RunAsync(async () => {
+                var previousDraft = session.Snapshot.Object("draft").Copy();
+                try {
+                    await action();
+                    if(session.Connected && render)await session.ValidateAsync();
+                    if (recordHistory && previousDraft["config"] is not null && !JsonNode.DeepEquals(previousDraft.Object("config"), session.Snapshot.Object("draft").Object("config"))) editHistory.Push(previousDraft);
+                }
+                catch (Exception e) { ShowError(e); }
+            });
+        }
+        finally {
+            busy = actionQueue.PendingCount != 0;
+            if (!busy) {
+                controlsLocked = false;
+                if (refreshAfterActions) { refreshAfterActions = false; RenderNavigation(); RenderPage(); }
+            }
+            UpdateStatus();
+        }
     }
+    private readonly EditorActionQueue actionQueue = new();
+    private bool refreshAfterActions;
     private void ShowError(Exception exception)
     {
         error.Text = exception.Message; error.IsVisible = true;
@@ -187,8 +205,9 @@ public sealed partial class MainWindow : Window
         reconnect.IsVisible = !session.Connected; reconnect.IsEnabled = !busy;
         connectionBanner.IsVisible = !session.Connected;
         connectionMessage.Text = (session.AwaitingRestart && automaticReconnectFailures==0 ? "Settings saved. Waiting for the application to restart and reconnecting automatically. Your selected profile is retained." : reconnecting ? "Reconnecting automatically. Your draft and unfinished entries are retained." : "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue.") + (session.Error is { Length: > 0 } reason ? "\n" + reason : "");
-        profiles.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
-        search.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
+        profiles.IsEnabled = !busy && !reconnecting && session.Connected;
+        search.IsEnabled = !busy && !reconnecting && session.Connected;
+        navigation.IsEnabled = !busy;
         page.IsEnabled = !controlsLocked && !reconnecting && session.Connected;
         RefreshAboutControls();
         if (!rendering)
@@ -323,8 +342,10 @@ public sealed partial class MainWindow : Window
             if(inherited)source.Children.Add(Muted(sectionId=="sounds" && group=="events" ? "Event sound assignments are inherited from Default and cannot be changed here. Edit Default here, or customize Event alerts for this profile." : "This category is inherited from Default. Edit Default here, or customize it to enable editing for this profile."));
             var choice = new ComboBox { ItemsSource = new[] { "Use Default profile settings", "Customize for this profile" }, SelectedIndex = inherited ? 0 : 1, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
             choice.SelectionChanged += async (_,_) => {
-                if(choice.SelectedIndex == (inherited ? 0 : 1))return;
-                await RunAsync(()=>SetInheritanceAsync(group,choice.SelectedIndex==0));
+                var enabled = choice.SelectedIndex == 0;
+                if(enabled == inherited)return;
+                inherited = enabled;
+                await RunAsync(()=>SetInheritanceAsync(group,enabled));
             };
             source.Children.Add(choice);
             if(inherited)source.Children.Add(ActionButton(group==sectionId?"Edit Default here":sectionId=="sounds" && group=="events"?"Edit Default sound assignments here":"Edit Default " + label,async()=> {
