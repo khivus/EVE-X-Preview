@@ -66,9 +66,21 @@ public sealed partial class MainWindow
         }
         void PaintSelection()
         {
-            foreach(var (row,header) in rowHeaders) header.Background=wholeRows.Contains(row)?ThemeController.TableSelection(true):Brushes.Transparent;
-            foreach (var (address, border) in cells)
-                border.Background = selected.Contains(address) ? ThemeController.TableSelection(false) : Brushes.Transparent;
+            foreach(var (row,header) in rowHeaders) {
+                var picked = wholeRows.Contains(row);
+                header.Background = picked ? ThemeController.TableSelection(true) : Brushes.Transparent;
+                if (picked) header.Foreground = ThemeController.SelectionText;
+                else header.ClearValue(Button.ForegroundProperty);
+                header.BorderBrush = picked ? ThemeController.SelectionOutline : ThemeController.Line;
+            }
+            foreach (var (address, border) in cells) {
+                var picked = selected.Contains(address);
+                border.Background = picked ? ThemeController.TableSelection(false) : Brushes.Transparent;
+                border.BorderBrush = picked ? ThemeController.SelectionOutline : ThemeController.Line;
+                border.BorderThickness = picked ? new Thickness(2) : new Thickness(0,0,1,1);
+                // Keep the editor in the same place when its selection outline appears.
+                border.Padding = picked ? new Thickness(2,1,3,2) : new Thickness(4,3);
+            }
         }
         void Select(int row, int column, bool extend, bool toggle)
         {

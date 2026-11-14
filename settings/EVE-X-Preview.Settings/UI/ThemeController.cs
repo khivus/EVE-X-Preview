@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
 using EveX.Settings.Bridge;
+using EveX.Settings.State;
 
 namespace EveX.Settings.UI;
 
@@ -51,6 +52,8 @@ internal static class ThemeController
     }
 
     public static IBrush TableSelection(bool row) => brushes[row?"EveTableRowSelectionBrush":"EveTableSelectionBrush"];
+    public static IBrush SelectionOutline => brushes["EveSelectionOutlineBrush"];
+    public static IBrush SelectionText => brushes["EveTableSelectionTextBrush"];
     public static IBrush Line => brushes["EveLineBrush"];
 
     public static void Apply(string mode, Metadata? metadata)
@@ -77,13 +80,23 @@ internal static class ThemeController
         var line=Set("EveLineBrush",Role("line","424750","DDE1E7"));var accent=Set("EveAccentBrush",highlight);
         var selection=Set("EveSelectionBrush",Role("selection","304C70","DCEBFA"));var chrome=Set("EveChromeBrush",band);
         var disabled=Set("EveDisabledBrush",Mix(field,band,.35));
-        var selectionColor=((SolidColorBrush)selection).Color;Set("EveTableSelectionBrush",Color.FromArgb(65,selectionColor.R,selectionColor.G,selectionColor.B));Set("EveTableRowSelectionBrush",Color.FromArgb(90,selectionColor.R,selectionColor.G,selectionColor.B));
+        uint Rgb(Color color) => ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
+        Color FromRgb(uint color) => Color.FromRgb((byte)(color >> 16), (byte)(color >> 8), (byte)color);
+        var tableColor = SelectionContrast.Fill(Rgb(field), Rgb(highlight));
+        Set("EveTableSelectionBrush", FromRgb(tableColor));
+        Set("EveTableRowSelectionBrush", FromRgb(tableColor));
+        Set("EveTableSelectionTextBrush", FromRgb(SelectionContrast.Text(tableColor, Rgb(ink))));
+        Set("EveSelectionOutlineBrush", FromRgb(SelectionContrast.Outline(Rgb(highlight), Rgb(bg), Rgb(field))));
+        var activeSelection = Set("EveActiveSelectionBrush", highlight);
+        var activeSelectionText = Set("EveActiveSelectionTextBrush", FromRgb(SelectionContrast.Text(Rgb(highlight), Rgb(ink))));
         var contrast=Set("EveAccentTextBrush",.299*highlight.R+.587*highlight.G+.114*highlight.B>145?Color.Parse("#202124"):Colors.White);
         void Resources(SolidColorBrush brush,params string[] keys) {foreach(var key in keys)app.Resources[key]=brush;}
         Resources(accent,"SystemControlHighlightAccentBrush","SystemControlForegroundAccentBrush","SliderTrackValueFill","SliderThumbBackground","SliderThumbBackgroundPointerOver","SliderThumbBackgroundPressed");
         Resources(foreground,"SystemControlForegroundBaseHighBrush","TextControlForeground","ComboBoxForeground","ButtonForeground","ToggleSwitchContentForeground");
         Resources(input,"ComboBoxDropDownBackground","TextControlBackground","TextControlBackgroundPointerOver","TextControlBackgroundFocused","ComboBoxBackground","ButtonBackground");
         Resources(selection,"ComboBoxItemBackgroundPointerOver","ComboBoxItemBackgroundSelected","ButtonBackgroundPointerOver","ButtonBackgroundPressed","ComboBoxBackgroundPointerOver","ComboBoxBackgroundPressed");
+        Resources(activeSelection,"ComboBoxItemBackgroundSelected","ComboBoxItemBackgroundSelectedPointerOver","ComboBoxItemBackgroundSelectedPressed","TextControlSelectionHighlightColor");
+        Resources(activeSelectionText,"ComboBoxItemForegroundSelected","ComboBoxItemForegroundSelectedPointerOver","ComboBoxItemForegroundSelectedPressed","TextControlSelectionHighlightForeground");
         Resources(disabled,"TextControlBackgroundDisabled","ComboBoxBackgroundDisabled","ButtonBackgroundDisabled");
         Resources(muted,"TextControlForegroundDisabled","TextControlPlaceholderForeground","TextControlPlaceholderForegroundDisabled","ButtonForegroundDisabled","ComboBoxForegroundDisabled","ToggleSwitchHeaderForegroundDisabled","RepeatButtonForegroundDisabled");
         Resources(line,"TextControlBorderBrush","TextControlBorderBrushPointerOver","ComboBoxBorderBrush","ComboBoxBorderBrushPointerOver","ButtonBorderBrush","ButtonBorderBrushPointerOver","SliderTrackFill");
@@ -108,7 +121,7 @@ internal static class ThemeController
                 new Style(s=>s.OfType<Button>().Class("nav")) {Setters={new Setter(TemplatedControl.BackgroundProperty,Brushes.Transparent)}},
                 new Style(s=>s.OfType<Button>().Class("nav").Class("selected")) {Setters={new Setter(TemplatedControl.BackgroundProperty,selection)}},
                 new Style(s=>s.OfType<TextBlock>().Class("muted")) {Setters={new Setter(TextBlock.ForegroundProperty,muted),new Setter(Visual.OpacityProperty,1d)}},
-                new Style(s=>s.OfType<TextBox>()) {Setters={new Setter(TemplatedControl.BackgroundProperty,background),new Setter(TemplatedControl.ForegroundProperty,foreground),new Setter(TemplatedControl.BorderBrushProperty,line),new Setter(TextBox.CaretBrushProperty,accent),new Setter(TextBox.SelectionBrushProperty,selection)}},
+                new Style(s=>s.OfType<TextBox>()) {Setters={new Setter(TemplatedControl.BackgroundProperty,background),new Setter(TemplatedControl.ForegroundProperty,foreground),new Setter(TemplatedControl.BorderBrushProperty,line),new Setter(TextBox.CaretBrushProperty,accent),new Setter(TextBox.SelectionBrushProperty,activeSelection),new Setter(TextBox.SelectionForegroundBrushProperty,activeSelectionText)}},
                 new Style(s=>s.OfType<ComboBox>()) {Setters={new Setter(TemplatedControl.BackgroundProperty,background),new Setter(TemplatedControl.ForegroundProperty,foreground),new Setter(TemplatedControl.BorderBrushProperty,line)}}
             };app.Styles.Add(overrides);
         }

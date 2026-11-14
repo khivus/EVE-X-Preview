@@ -9,6 +9,65 @@ class Update1704ShortcutFixture extends DirectPriorityFixture {
     TrayMenu() => this.trayRefreshes++
 }
 
+class CharacterGroupPriorityFixture extends Update1704ShortcutFixture {
+    loggedOut := Map()
+    scopeActive := true
+    hasMathcingOldTitle(title) => this.loggedOut.Get(title, 0)
+    ShortcutScopeActive() => this.scopeActive
+}
+
+TestRunner.Register("Character group first-available shortcuts yield to populated next and previous groups", CharacterGroupFallbackPriorityTest)
+CharacterGroupFallbackPriorityTest() {
+    app := CharacterGroupPriorityFixture()
+    app._Hotkeys := []
+    for direction in ["ForwardsHotkey", "BackwardsHotkey"] {
+        for cycleName in ["A cycle", "Z cycle"] {
+            fallback := Map("Characters", ["EVE - Fallback"], "ForwardsHotkey", "", "BackwardsHotkey", "", "FirstCharHotkey", "F16")
+            cycle := Map("Characters", ["EVE - Cycle", "EVE - Other"], "ForwardsHotkey", "", "BackwardsHotkey", "", "FirstCharHotkey", "")
+            cycle[direction] := "F16"
+            app.Profiles["Default"]["Hotkey Groups"] := Map(cycleName, cycle, "M fallback", fallback)
+            app.targets := Map("EVE - Fallback", true, "EVE - Other", true)
+            app._Hotkeys := [Map("EVE - Direct", "F16")]
+            app.targets["EVE - Direct"] := true
+            AssertTrue(app.DirectShortcutAvailable("*F16"))
+            AssertFalse(app.CharacterGroupCycleAvailable(cycle["Characters"], "*F16"), "A running direct character overrides group cycling.")
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "A running direct character overrides first-available fallback.")
+            app.targets.Delete("EVE - Direct")
+            AssertFalse(app.DirectShortcutAvailable("*F16"))
+            AssertTrue(app.CharacterGroupCycleAvailable(cycle["Characters"], "*F16"))
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "Any available cycle member takes priority, regardless of group order.")
+            app.targets.Delete("EVE - Other")
+            AssertFalse(app.CharacterGroupCycleAvailable(cycle["Characters"], "*F16"))
+            AssertTrue(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "Closing the last cycle member enables first-available fallback immediately.")
+            app.loggedOut["EVE - Cycle"] := 123
+            AssertFalse(app.CharacterGroupCycleAvailable(cycle["Characters"], "*F16"), "A preserved login-screen title must not block an available fallback.")
+            AssertTrue(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"))
+            app.loggedOut.Clear()
+            app.targets["EVE - Cycle"] := true
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "Launching a cycle member restores cycle priority immediately.")
+            cycle[direction] := "F17"
+            AssertTrue(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "An unrelated cycle key must not reserve the fallback shortcut.")
+            cycle[direction] := "^F16"
+            AssertTrue(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"), "An inactive modifier chord must not reserve the fallback shortcut.")
+            app.scopeActive := false
+            AssertFalse(app.CharacterGroupCycleAvailable(cycle["Characters"], "*F16"))
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"))
+            app.scopeActive := true
+            app.activationHotkeysSuspended := true
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"))
+            app.activationHotkeysSuspended := false
+            app.targets.Clear()
+            AssertFalse(app.FirstCharacterGroupAvailable(fallback["Characters"], "*F16"))
+        }
+    }
+    entries := []
+    HotkeyBindings.Add(entries, "group:Cycle:ForwardsHotkey", "Next", "F16", true)
+    HotkeyBindings.Add(entries, "group:Fallback:FirstCharHotkey", "First available", "F16", true)
+    AssertEqual(0, HotkeyBindings.Conflicts(entries).Count, "Availability-based fallback is an intentional shared shortcut.")
+    HotkeyBindings.Add(entries, "group:Other:BackwardsHotkey", "Previous", "F16", true)
+    AssertTrue(HotkeyBindings.Conflicts(entries).Has("group:Cycle:ForwardsHotkey"), "Competing cycle actions still warn.")
+}
+
 class HeldRefreshFixture extends Update1704ShortcutFixture {
     foreground := 101
     refreshed := []

@@ -1,5 +1,6 @@
 ﻿; Read-only conflict checks: never register, disable or rewrite the user's binds.
 class HotkeyBindings {
+    static PriorityHelp := "Shared shortcut priority: Direct character > Group Next/Previous > Group First available. A higher-priority action yields when none of its characters are running. Quick Group takes priority over all three while enabled with a running member."
     static SectionFor(id) {
         if InStr(id, "character:") = 1
             return "character-shortcuts"
@@ -136,6 +137,11 @@ class HotkeyBindings {
     }
 
     static IntentionalOverlap(first, second) {
+        ; First-available group shortcuts yield to available next/previous groups.
+        if InStr(first.id, "group:") = 1 && InStr(second.id, "group:") = 1
+            && (RegExMatch(first.id, ":FirstCharHotkey$") && RegExMatch(second.id, ":(?:ForwardsHotkey|BackwardsHotkey)$")
+                || RegExMatch(second.id, ":FirstCharHotkey$") && RegExMatch(first.id, ":(?:ForwardsHotkey|BackwardsHotkey)$"))
+            return true
         if (first.id = "quick" && (InStr(second.id, "group:") = 1 || InStr(second.id, "character:") = 1))
             || (second.id = "quick" && (InStr(first.id, "group:") = 1 || InStr(first.id, "character:") = 1))
             return true

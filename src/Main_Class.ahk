@@ -858,17 +858,12 @@ Class Main_Class extends ThumbWindow {
             This.HotkGroups.Push(v["Characters"])
             This.HotkGroupsInds.Push(0)
 
-            if This.Global_Hotkeys
-                method := "OnWinExist"
-            else
-                method := "OnWinActive"
-
             if v["ForwardsHotkey"] != ""
                 keys["ForwardsHotkey"] := v["ForwardsHotkey"]
             if v["BackwardsHotkey"] != ""
                 keys["BackwardsHotkey"] := v["BackwardsHotkey"]
 
-            HotIf ObjBindMethod(This, method, This.HotkGroups[index])
+            HotIf ObjBindMethod(This, "CharacterGroupCycleAvailable", This.HotkGroups[index])
             for direction, key in keys {
                 try This.RegisterEVESwitchHotkey(key, ObjBindMethod(This, "Cycle_Hotkey_Groups", index, direction), "Hotkey group " k " " direction)
                 catch ValueError as e
@@ -876,6 +871,9 @@ Class Main_Class extends ThumbWindow {
             }
 
             if v["FirstCharHotkey"] != "" && v["Characters"].Length > 0 {
+                ; A separate condition keeps this fallback from replacing a cycle
+                ; binding, including when both actions belong to the same group.
+                HotIf ObjBindMethod(This, "FirstCharacterGroupAvailable", This.HotkGroups[index])
                 try This.RegisterEVESwitchHotkey(v["FirstCharHotkey"], ObjBindMethod(This, "ActivateFirstActiveCharInGroup", index), "First character in hotkey group " k)
                 catch ValueError as e
                     MsgBox(e.Message ": --> " e.Extra " <-- in Hotkeys Groups - " This.LastUsedProfile " - First Active Character Hotkey")
@@ -884,6 +882,36 @@ Class Main_Class extends ThumbWindow {
             index += 1
             keys := Map()
         }
+    }
+
+    CharacterGroupCycleAvailable(characters, keyName := "", *) {
+        if !This.ShortcutScopeActive() || !This.OnWinExist(characters, keyName)
+            return false
+        for title in characters
+            if This.ShortcutTargetAvailable(title)
+                return true
+        ; Preserve logout shortcuts normally, but a group with no logged-in
+        ; character must yield to a usable first-available fallback.
+        for name, group in This.Hotkey_Groups
+            if This.ShortcutMatches(group.Get("FirstCharHotkey", ""), keyName)
+                && This.OnWinExist(group["Characters"], keyName)
+                return false
+        return true
+    }
+
+    FirstCharacterGroupAvailable(characters, keyName := "", *) {
+        if !This.ShortcutScopeActive() || !This.OnWinExist(characters, keyName)
+            return false
+        ; Resolve priority from current windows, independent of group names or
+        ; the order in which AHK's hotkey variants were registered.
+        for name, group in This.Hotkey_Groups {
+            for direction in ["ForwardsHotkey", "BackwardsHotkey"] {
+                if This.ShortcutMatches(group.Get(direction, ""), keyName)
+                    && This.CharacterGroupCycleAvailable(group["Characters"], keyName)
+                    return false
+            }
+        }
+        return true
     }
 
     ActivateFirstActiveCharInGroup(ArrInd, *) {

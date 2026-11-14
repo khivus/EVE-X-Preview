@@ -2,8 +2,13 @@
 
 ## v1.7.0.7
 
+### Changed
+* Shared character-group shortcuts prioritize Next/Previous when that group has an available character, falling back to First available character when it does not.
+
 ### Fixed
-* Rapid changes in the modern Settings editor, including section inheritance checkboxes, are saved in order instead of being silently skipped or reverting after a refresh.
+* Rapid changes in the modern Settings editor are saved in order instead of being silently skipped or reverting after a refresh.
+* Table selections have an opaque tint and clear outlines in every modern Settings theme; selected text and dropdown items use contrasting text colors.
+* Character shortcuts, Character groups and Quick Group pages explain shared-shortcut priority, including direct character shortcuts and the Quick Group override.
 
 ## v1.7.0.6
 

@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using EveX.Settings.Bridge;
+using EveX.Settings.State;
 using System.Text.Json.Nodes;
 
 namespace EveX.Settings.UI;
@@ -19,6 +20,19 @@ public sealed partial class MainWindow
     {
         var log=Path.Combine(directory,"polish-checks.log");File.WriteAllText(log,"");
         void Check(bool ok,string label) {if(!ok)throw new InvalidOperationException(label);File.AppendAllText(log,"PASS "+label+Environment.NewLine);}
+        uint Rgb(IBrush brush) {var c=((SolidColorBrush)brush).Color;return ((uint)c.R<<16)|((uint)c.G<<8)|c.B;}
+        foreach(var mode in new[]{"system","light","dark"}.Concat(session.Metadata!.Value.Array("themes").Select(t=>t.Text("id")))) {
+            ThemeController.Apply(mode,session.Metadata);
+            var resources=Application.Current!.Resources;
+            var tableFill=(SolidColorBrush)ThemeController.TableSelection(false);
+            Check(tableFill.Color.A==255 && SelectionContrast.Ratio(Rgb(tableFill),Rgb(ThemeController.SelectionText))>=4.5,
+                mode+": opaque table selection keeps row labels readable");
+            Check(SelectionContrast.Ratio(Rgb(ThemeController.SelectionOutline),Rgb((IBrush)resources["EveBackgroundBrush"]!))>=3 &&
+                SelectionContrast.Ratio(Rgb(ThemeController.SelectionOutline),Rgb((IBrush)resources["EveInputBrush"]!))>=3,
+                mode+": table selection outlines contrast with both page and cell backgrounds");
+            Check(SelectionContrast.Ratio(Rgb((IBrush)resources["EveActiveSelectionBrush"]!),Rgb((IBrush)resources["EveActiveSelectionTextBrush"]!))>=4.5,
+                mode+": selected text and dropdown items remain readable");
+        }
         void Click(Button button)=>button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         async Task Shot(string name) {
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(UpdateLayout,Avalonia.Threading.DispatcherPriority.Render);
