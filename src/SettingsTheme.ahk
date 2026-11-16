@@ -495,6 +495,18 @@ class SettingsTheme {
         return DllCall("comctl32\DefSubclassProc", "Ptr", header, "UInt", message, "Ptr", wParam, "Ptr", lParam, "Ptr")
     }
     StaticProc(handle, message, wParam, lParam, subclass, data) {
+        ; Timer-driven pane disposal must not interrupt a native paint callback.
+        ; Native messages can still destroy the window synchronously below.
+        previousCritical := A_IsCritical
+        Critical("On")
+        try return this.StaticMessage(handle, message, wParam, lParam, subclass, data)
+        catch as err {
+            if DllCall("IsWindow", "Ptr", handle)
+                throw err
+            return 0
+        } finally Critical(previousCritical)
+    }
+    StaticMessage(handle, message, wParam, lParam, subclass, data) {
         if message = 0x82 {
             if this.statics.Has(handle)
                 this.statics.Delete(handle)
@@ -521,30 +533,48 @@ class SettingsTheme {
                 DllCall("RedrawWindow", "Ptr", handle, "Ptr", 0, "Ptr", 0, "UInt", 0x101)
             return result
         } else if this.statics.Has(handle) && (message = 0xF || message = 0x317 || message = 0x318) {
+            control := this.statics[handle]
             if message = 0xF {
                 paint := Buffer(A_PtrSize = 8 ? 72 : 64, 0)
                 dc := DllCall("BeginPaint", "Ptr", handle, "Ptr", paint, "Ptr")
             } else
                 dc := wParam
-            control := this.statics[handle]
-            if control.Type = "Text"
-                this.PaintStatic(control, dc)
-            else {
-                draw := Buffer(80, 0)
-                NumPut("UInt", 1, draw, A_PtrSize * 3)
-                NumPut("Ptr", dc, draw, A_PtrSize * 4)
-                nativeState := SendMessage(0xF2, 0, 0, control)
-                state := (nativeState & 4 ? 1 : 0) | (control.HasOwnProp("ThemeHot") && control.ThemeHot ? 0x40 : 0)
-                NumPut("UInt", state, draw, A_PtrSize = 8 ? 64 : 40)
-                this.ButtonDraw(control, draw)
+            saved := DllCall("SaveDC", "Ptr", dc, "Int")
+            try {
+                if !DllCall("IsWindow", "Ptr", handle)
+                    return 0
+                if control.Type = "Text"
+                    this.PaintStatic(control, dc)
+                else {
+                    draw := Buffer(80, 0)
+                    NumPut("UInt", 1, draw, A_PtrSize * 3)
+                    NumPut("Ptr", dc, draw, A_PtrSize * 4)
+                    nativeState := SendMessage(0xF2, 0, 0, control)
+                    state := (nativeState & 4 ? 1 : 0) | (control.HasOwnProp("ThemeHot") && control.ThemeHot ? 0x40 : 0)
+                    NumPut("UInt", state, draw, A_PtrSize = 8 ? 64 : 40)
+                    this.ButtonDraw(control, draw)
+                }
+            } finally {
+                DllCall("RestoreDC", "Ptr", dc, "Int", saved)
+                if message = 0xF
+                    DllCall("EndPaint", "Ptr", handle, "Ptr", paint)
             }
-            if message = 0xF
-                DllCall("EndPaint", "Ptr", handle, "Ptr", paint)
             return 0
         }
         return DllCall("comctl32\DefSubclassProc", "Ptr", handle, "UInt", message, "Ptr", wParam, "Ptr", lParam, "Ptr")
     }
     PaintStatic(control, dc) {
+        handle := control.Hwnd
+        saved := DllCall("SaveDC", "Ptr", dc, "Int")
+        try this.PaintStaticContent(control, dc)
+        catch as err {
+            ; WM_GETFONT can synchronously destroy the control. Cancel only
+            ; that stale paint; errors on a live control must remain visible.
+            if DllCall("IsWindow", "Ptr", handle)
+                throw err
+        } finally DllCall("RestoreDC", "Ptr", dc, "Int", saved)
+    }
+    PaintStaticContent(control, dc) {
         rect := Buffer(16, 0)
         DllCall("GetClientRect", "Ptr", control.Hwnd, "Ptr", rect)
         if control.ThemePreserve {
@@ -560,13 +590,11 @@ class SettingsTheme {
         SettingsTheme.Fill(dc, rect, color)
         if kind = 0x10
             return
-        saved := DllCall("SaveDC", "Ptr", dc, "Int")
         DllCall("SetBkMode", "Ptr", dc, "Int", 1)
         DllCall("SetTextColor", "Ptr", dc, "UInt", SettingsTheme.BGR(control.Enabled ? this.Color(control.ThemeColor) : this.muted))
         DllCall("SelectObject", "Ptr", dc, "Ptr", SendMessage(0x31, 0, 0, control), "Ptr")
         flags := (kind = 1 ? 1 : kind = 2 ? 2 : 0) | (style & 0x80 ? 0x800 : 0) | (style & 0x200 ? 0x24 : 0x10)
         this.Text(dc, control.Text, rect, flags, control)
-        DllCall("RestoreDC", "Ptr", dc, "Int", saved)
     }
     PaintHeader(header, dc) {
         list := this.headers[header]

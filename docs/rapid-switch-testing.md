@@ -165,10 +165,56 @@ intentional-release negative control failed only for missing Shift as intended.
 Zero-gap stress misrouted 1/64 commands; below-hold-limit stress misrouted 56/64.
 Audio remained stopped and disabled throughout.
 
-The latest full-suite attempt did not complete: 347 tests passed and 10 were
+The preceding full-suite attempt did not complete: 347 tests passed and 10 were
 reported failed before an unhandled destroyed-control error at
 `src/SettingsTheme.ahk:568`. Nine failures were the known audio-dependent cases;
 the other was a sharing violation while `TestRunner.ahk` wrote its results log.
-This result does not establish full-suite merge readiness. These failures are
-recorded separately from the passing input acceptance; they have not been
-silently skipped or converted to passes.
+That attempt did not establish full-suite merge readiness. Those failures were
+recorded separately from the passing input acceptance.
+
+## Log sharing and paint lifecycle follow-up
+
+Two focused regressions reproduced the failures before the fixes: a reader
+opened between log writes prevented the next append with Windows error 32,
+and a native `WM_GETFONT` handler destroyed its control before the painter's
+next property access.
+
+The test runner now owns one write handle until completion, flushes each line
+for live readers, and closes the handle on exit. Incompatible readers cannot
+take write access away between lines. Snapshot tools must open their reader
+with write sharing (for .NET, `FileAccess.Read` and `FileShare.ReadWrite`,
+optionally also `FileShare.Delete`). The Sandbox monitor used an explicit
+shared `FileStream` while collecting the full-suite log. Logging errors stay
+outside the test-assertion catch so infrastructure failures do not become
+misleading assertion failures or count one test as both passed and failed.
+
+Static-control callbacks defer ordinary script interruption during their short
+native callback and restore the previous interruption setting afterward. If
+a native message synchronously destroys the window, the stale paint is
+cancelled; errors on surviving windows still propagate. Drawing-context state
+and `BeginPaint`/`EndPaint` cleanup are protected by `finally`.
+
+The focused regressions cover incompatible readers, 100 live Unicode log
+snapshots, destroyed controls through direct and callback painting, normal
+painting, and propagation of a renderer error with drawing state restored.
+Run them inside the muted guest with:
+
+```powershell
+C:\Runtime\AutoHotkey64.exe /ErrorStdOut C:\Checks\candidate\tests\TestRunner.ahk --headless --filter RunnerPaint
+```
+
+Validation against `dev` at `38c65ee` completed in a fresh, muted Sandbox:
+
+- Before fixes: both targeted regressions failed with the original errors.
+- After fixes: all five focused regressions passed.
+- Full suite: **415 passed, 9 failed, 424 total**, process exit 1, with no
+  unhandled errors. The nine failure names and messages exactly match the
+  previously captured muted-dev audio baseline. The previously affected input
+  pulse slider and sidebar dragging tests both passed.
+- Main application and updater compiled successfully inside the guest.
+- `Audiosrv` remained stopped and disabled, including the final build check.
+  No host process or keyboard input was paused or blocked.
+
+The 16-client input results above are from the preceding acceptance run; this
+follow-up reran the full suite and the log/paint regressions. Audio playback
+remains unvalidated, and the audio-dependent failures remain reported.

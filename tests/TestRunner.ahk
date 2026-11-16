@@ -11,6 +11,7 @@ global __EVE_X_PREVIEW_TESTING__ := true
 #Include "..\Main.ahk"
 
 global TestRunner := TestRunnerClass()
+OnExit((*) => TestRunner.CloseLog())
 SettingsBackup.Root := A_ScriptDir "\..\.vs\test-settings-backups"
 if A_Args.Length && A_Args[1] = "--headless"
     OnError(HeadlessTestError)
@@ -26,11 +27,12 @@ class TestRunnerClass {
     total := 0
     logPath := ""
 
-    __New() {
+    __New(logPath := "") {
         this.tests := []
-        this.logPath := A_ScriptDir "\test_results.log"
-        if FileExist(this.logPath)
-            FileDelete(this.logPath)
+        this.logPath := logPath != "" ? logPath : A_ScriptDir "\test_results.log"
+        ; Keep write access for the entire run. Snapshot readers must share it;
+        ; they cannot acquire a deny-write handle between individual log lines.
+        this.logFile := FileOpen(this.logPath, "w", "UTF-8")
     }
 
     Register(name, callback) {
@@ -38,17 +40,20 @@ class TestRunnerClass {
     }
 
     Log(message) {
-        ; File watchers can briefly open the tracked log without write sharing.
-        ; Retry sharing violations only; real IO failures still fail the run.
-        loop 20 {
-            try {
-                FileAppend(message "`n", this.logPath)
-                return
-            } catch OSError as err {
-                if (err.Number != 32 && err.Number != 33) || A_Index = 20
-                    throw err
-                Sleep(25)
-            }
+        if !IsObject(this.logFile)
+            throw Error("The test log is closed.")
+        text := message "`n"
+        if this.logFile.Write(text) != StrPut(text, "UTF-8") - 1
+            throw Error("Incomplete write to the test log.")
+        ; Accessing Handle flushes AHK's buffer so live readers see each line.
+        if !DllCall("FlushFileBuffers", "Ptr", this.logFile.Handle)
+            throw OSError()
+    }
+
+    CloseLog() {
+        if IsObject(this.logFile) {
+            this.logFile.Close()
+            this.logFile := 0
         }
     }
 
@@ -69,25 +74,32 @@ class TestRunnerClass {
         this.total := selected.Length
 
         for item in selected {
+            this.Log("RUN: " item["name"])
+            failure := 0
             try {
-                this.Log("RUN: " item["name"])
                 item["callback"].Call()
-                this.passed++
-                this.Log("PASS: " item["name"])
             } catch as err {
+                failure := err
+            }
+            ; Logging failures are runner errors, not failed test assertions.
+            if IsObject(failure) {
                 this.failed++
                 this.Log("FAIL: " item["name"])
-                this.Log("  Message: " err.Message)
-                if (err.File)
-                    this.Log("  File: " err.File)
-                if (err.Line)
-                    this.Log("  Line: " err.Line)
+                this.Log("  Message: " failure.Message)
+                if (failure.File)
+                    this.Log("  File: " failure.File)
+                if (failure.Line)
+                    this.Log("  Line: " failure.Line)
+            } else {
+                this.passed++
+                this.Log("PASS: " item["name"])
             }
         }
 
         summary := "Test summary: " this.passed " passed, " this.failed " failed, " this.total " total."
         this.Log("")
         this.Log(summary)
+        this.CloseLog()
 
         if A_Args.Length && A_Args[1] = "--headless" {
             FileAppend(summary "`n", "*")
@@ -196,6 +208,7 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 }
 
 #Include "Example_Test.ahk"
+#Include "Runner_Paint_Regression_Test.ahk"
 #Include "Json_Functions_Test.ahk"
 #Include "Thumbnail_Names_Test.ahk"
 #Include "Thumbnail_Event_Text_Test.ahk"
