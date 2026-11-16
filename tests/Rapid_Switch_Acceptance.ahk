@@ -44,6 +44,9 @@ Pause(ms) {
         DllCall("Sleep", "UInt", ms)
 }
 Key(vk, up := false, tag := 0) {
+    ; Distinguish driver modifier edges from external/session input in logs.
+    if !tag
+        tag := 0x4E000000 + vk + (up ? 256 : 0)
     packet := Buffer(40, 0) ; x64 INPUT / KEYBDINPUT
     NumPut("UInt", 1, packet, 0)
     NumPut("UShort", vk, packet, 8)
@@ -152,15 +155,21 @@ try {
             StartApp(keep)
             label := "keep" keep "-" scenario.name
             FileAppend(label "`n", output "\progress.txt")
-            if scenario.held
+            if scenario.held {
                 Key(0xA0)
+                Sleep(20) ; Establish the held modifier before timing switches.
+            }
             loop clientCount * 4 {
+                if scenario.held && !(DllCall("GetAsyncKeyState", "Int", 0x10, "Short") & 0x8000)
+                    throw Error(label " trial " A_Index ": held Shift was released before the switch; input run is invalid")
                 start := Now(), before := ActiveIndex()
                 expected := Mod(A_Index, clientCount) + 1
                 Key(0x7C), Pause(1), Key(0x7C, true)
                 Pause(scenario.gap)
                 if !scenario.held
                     Key(0xA0)
+                if scenario.held && !(DllCall("GetAsyncKeyState", "Int", 0x10, "Short") & 0x8000)
+                    throw Error(label " trial " A_Index ": Shift was released before F; input run is invalid")
                 atF := ActiveIndex(), down := Now(), token := 0x4D000000 + (++sequence)
                 Key(0x46, false, token), Pause(scenario.duration), Key(0x46, true, token)
                 if !scenario.held

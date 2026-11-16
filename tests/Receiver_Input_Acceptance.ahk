@@ -47,5 +47,11 @@ loop 32 {
     FileAppend("receiver-slow-log," A_Index "," token ",1`n", output "\driver.csv")
     Sleep(150)
 }
+; Negative control: a genuine release must stay released and be rejected by
+; the same analyzer that checks held-Shift delivery. Never re-press it for F.
+Key(0xA0), Sleep(200), Key(0xA0, true), Sleep(200)
+token := 0x4D00FFFF
+Key(0x46, false, token), Sleep(10), Key(0x46, true, token)
+FileAppend("receiver-modifier-release,1," token ",1`n", output "\driver.csv")
 Sleep(1000) ; Allow queued events to drain through the deliberately slow logger.
 ExitApp(0)

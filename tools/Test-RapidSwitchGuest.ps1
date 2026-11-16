@@ -42,6 +42,14 @@ try {
     if($process.ExitCode -ne 0){throw 'Receiver regression driver failed'}
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\Measure-RapidSwitch.ps1" -Directory "$out\receiver" -AssertCase receiver-slow-log *> "$out\receiver-analysis.txt"
     if($LASTEXITCODE -ne 0){throw 'Receiver lost input while logging was delayed'}
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\Measure-RapidSwitch.ps1" -Directory "$out\receiver" -AssertCase receiver-modifier-release *> "$out\modifier-release-analysis.txt"
+    if($LASTEXITCODE -ne 1){throw 'Modifier release negative control was not rejected'}
+    $release=@(Import-Csv "$out\receiver\delivery.csv" | Where-Object Case -eq 'receiver-modifier-release')
+    if($release.Count -ne 1 -or $release[0].MissingShift -ne 'True' -or
+        $release[0].Wrong -ne 'False' -or $release[0].Missing -ne 'False' -or
+        $release[0].MissingUp -ne 'False' -or $release[0].Split -ne 'False'){
+        throw 'Negative control must fail only because Shift was released'
+    }
     $process=Start-Process $Runtime -ArgumentList '/ErrorStdOut',('"'+$root+'\tests\Rapid_Switch_Acceptance.ahk"'),$out,$Clients -WindowStyle Hidden -PassThru -RedirectStandardOutput "$out\stdout.txt" -RedirectStandardError "$out\stderr.txt"
     $null=$process.Handle
     if(!$process.WaitForExit(600000)){throw 'Acceptance timeout'}

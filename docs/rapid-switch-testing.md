@@ -10,6 +10,21 @@ inputs, and a writable `C:\Output` mapping for results. **Stop and disable the
 guest's `Audiosrv` service before starting any apps.** Do not rely on an
 `AudioOutput` XML element to mute Sandbox. Host audio settings need not change.
 
+Keep the remote connection stable during a held-modifier run. Reconnecting the
+Sandbox can synchronize host keyboard state into the guest and release a
+synthetically held Shift. This was reproduced with the main app absent: the
+guest received untagged left/right Shift-up events during a connection refresh.
+Avoid host Shift input during the short held-modifier acceptance check and do
+not reconnect until it finishes. Such a reset invalidates the run; it is not
+evidence that the application released the modifier.
+
+**Never suspend the Sandbox's host-side remote-viewer process to isolate input.**
+That process can own host keyboard hooks; suspending it can interfere with host
+shortcuts. Do not filter key releases or re-press lost modifiers to make a run
+pass. The guest driver now tags its modifier events and stops immediately if
+held Shift is released before a switch or command, leaving the failed run's
+logs intact for investigation.
+
 Copy this checkout beneath `C:\Checks`, and stage AutoHotkey v2 x64 plus Ahk2Exe
 in the guest. From a guest PowerShell:
 
@@ -35,6 +50,12 @@ Shift/F commands with a 25 ms delay on every receiver log write. The app is
 absent during this check. Both tagged F events and their Shift state must
 survive the slow logging before the helper starts the main acceptance test.
 These results are saved under the `receiver` subdirectory.
+
+The preflight also releases Shift deliberately and sends one F pair. The same
+analyzer must reject that negative control specifically for missing Shift while
+confirming both F events reached the intended client. Its expected rejection is
+saved in `modifier-release-analysis.txt`; the guest helper treats it as a
+passing self-check only when the other delivery checks succeeded.
 
 The receiver records the native message queue serially, without pumping
 messages during log writes. The previous AHK receiver used `OnMessage`, whose
@@ -130,3 +151,24 @@ The stress cases still expose routing limits: zero-gap input misrouted 1/64
 and 4/64 commands in the two runs; the 20 ms switch period misrouted 49/64 and
 59/64. None of the tagged down/up events were missing from the native receiver
 logs, including these stress cases. Missing-event assertions remain enabled.
+
+## Modifier-reset follow-up
+
+A connection-refresh probe reproduced the unexpected Shift release with the
+main app absent. The safe follow-up uses a stable, normally running connection
+and a brief keyboard-free test window. No host process is paused or blocked.
+
+The prepared 16-client run passed all 320 required commands and all 64 manual
+checks, with no missing F events, missing Shift, duplicates, wrong recipients,
+or split required pairs. The 32-command slow-logging check passed, and the
+intentional-release negative control failed only for missing Shift as intended.
+Zero-gap stress misrouted 1/64 commands; below-hold-limit stress misrouted 56/64.
+Audio remained stopped and disabled throughout.
+
+The latest full-suite attempt did not complete: 347 tests passed and 10 were
+reported failed before an unhandled destroyed-control error at
+`src/SettingsTheme.ahk:568`. Nine failures were the known audio-dependent cases;
+the other was a sharing violation while `TestRunner.ahk` wrote its results log.
+This result does not establish full-suite merge readiness. These failures are
+recorded separately from the passing input acceptance; they have not been
+silently skipped or converted to passes.
