@@ -126,7 +126,7 @@ try {
         Key(vk, true)
     loop clientCount {
         title := "EVE - Rapid Pilot " Format("{:02}", A_Index)
-        Run('"' root '\exefile.exe" /ErrorStdOut "' A_ScriptDir '\fixtures\RapidSwitchClient.ahk" ' A_Index ' "' output '"',,, &pid)
+        Run('"' root '\exefile.exe" ' A_Index ' "' output '"',,, &pid)
         clients.Push({hwnd: 0, pid: pid})
         if !WinWait(title,, 10)
             throw Error("Synthetic client did not start")

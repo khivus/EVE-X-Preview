@@ -22,12 +22,29 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Checks\candidate\tool
   -Label candidate -Clients 16
 ```
 
-The helper compiles the actual main app and creates 16 independent receiver
-processes named `exefile.exe`. Game DVR startup discovery is disabled only in
+The helper compiles the actual main app and a C# Windows Forms receiver using
+the guest's inbox .NET Framework x64 compiler. It creates 16 independent
+receiver processes named `exefile.exe`. Game DVR startup discovery is disabled only in
 the guest to prevent its missing `ms-gamingoverlay` handler stealing focus.
 The driver registers `*F13` as Character-group Next through the real app config.
 It tags each injected F down/up so the analyzer can check the receiving client,
 Shift state, duplicates, missing events and split down/up pairs.
+
+Before switching, a standalone receiver regression sends 32 back-to-back
+Shift/F commands with a 25 ms delay on every receiver log write. The app is
+absent during this check. Both tagged F events and their Shift state must
+survive the slow logging before the helper starts the main acceptance test.
+These results are saved under the `receiver` subdirectory.
+
+The receiver records the native message queue serially, without pumping
+messages during log writes. The previous AHK receiver used `OnMessage`, whose
+single-thread callback limit can skip observation of a second WM_KEYDOWN while
+the Shift-down callback is still logging. A delayed-logging reproduction with
+that receiver missed all 32 F key-downs even with the main app absent. The
+replacement avoids that observer failure; the analyzer still rejects missing,
+duplicate, wrong-client, unshifted, and split F events. See the
+[AutoHotkey OnMessage documentation](https://www.autohotkey.com/docs/v2/lib/OnMessage.htm#Critical)
+for the callback scheduling restriction.
 
 The primary settings match the reported configuration: preserved shortcuts on
 logout, remembered group positions, 30 ms group-switch minimum, three focus
@@ -64,7 +81,7 @@ command processing, or live-account behavior. The timing fix only removes the
 delay on the application's internal foreground signal and restores the
 caller's send settings. It does not buffer, replay, or broadcast gameplay keys.
 
-## Recorded validation
+## Initial timing validation
 
 The compiled application was tested in a muted Windows Sandbox with AutoHotkey
 2.0.19 and 16 independent receivers, comparing dev `38c65ee` with this change.
@@ -93,3 +110,23 @@ require native audio playback with an available audio device. With `Audiosrv`
 stopped and disabled, those same nine cases also failed on unmodified dev with
 the same errors. Audio playback was not validated, and the service remained
 disabled throughout this comparison.
+
+## Receiver follow-up validation
+
+A subsequent run of the original AHK observer reported one missing F key-down
+in 320 required commands. The correct client was foreground and recorded its
+Shift-down and F-up. The isolated slow-logging reproduction described above
+confirmed that the observer could miss key events without the app running.
+
+After replacing that observer, two independent compiled 16-client runs each
+passed all 320 required commands and all 64 manual-click checks. Both also
+passed the 32-command delayed-logging regression: 640/640 required routing
+checks, 128/128 manual checks, and 64/64 slow-log commands in total, with no
+missing, duplicate, unshifted, wrong-recipient, or split required events.
+The full suite again finished with 410 passed and the same 9 audio-dependent
+failures, matching the muted baseline's failure names and messages exactly.
+
+The stress cases still expose routing limits: zero-gap input misrouted 1/64
+and 4/64 commands in the two runs; the 20 ms switch period misrouted 49/64 and
+59/64. None of the tagged down/up events were missing from the native receiver
+logs, including these stress cases. Missing-event assertions remain enabled.
