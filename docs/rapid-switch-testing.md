@@ -1,0 +1,95 @@
+# Rapid switching acceptance
+
+Run executable/UI checks only inside a disposable Windows Sandbox. This test
+injects keyboard and mouse events, starts multiple synthetic EVE windows, and
+writes configuration in its checkout. It refuses to run outside `C:\Checks`
+under the Sandbox account. Never point it at an installed application.
+
+Use a Sandbox with networking and clipboard disabled, read-only tool/source
+inputs, and a writable `C:\Output` mapping for results. **Stop and disable the
+guest's `Audiosrv` service before starting any apps.** Do not rely on an
+`AudioOutput` XML element to mute Sandbox. Host audio settings need not change.
+
+Copy this checkout beneath `C:\Checks`, and stage AutoHotkey v2 x64 plus Ahk2Exe
+in the guest. From a guest PowerShell:
+
+```powershell
+Stop-Service Audiosrv -Force
+Set-Service Audiosrv -StartupType Disabled
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Checks\candidate\tools\Test-RapidSwitchGuest.ps1 `
+  -Runtime C:\Runtime\AutoHotkey64.exe `
+  -Compiler C:\Input\ahk-tools\Compiler\Ahk2Exe.exe `
+  -Label candidate -Clients 16
+```
+
+The helper compiles the actual main app and creates 16 independent receiver
+processes named `exefile.exe`. Game DVR startup discovery is disabled only in
+the guest to prevent its missing `ms-gamingoverlay` handler stealing focus.
+The driver registers `*F13` as Character-group Next through the real app config.
+It tags each injected F down/up so the analyzer can check the receiving client,
+Shift state, duplicates, missing events and split down/up pairs.
+
+The primary settings match the reported configuration: preserved shortcuts on
+logout, remembered group positions, 30 ms group-switch minimum, three focus
+checks at 25 ms, 50 ms window polling, and startup staggering/DWM pause/layout
+retry disabled. A secondary case disables remembered positions. Both modes
+also exercise manual selection followed by Next, preserving their distinct
+existing behavior. Each keyboard case starts a fresh application and primes
+the group cursor at member 1; expected recipients follow the configured order.
+
+Required cases cover Shift held continuously, 10 ms and 40 ms F taps, 10 ms and
+30 ms F13-to-F gaps, and separately pressing Shift for each command. Two stress
+cases record zero-gap input and 20 ms switch intervals, the latter intentionally
+below the configured 30 ms limit. Stress results are reported but excluded from
+the pass/fail gate; foreground scheduling and the configured hold limit do not
+guarantee arbitrary-speed delivery. Requested millisecond timings are subject
+to Windows scheduling and timer resolution.
+
+Results include `driver.csv`, per-client event logs, the exact settings,
+`manual.csv`, `summary.csv`, `delivery.csv`, and `exit-code.txt`. To recheck saved
+results without starting any applications:
+
+```powershell
+.\tools\Measure-RapidSwitch.ps1 -Directory C:\Output\candidate -AssertAll
+```
+
+For a before/after reproduction, use fresh source copies of the base and fix
+with the same acceptance files. Run sequentially in the same muted guest;
+concurrent desktop suites would invalidate focus measurements. The test is
+standalone and is not included in `tests/TestRunner.ahk`. Run that existing
+suite separately in Sandbox for broader regression coverage.
+
+These receivers test Windows input routing, not EVE's rendering, gameplay
+command processing, or live-account behavior. The timing fix only removes the
+delay on the application's internal foreground signal and restores the
+caller's send settings. It does not buffer, replay, or broadcast gameplay keys.
+
+## Recorded validation
+
+The compiled application was tested in a muted Windows Sandbox with AutoHotkey
+2.0.19 and 16 independent receivers, comparing dev `38c65ee` with this change.
+The final run produced the following results:
+
+| Case | Commands | Wrong recipient before | Wrong recipient after |
+| --- | ---: | ---: | ---: |
+| Held Shift, 10 ms gap, 10 ms F tap | 64 | 34 | 0 |
+| Held Shift, 10 ms gap, 40 ms F tap | 64 | 39 | 0 |
+| Held Shift, 30 ms gap | 64 | 0 | 0 |
+| Shift released between commands | 64 | 37 | 0 |
+| Remembered positions off, held Shift, 10 ms gap | 64 | 59 | 0 |
+
+All 320 required deliveries after the fix retained Shift, delivered both key
+events to the same intended client, and had no missing or duplicate events.
+All 64 manual-click checks passed after the fix. The baseline's manual-click
+phase did not finish because one synthetic window failed to receive the click;
+the table compares its completed keyboard trials only.
+
+Stress cases remain outside the guarantee: with a zero gap, 1 of 64 commands
+went to the wrong recipient; at a 20 ms switch period below the configured
+30 ms hold limit, 48 of 64 did so. Neither case is counted as a required pass.
+
+The broader AHK suite completed with 410 passed and 9 failed. All nine failures
+require native audio playback with an available audio device. With `Audiosrv`
+stopped and disabled, those same nine cases also failed on unmodified dev with
+the same errors. Audio playback was not validated, and the service remained
+disabled throughout this comparison.
