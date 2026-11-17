@@ -126,6 +126,7 @@ class EventSoundPlayer {
         this.poll := ObjBindMethod(this, "CheckFinished")
         this.onExit := ObjBindMethod(this, "Stop")
         OnExit(this.onExit)
+        EventAudioOutput.WarmUp()
     }
 
     Play(path, restart := false, volume := 100) {

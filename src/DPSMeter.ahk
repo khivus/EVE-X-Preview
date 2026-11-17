@@ -172,8 +172,12 @@ class DPSMeter {
                 }
             }
         }
-        if this.settings["outgoingDPSEnabled"] && rates.outgoing > 0 && rates.outgoing >= this.settings["outgoingDPSThreshold"]
-            text .= (text = "" ? "" : " | ") "Out: " Round(rates.outgoing)
+        if this.settings["outgoingDPSEnabled"] && rates.outgoing > 0 && rates.outgoing >= this.settings["outgoingDPSThreshold"] {
+            outgoing := "Out: " Round(rates.outgoing)
+            text := this.settings.Get("dpsDisplayOrder", 1) = 2
+                ? outgoing (text = "" ? "" : " | " text)
+                : text (text = "" ? "" : " | ") outgoing
+        }
         return text = "" ? "" : "DPS: " text
     }
 }

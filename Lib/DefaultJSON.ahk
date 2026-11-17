@@ -1,4 +1,4 @@
-default_JSON := "
+﻿default_JSON := "
 (
 {
     "settings_version": "3",
@@ -6,6 +6,9 @@ default_JSON := "
     "First_Start_After_Update": 0,
     "ThisThat" : 0,
     "DebugMode": 0,
+    "SettingsTheme": "system",
+    "SettingsEditor": "automatic",
+    "NewProfileInheritance": {},
     "SoundLibrary": [],
     "MasterSoundVolume": 100,
     "MaxSimultaneousSounds": 1,
@@ -18,19 +21,11 @@ default_JSON := "
                 "MinimizeInactiveClients": 0,
                 "AlwaysMaximize": 0,
                 "TrackClientPossitions": 0,
-                "Dont_Minimize_Clients": [
-                    "Example Name1",
-                    "Example Name2",
-                    "Example Name3"
-                ],
+                "Dont_Minimize_Clients": [],
                 "Minimize_Delay": 100,
                 "DontCloseOnLoginScreen": 0,
                 "dontCloseActiveClient": 0,
-                "DontCloseClients" : [
-                    "Example Name1",
-                    "Example Name2",
-                    "Example Name3"
-                ]
+                "DontCloseClients" : []
             },
             "Thumbnails Behavior": {
                 "LockThumbnailPositions": 0,
@@ -78,12 +73,13 @@ default_JSON := "
                 "ShowThumbnailTextOverlay": 1,
                 "ThumbnailTextColor":"FAC57A",
                 "ThumbnailTextSize": 12,
-                "ThumbnailTextFont": "Gill Sans MT",
+                "ThumbnailTextFont": "Segoe UI",
                 "ThumbnailTextMargins": {
                     "x": 5,
                     "y": 5
                 },
                 "ShowClientHighlightBorder": 1,
+                "UnfocusedBorderClearDelay": 1000,
                 "EventActiveBorderMode": 1,
                 "ClientHighligtColor": "E36A0D",
                 "ClientHighligtBorderthickness": 4,
@@ -99,6 +95,7 @@ default_JSON := "
             },
             "Hotkeys Settings": {
                 "Suspend_Hotkeys_Hotkey": "",
+                "Suspend_All_Hotkeys_Hotkey": "",
                 "Global_Hotkeys": 1,
                 "SwitchToPreviousWindow_Hotkey": "",
                 "CycleEveryLoggedIn_Hotkey": "",
@@ -112,12 +109,7 @@ default_JSON := "
                 "ToggleLivePreviewsHotkey": "",
                 "AutoWildcardWindowHotkeys": 1,
                 "Exit_Program_Hotkey": "",
-                "CharacterHotkeys": [
-                    {"Example Name1":"1"},
-                    {"Example Name2":"ctrl & 1"},
-                    {"Example Name3":"Xbutton1 & 1"},
-                    {"Example Name4":"^XButton1 & 1"}
-                ],
+                "CharacterHotkeys": [],
                 "GroupsHoldDelay": 100,
                 "MaxActiveWindowRetries": 3,
                 "ActiveWindowRetryInterval": 25,
@@ -141,10 +133,10 @@ default_JSON := "
             "Custom Colors":{                
                 "cColorActive": "0",
                 "cColors": {
-                    "CharNames": ["Example Char"],
-                    "TextColor": ["FFFFFF"],
-                    "Bordercolor":["FFFFFF"],                
-                    "IABordercolor":["FFFFFF"]                    
+                    "CharNames": [],
+                    "TextColor": [],
+                    "Bordercolor":[],
+                    "IABordercolor":[]
                 }
             },
             "Other": {
@@ -171,9 +163,11 @@ default_JSON := "
             "Tray Menu Settings": {
                 "TrayMenuShortcuts": {
                     "Suspend Hotkeys": 1,
+                    "Suspend All Hotkeys": 1,
                     "Hide Thumbnails": 1,
                     "Lock Thumbnail Positions": 0,
                     "Anonymize Thumbnails": 0,
+                    "Pause Live Previews": 0,
                     "Minimize Inactive Clients": 0,
                     "Close all EVE Clients": 1,
                     "Restore Client Positions": 1,
@@ -188,13 +182,14 @@ default_JSON := "
             "Non-EVE Applications": {
                 "NonEVEGroups": {},
                 "NonEVEHotkeys": {
-                "exe": ["App1.exe"], 
-                "title": ["Titel"], 
-                "hotkey": ["*^!Tab"]
+                "exe": [],
+                "title": [],
+                "hotkey": []
                 }
             },
             "DPS Monitoring": {
                 "dpsAverageSeconds": 10,
+                "dpsDisplayOrder": 1,
                 "incomingDPSEnabled": 0,
                 "incomingDPSThreshold": 0,
                 "showIncomingDPSResistances": 0,

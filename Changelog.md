@@ -1,16 +1,117 @@
-# Changelog
+﻿# Changelog
+
+## v1.7.0.8
+
+### Added
+* Rapid-switch input diagnostics and regression checks for client targeting, held modifiers and key releases (#20, thanks to @S0CT).
+
+### Changed
+* Reduced foreground activation delay during rapid client switching, helping the next key reach the intended client (#20).
+
+### Fixed
+* Built-in Settings no longer raises a destroyed-control error when a control disappears during painting (#20).
+
+## v1.7.0.7
+
+### Changed
+* Shared character-group shortcuts prioritize Next/Previous when that group has an available character, falling back to First available character when it does not.
+
+### Fixed
+* Rapid changes in the modern Settings editor are saved in order instead of being silently skipped or reverting after a refresh.
+* Table selections have an opaque tint and clear outlines in every modern Settings theme; selected text and dropdown items use contrasting text colors.
+* Character shortcuts, Character groups and Quick Group pages explain shared-shortcut priority, including direct character shortcuts and the Quick Group override.
+
+## v1.7.0.6
+
+### Added
+* Per-profile DPS display order under Monitoring & alerts → DPS: Incoming first (default) or Outgoing first, including compact labels (#19).
+
+### Changed
+* DPS text and the optional incoming damage-mix percentages scale down to fit smaller thumbnails.
+* DPS switches to shorter labels and k/m/b values (thousands/millions/billions) when full text would be too small. Enlarging the thumbnail restores full labels and whole-number values.
+* Active DPS takes priority over system and event text when thumbnail space is limited; the character name keeps priority.
+
+### Development
+* Held-thumbnail refresh tests no longer depend on synthetic keyboard input and check timer scheduling and real DWM refresh calls.
+* Updater tests report subprocess phases, exit codes and durations, with bounded waits and cleanup on timeout to prevent test hangs.
+
+## v1.7.0.5
+
+### Changed
+* Updates install the full portable package, including Settings and updater executables, with rollback on failure and offline recovery before downloads.
+
+### Fixed
+* Event sounds reuse prepared audio output, reducing playback startup delay.
+* Rapid table-cell clicks no longer lose editors or leave mouse capture stuck.
+* Built-in Settings descriptions and labels stay within panel bounds.
+
+## v1.7.0.4
+
+### Added
+* Five rotating startup settings backups, retained migration/recovery copies, backup-folder access and first-ever recovery guidance with support links.
+* Separate EVE-switching/all-hotkey pause controls, brief command confirmations and a configurable border-clearing delay when leaving EVE.
+* Unapplied-change counts, disabled-setting explanations and automatic reconnect with up to five attempts.
+
+### Changed
+* Settings editor downloads install directly beside the app and launch automatically. App updates refresh an installed editor; all executables share the release version.
+* Profile creation has grouped inheritance presets and pinned name/actions. Inherited settings support editing Default in place.
+* Event options sit below the table; Sound library explains assignment inheritance. Monitored characters owns its filter and list under one source.
+* Quick Group takes shared-key priority only with available members. Group hold delay accepts 30 ms. Off-screen recovery stays in Layout; the optional Pause Live Previews tray entry defaults off.
+
+### Fixed
+* Independent gesture assignments, accurate conflict links/warnings, installed default fonts, and retained profiles/scroll positions through Apply and reconnect.
+* Immediate theme updates, smoother navigation, centered search clearing and consistent numeric, slider, folder and disabled-color controls.
+* Foreground thumbnails refresh during held switching, while preserving the restored v1.7.0.3 switching core.
+
+## v1.7.0.3
+
+### Added
+* Optional C# / Avalonia settings editor alongside the built-in AHK editor, distributed as one self-contained executable with shared settings validation, profiles and inheritance. Choose Automatic, Modern or Built-in settings; the tray detects the modern editor and falls back to the built-in editor when needed. Both editors check for updates quietly and offer a download link for the latest published settings editor.
+* Additional settings themes shared by both editors: Graphite (neutral gray), The Matrix, Kitsune, Synthwave and Cyberpunk.
+* Recover off-screen thumbnails from the tray menu or Thumbnails → Layout. Moves partially or fully off-screen thumbnails back to the nearest connected display, preserving their sizes. Thumbnails fully visible on any monitor, including across adjacent displays, stay in place.
+
+## v1.7.0.2
+
+### Changed
+* Apply & restart reopens Settings at the same page, window size and scroll position.
+* Monitored characters includes the monitoring and character-filter switches, shared with Log sources.
+
+### Fixed
+* Opening Settings with an existing #hex or RGB border color no longer causes an Invalid option error.
+* Settings scrollbars share the main pane's drawing and dragging behavior, including sidebar navigation, tables, text fields and dropdowns.
+* Shortcut conflicts are grouped by shared key in a consistent, scrollable window.
+* Recognise Drifter battleship pilots as NPCs (#14 thanks to @thelonewolfk)
+
+## v1.7.0.1
+
+### Fixed
+* Settings buttons and page changes no longer briefly remove the taskbar icon, lose focus or disturb the order of open windows. Owned settings editors also stay visible while their layouts update.
+
+## v1.7.0.0
+
+### Changed
+* Rebuilt Settings with seven navigation areas, search, keyboard help and a resizable layout that remembers the selected page and scroll position.
+* Settings stay in a draft until Apply & restart. Discard and close protection help prevent accidental changes or lost edits.
+* Assignment tables support spreadsheet-style editing, cell and range selection, copy/paste, keyboard navigation and removal Undo. Dedicated editors cover character shortcuts, labels and colors, client exceptions, groups and application matching.
+* Profile inheritance is controlled per subsection, with an option to edit Default in place. Editing a profile and activating it are separate actions.
+* Redesigned event-sound settings with a shared sound library, per-event controls, advanced playback and batch assignment tools.
+
+### Added
+* System, Light and Dark settings themes with immediate preview.
+* New-profile inheritance presets: use a saved Default template, inherit everything or customize every subsection.
+* Automatic background update checks when opening Settings, with an update notice linking to About and updates.
 
 ## v1.6.2.1
 
 ### Added
 * Short tooltips explain every setting, with help on labels, controls and event-sound options.
-* Random thumbnail names with an editable per-profile list and a Reshuffle names button in Thumbnails Visuals. Turning anonymization off restores the usual labels.
+* Random thumbnail names with an editable per-profile list and a Reshuffle preview labels button under Thumbnails / Labels. Turning anonymization off restores the usual labels.
 * A thumbnail position and size lock, with optional tray shortcuts for both locking and anonymization.
-* An option in Hotkey Groups to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
-* Window Polling Interval in Thumbnails Behavior to adjust how often client windows, focus and title changes are checked.
+* An option under Switching / Keyboard shortcuts to control whether switching hotkeys work while extra modifier keys are held (automatic `*` prefix).
+* Time between window and focus checks under Application / Advanced to adjust how often client windows, focus and title changes are checked.
 
 ### Changed
-* Settings pages now scroll within the right pane, with category headings pinned at the top. New controls follow the existing styles, offsets and gaps.
+* Settings pages now scroll within the right pane, with category headings pinned at the top. Controls use consistent labels, units, ranges and dependency hints.
 * The README now links to separate setup and usage guides in `docs/`. The changelog is now `Changelog.md`.
 * Application icons now live in `res/`; source and compiled builds use the updated paths.
 

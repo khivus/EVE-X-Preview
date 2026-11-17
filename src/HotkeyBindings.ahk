@@ -1,5 +1,19 @@
-; Read-only conflict checks: never register, disable or rewrite the user's binds.
+﻿; Read-only conflict checks: never register, disable or rewrite the user's binds.
 class HotkeyBindings {
+    static PriorityHelp := "Shared shortcut priority: Direct character > Group Next/Previous > Group First available. A higher-priority action yields when none of its characters are running. Quick Group takes priority over all three while enabled with a running member."
+    static SectionFor(id) {
+        if InStr(id, "character:") = 1
+            return "character-shortcuts"
+        if InStr(id, "group:") = 1
+            return "character-groups"
+        if InStr(id, "nonGroup:") = 1
+            return "app-groups"
+        if InStr(id, "nonApp:") = 1
+            return "app-shortcuts"
+        if InStr(id, "profile:") = 1
+            return "profiles"
+        return id = "quick" ? "quick-group" : "shortcuts"
+    }
     static ForWindowSwitch(key, automatic := true) {
         ; Custom combinations already have wildcard behavior; an explicit *
         ; before their prefix key is rejected by AHK. Preserve existing text.
@@ -7,12 +21,14 @@ class HotkeyBindings {
     }
 
     static Settings := Map(
-        "Suspend_Hotkeys_Hotkey", "Suspend all hotkeys", "HideThumbnailsHotkey", "Hide thumbnails",
+        "Suspend_Hotkeys_Hotkey", "Pause EVE switching hotkeys", "Suspend_All_Hotkeys_Hotkey", "Pause all hotkeys", "HideThumbnailsHotkey", "Hide thumbnails",
         "ToggleLivePreviewsHotkey", "Pause/resume live previews", "ClickThroughHotkey", "Click through thumbnails",
         "SwitchToPreviousWindow_Hotkey", "Previous window", "CycleEveryLoggedIn_Hotkey", "Cycle logged-in windows",
         "Login_Screen_Cycle_Hotkey", "Cycle login screens", "Close_Active_EVE_Win_Hotkey", "Close active EVE window",
         "Close_All_EVE_Win_Hotkey", "Close all EVE windows", "Reload_Program_Hotkey", "Reload program",
         "Exit_Program_Hotkey", "Exit program")
+
+    static TrayLabel(name) => name = "Suspend Hotkeys" ? "Pause EVE switching hotkeys" : name = "Suspend All Hotkeys" ? "Pause all hotkeys" : name
 
     static Collect(app) {
         entries := []
@@ -24,7 +40,8 @@ class HotkeyBindings {
             switchesWindow := key = "SwitchToPreviousWindow_Hotkey" || key = "CycleEveryLoggedIn_Hotkey" || key = "Login_Screen_Cycle_Hotkey"
             this.Add(entries, "setting:" key, label, settings.Get(key, ""), switchesWindow && automatic)
         }
-        quick := app.Profiles[app.ProfileThumbnailsInteractions].Get("Hotkeys Settings", Map())
+        quickProfile := app.FieldProfile("QuickGroupHotkey", app.ProfileThumbnailsInteractions)
+        quick := app.Profiles[quickProfile].Get("Hotkeys Settings", Map())
         this.Add(entries, "quick", "Quick Group", quick.Get("QuickGroupHotkey", ""), automatic)
         for name, group in app.Hotkey_Groups {
             for key in ["ForwardsHotkey", "BackwardsHotkey", "FirstCharHotkey"]
@@ -63,8 +80,9 @@ class HotkeyBindings {
                 mods[m[2]] := m[1] = "<" ? 1 : m[1] = ">" ? 2 : 3
             key := SubStr(key, StrLen(m[0]) + 1)
         }
-        prefix := ""
+        prefix := "", custom := false
         if RegExMatch(key, "^(.+?)\s+&\s+(.+)$", &m) {
+            custom := true
             ; AHK custom combinations allow additional modifiers by default.
             wildcard := true
             prefix := StrLower(Trim(m[1]))
@@ -77,7 +95,7 @@ class HotkeyBindings {
             } else
                 prefix := this.Key(prefix)
         }
-        return {key: this.Key(key), mods: mods, prefix: prefix, wildcard: wildcard, up: !!up}
+        return {key: this.Key(key), mods: mods, prefix: prefix, wildcard: wildcard, up: !!up, custom: custom}
     }
 
     static Key(name) {
@@ -118,12 +136,43 @@ class HotkeyBindings {
         return true
     }
 
+    static IntentionalOverlap(first, second) {
+        ; First-available group shortcuts yield to available next/previous groups.
+        if InStr(first.id, "group:") = 1 && InStr(second.id, "group:") = 1
+            && (RegExMatch(first.id, ":FirstCharHotkey$") && RegExMatch(second.id, ":(?:ForwardsHotkey|BackwardsHotkey)$")
+                || RegExMatch(second.id, ":FirstCharHotkey$") && RegExMatch(first.id, ":(?:ForwardsHotkey|BackwardsHotkey)$"))
+            return true
+        if (first.id = "quick" && (InStr(second.id, "group:") = 1 || InStr(second.id, "character:") = 1))
+            || (second.id = "quick" && (InStr(first.id, "group:") = 1 || InStr(first.id, "character:") = 1))
+            return true
+        direct := InStr(first.id, "character:") = 1 ? first : InStr(second.id, "character:") = 1 ? second : 0
+        group := InStr(first.id, "group:") = 1 || first.id = "quick" ? first
+            : InStr(second.id, "group:") = 1 || second.id = "quick" ? second : 0
+        return IsObject(direct) && IsObject(group)
+    }
+
+    static ModifierFallback(a, b) {
+        ; A more-specific modifier chord can coexist with a wildcard fallback.
+        ; Keep duplicate chords and ambiguous/custom combinations visible.
+        if a.custom || b.custom
+            return false
+        moreA := false, moreB := false
+        for mod, side in a.mods {
+            other := b.mods[mod]
+            if side && other && side != other
+                return false
+            moreA := moreA || (side && !other)
+            moreB := moreB || (other && !side)
+        }
+        return moreA != moreB
+    }
+
     static Conflicts(entries) {
         result := Map()
         for i, entry in entries {
             loop entries.Length - i {
                 other := entries[i + A_Index]
-                if !this.Overlap(entry.parsed, other.parsed)
+                if !this.IsConflict(entry, other)
                     continue
                 if !result.Has(entry.id)
                     result[entry.id] := []
@@ -133,6 +182,50 @@ class HotkeyBindings {
                 result[other.id].Push(entry.label " (" entry.key ")")
             }
         }
+        return result
+    }
+
+    static IsConflict(first, second) => !this.IntentionalOverlap(first, second)
+        && this.Overlap(first.parsed, second.parsed) && !this.ModifierFallback(first.parsed, second.parsed)
+
+    static ConflictGroups(entries) {
+        ; Connected conflicting chords form one group, including key aliases.
+        parents := [], involved := Map()
+        for index, entry in entries
+            parents.Push(index)
+        for index, entry in entries {
+            loop entries.Length - index {
+                other := index + A_Index
+                if !this.IsConflict(entry, entries[other])
+                    continue
+                firstRoot := index, secondRoot := other
+                while parents[firstRoot] != firstRoot
+                    firstRoot := parents[firstRoot]
+                while parents[secondRoot] != secondRoot
+                    secondRoot := parents[secondRoot]
+                parents[secondRoot] := firstRoot
+                involved[index] := true, involved[other] := true
+            }
+        }
+        groups := Map()
+        for index, entry in entries {
+            if !involved.Has(index)
+                continue
+            root := index
+            while parents[root] != root
+                root := parents[root]
+            if !groups.Has(root)
+                groups[root] := {keys: [], entries: [], seen: Map()}
+            group := groups[root], key := SettingsValue.HotkeyText(entry.key)
+            if !group.seen.Has(key) {
+                group.seen[key] := true
+                group.keys.Push(key)
+            }
+            group.entries.Push(entry)
+        }
+        result := []
+        for root, group in groups
+            result.Push(group)
         return result
     }
 

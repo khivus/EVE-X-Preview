@@ -20,12 +20,21 @@ Class TrayMenu extends Settings_Gui {
         TrayMenu.Delete() ; Delete the Default TrayMenu Items
 
         TrayMenu.Add("Open", MenuHandler)
+        TrayMenu.Add("Open internal settings", (*) => SettingsEditor.OpenInternal(This))
         TrayMenu.Add() ; Seperator
         TrayMenu.Add("Profiles", Profiles_Submenu)
         TrayMenu.Add() ; Seperator
 
-        if This.TrayMenuShortcuts["Suspend Hotkeys"]
-            TrayMenu.Add("Suspend Hotkeys", MenuHandler)
+        if This.TrayMenuShortcuts["Suspend Hotkeys"] {
+            TrayMenu.Add("Pause EVE switching hotkeys", ObjBindMethod(This, "Suspend_Hotkeys"))
+            if This.activationHotkeysSuspended
+                TrayMenu.Check("Pause EVE switching hotkeys")
+        }
+        if This.TrayMenuShortcuts.Get("Suspend All Hotkeys", 1) {
+            TrayMenu.Add("Pause all hotkeys", ObjBindMethod(This, "Suspend_All_Hotkeys"))
+            if A_IsSuspended
+                TrayMenu.Check("Pause all hotkeys")
+        }
 
         if This.TrayMenuShortcuts["Hide Thumbnails"] {
             TrayMenu.Add("Hide Thumbnails", MenuHandler)
@@ -115,8 +124,13 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.Check("Anonymize Thumbnails")
         }
 
-        TrayMenu.Add("Reload", (*) => Reload())
-        TrayMenu.Add("Exit", (*) => ExitApp())
+        if This.TrayMenuShortcuts.Get("Pause Live Previews", 0) {
+            This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+            TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
+        } else if This.HasOwnProp("trayPreviewLabel")
+            This.DeleteProp("trayPreviewLabel")
+        TrayMenu.Add("Reload", (*) => This.RequestRuntimeAction("reload"))
+        TrayMenu.Add("Exit", (*) => This.RequestRuntimeAction("exit"))
         TrayMenu.Default := "Open"
 
         MenuHandler(ItemName, ItemPos, MyMenu) {
@@ -150,7 +164,7 @@ Class TrayMenu extends Settings_Gui {
                 TrayMenu.ToggleCheck("Show Thumbnails Always on Top")
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
                 Sleep(300)
-                Reload()
+                This.RequestRuntimeAction("reload")
             }
             Else if (ItemName = "Click Through Thumbnails") {
                 This.Toggle_ClickThrough()
@@ -175,19 +189,31 @@ Class TrayMenu extends Settings_Gui {
             Else if (ItemName = "Open") {
                 This.ShowSettings()
             }
-            Else If (ItemName = "Suspend Hotkeys") {
-                Suspend(-1)
-                if A_IsSuspended
-                    TrayMenu.check("Suspend Hotkeys")
-                else
-                    TrayMenu.Uncheck("Suspend Hotkeys")
-            }
         }
     }
 
     ActivateProfile(profileName, source := "Hotkey", *) {
         if !This.Profiles.Has(profileName)
             return false
+        if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
+            return false
+        if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
+            editor := This.settingsWorkbench
+            if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {
+                editor.UpdateStatus("Finish the current settings dialog before changing profiles.")
+                return false
+            }
+            if editor.model.Profiles.Has(profileName) {
+                editor.SelectProfile(profileName)
+                editor.model.ActivateProfile()
+                editor.Changed()
+                editor.Navigate("profiles")
+                editor.S_Gui.Show()
+                editor.UpdateStatus("Profile activation is staged. Apply & restart activates it and your other draft changes.")
+            } else
+                editor.UpdateStatus("That profile was removed from the draft. Undo the removal or discard the draft first.")
+            return false
+        }
         ; Keep selection, save and reload together while login timers are active.
         previousCritical := A_IsCritical
         Critical
@@ -195,6 +221,8 @@ Class TrayMenu extends Settings_Gui {
             SetTimer(This.Save_Settings_Delay_Timer, 0)
             ProgramLog.Add(source " profile switch requested; from=" This.LastUsedProfile "; to=" profileName)
             This.LastUsedProfile := profileName
+            if source = "Hotkey"
+                This._JSON["HotkeyFeedbackOnStartup"] := "Profile activated: " profileName
             This.SaveJsonToFile()
             This.ReloadForProfile()
         } finally {
@@ -205,6 +233,51 @@ Class TrayMenu extends Settings_Gui {
 
     ReloadForProfile() {
         Reload()
+    }
+
+    RequestRuntimeAction(action, hotkey := false) {
+        if hotkey && This.HasOwnProp("pendingCommandHotkey") && This.pendingCommandHotkey {
+            This.HotkeyFeedback("A reload or exit is already requested.")
+            return true
+        }
+        if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
+            return false
+        if This.HasOwnProp("settingsWorkbench") && !This.settingsWorkbench.closed {
+            editor := This.settingsWorkbench
+            if editor.HasOwnProp("activeDialog") || editor.HasOwnProp("closePrompt") {
+                editor.UpdateStatus("Finish the current settings dialog before exiting or reloading.")
+                return false
+            }
+            if editor.HasDraftChanges() {
+                editor.S_Gui.Show()
+                editor.UpdateStatus("Apply or discard your settings draft before " (action = "exit" ? "exiting." : "reloading."))
+                return false
+            }
+            editor.Dispose()
+        }
+        if This.HasOwnProp("Save_Settings_Delay_Timer")
+            SetTimer(This.Save_Settings_Delay_Timer, 0)
+        This.SaveJsonToFile()
+        if hotkey {
+            This.pendingCommandHotkey := true
+            This.HotkeyFeedback(action = "exit" ? "Exit requested" : "Reload requested")
+            SetTimer(ObjBindMethod(This, "CompleteCommandHotkey", action), -650)
+        } else
+            This.PerformRuntimeAction(action)
+        return true
+    }
+
+    CompleteCommandHotkey(action) {
+        This.pendingCommandHotkey := false
+        if !This.RequestRuntimeAction(action)
+            This.HotkeyFeedback("Command cancelled: finish, apply or discard Settings first.")
+    }
+
+    PerformRuntimeAction(action) {
+        if action = "exit"
+            ExitApp()
+        else
+            Reload()
     }
 
     ShowHideThumbnails() {
@@ -218,6 +291,7 @@ Class TrayMenu extends Settings_Gui {
     }
 
     CloseAllEVEWindows(*) {
+        requested := 0
         try {
             list := WinGetList(This.EVEExe)
             GroupAdd("EVE", "Ahk_Exe exefile.exe")
@@ -231,8 +305,10 @@ Class TrayMenu extends Settings_Gui {
                     continue
 
                 PostMessage 0x0112, 0xF060, , , hwnd
+                requested++
                 Sleep(50)
             }
         }
+        return requested
     }
 }

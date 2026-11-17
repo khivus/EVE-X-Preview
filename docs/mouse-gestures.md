@@ -13,3 +13,5 @@ Mouse gestures apply to the thumbnail window that is currently hovered.
 | Resize all thumbnails                         | Press both left and right mouse buttons, then drag up or down |
 | Resize a single thumbnail                     | Hold `Ctrl` and press both mouse buttons, then drag           |
 | Disable thumbnail from hotkey group           | Hold `Shift` and click the thumbnail                          |
+
+Customize complete gestures in **Thumbnails → Mouse actions**. Save row to draft keeps the action and gesture together; duplicate gestures are rejected. Layout locking and click-through messages explain when a gesture cannot run. Apply & restart activates the draft.

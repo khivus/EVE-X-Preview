@@ -154,7 +154,8 @@ LoggedInThumbnailShiftSettingTest() {
         for index, control in controls {
             if control.Name = "ShiftThumbsForLoggedInCharacters" {
                 controls[index - 1].GetPos(&labelX, , &labelW)
-                AssertTrue(labelX + labelW <= shiftX, "The new label must fit before its checkbox.")
+                AssertTrue(labelX + labelW <= shiftX,
+                    Format("The new label must fit before its checkbox: left={1}, width={2}, checkbox={3}; DPI={4}.", labelX, labelW, shiftX, A_ScreenDPI))
             }
         }
         app.MainFrame["PreserveThumbPosOnLogout"].GetPos(, &bottom, , &height)

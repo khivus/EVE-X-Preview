@@ -1,4 +1,4 @@
-﻿#Include "UpdateChecker.ahk"
+#Include "UpdateChecker.ahk"
 
 #Include "SoundSettings.ahk"
 #Include "SettingsScrollPane.ahk"
@@ -43,73 +43,13 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     MainGui() {
-        ProgramLog.Add("Settings opened")
-        ;if settings got chnaged which require a restart to apply
-        This.NeedRestart := 0
-
-        SetControlDelay(-1)
-        This.S_Gui := Gui("+OwnDialogs -MinimizeBox -Resize -MaximizeBox SysMenu")
-        This.S_Gui.Title := "EVE-X-Preview - Settings"
-
-        This.SetState()
-        
-        This.CreateSidebar()
-        This.CreateMainFrame()
-
-        This.ClientSettings_Ctrl()
-        This.CustomColors_Ctrl()
-        This.HotkeyGroups_Ctrl()
-        This.HotkeysSettings_Ctrl()
-        This.ThumbnailsInteractions_Ctrl()
-        This.ThumbnailsBehavior_Ctrl()
-        This.ThumbnailsVisuals_Ctrl()
-        This.ThumbnailVisibility_Ctrl()
-        This.GameLogsMonitoring_Ctrl()
-        This.MonitoredEvents_Ctrl()
-        This.DPSMonitoring_Ctrl()
-        This.NonEVEApps_Ctrl()
-        This.TrayMenuSettings_Ctrl()
-        This.Other_Ctrl()
-        This.About_Ctrl()
-
-        This.InitHotkeyHelpers()
-        This.InitColorPickers()
-        SettingsTooltips.Apply(This.Sidebar, true)
-        SettingsTooltips.Apply(This.MainFrame)
-
-        This._Button_Load()
-        ControlClick(This.firstBtn)
-        This.ResetSidebarStatus()
-
-        This.S_Gui.OnEvent("Close", (*) => GuiDestroy())
-
-        GuiDestroy(*) {
-            ProgramLog.Add("Settings closed; restart required=" This.NeedRestart)
-            SetTimer(This.updateUiTimer, 0)
-            This.StopHotkeyHelpers()
-            This.StopColorPickers()
-            This.CloseEventSoundDialog()
-            This.StopTestThumbnail()
-            This.sidebarStatusHwnd := 0
-            This.settingsScroller.Stop()
-            This.S_Gui.Destroy()
-            if (This.NeedRestart) {
-                SetTimer(This.Save_Settings_Delay_Timer, 0)
-                This.SaveJsonToFile()
-                Reload()
-            }
+        ProgramLog.Add("Settings workbench opened")
+        if this.HasOwnProp("settingsWorkbench") && !this.settingsWorkbench.closed {
+            this.settingsWorkbench.S_Gui.Show()
+            return
         }
-
-        This.S_Gui.Show(Format("w{} h{} Center", This.guiWidth, This.guiHeight))
-        This.Sidebar.Show(Format("x{} y{} w{} h{}", 0, 0, This.sidebarW, This.guiHeight))
-        This.ShowSettingsContent()
-        if !This.HasOwnProp("updateChecker")
-            This.updateChecker := UpdateChecker()
-        This.BeginSidebarUpdateStatus()
-        This.updateChecker.Start()
-        This.updateUiTimer := ObjBindMethod(This, "RefreshUpdateStatus")
-        SetTimer(This.updateUiTimer, 200)
-        This.RefreshUpdateStatus()
+        this.settingsWorkbench := SettingsWorkbench(this)
+        this.S_Gui := this.settingsWorkbench.S_Gui
     }
 
     ResetSidebarStatus() {
@@ -301,7 +241,9 @@ Class Settings_Gui extends SoundSettingsGui {
         }
     }
 
-    ShowSettings(*) {
+    ShowSettings(*) => SettingsEditor.Open(this)
+
+    ShowInternalSettings(*) {
         if This.HasOwnProp("S_Gui") {
             try {
                 hwnd := This.S_Gui.Hwnd
@@ -559,17 +501,17 @@ Class Settings_Gui extends SoundSettingsGui {
         ddl := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, 6, This.editW) " vHotkeyGroupDDL", This.GetGroupList())
         Hotkey_Groups.Push ddl
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Forwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs yp+{} Section", This.xlGap), "Next Character Hotkey:")
         HKForwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vForwardsKey")
         Hotkey_Groups.Push HKForwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn1", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Backwards Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Previous Character Hotkey:")
         HKBackwards := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vBackwardsdKey")
         Hotkey_Groups.Push HKBackwards
         ; Hotkey_Groups.Push This.MainFrame.Add("Button", Format("xp+{} yp-{} w{} h{}", This.editHtkW + This.baseGrid, 1, This.captBtnW + 1, This.captBtnH) " vcapGrHtkBtn2", "Capture")
 
-        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Active Character Hotkey:")
+        Hotkey_Groups.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "First Available Character Hotkey:")
         FirstCharHotkey := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vFirstCharHotkey")
         Hotkey_Groups.Push FirstCharHotkey
 
@@ -606,8 +548,8 @@ Class Settings_Gui extends SoundSettingsGui {
                 This.KeepGroupsPositions := obj.value
             }
             else if (obj.name = "GroupsHoldDelay") {
-                if obj.value < 75 || !IsInteger(obj.value)
-                    This.GroupsHoldDelay := 75
+                if obj.value < 30 || !IsInteger(obj.value)
+                    This.GroupsHoldDelay := 30
                 else
                     This.GroupsHoldDelay := obj.value
             }
@@ -725,8 +667,10 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Suspend All Hotkeys - Hotkey:")
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Pause EVE switching hotkeys:")
         HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_Hotkeys_Hotkey", This.Suspend_Hotkeys_Hotkey)
+        HotkeysSettings.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Pause all hotkeys:")
+        HotkeysSettings.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editHtkW) " vSuspend_All_Hotkeys_Hotkey", This.Suspend_All_Hotkeys_Hotkey)
         ; captBtn1 := This.createHtkCaptureBtn()
         ; HotkeysSettings.Push captBtn1
 
@@ -789,6 +733,7 @@ Class Settings_Gui extends SoundSettingsGui {
         HotkeysSettings.Push HKKeylist
 
         This.MainFrame["Suspend_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
+        This.MainFrame["Suspend_All_Hotkeys_Hotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["HideThumbnailsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["ToggleLivePreviewsHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
         This.MainFrame["ClickThroughHotkey"].OnEvent("Change", (obj, *) => cHotkeys_EventHandler(obj))
@@ -820,6 +765,9 @@ Class Settings_Gui extends SoundSettingsGui {
         cHotkeys_EventHandler(obj) {
             if (obj.name = "Suspend_Hotkeys_Hotkey") {
                 This.Suspend_Hotkeys_Hotkey := Trim(obj.value, "`n ")
+            }
+            else if (obj.name = "Suspend_All_Hotkeys_Hotkey") {
+                This.Suspend_All_Hotkeys_Hotkey := Trim(obj.value, "`n ")
             }
             else if (obj.name = "HideThumbnailsHotkey") {
                 This.HideThumbnailsHotkey := Trim(obj.value, "`n ")
@@ -1086,7 +1034,7 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Thumbnails on Login Screen:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoginScreen Checked" This.ShiftThumbsForLoginScreen, "On/Off")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Logged-In Thumbnails (Unsaved):")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Shift Unsaved Logged-In Thumbnails:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShiftThumbsForLoggedInCharacters Checked" This.ShiftThumbsForLoggedInCharacters, "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Enable Thumbnail Collision Avoidance:")
@@ -1244,6 +1192,11 @@ Class Settings_Gui extends SoundSettingsGui {
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Show Client Highlight Border:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vShowClientHighlightBorder Checked" This.ShowClientHighlightBorder, "On/Off")
+
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Clear unfocused border after (ms):")
+        unfocusedDelay := This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " Number vUnfocusedBorderClearDelay", This.UnfocusedBorderClearDelay)
+        arr.Push(unfocusedDelay)
+        This.RegisterThumbnailOption(unfocusedDelay, "Thumbnails Visuals")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Event / Active Border Layout:")
         borderMode := This.MainFrame.Add("DDL", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vEventActiveBorderMode Choose" This.EventActiveBorderMode,
@@ -1467,11 +1420,10 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "This feature does not violate the EULA or ToS, but it is neither endorsed")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "nor supported by CCP. Use at your own risk. Performance impact")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "increases with the number of characters tracked simultaneously.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "This feature does not violate the EULA or ToS, but it is neither endorsed nor supported by CCP. Use at your own risk. Performance impact increases with the number of characters tracked simultaneously.")
 
-        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
+        arr.Push This.MainFrame.Add("Text", Format("xs y+{} Section", This.xlGap), "Game Logs Monitoring Enabled:")
         arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vgameLogsMonitoringEnabled", "On/Off")
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Track Current System (Local Chat):")
@@ -1646,15 +1598,16 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame.SetFont("s11 w400")
         arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} h2 +0x10", This.lGap, This.sepW))
 
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.lGap), "Enabling more options decreases performance. The effect increases")
-        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} Section", This.contentGap), "with the number of characters currently being tracked.")
+        arr.Push This.MainFrame.Add("Text", Format("xp yp+{} w{} Section", This.lGap, This.sepW),
+            "Enabling more options decreases performance. The effect increases with the number of characters currently being tracked.")
 
-        for event in monitoredEventsOrder {
+        for index, event in monitoredEventsOrder {
             attackEvent := event = "underAttackByPlayer" || event = "underAttackByNPC"
             label := event = "stoppedShooting" ? "Shooting idle (ms):" : event = "underAttackByPlayer" ? "Player attack" : event = "underAttackByNPC" ? "NPC attack" : This.monitoredEventsTexts[event]
             nextControlX := event = "stoppedShooting" ? secondOptionX : attackEvent ? firstOptionX : colorX
             labelWidth := nextControlX - This.contentGap - controlGap
-            arr.Push This.MainFrame.Add("CheckBox", Format("xs ys+{} w{} Section", This.xlGap, labelWidth) " vE" event, label)
+            rowPosition := index = 1 ? "y+" This.contentGap : "ys+" This.xlGap
+            arr.Push This.MainFrame.Add("CheckBox", Format("xs {} w{} Section", rowPosition, labelWidth) " vE" event, label)
 
             if event = "stoppedShooting" {
                 arr.Push This.MainFrame.Add("Edit", Format("x{} ys-{} w{}", secondOptionX, This.editOffset, optionW) " vshootingInterval")
@@ -1738,6 +1691,10 @@ Class Settings_Gui extends SoundSettingsGui {
 
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "Average Window (seconds):")
         arr.Push This.MainFrame.Add("Edit", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vdpsAverageSeconds")
+        arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), "DPS Display Order:")
+        arr.Push This.MainFrame.Add("DropDownList", Format("xp+{} yp-{} w{}", This.offsetX, This.editOffset, This.editW) " vdpsDisplayOrder", ["Incoming first", "Outgoing first"])
+        This.MainFrame["dpsDisplayOrder"].Choose(This.dpsMonitoring.Get("dpsDisplayOrder", 1))
+        This.MainFrame["dpsDisplayOrder"].OnEvent("Change", (obj, *) => EventHandler(obj))
         arr.Push This.MainFrame.Add("Text", Format("xs ys+{} w{} r5", This.xlGap, This.sepW), "Average window: 1-3600 seconds (default 10).`nThresholds set the minimum DPS shown (0 = no minimum).`nUses the Game Logs Monitoring interval and character list.`nTypes: drones, missiles, fighters and smartbombs.`nPercentages are estimates; ? means unknown damage.")
 
         for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"] {
@@ -2076,7 +2033,7 @@ Class Settings_Gui extends SoundSettingsGui {
     }
 
     SaveThumbnailOption(control, *) {
-        if control.Name = "ThumbnailPollingInterval" && control.Value = ""
+        if (control.Name = "ThumbnailPollingInterval" || control.Name = "UnfocusedBorderClearDelay") && control.Value = ""
             return
         This.%control.Name% := control.Value
         if control.Name = "AnonymizeThumbnails"
@@ -2092,9 +2049,11 @@ Class Settings_Gui extends SoundSettingsGui {
 
         This.TrayMenuShortcutsOrder := [
             "Suspend Hotkeys",
+            "Suspend All Hotkeys",
             "Hide Thumbnails",
             "Lock Thumbnail Positions",
             "Anonymize Thumbnails",
+            "Pause Live Previews",
             "Show Thumbnails Always on Top",
             "Click Through Thumbnails",
             "Minimize Inactive Clients",
@@ -2115,7 +2074,7 @@ Class Settings_Gui extends SoundSettingsGui {
 
         for TMI in This.TrayMenuShortcutsOrder {
             TMI_ := StrReplace(TMI, A_Space, "_")
-            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), TMI ":")
+            arr.Push This.MainFrame.Add("Text", Format("xs ys+{} Section", This.xlGap), HotkeyBindings.TrayLabel(TMI) ":")
             arr.Push This.MainFrame.Add("CheckBox", Format("xp+{} yp", This.offsetX) " vTM" TMI_ " Checked" This.TrayMenuShortcuts[TMI], "On/Off")
             This.MainFrame["TM" TMI_].OnEvent("Click", (obj, *) => EventHandler(obj))
         }
@@ -2165,6 +2124,9 @@ Class Settings_Gui extends SoundSettingsGui {
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} Section", This.xlGap) " vcheckUpdatesBtn", "Check Updates")
         arr.Push This.MainFrame.Add("Button", Format("x+{} yp", This.baseGrid) " vshowChangelogBtn", "Show Changelog")
         This.MainFrame["showChangelogBtn"].OnEvent("Click", (*) => ChangelogWindow.Show())
+        backupButton := This.MainFrame.Add("Button", Format("xs y+{}", This.baseGrid), "Open settings backups")
+        arr.Push(backupButton)
+        backupButton.OnEvent("Click", (*) => SettingsBackup.Open(A_WorkingDir))
 
         arr.Push This.MainFrame.Add("Button", Format("xs ys+{} w{} Section", This.captBtnH + This.contentGap, updBtnW) " vupdateToReleaseBtn", "Update to Release")
         arr.Push This.MainFrame.Add("Button", Format("xs+{} ys w{}", updBtnW + This.baseGrid, updBtnW) " vupdateToPreReleaseBtn", "Update to Pre-Release")
@@ -2194,76 +2156,29 @@ Class Settings_Gui extends SoundSettingsGui {
         This.MainFrame["funnyBtn"].OnEvent("Click", (obj, *) => funnyHandler())
 
         processUpdateApp(preRelease?) {
-            if !IsSet(preRelease)
+            if !IsSet(preRelease) || (preRelease != "true" && preRelease != "false")
                 return
-            This.MainFrame["UpdateStatus"].Value := "Working..."
-
-            if preRelease = "false"
-                newTag := This.latestReleaseTag
-            else if preRelease = "true"
-                newTag := This.latestPreReleaseTag
-            else
-                return
-
-            ProgramLog.Add("App update requested; current=" This.programVersion "; target=" newTag "; pre-release=" preRelease "; admin=" A_IsAdmin)
-            ProgramLog.Flush()
-
-            SetWorkingDir(A_ScriptDir)
-
-            if !A_IsAdmin {
-                ans := MsgBox("EVE-X-Preview not running as admin!`n"
-                    "Updater might need admin rights to run!`n`n"
-                    "Do you want to try update without admin rights?", "Warning!", "YesNo")
-                if ans = "No" {
-                    ProgramLog.Add("App update cancelled at administrator prompt")
-                    This.MainFrame["UpdateStatus"].Value := "Updater not started."
-                    return
-                }
-            }
-
-            updaterExeName := "EVE-X-Preview-Updater.exe"
-            updaterExePath := A_Temp "\" updaterExeName
-            updaterExeUrl := "https://github.com/khivus/EVE-X-Preview/releases/download/v" newTag "/" updaterExeName
-
-            try {
-            if FileExist(updaterExePath)
-                FileDelete(updaterExePath)
-
-            This.MainFrame["UpdateStatus"].Value := "Downloading Updater..."
-            ProgramLog.Add("Downloading updater: " updaterExeUrl)
-            ProgramLog.Flush()
-            Download(updaterExeUrl, updaterExePath) ; Download file from GitHub to temp folder
-
-            if !FileExist(updaterExePath)
-                Throw Error("Could not download EVE-X-Preview-Updater.exe!")
-            ProgramLog.Add("Updater downloaded; bytes=" FileGetSize(updaterExePath) "; path=" updaterExePath)
-            } catch as err {
-                ProgramLog.Error(err, "Updater download")
-                This.MainFrame["UpdateStatus"].Value := "Updater download failed."
-                MsgBox("Failed to download updater:`n" err.Message)
-                return
-            }
-            
-            Critical
-            This.MainFrame["UpdateStatus"].Value := "Starting Updater..."
-            This.First_Start_After_Update := 1 ; For showing update message
-
+            ; Legacy controls use the same close/guard/recovery handoff as both
+            ; maintained editors, rather than downloading a target-version updater.
+            session := 0, facade := 0
             try {
                 This.SaveJsonToFile()
-                ProgramLog.Add("Update settings saved; launching elevated updater; target=" newTag)
-                ProgramLog.Flush()
-                Run '*RunAs "' updaterExePath '" "' A_ScriptFullPath '" "' newTag '"'
+                session := SettingsSession.ForModel(This, SettingsModel(This._JSON))
+                facade := SettingsSessionRuntime(session)
+                facade.programVersion := This.programVersion
+                facade.updateChecker.releaseTag := This.latestReleaseTag
+                facade.updateChecker.preReleaseTag := This.latestPreReleaseTag
+                facade.InstallVersion(preRelease = "true")
+                This.MainFrame["UpdateStatus"].Value := facade.message
+            } catch as err {
+                ProgramLog.Error(err, "Legacy settings update")
+                This.MainFrame["UpdateStatus"].Value := "Updater could not be started. " err.Message
+            } finally {
+                if IsObject(facade)
+                    facade.Dispose()
+                if IsObject(session)
+                    session.Dispose()
             }
-            catch Error as e {
-                ProgramLog.Error(e, "Updater handoff")
-                This.MainFrame["UpdateStatus"].Value := "Updater launch failed."
-                MsgBox("Failed to start updater:`n" e.Message)
-                Critical false
-                return
-            }
-            ProgramLog.Add("Updater launched; exiting app for replacement")
-            ProgramLog.Flush()
-            ExitApp
         }
 
         helpButtonHandler() {
@@ -2448,6 +2363,7 @@ Class Settings_Gui extends SoundSettingsGui {
 
         ;Hotkeys
         This.MainFrame["Suspend_Hotkeys_Hotkey"].value := This.Suspend_Hotkeys_Hotkey
+        This.MainFrame["Suspend_All_Hotkeys_Hotkey"].value := This.Suspend_All_Hotkeys_Hotkey
         This.MainFrame["HideThumbnailsHotkey"].value := This.HideThumbnailsHotkey
         This.MainFrame["ToggleLivePreviewsHotkey"].value := This.ToggleLivePreviewsHotkey
         This.MainFrame["ClickThroughHotkey"].value := This.ClickThroughHotkey
@@ -2505,6 +2421,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.RedrawColorPreview(This.MainFrame["ClientHighligtColor"])
         This.MainFrame["ClientHighligtBorderthickness"].value := This.ClientHighligtBorderthickness
         This.MainFrame["ShowClientHighlightBorder"].value := This.ShowClientHighlightBorder
+        This.MainFrame["UnfocusedBorderClearDelay"].value := This.UnfocusedBorderClearDelay
         This.MainFrame["EventActiveBorderMode"].Choose(This.EventActiveBorderMode)
         This.MainFrame["AutoSaveThumbnailPositions"].value := This.AutoSaveThumbnailPositions
         This.MainFrame["HideThumbnails"].value := This.HideThumbnails
@@ -2583,6 +2500,7 @@ Class Settings_Gui extends SoundSettingsGui {
         This.RefreshEventSoundButtons()
 
         ; DPS Monitoring
+        This.MainFrame["dpsDisplayOrder"].Choose(This.dpsMonitoring.Get("dpsDisplayOrder", 1))
         for name in ["incomingDPSEnabled", "incomingDPSThreshold", "showIncomingDPSResistances", "outgoingDPSEnabled", "outgoingDPSThreshold", "dpsAverageSeconds"]
             This.MainFrame[name].Value := This.dpsMonitoring[name]
 

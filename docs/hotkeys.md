@@ -1,74 +1,54 @@
-# Hotkeys
+# Keyboard shortcuts and groups
 
-[Back to README](../README.MD)
+[Back to README](../README.MD) · [Settings overview](settings.md)
 
-## Hotkey and key syntax
+## Assign shortcuts
 
-Hotkeys use AutoHotkey v2 syntax.
-Click the small keyboard button beside a hotkey field to record a shortcut inline. The field turns gray and shows a waiting prompt; press and release the shortcut to fill it. For mouse buttons or the wheel, use the gray field itself. In a multiline hotkey list, click the target line before recording. Esc, clicking the recorder button again, or leaving the field for another setting cancels and keeps the existing binding. Manual editing remains available.
+Open **Switching → Keyboard shortcuts** for application commands and window switching, or **Character shortcuts** for individual characters. Shortcuts display readable key names.
 
-An amber **!** indicates another assignment with the same or overlapping binding. Hover over it or click it to see the other assignments. Checks include the selected profile's effective bindings and all profile activation shortcuts. Repeated bindings can cause unpredictable or inconsistent behavior; warnings never block saving or importing settings.
+- **Record** captures a keyboard combination. Mouse buttons and the wheel can be recorded over the gray recording field.
+- **Clear** removes the assignment.
+- **Advanced** unlocks the existing field for AutoHotkey syntax, such as `^!F1` for Ctrl+Alt+F1. **Done** returns to readable key names. Invalid text stays inline and blocks Apply until fixed or cleared.
+- Escape, pressing Record again, or leaving recording cancels it.
 
-For a detailed reference, see [Hotkey Modifier Symbols](https://www.autohotkey.com/docs/v2/Hotkeys.htm#Symbols) and [List of Keys](https://www.autohotkey.com/docs/v2/KeyList.htm).
+Conflicts include effective bindings in the editing profile and every profile activation shortcut. **Review shortcut conflicts** lists overlapping assignments. Intentional overlaps remain allowed. Invalid key names are rejected before a row or setting can be saved to the draft.
 
-A few useful rules:
+A character, character-group and Quick Group shortcut may share a key. A Quick Group containing an available window takes priority. When it is empty or its windows have closed, the direct character shortcut runs if its window is available; otherwise the character group can run. These supported overlaps do not produce conflict warnings.
 
-* Simple hotkeys can be a key name or a key code, for example `1`, `Tab`, `LButton`, `XButton1`, or `Ctrl`.
-* Modifier prefixes can be combined, for example `^1`, `+1`, `#1`, or `!1`.
-* Prefix form can stack, for example `+^1` means Shift+Ctrl+1.
-* The `*` prefix allows a hotkey to trigger even when another key is held.
-* Using a mouse button as a simple hotkey is not recommended because it may block normal mouse use.
+**Pause EVE switching hotkeys** pauses character, character-group, Quick Group, previous-window, logged-in-window and login-screen switching shortcuts. Utility commands, profile shortcuts and non-EVE application shortcuts remain available. The previous suspend binding keeps its assignment and now has this narrower scope.
 
-## Hotkey Groups
+**Pause all hotkeys** pauses every application hotkey except its own resume binding. The tray remains usable. The two pause states are independent: resuming all hotkeys preserves a separate pause of EVE switching. Both commands have optional tray entries under Application → Tray menu commands.
 
-Use hotkey groups to organize characters into ordered groups.
-The order in the list matters: top to bottom.
+Command hotkeys show a brief confirmation near the pointer with the resulting state or a blocked-action explanation. A newer confirmation replaces the previous one and restarts its 1.5-second timeout. Reload and Exit show their request before a short delay and recheck Settings draft protection before proceeding. Profile activation confirms after its restart. Window-switching shortcuts and thumbnail mouse gestures do not produce these confirmations.
 
-Settings in this group:
+Switching uses the v1.7.0.3 activation, callback priority, key timing and group-focus behavior. The newer candidate-list cache, pending-target cycling shortcut and activation border callbacks have been removed. EVE-only pause is a boolean guard; Quick Group priority is resolved after a matching shortcut fires. The configurable border-clearing delay stays in normal polling and does not add a delay when switching directly between EVE clients.
 
-* Preserve Hotkeys on Logout: keeps hotkeys assigned after character logout.
-* Keep Groups Positions: keeps group positions when switching from one group to another.
-* Disable Char in Group (Shift+Click): lets you disable a character in a group with Shift+Click.
-* Disabled Thumbnail Color (Hex/RGB): color used for disabled thumbnails.
-* Groups Hold Delay (ms): delay used when holding group actions. Minimum is 75 ms.
-* Max Active Window Retries / Active Window Retry Interval (ms): bound focus checks only when a recent activation request targets a member of the requested group. Switching from another group or application normally skips these waits. Requests expire after 250 ms and are cleared when focus is observed, moves elsewhere, or the retry budget runs out. Set retries to 1 to disable waiting.
-* Add/Delete Groups: create or remove groups.
-* Select Group: choose the group to edit.
-* Forwards Hotkey: hotkey for moving forward through the group.
-* Backwards Hotkey: hotkey for moving backward through the group.
-* Characters List: list of characters in the group.
+A separate foreground-thumbnail timer runs at the same priority as switching, using the configured thumbnail polling interval. It updates only a changed focused preview and border, so held switching callbacks do not starve visual refresh. It skips paused/hidden previews, DWM activity and incomplete/released previews; window discovery and log work remain on the normal-priority main timer. Hiding the active thumbnail restores and refreshes the previous preview when focus moves.
 
-## Hotkeys Settings
+Under **Switching → Switching behavior**, the minimum interval while holding a group shortcut accepts **30–10000 ms**; the default remains 100 ms.
 
-This group controls global hotkeys and client actions.
+A plain-key switching shortcut can also coexist with a more-specific modifier combination, such as backtick for a group and Alt+backtick for cycling login screens. Automatic wildcard matching does not make this pair a conflict. The checker still warns for duplicate modifier chords, key aliases and ambiguous overlapping combinations; it does not change shortcut registration.
 
-* Suspend All Hotkeys - Hotkey: pauses all hotkeys.
-* Hide Thumbnails Hotkey: toggles thumbnail visibility.
-* Pause/Resume Live Previews - Hotkey: releases live thumbnails and restores them on the next press, as with the About button.
-* Click Through Thumbnails - Hotkey: toggles click-through mode.
-* Hotkey Activation Scope: chooses between global hotkeys or hotkeys active only when an EVE window is focused.
-* Cycle Login Screens - Hotkey: cycles through login-screen windows.
-* Login Screen Cycle Direction: chooses old-to-new or new-to-old order.
-* Close Active EVE Window - Hotkey: closes the currently active EVE window.
-* Close All EVE Windows - Hotkey: closes all EVE windows.
-* Reload EVE-X-Preview - Hotkey: reloads the program.
-* Exit EVE-X-Preview - Hotkey: closes the program.
-* Character Name: character bound to the hotkey entry.
-* Hotkeys: hotkeys assigned to the character.
+AutoHotkey syntax supports `^` (Ctrl), `!` (Alt), `+` (Shift), `#` (Windows), `*` (extra modifiers) and custom `key & key` combinations. See the [modifier reference](https://www.autohotkey.com/docs/v2/Hotkeys.htm#Symbols) and [key list](https://www.autohotkey.com/docs/v2/KeyList.htm).
 
-## Non-EVE Applications
+## Character groups
 
-This section lets you add non-EVE apps by exact executable name, and optionally by window title for better matching.
-The thumbnail appears for the app, and the assigned hotkey can activate it.
+Open **Switching → Character groups**. Create or select a group, add members and record its next, previous and first-available-character shortcuts. Members are stored as rows in switching order. Move up/down keeps each member intact. Duplicate group names are rejected; removal offers Undo.
 
-* Add/Delete Groups: create or remove app groups.
-* Select Group: choose the app group to edit.
-* Forwards Hotkey: hotkey for forward group cycling.
-* Backwards Hotkey: hotkey for backward group cycling.
-* Process Names (.exe): executable names to match.
-* Titles (optional): optional window titles to match.
-* Hotkeys: hotkeys assigned to the app group.
+**Switching behavior** contains keeping shortcuts linked after logout, remembering the switching position in each group, and the minimum held-shortcut interval. **Advanced switching** contains bounded focus retries and their interval; one check skips waiting.
 
-## Automatic wildcard setting
+## Quick Group
 
-Open **Hotkey Groups** and turn off **Add * to Switching Hotkeys**, at the top of the page, for exact modifier matching. It is on by default for compatibility. This covers character, group, Quick Group, previous-window, login-screen and other-app switching shortcuts. Explicit `*` prefixes remain effective. Custom `key & key` combinations keep AutoHotkey's wildcard behavior. Saved bindings are never rewritten; duplicate warnings follow the selected policy. Close Settings to re-register shortcuts.
+Configure Quick Group membership using its gesture in **Thumbnails → Mouse actions**. **Switching → Quick Group** contains its shortcut, order, border color, interaction with other groups and logout persistence. Membership follows the same client window through logout/relogin when preservation is enabled; closing the client or restarting EVE-X-Preview starts fresh.
+
+Close-all protection for Quick Group and excluded characters is in **EVE windows → Close protection**.
+
+## Scope and modifier matching
+
+**Keyboard shortcuts → EVE switching shortcuts are available** selects global switching while EVE is open or switching only while EVE is focused. **Allow extra modifier keys** controls automatic `*` prefixes for character, group, Quick Group, previous-window, login-screen and other-app switching shortcuts. Explicit `*` and custom combinations retain their own behavior. Stored shortcut text is not rewritten.
+
+Other-application shortcuts remain available whenever their matching window is open. Runtime shortcuts pause while Settings or one of its dialogs has focus.
+
+All assignments and scope changes remain in the draft until **Apply & restart**.
+
+Quick Group's thumbnail gesture is also editable directly in **Switching → Quick Group**. It shares the same stored assignment as **Thumbnails → Mouse actions**. A link opens the full mouse-action table, and a warning explains when click-through prevents the gesture.

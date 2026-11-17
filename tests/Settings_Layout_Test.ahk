@@ -23,6 +23,39 @@ SettingsNativeRect(hwnd, parentHwnd) {
     return {left: NumGet(rect, 0, "Int"), top: NumGet(rect, 4, "Int"), right: NumGet(rect, 8, "Int"), bottom: NumGet(rect, 12, "Int")}
 }
 
+TestRunner.Register("Legacy settings descriptions wrap above their rows and labels fit with common Windows fonts", LegacySettingsTextLayoutTest)
+LegacySettingsTextLayoutTest() {
+    for font in ["Segoe UI", "Tahoma", "Microsoft Sans Serif"] {
+        for method, group in Map("MonitoredEvents_Ctrl", "Monitored Events", "GameLogsMonitoring_Ctrl", "Game Logs Monitoring", "ThumbnailsBehavior_Ctrl", "Thumbnails Behavior") {
+            app := CombatEventsFixture()
+            app.ProfileOverride()
+            app.SetState()
+            app.MainFrame := Gui()
+            app.MainFrame.Group := Map()
+            app.MainFrame.SetFont("s11", font)
+            try {
+                app.%method%()
+                controls := app.MainFrame.Group[group]
+                for index, control in controls {
+                    control.GetPos(&x, &y, &w, &h)
+                    AssertTrue(x >= 0 && y >= 0 && x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10,
+                        Format("{1} in {2}: '{3}' ({4},{5}) {6}x{7} exceeds the panel.", group, font, control.Text, x, y, w, h))
+                    if control.Name = "ShiftThumbsForLoggedInCharacters" {
+                        controls[index - 1].GetPos(&labelX, , &labelW)
+                        AssertTrue(labelX + labelW <= x, "Logged-in shifting label overlaps its checkbox in " font ".")
+                    }
+                }
+                if group != "Thumbnails Behavior" {
+                    controls[3].GetPos(, &introY, , &introHeight)
+                    controls[4].GetPos(, &firstRowY)
+                    AssertTrue(firstRowY >= introY + introHeight + app.baseGrid,
+                        group " settings rows must clear the wrapped description in " font ".")
+                }
+            } finally app.MainFrame.Destroy()
+        }
+    }
+}
+
 TestRunner.Register("Settings panels stay adjacent at simulated 100, 125, 150 and 200 percent scaling", SettingsScaledPanelsTest)
 SettingsScaledPanelsTest() {
     app := SettingsLayoutFixture()

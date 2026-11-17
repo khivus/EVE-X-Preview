@@ -154,7 +154,8 @@ SystemTrackingSettingsTest() {
         app.GameLogsMonitoring_Ctrl()
         for control in app.MainFrame.Group["Game Logs Monitoring"] {
             control.GetPos(&x, &y, &w, &h)
-            AssertTrue(x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10, "Game Logs Monitoring controls must fit the panel: " control.Text)
+            AssertTrue(x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10,
+                Format("Game Logs control {1} '{2}' at ({3},{4}) size {5}x{6} must fit {7}x{8}; DPI={9}.", control.Name, control.Text, x, y, w, h, app.contentW - 10, app.guiHeight - 10, A_ScreenDPI))
         }
     } finally {
         app.MainFrame.Destroy()

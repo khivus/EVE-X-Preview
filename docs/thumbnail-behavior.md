@@ -1,46 +1,31 @@
-# Thumbnail behavior
+# Thumbnail layout and visibility
 
-[Back to README](../README.MD)
+[Back to README](../README.MD) · [Settings overview](settings.md)
 
-## Thumbnails Interactions
+## Layout
 
-Quick Group Sort Order chooses how the Quick Group hotkey cycles through selected windows. Added order (the default) follows the order windows were added to Quick Group; Name cycles alphabetically by character name. Removing and adding a window again places it at the end of added order.
+**Thumbnails → Layout** contains automatic position/size saving, layout locking, default position/size, minimum size, snapping and preserving placement after logout. Negative screen coordinates support monitors to the left or above. Related dimensions are validated together.
 
-**Keep Quick Group on Logout** and **Keep Disabled Status on Logout** are enabled by default. Membership follows the same client window through character selection and relogin, including switching characters. Turn either option off in Thumbnails Interactions to clear that status on a character change or logout. Closing the client clears its membership; restarting the client or EVE-X-Preview starts fresh.
+**Reset this profile's thumbnail sizes on Apply** stages the configured default dimensions for this profile's saved thumbnails and current windows. Positions are retained. Apply & restart activates the reset.
 
-**Don't Close Quick Group Clients** and **Don't Close Disabled Clients** protect those windows from **Close all EVE Clients**, including while on the login screen, independently of **Don't Close Clients on Login Screen**. Directly closing an individual client still works.
+**Recover off-screen thumbnails** immediately brings partially or fully off-screen thumbnails back onto the nearest connected display and saves their corrected positions. It checks the combined area of all connected monitors, so thumbnails on a second or third monitor, or spanning adjacent monitors, stay in place when fully visible. Recovery also works while positions are locked and moves hidden thumbnails without showing them. Sizes are preserved; a thumbnail larger than every display is placed with its top-left corner on screen.
 
-## Thumbnails Behavior
+Locking blocks move, move-all, resize, resize-all and snapping gestures, including in the test thumbnail. Activation and other click actions continue to work. Saved placements still restore. The optional tray lock command is configured under **Application → Tray menu commands**.
 
-This group controls thumbnail placement, movement, and visibility behavior.
+## Automatic placement
 
-* Auto Save Thumbnail Positions: saves thumbnail positions automatically on thumbnail move or resize.
-* Hide Thumbnails: hides all thumbnails.
-* Hide Thumbnails on Lost Focus: hides thumbnails when no EVE client is active.
-* Show Thumbnails Always on Top: keeps thumbnails above other windows.
-* Click Through Thumbnails: lets clicks pass through thumbnails.
-* Default Thumbnail Position (px): default X/Y position.
-* Default Thumbnail Size (px): default width and height.
-* Enable Thumbnail Snap: enables thumbnail snapping.
-* Thumbnail Snap Distance (px): snap threshold in pixels.
-* Hide Thumbnail for Active Window: hides the thumbnail of the active client.
-* Shift Thumbnails on Login Screen: offsets new thumbnails from the default position.
-* Shift Logged-In Thumbnails (Unsaved): enabled by default; offsets new thumbnails for already logged-in characters without a saved position, using the same shift direction, steps, collision avoidance and monitor bounds as login-screen thumbnails. Saved positions take priority; this option works independently of login-screen shifting.
-* Enable Thumbnail Collision Avoidance: prevents thumbnails from overlapping while shifting.
-* Thumbnail Shift Direction: stacking direction for new thumbnails.
-* Thumbnail Shift Horizontal Step (px): horizontal shift step; `0` uses thumbnail width.
-* Thumbnail Shift Vertical Step (px): vertical shift step; `0` uses thumbnail height.
-* Preserve Character Name on Logout: keeps the name visible after logout.
-* Preserve Thumbnail Position on Logout: keeps the thumbnail position after logout.
+**Automatic placement** controls login-screen thumbnails and logged-in characters without saved positions independently. Choose a direction, collision avoidance and horizontal/vertical steps; zero uses the thumbnail's width/height. Saved positions take priority.
 
-## Thumbnail Visibility
+A login screen becoming a character is checked again for placement. Saved positions of clients waiting for preview startup are reserved. A later saved rectangle can reflow an unsaved thumbnail to a free grid position. Intentionally overlapping saved layouts are kept. A full grid is logged and does not prevent future placement attempts.
 
-This group controls whether selected client thumbnails are hidden.
+## Visibility and mouse actions
 
-* Select Any Client to Hide The Thumbnail: choose a client to hide.
+**Visibility** contains hiding all thumbnails, hiding while other apps are focused, hiding the active client's thumbnail, keeping thumbnails above other windows, capture exclusion and retaining the last character label after logout.
 
-## Lock positions
+**Hidden characters** is an explicit list: listed characters have no visible thumbnail. Add/remove complete rows, or choose running EVE clients.
 
-Open **Thumbnails Behavior** and enable **Lock thumbnail positions and sizes**, beside the default-size and snap settings. This blocks move, move-all, resize, resize-all and snap gestures, including the test thumbnail. Activation and other click actions keep working. Saved positions still restore and new clients still receive their configured placement. Add **Lock Thumbnail Positions** to the tray through **Tray Menu Settings** for a quick toggle.
+**Mouse actions** shows each action and its complete gesture instead of a modifier checkbox matrix. Edit a row to choose a gesture or Disabled. Duplicate gestures are rejected. Click-through and layout-lock notices explain when actions cannot run.
 
-Unsaved logged-in thumbnails are checked again when a login window becomes a character. Collision avoidance reserves saved positions for other clients awaiting preview startup. If a later login restores a saved rectangle over an unsaved thumbnail, the unsaved thumbnail moves to an available grid position. Saved positions remain authoritative; intentionally overlapping saved layouts are preserved. A full configured grid is reported in the program log and does not disable future placement attempts.
+Focused-client event sounds and DPS have separate controls under **Monitoring & alerts**. Hiding the active thumbnail no longer implicitly changes the explicit sound preference after settings migration.
+
+Workbench setting changes remain staged until Apply & restart. Thumbnail recovery and tray commands are immediate runtime actions.

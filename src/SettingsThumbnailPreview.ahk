@@ -1,4 +1,4 @@
-; A separate renderer uses the real thumbnail windows and text layout, with
+﻿; A separate renderer uses the real thumbnail windows and text layout, with
 ; sample data in place of a live client. It never joins the client's HWND maps.
 class SettingsThumbnailPreview extends Main_Class {
     ; The isolated demo intentionally simulates an active client.
@@ -56,7 +56,7 @@ class SettingsThumbnailPreview extends Main_Class {
             "Thumbnails Visuals", "ProfileThumbnailsVisuals", "Custom Colors", "ProfileCustomColors",
             "Thumbnails Interactions", "ProfileThumbnailsInteractions", "Game Logs Monitoring", "ProfileGameLogsMonitoring",
             "DPS Monitoring", "ProfileDPSMonitoring")
-            groups[group] := app.Profiles[app.%property%][group]
+            groups[group] := SettingsModel.Clone(app.Profiles[app.%property%][group])
         ; Monitored Events inherits independently, despite sharing JSON storage.
         monitoring := groups["Game Logs Monitoring"].Clone()
         monitoring["monitoredEvents"] := app.Profiles[app.ProfileMonitoredEvents]["Game Logs Monitoring"]["monitoredEvents"]
@@ -64,6 +64,11 @@ class SettingsThumbnailPreview extends Main_Class {
         ; These two colors are stored in the interactions profile's legacy group.
         interactions := app.Profiles[app.ProfileThumbnailsInteractions]["Hotkeys Settings"]
         groups["Hotkeys Settings"] := Map("dynamicGroupsColor", interactions["dynamicGroupsColor"], "QuickGroupColor", interactions["QuickGroupColor"])
+        if app.HasOwnProp("model")
+            for id, field in SettingsSchema.Fields
+                if !field.global && field.path.Length > 1 && groups.Has(field.path[1])
+                    SettingsModel.Put(groups, field.path, SettingsModel.Clone(app.model.Get(id)))
+        groups["Thumbnails Visuals"]["CustomThumbnailNames"] := SettingsModel.Clone(app.CustomThumbnailNames)
         groups["__PreviewProfile"] := app.LastUsedProfile
         return JSON.Dump(groups)
     }
@@ -402,6 +407,8 @@ class SettingsThumbnailPreview extends Main_Class {
     GestureTick(*) {
         if this.closed || !IsObject(this.gesture)
             return
+        previousWinDelay := A_WinDelay
+        SetWinDelay(-1)
         try {
             point := this.PointerState()
             gesture := this.gesture
@@ -420,18 +427,31 @@ class SettingsThumbnailPreview extends Main_Class {
                 this.ApplyGeometry(gesture.left, gesture.top, width, height)
             } else
                 this.ApplyGeometry(gesture.left + dx, gesture.top + dy, gesture.width, gesture.height)
-            this.PaintSample(A_TickCount)
+            if gesture.resize
+                this.PaintSample(A_TickCount)
         } catch as err {
             this.EndGesture()
             ProgramLog.Error(err, "Test thumbnail gesture")
-        }
+        } finally SetWinDelay(previousWinDelay)
     }
 
     ApplyGeometry(x, y, width, height) {
+        resized := false
         for key in ["Window", "TextOverlay", "Border", "EventBorder"]
-            if this.sample.Has(key)
-                WinMove(x, y, width, height, this.sample[key].Hwnd)
-        this.lastPaint := ""
+            if this.sample.Has(key) {
+                hwnd := this.sample[key].Hwnd
+                rect := Buffer(16, 0)
+                if !DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", rect)
+                    continue
+                sameSize := NumGet(rect, 8, "Int") - NumGet(rect, 0, "Int") = width
+                    && NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int") = height
+                resized := resized || !sameSize
+                if !sameSize || NumGet(rect, 0, "Int") != x || NumGet(rect, 4, "Int") != y
+                    DllCall("SetWindowPos", "Ptr", hwnd, "Ptr", 0, "Int", x, "Int", y,
+                        "Int", width, "Int", height, "UInt", 0x14 | (sameSize ? 1 : 0))
+            }
+        if resized
+            this.lastPaint := ""
     }
 
     EndGesture() {

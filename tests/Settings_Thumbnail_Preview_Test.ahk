@@ -120,6 +120,27 @@ AssertSampleGeometry(preview, expected) {
 }
 
 TestRunner.Register("Configured test-thumbnail drag moves every layer without cycling or saving and survives appearance edits", SettingsThumbnailDragTest)
+TestRunner.Register("Test-thumbnail drag ignores inherited window delays and restores the caller", SettingsThumbnailDragDelayTest)
+SettingsThumbnailDragDelayTest() {
+    app := SettingsThumbnailFixture()
+    previousDelay := A_WinDelay
+    try {
+        preview := OpenGesturePreview(app)
+        preview.BeginGesture("MoveThumbnail", 2)
+        preview.point := {x: 150, y: 170, buttons: 2}
+        SetWinDelay(250)
+        started := A_TickCount
+        preview.GestureTick()
+        AssertTrue(A_TickCount - started < 400, "Moving the layer stack must not incur four per-window delays.")
+        AssertEqual(250, A_WinDelay)
+        AssertSampleGeometry(preview, [70, 90, 250, 140])
+        preview.point.buttons := 0
+        preview.GestureTick()
+    } finally {
+        SetWinDelay(previousDelay)
+        app.Dispose()
+    }
+}
 SettingsThumbnailDragTest() {
     app := SettingsThumbnailFixture()
     try {

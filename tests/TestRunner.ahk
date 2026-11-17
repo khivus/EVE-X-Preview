@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 ; SetBatchLines(-1)
 SetWinDelay -1
@@ -11,6 +11,14 @@ global __EVE_X_PREVIEW_TESTING__ := true
 #Include "..\Main.ahk"
 
 global TestRunner := TestRunnerClass()
+OnExit((*) => TestRunner.CloseLog())
+SettingsBackup.Root := A_ScriptDir "\..\.vs\test-settings-backups"
+if A_Args.Length && A_Args[1] = "--headless"
+    OnError(HeadlessTestError)
+HeadlessTestError(err, mode) {
+    FileAppend("Unhandled test error: " err.Message " at " err.File ":" err.Line "`n", "**")
+    ExitApp(2)
+}
 
 class TestRunnerClass {
     tests := []
@@ -19,11 +27,12 @@ class TestRunnerClass {
     total := 0
     logPath := ""
 
-    __New() {
+    __New(logPath := "") {
         this.tests := []
-        this.logPath := A_ScriptDir "\test_results.log"
-        if FileExist(this.logPath)
-            FileDelete(this.logPath)
+        this.logPath := logPath != "" ? logPath : A_ScriptDir "\test_results.log"
+        ; Keep write access for the entire run. Snapshot readers must share it;
+        ; they cannot acquire a deny-write handle between individual log lines.
+        this.logFile := FileOpen(this.logPath, "w", "UTF-8")
     }
 
     Register(name, callback) {
@@ -31,33 +40,66 @@ class TestRunnerClass {
     }
 
     Log(message) {
-        FileAppend(message "`n", this.logPath)
+        if !IsObject(this.logFile)
+            throw Error("The test log is closed.")
+        text := message "`n"
+        if this.logFile.Write(text) != StrPut(text, "UTF-8") - 1
+            throw Error("Incomplete write to the test log.")
+        ; Accessing Handle flushes AHK's buffer so live readers see each line.
+        if !DllCall("FlushFileBuffers", "Ptr", this.logFile.Handle)
+            throw OSError()
+    }
+
+    CloseLog() {
+        if IsObject(this.logFile) {
+            this.logFile.Close()
+            this.logFile := 0
+        }
     }
 
     RunAll() {
         this.passed := 0
         this.failed := 0
-        this.total := this.tests.Length
+        selected := this.tests
+        if A_Args.Length >= 3 && A_Args[2] = "--filter" {
+            selected := []
+            for item in this.tests
+                if InStr(item["name"], A_Args[3])
+                    selected.Push(item)
+            if !selected.Length {
+                FileAppend("No tests match the requested filter.`n", "*")
+                ExitApp(2)
+            }
+        }
+        this.total := selected.Length
 
-        for item in this.tests {
+        for item in selected {
+            this.Log("RUN: " item["name"])
+            failure := 0
             try {
                 item["callback"].Call()
-                this.passed++
-                this.Log("PASS: " item["name"])
             } catch as err {
+                failure := err
+            }
+            ; Logging failures are runner errors, not failed test assertions.
+            if IsObject(failure) {
                 this.failed++
                 this.Log("FAIL: " item["name"])
-                this.Log("  Message: " err.Message)
-                if (err.File)
-                    this.Log("  File: " err.File)
-                if (err.Line)
-                    this.Log("  Line: " err.Line)
+                this.Log("  Message: " failure.Message)
+                if (failure.File)
+                    this.Log("  File: " failure.File)
+                if (failure.Line)
+                    this.Log("  Line: " failure.Line)
+            } else {
+                this.passed++
+                this.Log("PASS: " item["name"])
             }
         }
 
         summary := "Test summary: " this.passed " passed, " this.failed " failed, " this.total " total."
         this.Log("")
         this.Log(summary)
+        this.CloseLog()
 
         if A_Args.Length && A_Args[1] = "--headless" {
             FileAppend(summary "`n", "*")
@@ -166,6 +208,7 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 }
 
 #Include "Example_Test.ahk"
+#Include "Runner_Paint_Regression_Test.ahk"
 #Include "Json_Functions_Test.ahk"
 #Include "Thumbnail_Names_Test.ahk"
 #Include "Thumbnail_Event_Text_Test.ahk"
@@ -194,4 +237,25 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 
 #Include "Thumbnail_Tools_Test.ahk"
 #Include "Settings_Scroll_Test.ahk"
+#Include "Settings_Redesign_Model_Test.ahk"
+#Include "Settings_Workbench_Test.ahk"
+#Include "Settings_Grid_Test.ahk"
+#Include "Settings_Interaction_Followup_Test.ahk"
+#Include "Settings_Appearance_Test.ahk"
+#Include "Settings_Polish_Test.ahk"
+#Include "Settings_Chrome_Test.ahk"
+#Include "Settings_Paint_Lifecycle_Test.ahk"
+#Include "Settings_Scroll_Rendering_Test.ahk"
+#Include "Settings_Input_Pulse_Test.ahk"
+#Include "Settings_Review_Followup_Test.ahk"
+#Include "Settings_Release_Safety_Test.ahk"
+#Include "Settings_Followup_Test.ahk"
+#Include "Thumbnail_Recovery_Test.ahk"
+#Include "Release_Packaging_Test.ahk"
+#Include "Settings_Contract_Test.ahk"
+#Include "Settings_Bridge_Test.ahk"
+#Include "Update_Handoff_Test.ahk"
+#Include "Settings_Editor_Test.ahk"
+#Include "Settings_Themes_Test.ahk"
+#Include "Update_1704_Test.ahk"
 TestRunner.RunAll()

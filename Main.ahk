@@ -1,10 +1,22 @@
 ﻿#Requires AutoHotkey v2.0
+#Include "Version.ahk"
+
+; The installed executables are replaced in sequence. Refuse a manual
+; launch while replacement or recovery is pending, including after interruption.
+if A_IsCompiled && DirExist(A_ScriptDir "\.EVE-X-Preview-update") {
+    MsgBox("An update is in progress or needs recovery. Let the updater finish, or run EVE-X-Preview-Updater.exe --recover with this application's EXE path before starting the application.", "EVE-X-Preview update")
+    ExitApp(1)
+}
 
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
 #Include "Lib/LiveThumb.ahk"
+#Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
+#Include "src/SettingsBackup.ahk"
+#Include "src/HotkeyFeedback.ahk"
 #Include "src/PreviewStartupQueue.ahk"
+#Include "src/ThumbnailRecovery.ahk"
 #Include "src/NPCDatabase.ahk"
 #Include "src/DPSMeter.ahk"
 #Include "src/SystemColorManager.ahk"
@@ -18,6 +30,28 @@
 #Include "src/ChangelogWindow.ahk"
 #Include "src/SimpleMarkdown.ahk"
 #Include "src/SettingsThumbnailPreview.ahk"
+#Include "src/SettingsPalettes.ahk"
+#Include "src/SettingsSchema.ahk"
+#Include "src/SettingsModel.ahk"
+#Include "src/SettingsTables.ahk"
+#Include "src/SettingsContract.ahk"
+#Include "src/SettingsSession.ahk"
+#Include "src/SettingsBridge.ahk"
+#Include "src/SettingsEditor.ahk"
+#Include "src/SettingsDownload.ahk"
+#Include "src/ReleaseInstaller.ahk"
+#Include "src/SettingsSearchText.ahk"
+#Include "src/SettingsScrollbars.ahk"
+#Include "src/SettingsControlScrollbars.ahk"
+#Include "src/SettingsNativeChrome.ahk"
+#Include "src/SettingsTooltip.ahk"
+#Include "src/SettingsTheme.ahk"
+#Include "src/SettingsWorkbenchPages.ahk"
+#Include "src/SettingsGrid.ahk"
+#Include "src/SettingsRowTable.ahk"
+#Include "src/SettingsMonitoringEditors.ahk"
+#Include "src/SettingsChildDialog.ahk"
+#Include "src/SettingsWorkbench.ahk"
 #Include "src/LocalChatMonitor.ahk"
 
 if !IsSet(__EVE_X_PREVIEW_TESTING__)
@@ -32,14 +66,12 @@ if !__EVE_X_PREVIEW_TESTING__ {
     ; CoordMode "Mouse", "Screen" ; to track Window Mouse possition while DragMoving the thumbnails
     SetWinDelay -1
     FileEncoding("UTF-8") ; Encoding for JSON file
+    SetWorkingDir(A_ScriptDir)
 
     SetTitleMatchMode 3
 
     A_MaxHotKeysPerInterval := 10000 
 
-    ;@Ahk2Exe-Let U_version = 1.6.2.2
-    ;@Ahk2Exe-SetVersion %U_version%
-    ;@Ahk2Exe-SetFileVersion %U_version%
     ;@Ahk2Exe-SetCopyright gonzo83+khivus
     ;@Ahk2Exe-SetDescription EVE-X-Preview
     ;@Ahk2Exe-SetProductName EVE-X-Preview
@@ -69,6 +101,12 @@ if !__EVE_X_PREVIEW_TESTING__ {
 
 ; Improved settings loader
 Load_JSON() {
+    lock := SettingsFileLock(A_ScriptDir)
+    try return Load_JSONUnlocked()
+    finally lock.Dispose()
+}
+
+Load_JSONUnlocked(interactive := true) {
     ProgramLog.Add("Loading settings from " A_WorkingDir "\EVE-X-Preview.json")
     defaultPath := default_JSON  ; existing variable in your script pointing to default JSON content/path
     userPath    := "EVE-X-Preview.json"
@@ -80,14 +118,21 @@ Load_JSON() {
 
     ; Load default JSON (throws on failure)
     DJSON := JSON.Load(defaultPath)
+    SettingsBackup.CollectMigrationBackups(A_WorkingDir)
+    SettingsBackup.SuggestedRepair := SettingsBackup.LatestValid(A_WorkingDir)
+    firstEverLaunch := SettingsBackup.PrepareFirstRun(A_WorkingDir, !!FileExist(userPath))
 
     ; If user file doesn't exist -> create it from default and return
     if !FileExist(userPath) {
+        DJSON["RecoveryGuidancePending"] := firstEverLaunch
         ProgramLog.Add("Settings missing; creating defaults")
         FileAppend(JSON.Dump(DJSON, , "    "), userPath)
+        SettingsBackup.Capture(userPath)
         return JSON.Load(FileRead(userPath))
     }
 
+    ; Preserve the original bytes before startup migration or normalization.
+    SettingsBackup.Capture(userPath)
     ; Try reading & merging
     try {
         UJSON := JSON.Load(FileRead(userPath))  ; may throw if corrupted
@@ -100,6 +145,7 @@ Load_JSON() {
         uver := UJSON.Has("settings_version") ? UJSON["settings_version"] : ""
 
         if (uver != dver) {
+            backupPath := SettingsBackup.ArchivePath(userPath, backupPath)
             ProgramLog.Add("Migrating settings " uver " -> " dver "; backup=" backupPath)
             ; Create a timestamped backup of the existing file before merge
             FileMove(userPath, backupPath, true)
@@ -108,12 +154,14 @@ Load_JSON() {
             ; ensure we set new version so merge will not re-trigger
             UJSON["settings_version"] := dver
         }
-        if uver > dver
+        if uver > dver && interactive
             MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
         MigrateThumbnailNameSettings(UJSON)
+        SettingsFonts.NormalizeLegacyDefaults(UJSON)
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)
+        _JSON := SettingsModel(_JSON).config
 
         ; Atomic write: write to tmp file then move/rename to target
         if FileExist(tmpPath)
@@ -123,9 +171,11 @@ Load_JSON() {
 
     } catch Error as e {
         ProgramLog.Error(e, "Loading or migrating settings")
+        if !interactive
+            throw e
         MsgBox("Exception at " e.File ":" e.Line "`n" e.Message "`n" e.Extra)
         ; corrupted or other error: ask user and recreate from default if they agree
-        value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.",, "YesNo")
+        value := MsgBox("The settings file is corrupted.`nDo you want to create a new one?`nOld one will be backed up.`n`n" SettingsBackup.HelpText(A_WorkingDir),, "YesNo")
         if (value = "No") {
             ProgramLog.Add("Settings recovery declined; exiting")
             ExitApp()
@@ -133,6 +183,7 @@ Load_JSON() {
         ProgramLog.Add("Settings recovery accepted; backup=" backupPath)
 
         ; backup the corrupted file (if not already moved)
+        backupPath := SettingsBackup.ArchivePath(userPath, backupPath)
         try FileMove(userPath, backupPath, true)
         catch as backupError {
             ProgramLog.Error(backupError, "Backing up settings during recovery")

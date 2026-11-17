@@ -12,6 +12,7 @@ ChangelogWindowTest() {
         rendered := RegExReplace(expected, "m)^#{1,6} +", "")
         rendered := RegExReplace(rendered, "m)^[ \t]*\* +", Chr(0x2022) "`t")
         rendered := StrReplace(rendered, "``")
+        rendered := StrReplace(rendered, "**")
         AssertEqual(RTrim(StrReplace(rendered, "`r"), "`n"), RTrim(StrReplace(window["Contents"].Text, "`r"), "`n"), "Every release must be present, including the end of the file.")
         AssertEqual(hwnd, ChangelogWindow.Show().Hwnd, "Repeated actions must reuse the open window.")
         AssertTrue(DllCall("IsWindowEnabled", "Ptr", hwnd))

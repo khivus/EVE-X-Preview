@@ -250,7 +250,8 @@ CombatOptionsLayoutTest() {
         AssertEqual(sy - app.editOffset, iy)
         for control in app.MainFrame.Group["Monitored Events"] {
             control.GetPos(&x, &y, &w, &h)
-            AssertTrue(x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10, "Event controls must fit the panel.")
+            AssertTrue(x + w <= app.contentW - 10 && y + h <= app.guiHeight - 10,
+                Format("Event control {1} '{2}' at ({3},{4}) size {5}x{6} must fit {7}x{8}; DPI={9}.", control.Name, control.Text, x, y, w, h, app.contentW - 10, app.guiHeight - 10, A_ScreenDPI))
         }
     } finally {
         app.MainFrame.Destroy()

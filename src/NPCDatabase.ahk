@@ -150,6 +150,10 @@ class NPCDatabase {
         ; Display-name alias observed in combat logs (see Combat_Events_Test).
         names["Guristas Pirates Stronghold"] := true
         names["Blood Raiders Stronghold"] := true
+        ; Drifter Response and Recon Battleships log their pilot instead of the
+        ; hull in damage lines; the hull only appears in neutralizer lines.
+        names["Arithmos Tyrannos"] := true ; Drifter Response Battleship
+        names["Hyleus Tyrannos"] := true ; Drifter Recon Battleship
         return names
     }
 

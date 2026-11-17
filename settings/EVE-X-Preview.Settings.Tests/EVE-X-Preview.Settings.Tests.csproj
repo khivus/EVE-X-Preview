@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>EVE-X-Preview.Settings.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../EVE-X-Preview.Settings/Bridge/*.cs" Link="Bridge/%(Filename)%(Extension)" />
+    <Compile Include="../EVE-X-Preview.Settings/State/*.cs" Link="State/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
