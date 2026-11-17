@@ -2260,7 +2260,13 @@ Class Main_Class extends ThumbWindow {
         Else {    
             ; Use the virtual key to trigger the internal Hotkey.        
             This.ActivateHwnd := hwnd
-            SendEvent("{Blind}{" Main_Class.virtualKey "}")            
+            ; This key only signals our foreground handler. SendEvent's normal
+            ; delay holds that handler back while the user's next key can
+            ; already reach the old client. Preserve the caller's send settings.
+            previousDelay := A_KeyDelay, previousDuration := A_KeyDuration
+            SetKeyDelay(-1, -1)
+            try SendEvent("{Blind}{" Main_Class.virtualKey "}")
+            finally SetKeyDelay(previousDelay, previousDuration)
         }
 
         if !This.WinActivationHistory.Length || This.WinActivationHistory[This.WinActivationHistory.Length] != hwnd {
