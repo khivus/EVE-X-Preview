@@ -22,6 +22,10 @@ if ((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $des
     throw 'Choose an empty release output directory so stale companion files cannot enter the package.'
 }
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
+$versionSource = Join-Path $repository 'Version.ahk'
+$versionMatch = [regex]::Match([IO.File]::ReadAllText($versionSource), 'ReleaseVersion := "([0-9]+(?:\.[0-9]+){3})"')
+if (-not $versionMatch.Success) { throw "Missing release version in $versionSource" }
+$expectedVersion = [version]$versionMatch.Groups[1].Value
 $packages = @(
     @{ Source = 'Main.ahk'; Name = 'EVE-X-Preview.exe' },
     @{ Source = 'Updater.ahk'; Name = 'EVE-X-Preview-Updater.exe' }
@@ -32,9 +36,6 @@ if (-not $BuiltInOnly) {
 foreach ($package in $packages) {
     $source = Join-Path $repository $package.Source
     $output = Join-Path $destination $package.Name
-    $match = [regex]::Match([IO.File]::ReadAllText($source), 'Ahk2Exe-Let U_version = ([\d.]+)')
-    if (-not $match.Success) { throw "Missing release version in $source" }
-    $expectedVersion = [version]$match.Groups[1].Value
     $arguments = '/in "{0}" /out "{1}" /base "{2}" /silent' -f $source, $output, $runtime
     $process = Start-Process -FilePath $compiler -ArgumentList $arguments -WorkingDirectory $repository -WindowStyle Hidden -Wait -PassThru
     if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output -PathType Leaf)) {

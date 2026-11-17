@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## v1.7.0.8
+
+### Added
+* Rapid-switch input diagnostics and regression checks for client targeting, held modifiers and key releases (#20, thanks to @S0CT).
+
+### Changed
+* Reduced foreground activation delay during rapid client switching, helping the next key reach the intended client (#20).
+
+### Fixed
+* Built-in Settings no longer raises a destroyed-control error when a control disappears during painting (#20).
+
 ## v1.7.0.7
 
 ### Changed

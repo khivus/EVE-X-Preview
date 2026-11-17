@@ -105,3 +105,7 @@ SettingsNativeChrome also brackets dark ListView/TreeView native scroll, layout 
 Each `EventAudioStream` owns its decoder, source voice, bounded sample queue and gain, and holds a reference to the shared output. Stop destroys that source voice before releasing buffers and its output reference. Other sounds keep playing; completed files remain deletable. The shared output stays available between alerts and is released at process teardown after its remaining stream references are gone. No extra release dependency is required.
 
 The existing native asynchronous-playback test keeps its 450 ms limit. `Six native alerts start within one input-latency budget after audio preparation` also applies that budget to a six-channel burst after preparing/stopping one sound, checks independent stopping, and deletes the original file after disposal. Run these executable/UI checks only inside Windows Sandbox. Fresh-process repetitions distinguish cold preparation cost from the near-zero preparation cost of an already initialized test process.
+
+### Release version
+
+Change only `ReleaseVersion` in the root `Version.ahk` for a new release. The main app, Settings host, updater (including its title), modern Settings editor and release build verification all use it. Ahk2Exe embeds the value in executable metadata; compiled packages need no loose version file. Historical changelog entries and release summaries keep their own version labels.

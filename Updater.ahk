@@ -1,12 +1,10 @@
 #Requires AutoHotkey v2.0
+#Include "Version.ahk"
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"
 #Include "Lib/json.ahk"
 #Include "src/ReleaseInstaller.ahk"
 
-;@Ahk2Exe-Let U_version = 1.7.0.7
-;@Ahk2Exe-SetVersion %U_version%
-;@Ahk2Exe-SetFileVersion %U_version%
 ;@Ahk2Exe-SetCopyright gonzo83+khivus
 ;@Ahk2Exe-SetDescription EVE-X-Preview Recovery Updater (protocol 2)
 ;@Ahk2Exe-SetProductName EVE-X-Preview Updater
@@ -16,7 +14,7 @@
 ;@Ahk2Exe-AddResource res/Icon.ico, 207
 ;@Ahk2Exe-AddResource res/Icon-Suspend.ico, 208
 
-VERSION := "1.7.0.7"
+VERSION := ReleaseVersion
 if !A_IsCompiled
     TraySetIcon(A_ScriptDir "\res\Icon.ico",, true)
 ProgramLog.Init(EnvGet("LOCALAPPDATA") "\EVE-X-Preview\Logs\Updater")
