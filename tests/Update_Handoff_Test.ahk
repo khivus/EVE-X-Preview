@@ -1,3 +1,50 @@
+TestRunner.Register("Update launch reports deferred installer errors through status", UpdateLaunchStatusTest)
+UpdateLaunchStatusTest() {
+    owner := SettingsServiceFixture(JSON.Load(default_JSON))
+    session := SettingsSession(owner, 0, true)
+    try {
+        facade := session.Facade()
+        facade.updateChecker.releaseTag := "1.7.0.8"
+        session.Command("install-stable")
+        AssertTrue(session.Command("update-status")["busy"], "The editor must poll while the deferred handoff is pending.")
+        AssertThrows(() => session.Command("install-stable"), "already in progress")
+        Sleep(100)
+        ; The source runner cannot install itself. This real deferred failure
+        ; must survive the next status poll, just like staging/UAC errors.
+        status := session.Command("update-status")
+        AssertTrue(InStr(status["status"], "compiled installation"), "The editor must receive the install failure instead of an apparent no-op.")
+        AssertFalse(status["busy"])
+        AssertTrue(status["installError"])
+        AssertEqual(status["status"], session.Command("update-status")["status"], "Polling must not erase the error.")
+    } finally session.Dispose()
+}
+
+TestRunner.Register("Update launch reports unexpected deferred exceptions and allows retry", UpdateLaunchExceptionTest)
+UpdateLaunchExceptionTest() {
+    owner := SettingsServiceFixture(JSON.Load(default_JSON))
+    session := SettingsSession(owner, 0, true)
+    try {
+        facade := session.Facade()
+        facade.DefineProp("InstallVersion", {Call: UpdateLaunchThrow})
+        session.Command("install-prerelease")
+        Sleep(100)
+        status := session.Command("update-status")
+        AssertTrue(InStr(status["status"], "handoff fixture failure"))
+        AssertTrue(status["installError"])
+        AssertFalse(status["busy"])
+        facade.DeleteProp("InstallVersion")
+        session.Command("install-stable")
+        status := session.Command("update-status")
+        AssertTrue(status["busy"])
+        AssertFalse(status["installError"], "Retry clears the previous failure.")
+        Sleep(100)
+        AssertTrue(InStr(session.Command("update-status")["status"], "Check for updates"))
+    } finally session.Dispose()
+}
+UpdateLaunchThrow(*) {
+    throw Error("handoff fixture failure")
+}
+
 TestRunner.Register("Settings update waits for the previous editor process after its lease is released", UpdateEditorExitTest)
 UpdateEditorExitTest() {
     folder := A_Temp "\evex-editor-exit-" A_TickCount

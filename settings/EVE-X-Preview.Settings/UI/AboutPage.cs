@@ -41,7 +41,13 @@ public sealed partial class MainWindow
             if(generation==pageGeneration)SetAboutStatus(result);
         } catch(Exception error) {if(generation==pageGeneration && versionStatus is not null)versionStatus.Text=error.Message;}
     }
-    private void SetAboutStatus(JsonObject value) {aboutStatus=value;RefreshAboutControls();RefreshReleaseNotice();}
+    private void SetAboutStatus(JsonObject value) {
+        aboutStatus=value;RefreshAboutControls();RefreshReleaseNotice();
+        if(value.Bool("installError")) {
+            activity=value.Text("status");
+            error.Text=activity;error.IsVisible=true;UpdateStatus();
+        }
+    }
     private void RefreshAboutControls()
     {
         if(sectionId!="about")return;

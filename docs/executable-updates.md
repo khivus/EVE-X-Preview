@@ -16,9 +16,26 @@ All requested files are staged before replacement. The installer checks their Wi
 
 The current compatible recovery updater is copied into a unique temporary directory for handoff. A downgrade never selects an older installer from the target release. The adjacent recovery updater remains available for future updates and offline recovery. A version-resource marker distinguishes this EXE-based recovery protocol from earlier installers without executing an unknown binary.
 
+If the adjacent updater is missing or incompatible, the application downloads
+the latest stable `EVE-X-Preview-Updater.exe` and requires that same recovery
+protocol marker before launching it. This bootstrap does not depend on the
+installed application's old release still being published. It does not change
+the selected main/settings version or install the optional editor implicitly.
+
+For older builds that fetch an updater from a removed release, place the latest
+stable recovery updater beside the main EXE and retry. The compatible adjacent
+updater takes precedence over that older download path.
+
 ## Window handoff and installation
 
 Apply or discard settings edits before updating. The shared handoff requests normal closure of the modern editor and waits for that exact process to exit, including after it releases its settings lease. An unfinished edit or modal dialog prevents the handoff. The old native settings window is hidden before launching the updater and restored if launch fails. Legacy About actions use this same handoff. The offline canonical host remains alive until the detached updater has started.
+
+The modern editor polls the deferred installer handoff until it completes or
+fails. Confirmation, updater staging and Windows-permission steps have visible
+status, and an error remains available across status polls instead of being
+lost after the initial command reply. Duplicate install commands are rejected
+while a handoff is pending; a retry clears the previous failure. The main app
+log records installer requests, staging, launch and failures.
 
 The installer waits for the installation's main app and editor to exit, then backs up both selected targets. Replacements use an atomically published local journal under `.EVE-X-Preview-update`. Sharing violations restore the previous EXEs. Configuration, sounds, backups, unknown legacy files and the recovery updater are untouched. Renamed main executables are supported.
 

@@ -19,6 +19,12 @@ public sealed partial class MainWindow
             case "shortcut-conflicts": await PresentConflictsAsync(result); return;
             case "update-status":
                 SetAboutStatus(result);return;
+            case "install-stable":
+            case "install-prerelease":
+                activity = result.Text("message", "Preparing installer…");
+                updatePoll.Start();
+                await PollUpdatesAsync();
+                return;
             case "download-settings":
                 activity = "Downloading settings editor into the application folder";
                 updatePoll.Start();return;

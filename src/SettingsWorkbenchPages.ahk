@@ -899,8 +899,11 @@
 
     InstallVersion(pre) {
         tag := pre ? this.updateChecker.preReleaseTag : this.updateChecker.releaseTag
-        if tag = ""
+        if tag = "" {
+            this.ShowError("Check for updates before choosing a version to install.")
             return
+        }
+        ProgramLog.Add("Installer requested; channel=" (pre ? "pre-release" : "stable") "; target=" tag)
         installation := this.owner.HasOwnProp("settingsBridge") ? this.owner.settingsBridge.installation : A_ScriptDir
         mainPath := this.owner.HasOwnProp("parentHandle") ? installation "\EVE-X-Preview.exe" : A_ScriptFullPath
         if !A_IsCompiled || !FileExist(mainPath) {
@@ -913,13 +916,19 @@
         }
         downgrade := VerCompare(tag, this.programVersion) < 0
         prompt := (downgrade ? "Install the older " : "Install ") (pre ? "pre-release " : "stable release ") "v" tag "? EVE-X-Preview will close for the installer."
-        if MsgBox(prompt, downgrade ? "Confirm downgrade" : "Install version", "YesNo Icon? Owner" this.S_Gui.Hwnd) != "Yes"
+        this.UpdateStatus("Waiting for installation confirmation…")
+        if MsgBox(prompt, downgrade ? "Confirm downgrade" : "Install version", "YesNo Icon? Owner" this.S_Gui.Hwnd) != "Yes" {
+            this.UpdateStatus("Installation cancelled.")
+            ProgramLog.Add("Installer confirmation cancelled")
             return
+        }
         updaterDirectory := A_Temp "\EVE-X-Preview-handoff-" ProcessExist() "-" A_TickCount
         DirCreate(updaterDirectory)
         updater := updaterDirectory "\EVE-X-Preview-Updater.exe"
         hiddenSettings := 0
         try {
+            this.UpdateStatus("Preparing the recovery updater…")
+            ProgramLog.Add("Staging recovery updater")
             ReleaseInstaller.StageUpdater(installation, updater, this.programVersion)
             this.owner.settingsUpdateHandoff := true
             ; The download may have allowed further client-state messages. Check
@@ -936,9 +945,12 @@
                     }
                 }
             }
+            this.UpdateStatus("Waiting for Windows permission to start the installer…")
+            ProgramLog.Add("Launching recovery updater; target=" tag)
             Run '*RunAs "' updater '" "' mainPath '" "' tag '"'
             ExitApp()
         } catch as err {
+            ProgramLog.Error(err, "Installer handoff")
             this.owner.settingsUpdateHandoff := false
             if IsObject(hiddenSettings)
                 hiddenSettings.Show()
