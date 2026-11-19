@@ -54,6 +54,11 @@ GridBulkTest() {
         grid.Character(49, 0, 0x102, grid.list.Hwnd)
         AssertDeepEqual([["Alice", 1, 1], ["Bob", 1, 1]], app.model.Rows("exceptions"))
         AssertEqual("1`r`n1", grid.Copy())
+        AssertTrue(grid.Cut())
+        AssertEqual("1`r`n1", A_Clipboard)
+        AssertDeepEqual([["Alice", 0, 1], ["Bob", 0, 1]], app.model.Rows("exceptions"))
+        AssertTrue(grid.Paste())
+        AssertDeepEqual([["Alice", 1, 1], ["Bob", 1, 1]], app.model.Rows("exceptions"))
         grid.Select(1, 2)
         AssertTrue(grid.Paste("0`t1`n1`t0"))
         AssertDeepEqual([["Alice", 0, 1], ["Bob", 1, 0]], app.model.Rows("exceptions"))
@@ -68,6 +73,14 @@ GridBulkTest() {
         app.Dispose()
         A_Clipboard := clipboard
     }
+}
+
+TestRunner.Register("Grid clipboard preserves quoted tabs, line breaks and blank cells", GridClipboardFormatTest)
+GridClipboardFormatTest() {
+    literal := 'before"after' "`t`r`nnext"
+    encoded := SettingsGrid.QuoteClipboard(literal) "`t`r`n" SettingsGrid.QuoteClipboard("", true)
+    AssertDeepEqual([[literal, ""], [""]], SettingsGrid.ReadClipboard(encoded, 2))
+    AssertDeepEqual([["a", ""]], SettingsGrid.ReadClipboard("a`t", 2))
 }
 
 TestRunner.Register("Grid invalid and partial rows survive navigation block Apply and recover atomically", GridValidationTest)

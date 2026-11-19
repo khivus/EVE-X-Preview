@@ -1,8 +1,9 @@
 ; Archive I/O runs outside the UI interpreter; the parent only polls small results.
 class LogScanJob {
     static serial := 0
-    __New(workerScript := "") {
+    __New(workerScript := "", timeoutMs := 300000) {
         this.workerScript := workerScript
+        this.timeoutMs := timeoutMs
         this.directory := A_Temp "\EVE-X-Preview-LogScan-" DllCall("GetCurrentProcessId") "-" A_TickCount "-" (++LogScanJob.serial)
         DirCreate(this.directory)
         this.process := 0
@@ -18,7 +19,7 @@ class LogScanJob {
         if this.busy || A_TickCount - this.failedAt < 10000
             return false
         try {
-            for name in ["input.txt", "output.txt", "output.tmp", "error.txt", "cache.tmp", "progress.txt", "progress.tmp"]
+            for name in ["input.txt", "output.txt", "output.tmp", "error.txt", "cache.tmp", "progress.txt", "progress.tmp", "stop.txt"]
                 if FileExist(this.directory "\" name)
                     FileDelete(this.directory "\" name)
             FileAppend(request, this.directory "\input.txt", "UTF-8")
@@ -52,7 +53,7 @@ class LogScanJob {
         if !this.busy
             return 0
         status := DllCall("WaitForSingleObject", "Ptr", this.process, "UInt", 0, "UInt")
-        if status = 0x102 && A_TickCount - this.started < 300000 {
+        if status = 0x102 && (!this.timeoutMs || A_TickCount - this.started < this.timeoutMs) {
             try {
                 if FileExist(this.directory "\progress.txt") {
                     serial := this.ReadSharedText("progress.txt")
@@ -110,7 +111,7 @@ class LogScanJob {
 
     Close(*) {
         this.StopProcess()
-        for name in ["input.txt", "output.txt", "output.tmp", "error.txt", "cache.txt", "cache.tmp", "progress.txt", "progress.tmp"]
+        for name in ["input.txt", "output.txt", "output.tmp", "error.txt", "cache.txt", "cache.tmp", "progress.txt", "progress.tmp", "stop.txt"]
             try FileDelete(this.directory "\" name)
         try DirDelete(this.directory) ; Only remove our empty, private job directory.
         OnExit(this.exitHandler, 0)

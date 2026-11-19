@@ -136,6 +136,8 @@ internal static class Program
     {
         var rows = new JsonArray(new JsonArray("ÉVE", "tabs\tand\nnewlines", "\"quoted\""), new JsonArray("日本語", "", "last"));
         Check(JsonNode.DeepEquals(TableClipboard.Read(TableClipboard.Write(rows), 3), rows), "clipboard quoted cells Unicode and blank cells roundtrip");
+        var sparseColumn = new JsonArray(new JsonArray("first"), new JsonArray(""), new JsonArray("last"), new JsonArray(""));
+        Check(JsonNode.DeepEquals(TableClipboard.ReadGrid(TableClipboard.Write(sparseColumn), 1), sparseColumn), "clipboard preserves holes and a trailing blank cell");
         Check(TableClipboard.Read("a\tb\r\nc\td\r\n", 2).Count == 2, "clipboard trailing newline does not create an empty row");
         Throws<FormatException>(() => TableClipboard.Read("one\ttwo", 3), "clipboard validates column count");
         Throws<FormatException>(() => TableClipboard.Read("\"unterminated", 1), "clipboard rejects unterminated quotes");

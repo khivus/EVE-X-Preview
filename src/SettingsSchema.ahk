@@ -3,7 +3,7 @@
 class SettingsSchema {
     static Fields := Map()
     static Sections := []
-    static Pages := ["Thumbnails", "Switching", "EVE windows", "Monitoring & alerts", "Profiles", "Other applications", "Application"]
+    static Pages := ["Thumbnails", "Switching", "EVE windows", "Monitoring & alerts", "Profiles", "Other applications", "Statistics", "Application"]
 
     static __New() {
         this.Section("Thumbnails", "appearance", "Appearance", "Thumbnails Visuals")
@@ -162,7 +162,13 @@ class SettingsSchema {
         this.Section("Profiles", "inheritance", "Section inheritance", "", "Inherited sections always show the effective Default values. Choosing Customize keeps this profile's stored values.")
         this.Section("Other applications", "app-groups", "Application groups", "Non-EVE Applications", "Pick running windows or enter exact executable names. Each row includes its optional title.")
         this.Section("Other applications", "app-shortcuts", "Application shortcuts", "Non-EVE Applications", "Each row contains the executable, optional window title and shortcut.")
+        this.Section("Statistics", "statistics", "Usage statistics", "", "Saved statistics and manual archive scans are always available. Apply and restart to change live collection.")
+        this.Field("CollectStatistics", "Collect live statistics", "bool",,,,, ["CollectStatistics"], "", true)
+        this.Field("CollectAllStatisticsEvents", "Collect all supported log events live", "bool",,,, "Include supported game and chat records even when their alerts or monitoring are off. Otherwise, live statistics follow enabled monitoring.", ["CollectAllStatisticsEvents"], "", true)
+        this.Depends("CollectAllStatisticsEvents", "CollectStatistics")
         this.Section("Application", "interface", "Settings appearance", "", "Theme changes preview immediately. Apply saves the choice for future settings windows.")
+        this.Field("InterfaceLanguage", "Interface language", "choice",,,, "Apply and reopen Settings to use the selected language.", ["InterfaceLanguage"], "", true)
+        this.Choices("InterfaceLanguage", "English", "en", "Русский", "ru")
         this.Field("SettingsTheme", "Settings theme", "choice",,,, "Choose a light or dark interface, or follow the Windows app theme.", ["SettingsTheme"], "", true)
         this.Choices("SettingsTheme", "Use Windows setting", "system", "Light", "light", "Dark", "dark")
         for id in SettingsPalettes.Order
@@ -235,7 +241,7 @@ class SettingsSchema {
         words := StrSplit(StrLower(Trim(query)), " ")
         result := []
         for section in this.Sections {
-            haystack := StrLower(section.page " " section.title " " section.help)
+            haystack := StrLower(section.page " " section.title " " section.help " " T(section.page) " " T(section.title) " " T(section.help))
             keywords := Map("events", "combat player NPC attack neuts neutralization Nosferatu misses smartbomb warp fleet mining crystal conversation idle sound volume border",
                 "character-shortcuts", "character pilot key bindings assignments", "character-groups", "character pilot group members order next previous first",
                 "character-appearance", "character pilot custom active inactive border text colors", "custom-names", "character names replacement aliases",
@@ -248,7 +254,7 @@ class SettingsSchema {
                 haystack .= " " StrLower(keywords[section.id])
             for id in section.fields {
                 field := this.Fields[id]
-                haystack .= " " StrLower(field.label " " field.help " " id)
+                haystack .= " " StrLower(field.label " " field.help " " id " " T(field.label) " " T(field.help))
             }
             match := true
             for word in words

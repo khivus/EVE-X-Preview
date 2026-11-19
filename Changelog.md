@@ -1,12 +1,24 @@
 ﻿# Changelog
 
-## Unreleased
+## v1.7.1.0
+
+### Added
+* Optional lifetime statistics for switching, character launches, alerts, and saved characters.
+* Live log counters and resumable manual or background scans of EVE game and chat logs.
+* Character and date filters, peak DPS, mining and gas totals, and archive scan progress.
+* One statistics collection setting, with scan phase logging and recovery from busy checkpoint files.
+* Optional live collection for all supported game and chat events, independent of alerts.
+* Peak incoming and outgoing alpha strikes, plus rolling 10-second peak DPS.
+* Russian interface for the tray and both Settings editors.
 
 ### Changed
-* When the updater is missing or incompatible, EVE-X-Preview downloads a compatible updater from the latest stable release. Updates can proceed even if the installed version’s release is no longer on GitHub (#22).
+* Missing or incompatible updaters are downloaded from the latest stable release (#22).
 
 ### Fixed
-* Modern Settings now shows errors that occur after you confirm an update and lets you retry (#22).
+* Saved statistics, filters and archive scan controls work with live collection off.
+* Statistics keeps the character selector width stable and the Refresh button steady during polling.
+* Character and date filters use a compact snapshot and update during archive scans.
+* Modern Settings displays installation errors and allows retrying (#22).
 
 ## v1.7.0.8
 

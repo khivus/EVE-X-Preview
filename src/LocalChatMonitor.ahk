@@ -62,7 +62,7 @@ class LocalChatMonitor {
             if previous
                 previous.file.Close()
             reader := {path: path, file: file, pending: "", system: seed.system, hwnd: active[character],
-                identity: identity, generation: this.discovery.generation, dropFragment: false}
+                identity: identity, generation: this.discovery.generation, dropFragment: false, statisticsAfter: seed.cursor}
             ; Re-read a small tail to retain lines completed after the worker's snapshot.
             this.SeekRecentTail(reader, Min(seed.cursor, file.Length))
             this.readers[character] := reader
@@ -72,6 +72,7 @@ class LocalChatMonitor {
                 if reader.file.Length < reader.file.Pos {
                     reader.file.Seek(0)
                     reader.pending := "", reader.system := "", reader.dropFragment := false
+                    reader.statisticsAfter := 0
                 }
                 this.ReadUpdates(reader)
                 this.owner.updateThumbnailSystemText(reader.system, reader.hwnd)
@@ -122,6 +123,8 @@ class LocalChatMonitor {
             reader.needsSeed := true
             this.lastDiscovery := -5000
         }
+        stats := this.owner.HasProp("usageStatistics") ? this.owner.usageStatistics : 0
+        track := stats && !stats.allEvents && reader.file.Pos >= reader.statisticsAfter
         text := reader.pending reader.file.Read(16384)
         lines := StrSplit(text, "`n", "`r")
         reader.pending := lines.Pop()
@@ -130,8 +133,11 @@ class LocalChatMonitor {
                 reader.dropFragment := false
                 continue
             }
-            if RegExMatch(line, "^\x{FEFF}?\s*\[\s*\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\s*\] EVE System > Channel changed to Local :\s*(.+?)\s*$", &match)
+            if RegExMatch(line, "^\x{FEFF}?\s*\[\s*\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\s*\] EVE System > Channel changed to Local :\s*(.+?)\s*$", &match) {
+                if track && reader.system != match[1]
+                    stats.monitoredSystemChanges += 1
                 reader.system := match[1], reader.needsSeed := false
+            }
         }
         if StrLen(reader.pending) > 8192 {
             reader.pending := ""

@@ -21,10 +21,18 @@ public sealed partial class MainWindow
     }
     private static void TableHeading(StackPanel table,string columns,params string[] labels) {
         Grid.SetIsSharedSizeScope(table,true);
-        var row=TableLine(columns);for(var i=0;i<labels.Length;i++)row.Children.Add(TableCell(new TextBlock {Text=labels[i],FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap},i));table.Children.Add(row);
+        var row=TableLine(columns);for(var i=0;i<labels.Length;i++)row.Children.Add(TableCell(new TextBlock {Text=T(labels[i]),FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap},i));table.Children.Add(row);
     }
     private void StageEvent(string id,string label,string field,JsonNode? value) => Stage(EditKey("event|"+id+"|"+field),label+" / "+field,"event",new(){["id"]=id,["values"]=new JsonObject {[field]=value?.DeepClone()}});
     private JsonNode? EventValue(string id,string field,JsonObject data) => session.GetPending(EditKey("event|"+id+"|"+field))?.Arguments.Object("values")[field] ?? data.Object("values")[field];
+    private void AddEventClipboardCell(TableCellClipboard clipboard, Grid row, int column, JsonObject descriptor, JsonObject data, string field)
+    {
+        var id = descriptor.Text("id");
+        var defaultValue = data.Array("fields").FirstOrDefault(f => f.Text("id") == field)?["default"];
+        clipboard.Add(row, column, () => JsonExtensions.Display(EventValue(id, field, data)),
+            data.Bool("inherited") ? null : value => StageEvent(id, descriptor.Text("label"), field,
+                string.IsNullOrEmpty(value) ? defaultValue : JsonValue.Create(value)));
+    }
     private void EventFeedback(StackPanel host,string id,string field,Control input) {
         var feedback=new TextBlock {FontSize=12,TextWrapping=TextWrapping.Wrap};host.Children.Add(feedback);BindFeedback(EditKey("event|"+id+"|"+field),id+":"+field,feedback,input);
     }
@@ -32,6 +40,7 @@ public sealed partial class MainWindow
         try {
             const string columns="1.5*,44,1.2*,1.2*";
             TableHeading(table,columns,"Event","On","Color","Sound");
+            var clipboard = new TableCellClipboard(this, table);
             var events = new List<(JsonObject descriptor,JsonObject data,CheckBox enabled)>();
             foreach(var descriptor in session.Metadata!.Events) {
                 var id=descriptor.Text("id");var data=await session.ReadAsync("event",new(){["id"]=id});if(generation!=pageGeneration)return;
@@ -47,6 +56,10 @@ public sealed partial class MainWindow
                 if(color is Grid colorInput && colorInput.Children.OfType<TextBox>().FirstOrDefault() is {} colorText) {colorText.FontSize=14;colorText.Padding=new Thickness(6,4);}
                 var soundPath=data.Object("values").Text("sound");var sound=ActionButton(SoundName(soundPath),async()=>{selections["sound-event"]=id;await NavigateToAsync("sounds");});
                 sound.HorizontalAlignment=HorizontalAlignment.Stretch;sound.MinWidth=0;sound.Padding=new Thickness(5);ToolTip.SetTip(sound,"Manage sound assignment in Sound library\n"+soundPath);row.Children.Add(TableCell(sound,3));table.Children.Add(row);
+                clipboard.Add(row, 0, () => T(descriptor.Text("label")));
+                AddEventClipboardCell(clipboard, row, 1, descriptor, data, "enabled");
+                AddEventClipboardCell(clipboard, row, 2, descriptor, data, "color");
+                AddEventClipboardCell(clipboard, row, 3, descriptor, data, "sound");
                 events.Add((descriptor,data,enabled));
             }
             var options = new StackPanel { Spacing = 16 };
@@ -73,7 +86,7 @@ public sealed partial class MainWindow
                 if(categoryPanel.Children.Count > 1)options.Children.Add(Card(categoryPanel));
             }
             if(generation == pageGeneration && options.Children.Count > 0) {
-                options.Children.Insert(0,new TextBlock { Text = "Event options", FontSize = 18, FontWeight = FontWeight.SemiBold });
+                options.Children.Insert(0,new TextBlock { Text = MainWindow.T("Event options"), FontSize = 18, FontWeight = FontWeight.SemiBold });
                 if(!session.Snapshot.Object("inheritance").Bool("events"))options.Children.Insert(1,Muted("Enable an event in the table above to edit its options."));
                 page.Children.Add(options);RestoreLoadedScroll(generation);
             }
@@ -90,20 +103,26 @@ public sealed partial class MainWindow
             var events=new List<(JsonObject descriptor,JsonObject data)>();
             foreach(var descriptor in session.Metadata!.Events){var data=await session.ReadAsync("event",new(){["id"]=descriptor.Text("id")});if(generation!=pageGeneration)return;events.Add((descriptor,data));}
             host.Children.Clear();
-            var files=new StackPanel {Spacing=4};files.Children.Add(new TextBlock {Text="Library files",FontWeight=FontWeight.SemiBold});
+            var files=new StackPanel {Spacing=4};files.Children.Add(new TextBlock {Text=MainWindow.T("Library files"),FontWeight=FontWeight.SemiBold});
             files.Children.Add(ActionButton("Add sound files",AddSoundFilesAsync));
             files.Children.Add(Muted("Add files once and reuse them below. Removing a reference keeps the original file."));
             const string fileColumns="1.3*,2*,Auto,Auto,Auto";TableHeading(files,fileColumns,"Sound","File gain (%)","","","");
+            var fileClipboard = new TableCellClipboard(this, files);
             foreach(var sound in library.Array("rows").OfType<JsonObject>()) {
                 var path=sound.Text("path");var row=TableLine(fileColumns);var name=SearchText(SoundName(path));ToolTip.SetTip(name,path);row.Children.Add(TableCell(name,0));
                 var key=EditKey("gain|"+path);var group=new StackPanel {Spacing=2};var gain=VolumeInput(session.GetPending(key)?.Arguments["volume"]??sound["volume"],v=>Stage(key,"File gain: "+SoundName(path),"sound",new(){["action"]="gain",["path"]=path,["volume"]=v?.DeepClone()}));group.Children.Add(gain);var feedback=new TextBlock {FontSize=12};group.Children.Add(feedback);BindFeedback(key,"",feedback,gain);row.Children.Add(TableCell(group,1));
                 row.Children.Add(TableCell(ActionButton("Assign",()=>AssignSoundAsync(path,sound.Array("assigned"))),2));
                 row.Children.Add(TableCell(ActionButton("Play",()=>PlayLibrarySoundAsync(path),false),3));
                 row.Children.Add(TableCell(ActionButton("Remove",async()=>{if(await Dialogs.ConfirmAsync(this,"Remove reference?","Keep the original file and remove this library reference?"))await session.MutateAsync("sound",new(){["action"]="remove",["path"]=path});}),4));files.Children.Add(row);
+                fileClipboard.Add(row, 0, () => path);
+                fileClipboard.Add(row, 1, () => JsonExtensions.Display(session.GetPending(key)?.Arguments["volume"] ?? sound["volume"]),
+                    value => Stage(key, "File gain: "+SoundName(path), "sound", new() { ["action"]="gain", ["path"]=path,
+                        ["volume"]=string.IsNullOrEmpty(value) ? JsonValue.Create(100) : JsonValue.Create(value) }));
             }
             if(library.Array("rows").Count==0)files.Children.Add(Muted("No files in the library yet. Add WAV or MP3 files above."));host.Children.Add(Card(files));
-            var assignments=new StackPanel {Spacing=2};assignments.Children.Add(new TextBlock {Text="Event sound assignments",FontWeight=FontWeight.SemiBold});
+            var assignments=new StackPanel {Spacing=2};assignments.Children.Add(new TextBlock {Text=MainWindow.T("Event sound assignments"),FontWeight=FontWeight.SemiBold});
             const string assignmentColumns="1.3*,1.4*,2*,Auto";TableHeading(assignments,assignmentColumns,"Event","Sound","Event volume (%)","");
+            var assignmentClipboard = new TableCellClipboard(this, assignments);
             foreach(var (descriptor,data) in events) {
                 var id=descriptor.Text("id");var row=TableLine(assignmentColumns);row.Children.Add(TableCell(SearchText(descriptor.Text("label")),0));
                 var current=JsonExtensions.Display(EventValue(id,"sound",data));var paths=library.Array("rows").Select(s=>s.Text("path")).Concat(events.Select(e=>e.data.Object("values").Text("sound"))).Where(p=>p!="").Distinct(StringComparer.OrdinalIgnoreCase).Prepend("").ToArray();
@@ -113,6 +132,9 @@ public sealed partial class MainWindow
                 var volumeHost=new StackPanel {Spacing=2};var volume=VolumeInput(EventValue(id,"soundVolume",data),v=>StageEvent(id,descriptor.Text("label"),"soundVolume",v));volume.IsEnabled=!data.Bool("inherited");Avalonia.Automation.AutomationProperties.SetName(volume,descriptor.Text("label")+" volume");volumeHost.Children.Add(volume);EventFeedback(volumeHost,id,"soundVolume",volume);row.Children.Add(TableCell(volumeHost,2));
                 row.Children.Add(TableCell(ActionButton("Play",async()=>{var preview=session.Metadata!.Commands.First(c=>c.Text("id")=="preview-sound");await RunCommandAsync(preview,new(){["event"]=id});},false),3));
                 if(selections.GetValueOrDefault("sound-event")==id)row.Background=ThemeController.TableSelection(true);assignments.Children.Add(row);
+                assignmentClipboard.Add(row, 0, () => T(descriptor.Text("label")));
+                AddEventClipboardCell(assignmentClipboard, row, 1, descriptor, data, "sound");
+                AddEventClipboardCell(assignmentClipboard, row, 2, descriptor, data, "soundVolume");
             }
             host.Children.Add(Card(assignments));RestoreLoadedScroll(generation);
         } catch(Exception e){if(generation==pageGeneration)host.Children.Add(new TextBlock {Text=e.Message,Classes={"error"}});}
@@ -120,7 +142,7 @@ public sealed partial class MainWindow
     private async Task AddSoundFilesAsync() {
         await ProtectModalAsync(true);
         try {
-            var files=await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions {Title="Add sounds to the shared library",AllowMultiple=true,FileTypeFilter=[new FilePickerFileType("Sounds"){Patterns=["*.wav","*.mp3"]}]});
+            var files=await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions {Title=MainWindow.T("Add sounds to the shared library"),AllowMultiple=true,FileTypeFilter=[new FilePickerFileType("Sounds"){Patterns=["*.wav","*.mp3"]}]});
             foreach(var file in files)if(file.TryGetLocalPath() is {} path)await session.MutateAsync("sound",new(){["action"]="add",["path"]=path});
         } finally {await ProtectModalAsync(false);}
     }

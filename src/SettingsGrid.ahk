@@ -39,7 +39,7 @@ class SettingsGrid {
         for message in [0x201, 0x200, 0x202]
             OnMessage(message, this.pointerCallback)
         OnMessage(SettingsGrid.PointerMessage, this.pointerDispatchCallback)
-        list.ToolTip := "Click a cell to edit. Shift/Ctrl+click selects cells; Ctrl+C/V copies/pastes. Del clears; Ctrl+Del removes rows."
+        list.ToolTip := "Click a cell to edit. Shift/Ctrl+click selects cells. Ctrl+C/X/V copies, cuts or pastes. Del clears; Ctrl+Del removes rows."
         list.SettingsHelp := list.ToolTip
         SendMessage(0x1036, 0x4001, app.theme.dark ? 0x4000 : 0x4001, list) ; Native grid lines are too bright on dark surfaces.
         app.grids.Push(this)
@@ -597,7 +597,7 @@ class SettingsGrid {
             return SettingsValue.Parse({kind: "integer", min: 0, max: 300, unit: "%"}, RTrim(value, "%"))
         return value
     }
-    SetCells(changes) {
+    SetCells(changes, keepUnfinished := false) {
         if this.disposed || !DllCall("IsWindow", "Ptr", this.hwnd) || this.readonly
             return false
         rows := SettingsModel.Clone(this.rows), failure := "", cleared := Map()
@@ -614,7 +614,7 @@ class SettingsGrid {
             while rows.Length < row
                 rows.Push(this.Blank())
             rows[row][column] := change[3]
-            if this.append && column = 1 && Trim(change[3]) = ""
+            if !keepUnfinished && this.append && column = 1 && Trim(change[3]) = ""
                 cleared[row] := true
 
         }
@@ -624,7 +624,25 @@ class SettingsGrid {
                 rows.RemoveAt(index)
             index--
         }
+        if keepUnfinished && this.append {
+            blank := this.Blank(), index := rows.Length
+            while index > 0 {
+                if Trim(rows[index][1]) = "" {
+                    if this.IsBlankEditableRow(rows[index], blank)
+                        rows.RemoveAt(index)
+                    else
+                        failure := "Complete the required first field or remove the unfinished row."
+                }
+                index--
+            }
+        }
         return this.SaveCandidate(rows, failure)
+    }
+    IsBlankEditableRow(row, blank) {
+        for column, value in row
+            if this.Editable(column) && !SettingsModel.Equal(value, blank[column])
+                return false
+        return true
     }
     SaveCandidate(rows, failure := "") {
         if this.disposed || !DllCall("IsWindow", "Ptr", this.hwnd)
@@ -655,7 +673,7 @@ class SettingsGrid {
         }
         if this.disposed || !DllCall("IsWindow", "Ptr", this.hwnd)
             return failure = ""
-        this.list.ToolTip := failure != "" ? failure : "Click a cell to edit. Shift/Ctrl selects cells. Ctrl+C/V copies/pastes; Del clears; Ctrl+Del removes rows."
+        this.list.ToolTip := failure != "" ? failure : "Click a cell to edit. Shift/Ctrl selects cells. Ctrl+C/X/V copies, cuts or pastes; Del clears; Ctrl+Del removes rows."
         this.list.SettingsHelp := this.list.ToolTip
         this.rows := rows
         this.app.tableStates[this.key] := {rows: SettingsModel.Clone(rows), snapshot: this.snapshot, group: this.group}
@@ -706,30 +724,99 @@ class SettingsGrid {
                 column := minCol + A_Index - 1
                 if A_Index > 1
                     text .= "`t"
-                if row <= this.rows.Length && this.selected.Has(row ":" column)
-                    text .= this.rows[row][column]
+                value := row <= this.rows.Length && this.selected.Has(row ":" column) ? this.rows[row][column] : ""
+                text .= SettingsGrid.QuoteClipboard(value, minCol = maxCol)
             }
         }
         A_Clipboard := text
         return text
     }
+    Cut() {
+        if this.readonly
+            return false
+        this.Copy()
+        changes := [], blank := this.Blank()
+        for , cell in this.selected {
+            column := cell[2]
+            if cell[1] > this.rows.Length || !this.Editable(column)
+                continue
+            spec := this.columns[column]
+            value := this.append ? blank[column] : spec.kind = "choice" ? spec.choices[1].value : spec.kind = "gesture" ? 0
+                : spec.kind = "number" ? 100 : spec.kind = "color" ? "000000" : blank[column]
+            if spec.kind = "color" && value = "" && !this.selected.Has(cell[1] ":1")
+                value := "000000"
+            changes.Push([cell[1], column, value])
+        }
+        return changes.Length ? this.SetCells(changes, true) : true
+    }
+
+    static QuoteClipboard(value, singleColumn := false) {
+        quote := Chr(34)
+        return (singleColumn && value = "") || RegExMatch(value, '[\t\r\n"]')
+            ? quote StrReplace(value, quote, quote quote) quote : value
+    }
+
+    static ReadClipboard(text, columns) {
+        rows := [], row := [], pos := 1
+        while pos <= StrLen(text) {
+            if !RegExMatch(text, 'm)\G(?:"((?:[^"]|"")*)"|([^"\t\r\n][^\t\r\n]*|))(\t|\r\n|\r|\n|\z)', &cell, pos)
+                throw ValueError("Invalid quoted clipboard cell.")
+            row.Push(SubStr(cell[0], 1, 1) = Chr(34) ? StrReplace(cell[1], '""', '"') : cell[2])
+            if row.Length > columns
+                throw ValueError("The pasted rows are wider than the available columns.")
+            pos += StrLen(cell[0])
+            if cell[3] != "`t" {
+                rows.Push(row)
+                if rows.Length > 2000
+                    throw ValueError("Paste up to 2000 rows at a time.")
+                row := []
+            }
+        }
+        if row.Length {
+            if row.Length = columns
+                throw ValueError("The pasted rows are wider than the available columns.")
+            row.Push("")
+            rows.Push(row)
+        }
+        return rows
+    }
     Paste(text?) {
         if !IsSet(text)
             text := A_Clipboard
-        text := RTrim(StrReplace(text, "`r"), "`n")
         if text = ""
             return true
-        if !InStr(text, "`t") && !InStr(text, "`n") && this.selected.Count > 1
-            return this.SetCells(this.SelectedChanges(text))
-        changes := [], originRow := this.row, originCol := this.column
-        if this.selected.Count > 1
-            for key, cell in this.selected
-                originRow := Min(originRow, cell[1]), originCol := Min(originCol, cell[2])
-        for r, line in StrSplit(text, "`n")
-            for c, value in StrSplit(line, "`t")
-                if originCol + c - 1 <= this.columns.Length
-                    changes.Push([originRow + r - 1, originCol + c - 1, value])
+        if this.readonly
+            return false
+        changes := [], originRow := this.selected.Count ? 2001 : this.row, originCol := this.selected.Count ? this.columns.Length : this.column
+        for , cell in this.selected
+            originRow := Min(originRow, cell[1]), originCol := Min(originCol, cell[2])
+        try rows := SettingsGrid.ReadClipboard(text, this.columns.Length - originCol + 1)
+        catch as err {
+            this.app.UpdateStatus(err.Message)
+            return false
+        }
+        if rows.Length = 1 && rows[1].Length = 1 && this.selected.Count > 1
+            return this.SetCells(rows[1][1] != "" ? this.SelectedChanges(rows[1][1]) : this.EmptyPasteSelection())
+        for r, row in rows
+            for c, value in row
+                changes.Push([originRow + r - 1, originCol + c - 1, value = "" ? this.EmptyPasteValue(originCol + c - 1) : value])
         return this.SetCells(changes)
+    }
+    EmptyPasteSelection() {
+        changes := []
+        for , cell in this.selected
+            changes.Push([cell[1], cell[2], this.EmptyPasteValue(cell[2])])
+        return changes
+    }
+    EmptyPasteValue(column) {
+        spec := this.columns[column]
+        switch spec.kind {
+            case "choice": return spec.choices[1].value
+            case "gesture", "bool": return 0
+            case "number": return 100
+            case "color": return "000000"
+            default: return ""
+        }
     }
     RemoveRows() {
         if this.readonly || !this.options.HasOwnProp("remove")
@@ -756,6 +843,17 @@ class SettingsGrid {
             return
         ctrl := GetKeyState("Ctrl", "P"), shift := GetKeyState("Shift", "P")
         if editing {
+            if ctrl && this.selected.Count > 1 && (key = 67 || key = 88 || key = 86) {
+                this.CommitEditor()
+                this.list.Focus()
+                if key = 67
+                    this.Copy()
+                else if key = 88
+                    this.Cut()
+                else
+                    this.Paste()
+                return 0
+            }
             if key = 27 {
                 this.CancelEditor(), this.list.Focus()
                 return 0
@@ -779,6 +877,8 @@ class SettingsGrid {
             this.RedrawCells()
         } else if ctrl && key = 67
             this.Copy()
+        else if ctrl && key = 88
+            this.Cut()
         else if ctrl && key = 86
             this.Paste()
         else if key = 46 {

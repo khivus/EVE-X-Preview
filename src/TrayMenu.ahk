@@ -1,6 +1,7 @@
 ﻿
 
 Class TrayMenu extends Settings_Gui {
+    usageStatistics := 0
     TrayMenuObj := A_TrayMenu
     Saved_overTray := 0
     Tray_Profile_scwitch := 0
@@ -10,137 +11,135 @@ Class TrayMenu extends Settings_Gui {
 
         for k in This.Profiles {
             If (k = This.LastUsedProfile) {
-                Profiles_Submenu.Add(This.LastUsedProfile, MenuHandler)
+                Profiles_Submenu.Add(This.LastUsedProfile, (name, *) => This.ActivateProfile(name, "Tray"))
                 Profiles_Submenu.Check(This.LastUsedProfile)
             }
-            Profiles_Submenu.Add(k, MenuHandler)
+            Profiles_Submenu.Add(k, (name, *) => This.ActivateProfile(name, "Tray"))
         }
 
         TrayMenu := This.TrayMenuObj
         TrayMenu.Delete() ; Delete the Default TrayMenu Items
 
-        TrayMenu.Add("Open", MenuHandler)
-        TrayMenu.Add("Open internal settings", (*) => SettingsEditor.OpenInternal(This))
+        TrayMenu.Add(T("Open"), MenuHandler.Bind("Open"))
+        TrayMenu.Add(T("Open internal settings"), (*) => SettingsEditor.OpenInternal(This))
         TrayMenu.Add() ; Seperator
-        TrayMenu.Add("Profiles", Profiles_Submenu)
+        TrayMenu.Add(T("Profiles"), Profiles_Submenu)
         TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Suspend Hotkeys"] {
-            TrayMenu.Add("Pause EVE switching hotkeys", ObjBindMethod(This, "Suspend_Hotkeys"))
+            TrayMenu.Add(T("Pause EVE switching hotkeys"), ObjBindMethod(This, "Suspend_Hotkeys"))
             if This.activationHotkeysSuspended
-                TrayMenu.Check("Pause EVE switching hotkeys")
+                TrayMenu.Check(T("Pause EVE switching hotkeys"))
         }
         if This.TrayMenuShortcuts.Get("Suspend All Hotkeys", 1) {
-            TrayMenu.Add("Pause all hotkeys", ObjBindMethod(This, "Suspend_All_Hotkeys"))
+            TrayMenu.Add(T("Pause all hotkeys"), ObjBindMethod(This, "Suspend_All_Hotkeys"))
             if A_IsSuspended
-                TrayMenu.Check("Pause all hotkeys")
+                TrayMenu.Check(T("Pause all hotkeys"))
         }
 
         if This.TrayMenuShortcuts["Hide Thumbnails"] {
-            TrayMenu.Add("Hide Thumbnails", MenuHandler)
+            TrayMenu.Add(T("Hide Thumbnails"), MenuHandler.Bind("Hide Thumbnails"))
             if This.HideThumbnails
-                TrayMenu.check("Hide Thumbnails")
+                TrayMenu.check(T("Hide Thumbnails"))
             else
-                TrayMenu.Uncheck("Hide Thumbnails")
+                TrayMenu.Uncheck(T("Hide Thumbnails"))
         }
 
         if This.TrayMenuShortcuts["Show Thumbnails Always on Top"] {
-            TrayMenu.Add("Show Thumbnails Always on Top", MenuHandler)
+            TrayMenu.Add(T("Show Thumbnails Always on Top"), MenuHandler.Bind("Show Thumbnails Always on Top"))
             if This.ShowThumbnailsAlwaysOnTop
-                TrayMenu.check("Show Thumbnails Always on Top")
+                TrayMenu.check(T("Show Thumbnails Always on Top"))
             else
-                TrayMenu.Uncheck("Show Thumbnails Always on Top")
+                TrayMenu.Uncheck(T("Show Thumbnails Always on Top"))
         }
 
         if This.TrayMenuShortcuts["Click Through Thumbnails"] {
-            TrayMenu.Add("Click Through Thumbnails", MenuHandler)
+            TrayMenu.Add(T("Click Through Thumbnails"), MenuHandler.Bind("Click Through Thumbnails"))
             if This.ClickThroughActive
-                TrayMenu.check("Click Through Thumbnails")
+                TrayMenu.check(T("Click Through Thumbnails"))
             else
-                TrayMenu.Uncheck("Click Through Thumbnails")
+                TrayMenu.Uncheck(T("Click Through Thumbnails"))
         }
 
         if This.TrayMenuShortcuts["Minimize Inactive Clients"] {
-            TrayMenu.Add("Minimize Inactive Clients", MenuHandler)
+            TrayMenu.Add(T("Minimize Inactive Clients"), MenuHandler.Bind("Minimize Inactive Clients"))
             if This.MinimizeInactiveClients
-                TrayMenu.check("Minimize Inactive Clients")
+                TrayMenu.check(T("Minimize Inactive Clients"))
             else
-                TrayMenu.Uncheck("Minimize Inactive Clients")
+                TrayMenu.Uncheck(T("Minimize Inactive Clients"))
         }
 
         if This.TrayMenuShortcuts["Suspend Hotkeys"] || This.TrayMenuShortcuts["Hide Thumbnails"] || This.TrayMenuShortcuts["Minimize Inactive Clients"] || This.TrayMenuShortcuts["Click Through Thumbnails"]
             TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Don't Close Active Client"] {
-            TrayMenu.Add("Don't Close Active Client", MenuHandler)
+            TrayMenu.Add(T("Don't Close Active Client"), MenuHandler.Bind("Don't Close Active Client"))
             if This.dontCloseActiveClient
-                TrayMenu.check("Don't Close Active Client")
+                TrayMenu.check(T("Don't Close Active Client"))
             else
-                TrayMenu.Uncheck("Don't Close Active Client")
+                TrayMenu.Uncheck(T("Don't Close Active Client"))
         }
 
         if This.TrayMenuShortcuts["Close all EVE Clients"]
-            TrayMenu.Add("Close all EVE Clients", (*) => This.CloseAllEVEWindows())
+            TrayMenu.Add(T("Close all EVE Clients"), (*) => This.CloseAllEVEWindows())
 
         if This.TrayMenuShortcuts["Close all EVE Clients"] || This.TrayMenuShortcuts["Don't Close Active Client"]
             TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Restore Client Positions"] {
-            TrayMenu.Add("Restore Client Positions", MenuHandler)
+            TrayMenu.Add(T("Restore Client Positions"), MenuHandler.Bind("Restore Client Positions"))
             if (This.TrackClientPossitions)
-                TrayMenu.check("Restore Client Positions")
+                TrayMenu.check(T("Restore Client Positions"))
             else
-                TrayMenu.Uncheck("Restore Client Positions")
+                TrayMenu.Uncheck(T("Restore Client Positions"))
         }
 
         if This.TrayMenuShortcuts["Save Client Positions"]
-            TrayMenu.Add("Save Client Positions", (*) => This.Client_Possitions())
+            TrayMenu.Add(T("Save Client Positions"), (*) => This.Client_Possitions())
 
         if This.TrayMenuShortcuts["Restore Client Positions"] || This.TrayMenuShortcuts["Save Client Positions"]
             TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts["Auto Save Thumbnail Positions"] {
-            TrayMenu.Add("Auto Save Thumbnail Positions", MenuHandler)
+            TrayMenu.Add(T("Auto Save Thumbnail Positions"), MenuHandler.Bind("Auto Save Thumbnail Positions"))
             if (This.AutoSaveThumbnailPositions)
-                TrayMenu.check("Auto Save Thumbnail Positions")
+                TrayMenu.check(T("Auto Save Thumbnail Positions"))
             else
-                TrayMenu.Uncheck("Auto Save Thumbnail Positions")
+                TrayMenu.Uncheck(T("Auto Save Thumbnail Positions"))
         }
 
         if This.TrayMenuShortcuts["Save Thumbnail Positions"]
-            TrayMenu.Add("Save Thumbnail Positions", MenuHandler)
+            TrayMenu.Add(T("Save Thumbnail Positions"), MenuHandler.Bind("Save Thumbnail Positions"))
 
         if This.TrayMenuShortcuts["Auto Save Thumbnail Positions"] || This.TrayMenuShortcuts["Save Thumbnail Positions"]
             TrayMenu.Add() ; Seperator
 
         if This.TrayMenuShortcuts.Get("Lock Thumbnail Positions", 0) {
-            TrayMenu.Add("Lock Thumbnail Positions", ObjBindMethod(This, "ToggleLockThumbnailPositions"))
+            TrayMenu.Add(T("Lock Thumbnail Positions"), ObjBindMethod(This, "ToggleLockThumbnailPositions"))
             if This.LockThumbnailPositions
-                TrayMenu.Check("Lock Thumbnail Positions")
+                TrayMenu.Check(T("Lock Thumbnail Positions"))
         }
         if This.TrayMenuShortcuts.Get("Anonymize Thumbnails", 0) {
-            TrayMenu.Add("Anonymize Thumbnails", ObjBindMethod(This, "ToggleAnonymizeThumbnails"))
+            TrayMenu.Add(T("Anonymize Thumbnails"), ObjBindMethod(This, "ToggleAnonymizeThumbnails"))
             if This.AnonymizeThumbnails
-                TrayMenu.Check("Anonymize Thumbnails")
+                TrayMenu.Check(T("Anonymize Thumbnails"))
         }
 
         if This.TrayMenuShortcuts.Get("Pause Live Previews", 0) {
-            This.trayPreviewLabel := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+            This.trayPreviewLabel := T(This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews")
             TrayMenu.Add(This.trayPreviewLabel, ObjBindMethod(This, "ToggleLivePreviews"))
         } else if This.HasOwnProp("trayPreviewLabel")
             This.DeleteProp("trayPreviewLabel")
-        TrayMenu.Add("Reload", (*) => This.RequestRuntimeAction("reload"))
-        TrayMenu.Add("Exit", (*) => This.RequestRuntimeAction("exit"))
-        TrayMenu.Default := "Open"
+        TrayMenu.Add(T("Reload"), (*) => This.RequestRuntimeAction("reload"))
+        TrayMenu.Add(T("Exit"), (*) => This.RequestRuntimeAction("exit"))
+        TrayMenu.Default := T("Open")
 
-        MenuHandler(ItemName, ItemPos, MyMenu) {
-            If (ItemName = "Exit")
-                ExitApp
-            Else if (ItemName = "Auto Save Thumbnail Positions") {
+        MenuHandler(ItemName, *) {
+            if (ItemName = "Auto Save Thumbnail Positions") {
                 This.AutoSaveThumbnailPositions := !This.AutoSaveThumbnailPositions
                 if This.AutoSaveThumbnailPositions ; if turned on save thumbnails
                     This.Save_ThumbnailPossitions()
-                TrayMenu.ToggleCheck("Auto Save Thumbnail Positions")
+                TrayMenu.ToggleCheck(T("Auto Save Thumbnail Positions"))
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (ItemName = "Save Thumbnail Positions") {
@@ -149,19 +148,19 @@ Class TrayMenu extends Settings_Gui {
             }
             Else if (ItemName = "Restore Client Positions") {
                 This.TrackClientPossitions := !This.TrackClientPossitions
-                TrayMenu.ToggleCheck("Restore Client Positions")
+                TrayMenu.ToggleCheck(T("Restore Client Positions"))
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (ItemName = "Hide Thumbnails") {
                 This.ShowHideThumbnails()
                 if This.HideThumbnails
-                    TrayMenu.check("Hide Thumbnails")
+                    TrayMenu.check(T("Hide Thumbnails"))
                 else
-                    TrayMenu.Uncheck("Hide Thumbnails")
+                    TrayMenu.Uncheck(T("Hide Thumbnails"))
             }
             Else if (ItemName = "Show Thumbnails Always on Top") {
                 This.ShowThumbnailsAlwaysOnTop := !This.ShowThumbnailsAlwaysOnTop
-                TrayMenu.ToggleCheck("Show Thumbnails Always on Top")
+                TrayMenu.ToggleCheck(T("Show Thumbnails Always on Top"))
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
                 Sleep(300)
                 This.RequestRuntimeAction("reload")
@@ -169,22 +168,19 @@ Class TrayMenu extends Settings_Gui {
             Else if (ItemName = "Click Through Thumbnails") {
                 This.Toggle_ClickThrough()
                 if This.ClickThroughActive
-                    TrayMenu.check("Click Through Thumbnails")
+                    TrayMenu.check(T("Click Through Thumbnails"))
                 else
-                    TrayMenu.Uncheck("Click Through Thumbnails")
+                    TrayMenu.Uncheck(T("Click Through Thumbnails"))
             }
             Else if (ItemName = "Don't Close Active Client") {
                 This.dontCloseActiveClient := !This.dontCloseActiveClient
-                TrayMenu.ToggleCheck("Don't Close Active Client")
+                TrayMenu.ToggleCheck(T("Don't Close Active Client"))
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
             }
             Else if (ItemName = "Minimize Inactive Clients") {
                 This.MinimizeInactiveClients := !This.MinimizeInactiveClients
-                TrayMenu.ToggleCheck("Minimize Inactive Clients")
+                TrayMenu.ToggleCheck(T("Minimize Inactive Clients"))
                 SetTimer(This.Save_Settings_Delay_Timer, -200)
-            }
-            Else if (This.Profiles.Has(ItemName)) {
-                This.ActivateProfile(ItemName, "Tray")
             }
             Else if (ItemName = "Open") {
                 This.ShowSettings()
@@ -222,7 +218,7 @@ Class TrayMenu extends Settings_Gui {
             ProgramLog.Add(source " profile switch requested; from=" This.LastUsedProfile "; to=" profileName)
             This.LastUsedProfile := profileName
             if source = "Hotkey"
-                This._JSON["HotkeyFeedbackOnStartup"] := "Profile activated: " profileName
+                This._JSON["HotkeyFeedbackOnStartup"] := T("Profile activated: {1}", profileName)
             This.SaveJsonToFile()
             This.ReloadForProfile()
         } finally {
@@ -237,7 +233,7 @@ Class TrayMenu extends Settings_Gui {
 
     RequestRuntimeAction(action, hotkey := false) {
         if hotkey && This.HasOwnProp("pendingCommandHotkey") && This.pendingCommandHotkey {
-            This.HotkeyFeedback("A reload or exit is already requested.")
+            This.HotkeyFeedback(T("A reload or exit is already requested."))
             return true
         }
         if This.HasOwnProp("settingsBridge") && !This.settingsBridge.GuardRuntimeAction()
@@ -250,7 +246,7 @@ Class TrayMenu extends Settings_Gui {
             }
             if editor.HasDraftChanges() {
                 editor.S_Gui.Show()
-                editor.UpdateStatus("Apply or discard your settings draft before " (action = "exit" ? "exiting." : "reloading."))
+                editor.UpdateStatus(action = "exit" ? "Apply or discard your settings draft before exiting." : "Apply or discard your settings draft before reloading.")
                 return false
             }
             editor.Dispose()
@@ -260,7 +256,7 @@ Class TrayMenu extends Settings_Gui {
         This.SaveJsonToFile()
         if hotkey {
             This.pendingCommandHotkey := true
-            This.HotkeyFeedback(action = "exit" ? "Exit requested" : "Reload requested")
+            This.HotkeyFeedback(T(action = "exit" ? "Exit requested" : "Reload requested"))
             SetTimer(ObjBindMethod(This, "CompleteCommandHotkey", action), -650)
         } else
             This.PerformRuntimeAction(action)
@@ -270,7 +266,7 @@ Class TrayMenu extends Settings_Gui {
     CompleteCommandHotkey(action) {
         This.pendingCommandHotkey := false
         if !This.RequestRuntimeAction(action)
-            This.HotkeyFeedback("Command cancelled: finish, apply or discard Settings first.")
+            This.HotkeyFeedback(T("Command cancelled: finish, apply or discard Settings first."))
     }
 
     PerformRuntimeAction(action) {

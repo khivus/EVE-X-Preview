@@ -65,7 +65,7 @@ class DPSMeter {
         return this.clockSecond + Floor(Max(0, tick - this.clockTick) / 1000)
     }
 
-    AddBatch(lines, tick := A_TickCount) {
+    AddBatch(lines, tick := A_TickCount, stats := 0) {
         hits := [], latest := 0
         for line in lines {
             hit := this.ParseHit(line)
@@ -76,6 +76,14 @@ class DPSMeter {
         }
         if !hits.Length
             return
+        if stats {
+            for hit in hits {
+                if hit.incoming
+                    stats.monitoredDamageIn += hit.amount
+                else
+                    stats.monitoredDamageOut += hit.amount
+            }
+        }
         ; The reader starts at EOF, so these are newly appended records. Anchor
         ; to their server timestamps rather than assuming Windows UTC agrees
         ; with EVE. Elapsed ticks keep the window expiring while the log is quiet.

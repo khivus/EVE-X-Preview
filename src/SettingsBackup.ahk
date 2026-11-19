@@ -70,7 +70,7 @@ class SettingsBackup {
     }
 
     static ShowGuidance(installation) {
-        window := Gui(, "EVE-X-Preview — Settings recovery")
+        window := LocalizedSettingsGui(, "EVE-X-Preview — Settings recovery")
         window.SetFont("s10", "Segoe UI")
         window.AddText("w640", this.HelpText(installation))
         window.AddButton("w155", "Open settings backups").OnEvent("Click", (*) => this.Open(installation))

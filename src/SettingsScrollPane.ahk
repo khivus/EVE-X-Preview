@@ -13,15 +13,15 @@ class SettingsScrollPane {
 
     __New(owner) {
         this.ownerHwnd := owner.Hwnd
-        this.viewport := Gui("+Parent" owner.Hwnd " -Caption -Border +0x02000000 +E0x10000") ; CLIPCHILDREN; scrollbar is a separate child.
+        this.viewport := LocalizedSettingsGui("+Parent" owner.Hwnd " -Caption -Border +0x02000000 +E0x10000") ; CLIPCHILDREN; scrollbar is a separate child.
         this.viewport.BackColor := "F7F7F7"
         this.viewportHwnd := this.viewport.Hwnd
         this.scrollbar := this.viewport.Add("Custom", "ClassScrollBar +0x1 -Theme x0 y0 w17 h1 Hidden")
         this.scrollbarHwnd := this.scrollbar.Hwnd
-        this.content := Gui("+Parent" this.viewportHwnd " -Caption -Border +0x02000000 +E0x10000")
+        this.content := LocalizedSettingsGui("+Parent" this.viewportHwnd " -Caption -Border +0x02000000 +E0x10000")
         this.content.BackColor := "F7F7F7"
         this.contentHwnd := this.content.Hwnd
-        this.header := Gui("+Parent" owner.Hwnd " -Caption -Border +0x02000000")
+        this.header := LocalizedSettingsGui("+Parent" owner.Hwnd " -Caption -Border +0x02000000")
         this.header.BackColor := "F7F7F7"
         this.header.SetFont("s12 w700 q5")
         this.heading := this.header.AddText("x16 y16 w410 h24", "")

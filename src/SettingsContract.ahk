@@ -112,7 +112,7 @@ class SettingsContract {
                 events.Push(Map("id", id, "label", SettingsEventTable.Names[id], "category", category))
         return Map("bridgeVersion", this.BridgeVersion, "schemaVersion", this.SchemaVersion, "pages", SettingsSchema.Pages.Clone(),
             "sections", sections, "fields", fields, "tables", tables, "events", events, "commands", commands, "fonts", SettingsFonts.Names().Clone(),
-            "gestures", this.Wire(SettingsTables.GestureOptions), "themes", SettingsPalettes.Export())
+            "gestures", this.Wire(SettingsTables.GestureOptions), "themes", SettingsPalettes.Export(), "translations", Localization.Messages)
     }
 }
 

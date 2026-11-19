@@ -10,6 +10,9 @@ if A_IsCompiled && DirExist(A_ScriptDir "\.EVE-X-Preview-update") {
 
 #Include "Lib/DefaultJSON.ahk" ; The Default Settings Values
 #Include "Lib/json.ahk"
+#Include "src/Localization.ahk"
+#Include "src/UsageStatistics.ahk"
+;@Ahk2Exe-AddResource res/locales.json, Locales
 #Include "Lib/LiveThumb.ahk"
 #Include "src/SettingsWindowSizing.ahk"
 #Include "src/ProgramLog.ahk"

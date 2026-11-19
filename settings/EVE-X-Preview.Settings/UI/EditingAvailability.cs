@@ -19,8 +19,8 @@ public sealed partial class MainWindow
     private void SetPreviewStatus(JsonObject status)
     {
         if(previewPauseButton is null)return;
-        previewPauseButton.Content=status.Bool("paused")?"Resume live previews":"Pause live previews";
-        ToolTip.SetTip(previewPauseButton,status.Text("message"));
+        previewPauseButton.Content=T(status.Bool("paused") ? "Resume live previews" : "Pause live previews");
+        ToolTip.SetTip(previewPauseButton,T(status.Text("message")));
     }
     private void RenderDependencySummary(JsonObject section)
     {

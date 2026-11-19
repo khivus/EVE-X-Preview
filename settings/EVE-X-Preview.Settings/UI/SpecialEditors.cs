@@ -58,8 +58,8 @@ public sealed partial class MainWindow
     private async Task CreateProfileAsync()
     {
         var content = new StackPanel { Spacing = 10 };
-        var name = new TextBox { PlaceholderText = "Profile name" };
-        var copy = new CheckBox { Content = "Copy current profile settings", IsChecked = true };
+        var name = new TextBox { PlaceholderText = MainWindow.T("Profile name") };
+        var copy = new CheckBox { Content = MainWindow.T("Copy current profile settings"), IsChecked = true };
         content.Children.Add(name); content.Children.Add(copy);
         content.Children.Add(Muted("Choose sections that should inherit from Default:"));
         var flags = session.Snapshot.Object("creationInheritance").Copy();
@@ -183,8 +183,8 @@ public sealed partial class MainWindow
         var selected = new HashSet<string>(assigned.Select(item => item is JsonObject ? item.Text("id") : JsonExtensions.Display(item)), StringComparer.Ordinal);
         var toggles = new List<CheckBox>();
         var all = new WrapPanel();
-        var checkAll = new Button { Content = "Check all" }; checkAll.Click += (_, _) => { foreach (var check in toggles) check.IsChecked = true; }; all.Children.Add(checkAll);
-        var uncheck = new Button { Content = "Uncheck all", Margin = new Thickness(8, 0, 0, 0) }; uncheck.Click += (_, _) => { foreach (var check in toggles) check.IsChecked = false; }; all.Children.Add(uncheck); content.Children.Add(all);
+        var checkAll = new Button { Content = MainWindow.T("Check all") }; checkAll.Click += (_, _) => { foreach (var check in toggles) check.IsChecked = true; }; all.Children.Add(checkAll);
+        var uncheck = new Button { Content = MainWindow.T("Uncheck all"), Margin = new Thickness(8, 0, 0, 0) }; uncheck.Click += (_, _) => { foreach (var check in toggles) check.IsChecked = false; }; all.Children.Add(uncheck); content.Children.Add(all);
         foreach (var descriptor in session.Metadata!.Events)
         {
             var id = descriptor.Text("id"); var check = new CheckBox { Content = descriptor.Text("category") + " · " + descriptor.Text("label"), IsChecked = selected.Contains(id) };

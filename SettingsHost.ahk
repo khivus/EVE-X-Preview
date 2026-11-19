@@ -58,6 +58,7 @@ class SettingsHostOwner {
                 ExitApp()
             this._JSON := Load_JSONUnlocked(false)
         } finally lock.Dispose()
+        Localization.Initialize(this._JSON.Get("InterfaceLanguage", "en"), installation)
         EventAudioOutput.WarmUp()
         this.settingsBridge.ready := true
         this.timer := ObjBindMethod(this, "CheckParent")

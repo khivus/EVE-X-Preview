@@ -72,11 +72,14 @@ Class Main_Class extends ThumbWindow {
         ; hands its draft to this runtime instead of becoming a competing writer.
         This.settingsBridge := SettingsBridge(This)
         This._JSON := Load_JSON()
+        Localization.Initialize(This._JSON.Get("InterfaceLanguage", "en"))
         This.default_JSON := JSON.Load(default_JSON)
         This.runningProfile := This.LastUsedProfile
         EventAudioOutput.WarmUp()
        
         This.ProfileOverride()
+        if This._JSON.Get("CollectStatistics", false)
+            This.usageStatistics := UsageStatistics(This, , true)
         This.TrayMenu()
         This.MinimizeDelay := This.Minimizeclients_Delay    
         
@@ -454,11 +457,11 @@ Class Main_Class extends ThumbWindow {
     ActivateProfileFromHotkey(profileName, *) {
         ; Holding a shortcut through reload must not repeatedly restart the active profile.
         if profileName = This.runningProfile {
-            This.HotkeyFeedback("Profile already active: " profileName)
+            This.HotkeyFeedback(T("Profile already active: {1}", profileName))
             return false
         }
         if !This.ActivateProfile(profileName, "Hotkey") {
-            This.HotkeyFeedback("Profile activation needs attention in Settings: " profileName)
+            This.HotkeyFeedback(T("Profile activation needs attention in Settings: {1}", profileName))
             return false
         }
         return true
@@ -1087,6 +1090,8 @@ Class Main_Class extends ThumbWindow {
             ProgramLog.Add("Activation " (hwnd = pending.hwnd ? "focus confirmed" : "pending request cleared")
                 "; target=" pending.hwnd "; foreground=" hwnd)
             This.pendingEVEActivation := 0
+            if This.usageStatistics && hwnd = pending.hwnd
+                This.usageStatistics.ConfirmSwitch(This.GroupsHoldDelay)
             return 0
         }
         return pending
@@ -1792,7 +1797,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     RefreshPreviewCommands() {
-        label := This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews"
+        label := T(This.livePreviewsPaused ? "Resume Live Previews" : "Pause Live Previews")
         if This.HasOwnProp("trayPreviewLabel") && This.trayPreviewLabel != label {
             try This.TrayMenuObj.Rename(This.trayPreviewLabel, label)
             This.trayPreviewLabel := label
@@ -1872,9 +1877,9 @@ Class Main_Class extends ThumbWindow {
 
     LivePreviewStatus() {
         return This.livePreviewPauseReason != ""
-            ? "Automatically paused: " This.livePreviewPauseReason ". Resume when the display is stable."
-            : This.livePreviewsPaused ? "Live previews are paused. Window-switching hotkeys remain available. Use Resume to recreate the previews."
-            : "Live previews are running. Startup pacing is in Application / Advanced."
+            ? T("Automatically paused: {1}. Resume when the display is stable.", T(This.livePreviewPauseReason))
+            : This.livePreviewsPaused ? T("Live previews are paused. Window-switching hotkeys remain available. Use Resume to recreate the previews.")
+            : T("Live previews are running. Startup pacing is in Application / Advanced.")
     }
 
     CloseLivePreviews(reason, code) {
@@ -1901,6 +1906,8 @@ Class Main_Class extends ThumbWindow {
         This.UpdateWindowGroupsOnTitleChange(Win_Hwnd, Win_Title)
         try {
         This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
+        if This.usageStatistics
+            This.usageStatistics.characterLaunches += 1
         This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
         This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
 
@@ -2245,6 +2252,8 @@ Class Main_Class extends ThumbWindow {
         ; A request is not proof of foreground focus. Keep only a short-lived
         ; candidate; the group lookup still uses its configured retry budget.
         This.pendingEVEActivation := {hwnd: hwnd, source: This._GetForegroundHwnd(), expires: A_TickCount + 250}
+        if This.usageStatistics
+            This.usageStatistics.switchesRequested += 1
         ProgramLog.Add("Activation requested; target=" hwnd "; source=" This.pendingEVEActivation.source)
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
@@ -3258,6 +3267,8 @@ Class Main_Class extends ThumbWindow {
 
     ReadGameLogUpdates(charName, suppressEvents, now := 0, hwnd := 0, suppressDisplay := false) {
         reader := This.monitoredChars[charName]
+        stats := This.usageStatistics
+        track := stats && !stats.allEvents
         ; After a stalled poll, retain only a bounded recent tail. Seeking is
         ; byte-based; discard the first fragment, including any split UTF-8.
         file := reader["file"]
@@ -3284,14 +3295,14 @@ Class Main_Class extends ThumbWindow {
                 for line in lines
                     reader["dps"].AddLine(line, now)
             } else
-                reader["dps"].AddBatch(lines)
+                reader["dps"].AddBatch(lines, , track ? stats : 0)
             if hwnd
                 This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
         }
         if suppressEvents
             return
 
-        pendingEvent := "", shootingObserved := false
+        pendingEvent := "", shootingObserved := false, observed := 0
         for line in lines {
             if line = ""
                 continue
@@ -3311,9 +3322,13 @@ Class Main_Class extends ThumbWindow {
             This.processNPCCheck(charName, line) ; checking npcs if any event enabled
 
             event := reader["event"]
+            if track && event != "" && event != "stoppedShooting"
+                observed += 1
             if event != "" && event != "stoppedShooting" && (pendingEvent = "" || This.lastEventPriority)
                 pendingEvent := event
         }
+        if observed
+            stats.monitoredEvents += observed
         ; Repeated hits need one visual alert update per poll, not a border
         ; teardown/rebuild for every line. Preserve the first/last event setting.
         if shootingObserved {
@@ -3358,6 +3373,8 @@ Class Main_Class extends ThumbWindow {
             This.endEvent(charName, hwnd)
 
         This.debugToolTipText .= "handleEventActivation: event " event " triggered for: " charName "`n"
+        if This.usageStatistics
+            This.usageStatistics.alertsTriggered += 1
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if !muteSound

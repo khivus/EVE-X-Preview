@@ -27,6 +27,7 @@ public sealed partial class MainWindow
     private void BuildRowsEditor(StackPanel host, string kind, string group, JsonObject data, bool inherited)
     {
         host.Children.Clear();
+        host.Focusable = true;
         var columns = data.Array("columns").OfType<JsonObject>().ToArray();
         var key = EditKey("rows|" + kind + "|" + group);
         var rows = (JsonArray)(session.GetPending(key)?.Arguments["rows"] as JsonArray ?? data.Array("rows")).DeepClone();
@@ -34,6 +35,7 @@ public sealed partial class MainWindow
         var selected = new HashSet<(int row, int column)>();
         (int row, int column) anchor = (0, 0);
         var cells = new Dictionary<(int, int), Border>();
+        var generation = pageGeneration;
         var selectingRange = false;
         var selectingRows = false;
         var rowAnchor = 0;
@@ -128,8 +130,8 @@ public sealed partial class MainWindow
                         }
                     }, true);
                     control.MinWidth=0; control.MaxWidth=double.PositiveInfinity; control.HorizontalAlignment=columns[c].Text("kind") is "bool" or "boolean" ? HorizontalAlignment.Center : HorizontalAlignment.Stretch; control.VerticalAlignment=VerticalAlignment.Center; control.IsEnabled=editable;
-                    var cell=new Border { Child=control, BorderBrush=ThemeController.Line, BorderThickness=new Thickness(0,0,1,1), Padding=new Thickness(4,3), MinHeight=42 };
-                    cell.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_,e)=>{ if(!e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed)return; selectingRange = kind!="gestures"; Select(ri,ci,e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift),e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)); },Avalonia.Interactivity.RoutingStrategies.Tunnel);
+                    var cell=new Border { Child=control, BorderBrush=ThemeController.Line, BorderThickness=new Thickness(0,0,1,1), Padding=new Thickness(4,3), MinHeight=42, Focusable=true };
+                    cell.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, (_,e)=>{ if(!e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed)return; selectingRange = kind!="gestures"; Select(ri,ci,e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift),e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)); if(!editable)cell.Focus(); },Avalonia.Interactivity.RoutingStrategies.Tunnel);
                     cell.PointerEntered += (_,e)=> { if(selectingRange && e.GetCurrentPoint(cell).Properties.IsLeftButtonPressed) Select(ri,ci,true,false); };
                     cells[(r,c)]=cell; Grid.SetColumn(cell,c+1); line.Children.Add(cell);
                 }
@@ -153,19 +155,33 @@ public sealed partial class MainWindow
             for (var r=0;r<rows.Count;r++) AppendGridRow(r);
             PaintSelection();
         }
-        void Tool(string label,Func<Task> action,bool enabled=true) {
-            var button=ActionButton(label,action,false); button.Margin=new Thickness(0,0,8,8); button.IsEnabled=editable&&enabled; toolbar.Children.Add(button);
+        void Tool(string label,Func<Task> action,bool enabled=true,bool requiresEdit=true) {
+            var button=ActionButton(label,action,false); button.Margin=new Thickness(0,0,8,8); button.IsEnabled=enabled&&(!requiresEdit||editable); toolbar.Children.Add(button);
         }
-        async Task Copy()
+        async Task Copy(bool cut = false)
         {
-            if(Clipboard is not {} clipboard || selected.Count==0) return;
+            if(Clipboard is not {} clipboard || selected.Count==0 || (cut && !editable)) return;
+            var addresses = selected.ToHashSet();
             var result=new JsonArray();
-            for(var r=selected.Min(p=>p.row);r<=selected.Max(p=>p.row);r++) {
+            var left=addresses.Min(p=>p.column); var right=addresses.Max(p=>p.column); var bottom=addresses.Max(p=>p.row);
+            for(var r=addresses.Min(p=>p.row);r<=bottom;r++) {
                 var line=new JsonArray();
-                for(var c=selected.Min(p=>p.column);c<=selected.Max(p=>p.column);c++) line.Add(selected.Contains((r,c))?rows[r]![c]?.DeepClone():JsonValue.Create(""));
+                for(var c=left;c<=right;c++) line.Add(addresses.Contains((r,c))?rows[r]![c]?.DeepClone():JsonValue.Create(""));
                 result.Add(line);
             }
             await clipboard.SetTextAsync(TableClipboard.Write(result));
+            if (!cut || generation != pageGeneration) return;
+            var removed = false;
+            foreach (var row in addresses.GroupBy(cell => cell.row).OrderByDescending(group => group.Key))
+            {
+                if (!readOnlyRows && row.Count() == columns.Length) { rows.RemoveAt(row.Key); removed = true; }
+                else foreach (var (r,c) in row)
+                    if (columns[c].Text("kind") != "readonly") rows[r]![c] = ClearedTableValue(columns[c]);
+            }
+            if (!readOnlyRows && !Blank(rows.LastOrDefault())) rows.Add(BlankRow());
+            if (removed) Select(Math.Min(addresses.Min(p => p.row), rows.Count - 1), left, false, false);
+            StageRows(); RenderRows();
+            host.Focus();
         }
         async Task Paste()
         {
@@ -174,23 +190,28 @@ public sealed partial class MainWindow
         }
         Task PasteText(string text)
         {
-            if(!editable) return Task.CompletedTask;
+            if(!editable || generation != pageGeneration) return Task.CompletedTask;
             var startRow=selected.Count==0?0:selected.Min(p=>p.row); var startCol=selected.Count==0?0:selected.Min(p=>p.column);
             var pasted=TableClipboard.ReadGrid(text,columns.Length-startCol);
-            if(startCol==0 && columns[0].Text("kind")=="character" && pasted.OfType<JsonArray>().All(row=>row.Count==1))
-                pasted=new JsonArray(pasted.OfType<JsonArray>().Where(row=>!string.IsNullOrWhiteSpace(JsonExtensions.Display(row[0]))).Select(row=>(JsonNode?)new JsonArray(JsonValue.Create(JsonExtensions.Display(row[0]).Trim()))).ToArray());
+            if (startCol == 0 && columns[0].Text("kind") == "character" && !text.Contains('"') &&
+                pasted.OfType<JsonArray>().All(row => row.Count == 1))
+                pasted = new JsonArray(pasted.OfType<JsonArray>().Select(row => JsonExtensions.Display(row[0]).Trim())
+                    .Where(name => name != "").Select(name => (JsonNode?)new JsonArray(JsonValue.Create(name))).ToArray());
+            if (readOnlyRows && startRow + pasted.Count > rows.Count)
+                throw new FormatException("This table has fixed rows; paste within its existing entries.");
             if(pasted.Count==1 && ((JsonArray)pasted[0]!).Count==1 && selected.Count>1 && wholeRows.Count==0) {
-                foreach(var (r,c) in selected) if(columns[c].Text("kind")!="readonly") rows[r]![c]=pasted[0]![0]?.DeepClone();
+                foreach(var (r,c) in selected) if(columns[c].Text("kind")!="readonly") rows[r]![c]=PasteCell(pasted[0]![0], columns[c]);
             } else for(var r=0;r<pasted.Count;r++) {
                 while(rows.Count<=startRow+r) rows.Add(BlankRow());
-                for(var c=0;c<((JsonArray)pasted[r]!).Count && startCol+c<columns.Length;c++) if(columns[startCol+c].Text("kind")!="readonly") rows[startRow+r]![startCol+c]=pasted[r]![c]?.DeepClone();
+                for(var c=0;c<((JsonArray)pasted[r]!).Count && startCol+c<columns.Length;c++) if(columns[startCol+c].Text("kind")!="readonly") rows[startRow+r]![startCol+c]=PasteCell(pasted[r]![c], columns[startCol+c]);
             }
             if(!readOnlyRows && !Blank(rows.LastOrDefault())) rows.Add(BlankRow()); StageRows(); RenderRows();
+            host.Focus();
             return Task.CompletedTask;
         }
         host.Tag = new TableInteractions(PasteText);
         void Clear() { if(!editable)return; foreach(var (r,c) in selected) if(columns[c].Text("kind")!="readonly") rows[r]![c]=""; StageRows(); RenderRows(); }
-        Tool("Copy",Copy); Tool("Paste",Paste);
+        Tool("Copy",()=>Copy(),requiresEdit:false); Tool("Cut",()=>Copy(true)); Tool("Paste",Paste);
         Tool("Clear cells",()=>{Clear();return Task.CompletedTask;});
         void DeleteRows() {
             if(!editable||readOnlyRows)return;
@@ -208,8 +229,11 @@ public sealed partial class MainWindow
         },session.Role!="offline");
         host.AddHandler(Avalonia.Input.InputElement.KeyDownEvent,async (_,e)=> {
             if(e.KeyModifiers==Avalonia.Input.KeyModifiers.Control && e.Key==Avalonia.Input.Key.A){selected.Clear();for(var r=0;r<rows.Count;r++)for(var c=0;c<columns.Length;c++)selected.Add((r,c));PaintSelection();e.Handled=true;}
-            if(e.KeyModifiers==Avalonia.Input.KeyModifiers.Control && e.Key==Avalonia.Input.Key.C){await Copy();e.Handled=true;}
-            if(e.KeyModifiers==Avalonia.Input.KeyModifiers.Control && e.Key==Avalonia.Input.Key.V){await Paste();e.Handled=true;}
+            if(e.KeyModifiers==Avalonia.Input.KeyModifiers.Control && e.Key is Avalonia.Input.Key.C or Avalonia.Input.Key.X or Avalonia.Input.Key.V) {
+                e.Handled=true;
+                try { if(e.Key==Avalonia.Input.Key.V) await Paste(); else await Copy(e.Key==Avalonia.Input.Key.X); }
+                catch (Exception error) { ShowError(error); }
+            }
             if(e.Key==Avalonia.Input.Key.Delete && (wholeRows.Count>0 || selected.Count>1)) {
                 var complete=selected.Count>0 && selected.GroupBy(p=>p.row).All(g=>g.Select(p=>p.column).Distinct().Count()==columns.Length);
                 if(!readOnlyRows && (wholeRows.Count>0 || complete))DeleteRows();else Clear();e.Handled=true;
@@ -239,8 +263,8 @@ public sealed partial class MainWindow
         },Avalonia.Interactivity.RoutingStrategies.Tunnel,true);
         host.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent,(_,e)=>{selectingRange=false;if(selectingRows){selectingRows=false;e.Pointer.Capture(null);}},Avalonia.Interactivity.RoutingStrategies.Tunnel,true);
         host.Children.Add(Muted(kind=="gestures"
-            ? "Each gesture dropdown changes only its own action. Shift-click selects a range; Ctrl-click adds cells. Ctrl+A/C/V selects, copies and pastes. Paste one value to fill a selected range. Enter moves down."
-            : "Shift-click or drag to select a range. Ctrl-click adds cells. Ctrl+A/C/V selects, copies and pastes. Paste one value to fill a range. Drag row numbers to select complete rows; Delete removes them. Enter moves down. Paste newline-separated names into the character column."));
+            ? "Each gesture dropdown changes only its own action. Shift-click selects a range and Ctrl-click adds cells. Use Ctrl+C, Ctrl+X and Ctrl+V for clipboard operations."
+            : "Shift-click or drag to select a range. Ctrl-click adds cells. Use Ctrl+C, Ctrl+X and Ctrl+V for clipboard operations. Drag row numbers to select complete rows."));
         host.Children.Add(new ScrollViewer { Content=list,MaxHeight=520,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled });
         RenderRows();
     }

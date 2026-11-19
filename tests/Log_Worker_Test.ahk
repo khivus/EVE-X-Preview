@@ -1,4 +1,210 @@
 TestRunner.Register("Simultaneous slow log workers leave GUI timers and settings controls responsive", LogWorkerResponsiveTest)
+
+TestRunner.Register("Statistics totals survive restart and deduplicate saved characters", StatisticsPersistenceTest)
+StatisticsPersistenceTest() {
+    directory := A_Temp "\EVE-X-Preview-StatisticsTest-" A_TickCount
+    config := JSON.Load(default_JSON)
+    profile := config["_Profiles"]["Default"]
+    profile["Thumbnail Positions"]["EVE - Alice"] := Map()
+    profile["Client Possitions"]["EVE - Bob"] := Map()
+    profile["Hotkeys Settings"]["CharacterHotkeys"].Push(Map("alice", "F1"))
+    profile["Thumbnail Positions"]["EVE"] := Map()
+    config["_Profiles"]["Second"] := SettingsModel.Clone(profile)
+    owner := {_JSON: config, usageStatistics: 0}
+    try {
+        AssertFalse(config["CollectStatistics"])
+        AssertEqual(2, UsageStatistics.SavedCharacters(config))
+        stats := owner.usageStatistics := UsageStatistics(owner, directory)
+        stats.switchesRequested := 5
+        stats.characterLaunches := 2
+        stats.ConfirmSwitch(100, 100)
+        stats.ConfirmSwitch(100, 200)
+        stats.ConfirmSwitch(100, 800)
+        stats.Flush()
+        stats.switchesRequested += 1
+        stats.Close()
+        owner.usageStatistics := 0
+        saved := UsageStatistics.Snapshot(owner, directory)
+        AssertFalse(saved["enabled"])
+        AssertEqual(6, saved["categories"][2]["metrics"][1]["value"])
+        stats := owner.usageStatistics := UsageStatistics(owner, directory)
+        stats.ConfirmSwitch(100, 100)
+        lifetime := UsageStatistics.Snapshot(owner, directory)
+        AssertEqual(4, lifetime["categories"][2]["metrics"][2]["value"])
+        AssertEqual(2, lifetime["categories"][2]["metrics"][3]["value"])
+        AssertEqual(2, lifetime["categories"][3]["metrics"][1]["value"])
+    } finally {
+        if owner.usageStatistics
+            owner.usageStatistics.Close()
+        if DirExist(directory)
+            DirDelete(directory, true)
+    }
+}
+
+TestRunner.Register("Statistics archive scans resume and count only complete new log records", StatisticsArchiveResumeTest)
+StatisticsArchiveResumeTest() {
+    directory := A_Temp "\EVE-X-Preview-StatisticsArchiveTest-" A_TickCount
+    game := directory "\game", chat := directory "\chat", storage := directory "\statistics"
+    DirCreate(game), DirCreate(chat)
+    job := LogScanJob()
+    try {
+        timestamp := "[ 2026.11.19 00:00:00 ]"
+        combat := game "\20261119_000000_100.txt"
+        localLog := chat "\Local_20261119_000000_100.txt"
+        FileAppend(timestamp " (combat) <b>25</b> from pilot`n" timestamp " (combat) 40 to pilot", combat, "UTF-8-RAW")
+        FileAppend(timestamp " EVE System > Channel changed to Local : Jita`n" timestamp " Pilot > Привет`n", localLog, "UTF-16")
+        request := "statistics`n" game "`n" chat "`n" storage
+        RunStatisticsFixtureScan(job, request)
+        RunStatisticsFixtureScan(job, request)
+        scanLog := FileRead(storage "\scan.log", "UTF-8")
+        AssertTrue(InStr(scanLog, "Loading saved scan checkpoints"), "Log the checkpoint-loading phase.")
+        AssertTrue(InStr(scanLog, "Finding EVE log files"), "Log the file-discovery phase.")
+        AssertTrue(InStr(scanLog, "Ended;"), "Log the scan outcome.")
+        totals := UsageStatistics.ReadArchive(storage)
+        AssertEqual(1, totals[3])
+        AssertEqual(25, totals[4])
+        AssertEqual(0, totals[5])
+        AssertEqual(1, totals[8])
+        AssertEqual(1, totals[9])
+        FileAppend("`n" timestamp " (notify) Undocking from station`n", combat, "UTF-8-RAW")
+        FileAppend(timestamp " Pilot > World`n", localLog, "UTF-16")
+        RunStatisticsFixtureScan(job, request)
+        FileAppend("torn record", storage "\archive-index.tsv", "UTF-8-RAW")
+        RunStatisticsFixtureScan(job, request)
+        totals := UsageStatistics.ReadArchive(storage)
+        AssertEqual(1, totals[1])
+        AssertEqual(1, totals[2])
+        AssertEqual(2, totals[3])
+        AssertEqual(25, totals[4])
+        AssertEqual(40, totals[5])
+        AssertEqual(2, totals[9])
+        AssertEqual(1, totals[10])
+    } finally {
+        job.Close()
+        DirDelete(directory, true)
+    }
+}
+
+RunStatisticsFixtureScan(job, request) {
+    AssertTrue(job.Start(request))
+    deadline := A_TickCount + 10000
+    while job.busy && A_TickCount < deadline {
+        result := job.Poll()
+        Sleep(10)
+    }
+    AssertFalse(job.busy)
+    AssertTrue(result && result["ok"])
+    return result["text"]
+}
+
+TestRunner.Register("Statistics filters aggregate dated mining and peak damage without duplicating appended records", StatisticsFilterTest)
+TestRunner.Register("Statistics live indexing leaves older records for manual scans available with collection off", StatisticsLiveBackfillTest)
+StatisticsLiveBackfillTest() {
+    directory := A_Temp "\EVE-X-Preview-StatisticsLive-" A_TickCount
+    game := directory "\game", chat := directory "\chat", storage := directory "\statistics"
+    DirCreate(game), DirCreate(chat)
+    job := LogScanJob()
+    owner := {_JSON: JSON.Load(default_JSON), usageStatistics: 0}
+    try {
+        today := FormatTime(A_NowUTC, "yyyy.MM.dd")
+        old := FormatTime(DateAdd(A_NowUTC, -3, "Days"), "yyyy.MM.dd")
+        path := game "\" StrReplace(old, ".") "_120000_1.txt"
+        FileAppend("Listener: Alice`nSession Started: " old " 12:00:00`n"
+            . "[ " old " 12:00:01 ] (combat) 100 from pilot`n"
+            . "[ " today " 12:00:01 ] (combat) 20 from pilot`n", path, "UTF-8-RAW")
+        request := "statistics-live`n" game "`n" chat "`n" storage "`n"
+            . DateAdd(A_Now, -1, "Days") "`n" SubStr(A_NowUTC, 1, 8) "000000"
+        RunStatisticsFixtureScan(job, request)
+        RunStatisticsFixtureScan(job, request)
+        AssertEqual(20, UsageStatistics.ReadArchive(storage)[4])
+        info := UsageStatistics.Snapshot(owner, storage, Map())
+        AssertFalse(info["enabled"])
+        AssertTrue(info["available"], "Saved statistics must open without starting live collection.")
+        stats := UsageStatistics.ForOwner(owner, storage)
+        resolver := {ResolveGameLogsDirectory: (*) => game, ResolveChatLogsDirectory: (*) => chat}
+        stats.StartScan(false, resolver)
+        AssertTrue(stats.job && stats.job.busy, "Manual scans can start with live collection disabled.")
+        deadline := A_TickCount + 10000
+        while stats.job.busy && A_TickCount < deadline {
+            Sleep(20)
+            stats.Poll()
+        }
+        AssertFalse(stats.job.busy)
+        AssertEqual(120, UsageStatistics.ReadArchive(storage)[4], "Backfill includes older hits without repeating live hits.")
+    } finally {
+        job.Close()
+        if owner.HasOwnProp("statisticsBrowser")
+            owner.statisticsBrowser.Close()
+        DirDelete(directory, true)
+    }
+}
+
+StatisticsFilterTest() {
+    directory := A_Temp "\EVE-X-Preview-StatisticsFilters-" A_TickCount
+    game := directory "\game", chat := directory "\chat", storage := directory "\statistics"
+    DirCreate(game), DirCreate(chat)
+    job := LogScanJob()
+    try {
+        today := FormatTime(A_NowUTC, "yyyy.MM.dd")
+        older := FormatTime(DateAdd(A_NowUTC, -45, "Days"), "yyyy.MM.dd")
+        filenameDate := StrReplace(today, ".")
+        stamp := "[ " today " 12:00:01 ] "
+        alice := game "\" filenameDate "_120000_1.txt"
+        bob := game "\" filenameDate "_120000_2.txt"
+        previous := game "\" StrReplace(older, ".") "_120000_1.txt"
+        FileAppend("Listener: Alice`nSession Started: " today " 12:00:00`n"
+            . stamp "(combat) 10 from hostile`n" stamp "(combat) 20 to hostile`n"
+            . stamp "(mining) You mined 2,000 units of Fullerite-C32 with a lost residue of 30 units`n", alice, "UTF-8-RAW")
+        FileAppend("Listener: Bob`nSession Started: " today " 12:00:00`n" stamp "(combat) 900 to hostile`n", bob, "UTF-8-RAW")
+        FileAppend("Listener: Alice`nSession Started: " older " 12:00:00`n[ " older " 12:00:01 ] (combat) 300 to hostile`n", previous, "UTF-8-RAW")
+        request := "statistics`n" game "`n" chat "`n" storage
+        progress := RunStatisticsFixtureScan(job, request)
+        AssertTrue(InStr(progress, "`n3`t3`t"))
+        FileAppend("[ " today " 12:00:08 ] (combat) 15 from hostile`n"
+            . "[ " today " 12:00:18 ] (combat) 22 from hostile`n"
+            . "[ " today " 12:00:18 ] (mining) You mined 42 units of Gneiss`n", alice, "UTF-8-RAW")
+        RunStatisticsFixtureScan(job, request)
+        todayResult := RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nmonth")
+        AssertTrue(InStr(todayResult, "P`tBob"))
+        AssertTrue(InStr(todayResult, "M`tFullerite-C32`t2000`t30"))
+        AssertTrue(InStr(todayResult, "M`tGneiss`t42`t0"))
+        monthly := StrSplit(StrSplit(todayResult, "`n")[1], "`t")
+        AssertEqual(47, Number(monthly[5]))
+        AssertEqual(20, Number(monthly[6]))
+        AssertEqual(2.5, Number(monthly[15]), "Hits within ten seconds combine across a saved checkpoint.")
+        AssertEqual(22, Number(monthly[18]), "Alpha uses the largest hit even when its DPS window is weaker.")
+        AssertEqual(20, Number(monthly[19]))
+        lifetime := StrSplit(StrSplit(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nall"), "`n")[1], "`t")
+        AssertEqual(320, Number(lifetime[6]))
+        AssertEqual(30, Number(lifetime[16]))
+        AssertEqual(300, Number(lifetime[19]))
+        latest := StrSplit(StrSplit(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nsession"), "`n")[1], "`t")
+        AssertEqual(20, Number(latest[6]))
+
+        stats := UsageStatistics({_JSON: JSON.Load(default_JSON)}, storage)
+        ; Simulate the archive writer running while Settings switches filters.
+        stats.job := {busy: true}
+        try {
+            AssertTrue(stats.FilteredView("Alice", "month").Get("pending", false))
+            view := stats.FilteredView("Bob", "all")
+            deadline := A_TickCount + 10000
+            while view.Get("pending", false) && A_TickCount < deadline {
+                Sleep(15)
+                view := stats.FilteredView("Bob", "all")
+            }
+            AssertFalse(view.Get("deferred", false), "A completed snapshot can be read during a scan.")
+            AssertEqual(900, view["counts"][5], "The latest character selection wins while an earlier query is pending.")
+            AssertEqual(20, stats.FilteredView("Alice", "month")["counts"][5], "The earlier filter result can be reused.")
+        } finally {
+            stats.job := 0
+            stats.Close()
+        }
+    } finally {
+        job.Close()
+        DirDelete(directory, true)
+    }
+}
+
 LogWorkerResponsiveTest() {
     path := A_ScriptDir "\SlowLogWorker-" A_TickCount ".ahk"
     source := '#Requires AutoHotkey v2.0`n#SingleInstance Off`n#NoTrayIcon`nSleep(900)`nFileAppend("", A_Args[1] "\output.txt", "UTF-8")`nExitApp()`n'

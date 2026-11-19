@@ -42,7 +42,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         this.programVersion := UpdateChecker.CurrentVersion()
         this.updateChecker := this.CreateUpdateChecker()
         this.theme := SettingsTheme(this, this.model.Get("SettingsTheme"))
-        this.S_Gui := this.theme.Surface(Gui("+Resize +0x02000000", "EVE-X-Preview - Settings"))
+        this.S_Gui := this.theme.Surface(LocalizedSettingsGui("+Resize +0x02000000", "EVE-X-Preview - Settings"))
         try {
             this.S_Gui.Opt("+OwnDialogs")
             this.S_Gui.SetFont("s10", "Segoe UI")
@@ -50,7 +50,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             this.S_Gui.OnEvent("Close", (*) => this.RequestClose())
             this.S_Gui.OnEvent("Escape", (*) => this.RequestClose())
             this.S_Gui.OnEvent("Size", ObjBindMethod(this, "OnResize"))
-            this.Sidebar := this.theme.Surface(Gui("+Parent" this.S_Gui.Hwnd " -Caption -Border +0x02000000"), true)
+            this.Sidebar := this.theme.Surface(LocalizedSettingsGui("+Parent" this.S_Gui.Hwnd " -Caption -Border +0x02000000"), true)
             this.Sidebar.BackColor := this.theme.sidebar
             this.Sidebar.SetFont("s10", "Segoe UI")
             this.Sidebar.AddText("x16 y16 w208 h20", "Selected profile")
@@ -64,15 +64,15 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             this.Sidebar.AddText("x16 y114 w208 h20", "Search settings")
             this.search := this.Sidebar.AddEdit("x16 y138 w176 h26 vSettingsSearch")
             this.clearSearchButton := this.Sidebar.AddButton("x196 y138 w28 h26", "×")
-            this.clearSearchButton.ToolTip := "Clear search"
+            this.clearSearchButton.ToolTip := T("Clear search")
             this.clearSearchButton.OnEvent("Click", (*) => this.ClearSearchEntry())
-            this.search.ToolTip := "Search setting names, explanations and categories. Clear this field to show all sections."
+            this.search.ToolTip := T("Search setting names, explanations and categories. Clear this field to show all sections.")
             this.search.OnEvent("Change", (*) => this.ScheduleSearch())
             this.nav := this.Sidebar.AddTreeView("x12 y178 w216 h360 +0x20 -HScroll") ; SHOWSELALWAYS
             this.nav.OnEvent("ItemSelect", ObjBindMethod(this, "NavigationSelected"))
             this.nav.OnEvent("ItemExpand", ObjBindMethod(this, "NavigationExpanded"))
             this.testThumbnailButton := this.Sidebar.AddButton("x16 y550 w208 h30", "Test thumbnail")
-            this.testThumbnailButton.ToolTip := "Preview this draft's appearance, labels, borders and sample monitoring data."
+            this.testThumbnailButton.ToolTip := T("Preview this draft's appearance, labels, borders and sample monitoring data.")
             this.testThumbnailButton.OnEvent("Click", (*) => this.ToggleTestThumbnail())
             this.helpNote := this.Sidebar.AddText("x16 y592 w208 h36 c555555", "Help is shown with each setting.`nPress F1 for focused-control help.")
             this.status := this.S_Gui.AddText("x252 y690 w370 h42 c444444 +0x80", "")
@@ -315,13 +315,13 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                         matching.Push(section)
                 if !matching.Length
                     continue
-                root := this.nav.Add(page, 0, "Bold")
+                root := this.nav.Add(T(page), 0, "Bold")
                 this.navRoots.Push(root)
                 this.navPages[root] := page
                 this.navItems[root] := matching[1].id
                 expand := query != "" || this.expandedPages.Get(page, false)
                 for section in matching {
-                    item := this.nav.Add(section.navTitle, root)
+                    item := this.nav.Add(T(section.navTitle), root)
                     this.navItems[item] := section.id
                     this.navSections[section.id] := item
                 }
@@ -340,7 +340,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                 this.currentSection := sections[1].id
                 this.nav.Modify(this.navSections[this.currentSection], "Select Vis")
             } else
-                this.nav.Add("No matching settings")
+                this.nav.Add(T("No matching settings"))
         } finally this.navBuilding := false
     }
 
@@ -504,6 +504,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
     }
 
     Note(text, color := "555555", height := 42) {
+        text := T(text)
         control := this.MainFrame.AddText("x20 y" this.y " w" (this.contentWidth - 40) " h" height " c" color " +0x80", text)
         height := Max(22, SettingsLayout.TextHeight(control, text, this.contentWidth - 40))
         control.Move(,,, height)
@@ -622,7 +623,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             control.OnEvent("Click", ObjBindMethod(this, "BooleanChanged", binding))
             binding.label := control
             control.SetFont("Bold")
-            labelHeight := Max(26, SettingsLayout.TextHeight(control, field.label, width - 26))
+            labelHeight := Max(26, SettingsLayout.TextHeight(control, T(field.label), width - 26))
             control.Move(,,, labelHeight)
             this.y += labelHeight + 4
         } else {
@@ -631,7 +632,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             inputWidth := width - inputX + 20
             binding.label := this.MainFrame.AddText("x20 y" this.y " w" (inline ? 288 : width) " h26 +0x80", field.label)
             binding.label.SetFont("Bold")
-            labelHeight := Max(24, SettingsLayout.TextHeight(binding.label, field.label, inline ? 288 : width))
+            labelHeight := Max(24, SettingsLayout.TextHeight(binding.label, T(field.label), inline ? 288 : width))
             binding.label.Move(,,, labelHeight)
             if !inline
                 this.y += labelHeight + 4
@@ -639,7 +640,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                 case "choice":
                     options := [], selected := 0
                     for index, option in field.choices {
-                        options.Push(option.label)
+                        options.Push(T(option.label))
                         if option.value = value
                             selected := index
                     }
@@ -683,7 +684,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                         color := "F0F0F0"
                         try color := SettingsValue.Color(value)
                         swatch := this.MainFrame.AddText("x" (inputX + editWidth + 8) " y" this.y " w26 h26 Border +0x100 ThemePreserve Background" color)
-                        swatch.ToolTip := "Preview of the selected color. Use Choose to change it."
+                        swatch.ToolTip := T("Preview of the selected color. Use Choose to change it.")
                         binding.swatch := swatch
                         picker := this.MainFrame.AddButton("x" (inputX + editWidth + 42) " y" this.y " w84 h26", "Choose...")
                         picker.OnEvent("Click", ObjBindMethod(this, "PickColor", binding, control))
@@ -702,7 +703,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         }
         binding.control := control
         binding.inputs.Push(control)
-        control.SettingsHelp := field.label ": " this.FieldHint(field)
+        control.SettingsHelp := T(field.label) ": " this.FieldHint(field)
         control.ToolTip := control.SettingsHelp
         for input in binding.inputs
             if !input.HasProp("ToolTip") {
@@ -731,8 +732,8 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
 
     FieldHint(field) {
         range := field.kind = "integer" || field.kind = "number" || field.kind = "slider"
-            ? field.min "–" field.max (field.unit = "%" ? "%" : field.unit != "" ? " " field.unit : "") ". " : ""
-        return (field.global ? "Shared by all profiles. " : "") range field.help
+            ? field.min "–" field.max (field.unit = "%" ? "%" : field.unit != "" ? " " T(field.unit) : "") ". " : ""
+        return (field.global ? T("Shared by all profiles.") " " : "") range T(field.help)
     }
 
     BooleanChanged(binding, control, *) {
@@ -882,23 +883,23 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
             return
         invalid := this.errors.Count + this.relationIssues.Length + this.tableErrors.Count + this.shortcutErrors.Count
         dirty := this.model.Dirty, editing := this.GridEditing()
-        status := message != "" ? message : invalid ? "Fix " invalid " invalid field(s) before applying."
-            : dirty || editing ? this.model.ChangeCount " settings changed, apply to save." : "No pending changes. Running profile: " this.owner.LastUsedProfile
+        status := message != "" ? message : invalid ? T("Fix {1} invalid field(s) before applying.", invalid)
+            : dirty || editing ? T("Changed settings: {1}. Apply to save.", this.model.ChangeCount) : T("No pending changes. Running profile: {1}", this.owner.LastUsedProfile)
         if this.HasOwnProp("defaultEditContext")
-            status := "Editing DEFAULT. " status
+            status := T("Editing DEFAULT.") " " status
         this.theme.Font(this.status, invalid ? "cB42318" : "c444444")
-        SettingsTheme.Assign(this.status, "Value", status)
+        SettingsTheme.Assign(this.status, "Value", T(status))
         this.status.ToolTip := this.status.Value
         SettingsTheme.Assign(this.applyButton, "Enabled", (dirty || editing) && !invalid)
         SettingsTheme.Assign(this.discardButton, "Enabled", !!(dirty || editing || this.pending.Count || this.tableErrors.Count || this.shortcutErrors.Count))
-        SettingsTheme.Assign(this.undoButton, "Text", invalid ? "Fix fields" : "Undo")
+        SettingsTheme.Assign(this.undoButton, "Text", T(invalid ? "Fix fields" : "Undo"))
         this.undoButton.ToolTip := invalid ? "Go to the first invalid setting, including unfinished edits in another profile." : "Restore the most recently removed row, group, profile or library reference."
         SettingsTheme.Assign(this.undoButton, "Enabled", invalid || this.model.undo.Length > 0)
     }
 
     ShowError(message) {
         this.UpdateStatus(message)
-        MsgBox(message, "Settings", "Icon! Owner" this.S_Gui.Hwnd)
+        MsgBox(T(message), T("Settings"), "Icon! Owner" this.S_Gui.Hwnd)
     }
 
     Undo() {
@@ -1093,7 +1094,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
     Discard() {
         if !this.HasDraftChanges()
             return
-        if MsgBox("Discard every unapplied change in this settings window?", "Discard settings draft", "YesNo Icon? Owner" this.S_Gui.Hwnd) != "Yes"
+        if MsgBox(T("Discard every unapplied change in this settings window?"), T("Discard settings draft"), "YesNo Icon? Owner" this.S_Gui.Hwnd) != "Yes"
             return
         this.DiscardDraft()
     }
@@ -1134,7 +1135,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
     CloseDecision() {
         if this.HasOwnProp("closePrompt")
             return
-        dialog := this.theme.Surface(Gui("+Owner" this.S_Gui.Hwnd " -MinimizeBox -MaximizeBox", "Unapplied settings"))
+        dialog := this.theme.Surface(LocalizedSettingsGui("+Owner" this.S_Gui.Hwnd " -MinimizeBox -MaximizeBox", "Unapplied settings"))
         this.closePrompt := dialog
         dialog.SetFont("s10", "Segoe UI")
         dialog.AddText("x20 y18 w490 h48", "Your draft has unapplied changes. Apply them and restart EVE-X-Preview, discard them, or keep editing.")
@@ -1166,7 +1167,7 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
         control := GuiCtrlFromHwnd(handle)
         message := IsObject(control) && control.HasProp("SettingsHelp") ? control.SettingsHelp
             : IsObject(control) && control.HasProp("ToolTip") ? control.ToolTip : "Select a setting to see its description. Help is also shown directly below each setting."
-        MsgBox(message, "Setting help", "Owner" this.S_Gui.Hwnd)
+        MsgBox(T(message), T("Setting help"), "Owner" this.S_Gui.Hwnd)
     }
     ShowSettingsTooltip(hwnd) {
         MouseGetPos(,,, &hovered, 2)

@@ -3,7 +3,7 @@
 class SettingsChildDialog {
     __New(app, title) {
         this.app := app
-        this.root := app.theme.Surface(Gui("+Owner" app.S_Gui.Hwnd " +Resize", title))
+        this.root := app.theme.Surface(LocalizedSettingsGui("+Owner" app.S_Gui.Hwnd " +Resize", title))
         this.scroll := SettingsScrollPane(this.root)
         app.theme.Scroll(this.scroll)
         this.content := app.theme.Surface(this.scroll.content)

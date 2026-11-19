@@ -13,7 +13,7 @@
         app := this.app
         headers := []
         for column in this.columns
-            headers.Push(column.label)
+            headers.Push(T(column.label))
         actions := []
         if this.kind != "gestures"
             actions.Push({label: "Add row", width: 96, callback: (*) => this.grid.AddRow()})
@@ -132,7 +132,7 @@
                         labels := []
                         selected := 0
                         for optionIndex, option in SettingsTables.GestureOptions {
-                            labels.Push(option.label)
+                            labels.Push(T(option.label))
                             if option.value = value
                                 selected := optionIndex
                         }

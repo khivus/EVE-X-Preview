@@ -14,7 +14,7 @@ public sealed partial class MainWindow {
         var header=new Grid {ColumnDefinitions=new ColumnDefinitions("*,Auto"),Margin=new Thickness(16,5)};
         header.Children.Add(new TextBlock {Text="EVE-X-Preview",FontSize=16,FontWeight=FontWeight.SemiBold,VerticalAlignment=VerticalAlignment.Center});
         var row=new StackPanel {Orientation=Orientation.Horizontal,Spacing=10,VerticalAlignment=VerticalAlignment.Center};
-        row.Children.Add(new TextBlock {Text="Profile",VerticalAlignment=VerticalAlignment.Center});
+        row.Children.Add(profileCaption);
         profiles.Width=180;profiles.MinWidth=120;row.Children.Add(profiles);Grid.SetColumn(row,1);header.Children.Add(row);return header;
     }
 }

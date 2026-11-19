@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly StackPanel page = new() { Spacing = 16, Margin = new Thickness(28, 22, 28, 30) };
     private readonly ScrollViewer pageScroll = new() { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
     private readonly ComboBox profiles = new() { MinWidth = 175, MaxWidth = 320, HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBox search = new() { PlaceholderText = "Search settings", Margin = new Thickness(16, 12), InnerLeftContent = new TextBlock { Text = "⌕", FontSize = 22, Margin = new Thickness(10, 0) } };
+    private readonly TextBox search = new() { PlaceholderText = T("Search settings"), Margin = new Thickness(16, 12), InnerLeftContent = new TextBlock { Text = "⌕", FontSize = 22, Margin = new Thickness(10, 0) } };
     private readonly Button clearSearch = new() { Content = new PathIcon { Data = Geometry.Parse("M0,1 L1,0 L4,3 L7,0 L8,1 L5,4 L8,7 L7,8 L4,5 L1,8 L0,7 L3,4 Z"), Width = 9, Height = 9 }, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center, Width = 26, Height = 26, MinHeight = 0, Padding = new Thickness(0), Margin = new Thickness(2, 0, 5, 0), Background = Brushes.Transparent, BorderThickness = new Thickness(0), IsVisible = false };
     private readonly Border connectionBanner = new() { IsVisible = false, Padding = new Thickness(26, 12), Background = new SolidColorBrush(Color.Parse("#553717")) };
     private readonly TextBlock connectionMessage = new() { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White };
@@ -44,13 +44,32 @@ public sealed partial class MainWindow : Window
     private readonly Grid workbench;
     private readonly Border loadingView;
     private readonly bool captionDarkBeforeShow;
+    private readonly TextBlock profileCaption = new() { VerticalAlignment = VerticalAlignment.Center };
+
+    private static JsonObject translations = new();
+    internal static string T(string text) => translations.Text(text, text);
+
+    private void RefreshLanguage()
+    {
+        translations = session.Metadata?.Value.Object("translations") ?? new();
+        Title = T("EVE-X-Preview · Settings");
+        profileCaption.Text = T("Profile");
+        search.PlaceholderText = T("Search settings");
+        Avalonia.Automation.AutomationProperties.SetName(clearSearch, T("Clear search"));
+        ToolTip.SetTip(clearSearch, T("Clear search"));
+        reconnect.Content = T("Reconnect");
+        undo.Content = T("Undo last edit");
+        accept.Content = T("Undo this category");
+        discard.Content = T("Discard all");
+        apply.Content = T("Apply & restart");
+    }
 
     public MainWindow(string installation, SingleInstance instance)
     {
         this.instance = instance;
         session = new EditorSession(new BridgeTransport(installation));
         Width = 1180; Height = 820; MinWidth = 760; MinHeight = 560;
-        Title = "EVE-X-Preview · Settings";
+        Title = T("EVE-X-Preview · Settings");
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         var root = workbench = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto"),IsVisible=false };
         root.Children.Add(new Border { Child = CreateHeader(), Classes = { "chrome" }, BorderThickness = new Thickness(0,0,0,1) });
@@ -130,6 +149,7 @@ public sealed partial class MainWindow : Window
     private async Task ConnectAsync()
     {
         await session.ConnectAsync();
+        RefreshLanguage();
         await session.ValidateAsync();
         automaticReconnectFailures=0;
         connectionPoll.Start();
@@ -141,7 +161,7 @@ public sealed partial class MainWindow : Window
     }
     private Button ActionButton(string label, Func<Task> action, bool render = true)
     {
-        var button = new Button { Content = label.TrimEnd('.') };
+        var button = new Button { Content = T(label).TrimEnd('.') };
         button.Click += async (_, _) => await RunAsync(action, render, label is not ("Discard all" or "Undo last edit" or "Undo this category" or "Apply & restart"),label is "Apply & restart" or "Reconnect" or "Discard all");
         return button;
     }
@@ -175,7 +195,7 @@ public sealed partial class MainWindow : Window
     private bool refreshAfterActions;
     private void ShowError(Exception exception)
     {
-        error.Text = exception.Message; error.IsVisible = true;
+        error.Text = T(exception.Message); error.IsVisible = true;
         if (exception is BridgeException { Details: { } details })
         {
             var items = details as JsonArray ?? details.Array("issues");
@@ -186,17 +206,17 @@ public sealed partial class MainWindow : Window
     {
         var pending = session.Pending.Count;
         var changed = session.ChangeCount;
-        draft.Text = changed != 0 ? $"{changed} setting{(changed == 1 ? "" : "s")} changed, apply to save" : "All changes applied";
-        notice.Text = busy ? "Working" : pending != 0 ? "Correct the highlighted fields before applying." : activity;
+        draft.Text = changed != 0 ? T("Changed settings: {0}. Apply to save.").Replace("{0}", changed.ToString()) : T("All changes applied");
+        notice.Text = T(busy ? "Working" : pending != 0 ? "Correct the highlighted fields before applying." : activity);
         if (!busy && session.Pending.FirstOrDefault(p => p.Error is not null) is { } invalid)
-            notice.Text = "Invalid: " + invalid.Profile + " / " + invalid.Label;
+            notice.Text = T("Invalid: ") + invalid.Profile + " / " + invalid.Label;
         else if (!busy && session.Validation.Array("issues").FirstOrDefault(i => i.Text("severity") == "error") is { } issue)
-            notice.Text = "Invalid: " + issue.Text("profile") + " / " + (session.Metadata?.Fields.FirstOrDefault(f => f.Text("id") == issue.Text("id")).Text("label", issue.Text("id")) ?? issue.Text("id"));
+            notice.Text = T("Invalid: ") + issue.Text("profile") + " / " + (session.Metadata?.Fields.FirstOrDefault(f => f.Text("id") == issue.Text("id")).Text("label", issue.Text("id")) ?? issue.Text("id"));
         var issues=CurrentProblems();var blocking=issues.Any(p=>p.Severity=="error");
         if(blocking) {draft.Foreground=Brushes.OrangeRed;notice.Foreground=Brushes.OrangeRed;}
         else {draft.ClearValue(TextBlock.ForegroundProperty);notice.ClearValue(TextBlock.ForegroundProperty);}
         notice.MaxHeight=48;ToolTip.SetTip(notice,notice.Text);
-        problems.Content=issues.Count==0?"Problems":"Problems ("+issues.Count+")";
+        problems.Content=issues.Count==0 ? T("Problems") : T("Problems") + " (" + issues.Count + ")";
         problems.IsEnabled=!busy&&session.Connected&&issues.Count>0;
         apply.IsEnabled=!busy&&session.Connected&&session.Dirty&&pending==0&&!blocking;
         accept.IsEnabled = !busy && session.Connected && session.Dirty;
@@ -204,7 +224,7 @@ public sealed partial class MainWindow : Window
         undo.IsEnabled = !busy && session.Connected && (editHistory.Count != 0 || pending != 0);
         reconnect.IsVisible = !session.Connected; reconnect.IsEnabled = !busy;
         connectionBanner.IsVisible = !session.Connected;
-        connectionMessage.Text = (session.AwaitingRestart && automaticReconnectFailures==0 ? "Settings saved. Waiting for the application to restart and reconnecting automatically. Your selected profile is retained." : reconnecting ? "Reconnecting automatically. Your draft and unfinished entries are retained." : "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue.") + (session.Error is { Length: > 0 } reason ? "\n" + reason : "");
+        connectionMessage.Text = T(session.AwaitingRestart && automaticReconnectFailures==0 ? "Settings saved. Waiting for the application to restart and reconnecting automatically. Your selected profile is retained." : reconnecting ? "Reconnecting automatically. Your draft and unfinished entries are retained." : "Settings disconnected. Editing is paused; your draft and unfinished entries are retained. Click Reconnect to continue.") + (session.Error is { Length: > 0 } reason ? "\n" + T(reason) : "");
         profiles.IsEnabled = !busy && !reconnecting && session.Connected;
         search.IsEnabled = !busy && !reconnecting && session.Connected;
         navigation.IsEnabled = !busy;
@@ -231,14 +251,16 @@ public sealed partial class MainWindow : Window
         navigation.Children.Clear();
         if (session.Metadata is not { } metadata) return;
         var query = (search.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        bool Matches(JsonObject section) => query.All(word => (section.Text("title") + " " + section.Text("help") + " " + section.Text("page") + " " + string.Join(' ', metadata.SectionFields(section).Select(f => f.Text("label") + " " + f.Text("help") + " " + string.Join(' ',f.Array("choices").Select(c=>c.Text("label")))))).Contains(word,StringComparison.OrdinalIgnoreCase));
+        bool Matches(JsonObject section) => query.All(word => new[] { section.Text("title"), section.Text("help"), section.Text("page") }
+            .Concat(metadata.SectionFields(section).SelectMany(f => new[] { f.Text("label"), f.Text("help") }.Concat(f.Array("choices").Select(c => c.Text("label")))))
+            .Any(text => text.Contains(word, StringComparison.OrdinalIgnoreCase) || T(text).Contains(word, StringComparison.OrdinalIgnoreCase)));
         var matches = metadata.Sections.Where(Matches).ToArray();
         if(matches.Length != 0 && !matches.Any(s=>s.Text("id")==sectionId)) { SaveScroll(); sectionId=matches[0].Text("id"); }
         foreach (var group in metadata.Sections.GroupBy(s => s.Text("page")))
         {
             var visible = group.Where(Matches).ToArray();
             if (visible.Length == 0) continue;
-            navigation.Children.Add(new TextBlock { Text = group.Key.ToUpperInvariant(), FontSize = 10, LetterSpacing = 1.4, Opacity = .62, FontWeight = FontWeight.SemiBold, Margin = new Thickness(10, 17, 0, 5) });
+            navigation.Children.Add(new TextBlock { Text = T(group.Key).ToUpperInvariant(), FontSize = 10, LetterSpacing = 1.4, Opacity = .62, FontWeight = FontWeight.SemiBold, Margin = new Thickness(10, 17, 0, 5) });
             foreach (var section in visible)
             {
                 var id = section.Text("id");
@@ -273,6 +295,7 @@ public sealed partial class MainWindow : Window
         }
         if (fields.Children.Count != 0) page.Children.Add(Card(fields));
         RenderSpecial(section, inherited);
+        if (sectionId == "statistics") RenderStatistics();
         var commands = metadata.Commands.Where(command => command.Text("section") == sectionId && command.Text("id") != "preview-sound" && sectionId!="about").ToArray();
         if (commands.Length != 0)
         {
@@ -280,7 +303,7 @@ public sealed partial class MainWindow : Window
             foreach (var command in commands)
             {
                 var button = ActionButton(command.Text("label"), () => RunCommandAsync(command),false);
-                if(command.Text("id")=="toggle-live-previews") { previewPauseButton=button;button.Content="Pause live previews";_ = RefreshPreviewStatusAsync(); } button.Margin = new Thickness(0, 0, 10, 10);
+                if(command.Text("id")=="toggle-live-previews") { previewPauseButton=button;button.Content=T("Pause live previews");_ = RefreshPreviewStatusAsync(); } button.Margin = new Thickness(0, 0, 10, 10);
                 button.IsEnabled = !command.Bool("runtimeOnly") || session.Role != "offline";
                 ToolTip.SetTip(button, !button.IsEnabled ? "Start EVE-X-Preview to use this runtime action." : command.Text("help", command.Text("label")));
                 commandPanel.Children.Add(button);
@@ -340,7 +363,7 @@ public sealed partial class MainWindow : Window
             source.Children.Add(Muted("Settings source: " + label + (sectionId=="sounds" && group=="events"?" · event sound assignments":"")));
             var inherited = session.Snapshot.Object("inheritance").Bool(group);
             if(inherited)source.Children.Add(Muted(sectionId=="sounds" && group=="events" ? "Event sound assignments are inherited from Default and cannot be changed here. Edit Default here, or customize Event alerts for this profile." : "This category is inherited from Default. Edit Default here, or customize it to enable editing for this profile."));
-            var choice = new ComboBox { ItemsSource = new[] { "Use Default profile settings", "Customize for this profile" }, SelectedIndex = inherited ? 0 : 1, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
+            var choice = new ComboBox { ItemsSource = new[] { T("Use Default profile settings"), T("Customize for this profile") }, SelectedIndex = inherited ? 0 : 1, MinWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
             choice.SelectionChanged += async (_,_) => {
                 var enabled = choice.SelectedIndex == 0;
                 if(enabled == inherited)return;
@@ -371,7 +394,7 @@ public sealed partial class MainWindow : Window
         editHistory.Clear(); profileBaselines.Clear();
         if (restart)
         {
-            notice.Text = "Settings saved. Waiting for the application to restart";
+            notice.Text = T("Settings saved. Waiting for the application to restart");
             automaticReconnectFailures=0;
             await Task.Delay(750);
             await AutoReconnectAsync();
@@ -393,6 +416,7 @@ public sealed partial class MainWindow : Window
     }
     private Task ConnectPresentationAsync()
     {
+        RefreshLanguage();
         error.IsVisible=false;
         connectionPoll.Start();
         RenderNavigation();RenderPage();
@@ -413,8 +437,8 @@ public sealed partial class MainWindow : Window
         if (closing) return;
         args.Cancel = true;
         if (closePromptOpen) return;
-        if (session.HasActiveModal) { error.Text = "Finish or cancel the open dialog before closing settings."; error.IsVisible = true; return; }
-        if (busy) { error.Text = "Wait for the current settings operation to finish before closing."; error.IsVisible = true; return; }
+        if (session.HasActiveModal) { error.Text = T("Finish or cancel the open dialog before closing settings."); error.IsVisible = true; return; }
+        if (busy) { error.Text = T("Wait for the current settings operation to finish before closing."); error.IsVisible = true; return; }
         closePromptOpen = true;
         var choice = session.Dirty ? await Dialogs.CloseChoiceAsync(this, session.Pending.Count != 0) : "discard";
         closePromptOpen = false;
@@ -434,7 +458,7 @@ public sealed partial class MainWindow : Window
         }
         finally { liveEdits.Release(); }
     }
-    private static TextBlock Muted(string text) => new() { Text = text, Classes = { "muted" } };
+    private static TextBlock Muted(string text) => new() { Text = T(text), Classes = { "muted" } };
     private static Border Card(Control child) => new() { Child = child, Classes = { "card" } };
     private string EditKey(string name) => session.Profile + "|" + sectionId + "|" + name;
     internal Task ProtectModalAsync(bool active) => session.SetModalAsync(active);

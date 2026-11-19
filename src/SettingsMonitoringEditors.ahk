@@ -23,7 +23,7 @@
             {label: "Preview event sound", width: 176, callback: (*) => this.PreviewSelected()},
             {label: "Manage shared sounds", width: 184, callback: (*) => app.Navigate("sounds")}])
         this.edit := buttons[1], this.test := buttons[2]
-        this.list := app.MainFrame.AddListView("x20 y" app.y " w" (app.contentWidth - 40) " h340 NoSortHdr", ["Enabled", "Event", "Category", "Border color", "Sound path", "Volume %"])
+        this.list := app.MainFrame.AddListView("x20 y" app.y " w" (app.contentWidth - 40) " h340 NoSortHdr", [T("Enabled"), T("Event"), T("Category"), T("Border color"), T("Sound path"), T("Volume %")])
         this.list.OnEvent("ItemSelect", (*) => this.SelectionChanged())
         columns := [{label: "Enabled", kind: "bool"}, {label: "Event", kind: "readonly"}, {label: "Category", kind: "readonly"},
             {label: "Border color", kind: "color"}, {label: "Sound path", kind: "sound"}, {label: "Volume", kind: "number"}]
@@ -42,7 +42,7 @@
             for key in SettingsEventTable.Categories[category] {
                 config := this.events[key]
                 this.keys.Push(key)
-                rows.Push([config["enabled"], SettingsEventTable.Names[key], category = "Fleet and communication" ? "Fleet / comms" : category,
+                rows.Push([config["enabled"], T(SettingsEventTable.Names[key]), T(category = "Fleet and communication" ? "Fleet / comms" : category),
                     config["color"], config.Get("sound", ""), EventSounds.Percent(config.Get("soundVolume", 100))])
             }
         return rows
@@ -65,7 +65,7 @@
         SettingsTheme.Assign(this.edit, "Enabled", row && !this.inherited)
         SettingsTheme.Assign(this.test, "Enabled", row && this.events[this.keys[row]].Get("sound", "") != "")
         if this.HasOwnProp("detail")
-            SettingsTheme.Assign(this.detail, "Value", row ? SettingsTooltips.Events[this.keys[row]] : "Click a cell to edit. Shift/Ctrl selects cells; Ctrl+C/V copies/pastes.")
+            SettingsTheme.Assign(this.detail, "Value", T(row ? SettingsTooltips.Events[this.keys[row]] : "Click a cell to edit. Shift/Ctrl selects cells; Ctrl+C/V copies/pastes."))
     }
     EditSelected() {
         this.grid.CommitEditor()

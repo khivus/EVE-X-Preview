@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 namespace EveX.Settings.UI;
 public sealed partial class MainWindow
 {
-    private readonly Button problems = new(){Content="Problems"};
+    private readonly Button problems = new(){Content=MainWindow.T("Problems")};
     private IReadOnlyList<SettingProblem> CurrentProblems()=>SettingProblems.Build(session.Pending,session.Validation,session.Metadata);
     private async Task ShowProblemsAsync() {
         var issues=CurrentProblems();
@@ -19,7 +19,7 @@ public sealed partial class MainWindow
             var issue=issues[i];var index=i;var row=new StackPanel {Spacing=5};
             row.Children.Add(new TextBlock {Text=(issue.Profile==""?"":issue.Profile+" / ")+issue.Label,FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap});
             row.Children.Add(new TextBlock {Text=issue.Message,TextWrapping=TextWrapping.Wrap,Foreground=issue.Severity=="error"?Brushes.OrangeRed:Brushes.Goldenrod});
-            if(issue.Section!="") {var go=new Button {Content="Go to setting"};go.Click+=(_,_)=>{target=index;OwnedWindows.LastOrDefault()?.Close("go");};row.Children.Add(go);}
+            if(issue.Section!="") {var go=new Button {Content=MainWindow.T("Go to setting")};go.Click+=(_,_)=>{target=index;OwnedWindows.LastOrDefault()?.Close("go");};row.Children.Add(go);}
             panel.Children.Add(Card(row));
         }
         await Dialogs.ChoiceAsync(this,"Settings problems",panel,[("Close","close")]);

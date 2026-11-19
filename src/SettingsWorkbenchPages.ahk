@@ -12,7 +12,7 @@
         input := this.MainFrame.AddDropDownList("x20 y" this.y " w" (this.contentWidth - 40), options)
         input.Choose(selected)
         input.Enabled := !this.model.Inherited("Thumbnails Interactions")
-        input.ToolTip := "Toggle Quick Group membership using this gesture on a thumbnail."
+        input.ToolTip := T("Toggle Quick Group membership using this gesture on a thumbnail.")
         input.SettingsHelp := input.ToolTip
         this.y += 34
         if this.HasOwnProp("quickGestureError") && this.quickGestureError != ""
@@ -89,8 +89,117 @@
             case "inheritance": this.InheritanceEditor()
             case "tray": this.TrayCommands()
             case "diagnostics": this.Diagnostics()
+            case "statistics": this.StatisticsPage()
             case "about": this.AboutUpdates()
         }
+    }
+
+    StatisticsPage() {
+        if !this.HasOwnProp("statisticsFilters") {
+            this.statisticsFilters := Map("character", "", "range", "all")
+            this.statisticsTimer := ObjBindMethod(this, "StatisticsTick")
+        }
+        stats := UsageStatistics.Snapshot(this.owner, , this.statisticsFilters)
+        view := stats["view"]
+        if !stats["enabled"]
+            this.Note("Live statistics collection is off.")
+        if stats["available"] {
+            this.Subheading("Character")
+            characters := [T("All characters")]
+            for name in view.Get("characters", this.HasOwnProp("statisticsCharacters") ? this.statisticsCharacters : [])
+                characters.Push(name)
+            if view.Has("characters")
+                this.statisticsCharacters := view["characters"]
+            charControl := this.MainFrame.AddDropDownList("x20 y" this.y " w" Min(340, this.contentWidth - 40), characters)
+            charControl.Choose(this.statisticsFilters["character"] = "" ? characters[1] : this.statisticsFilters["character"])
+            charControl.OnEvent("Change", (*) => this.StatisticsFilter("character", charControl.Value > 1 ? charControl.Text : ""))
+            this.y += 36
+            this.Subheading("Date range")
+            ranges := ["all", "session", "day", "week", "month", "year"]
+            rangeLabels := [T("All time"), T("Last session"), T("Today (UTC)"), T("Last 7 days"), T("Last 30 days"), T("Last 365 days")]
+            rangeControl := this.MainFrame.AddDropDownList("x20 y" this.y " w" Min(340, this.contentWidth - 40), rangeLabels)
+            for index, range in ranges
+                if range = this.statisticsFilters["range"]
+                    rangeControl.Choose(index)
+            rangeControl.OnEvent("Change", (*) => this.StatisticsFilter("range", ranges[rangeControl.Value]))
+            this.y += 36
+            this.Note("Character and date filters apply to EVE log statistics.")
+            this.Action("Scan or resume log archives", (*) => this.StatisticsScan(true)).Enabled := !stats["scanning"]
+            ; Allow Stop immediately, including if an automatic scan starts after rendering.
+            this.Action("Stop archive scan", (*) => this.StatisticsScan(false))
+            this.Action("Refresh statistics", (*) => this.StatisticsRefresh())
+            this.statisticsStatus := this.Note(T(stats["scanStatus"]) "`n" stats["progressText"], "555555", 68)
+            if stats["scanning"] {
+                this.statisticsStatus.GetPos(,,, &height)
+                if height < 66 {
+                    this.statisticsStatus.Move(,,, 66)
+                    this.y += 66 - height
+                }
+            }
+            if view.Get("pending", false)
+                this.Note("Reading the statistics index…")
+            else if view.Get("deferred", false)
+                this.Note("Filtered results update when the scan finishes or stops.")
+            if view.Has("error")
+                this.Note(view["error"])
+            if view.Get("combatNeedsRescan", false)
+                this.Note("Run an archive scan to calculate combat peaks for older indexed logs.")
+            this.statisticsPending := view.Get("pending", false)
+            this.statisticsScanning := stats["scanning"]
+            if this.statisticsPending || this.statisticsScanning
+                SetTimer(this.statisticsTimer, this.statisticsPending ? -350 : -1500)
+        }
+        for category in stats["categories"] {
+            this.Subheading(category["title"])
+            for metric in category["metrics"] {
+                number := this.MainFrame.AddText("x20 y" this.y " w155 h30 Right", metric["value"])
+                number.SetFont("s15 Bold")
+                label := this.MainFrame.AddText("x191 y" (this.y + 5) " w" (this.contentWidth - 211) " h30 +0x80", metric["label"])
+                height := Max(34, SettingsLayout.TextHeight(label, T(metric["label"]), this.contentWidth - 211) + 5)
+                label.Move(,,, height - 5)
+                this.y += height
+            }
+            this.MainFrame.AddText("x20 y" this.y " w" (this.contentWidth - 40) " h2 +0x10")
+            this.y += 18
+        }
+        if view.Get("materials", []).Length {
+            this.Subheading("Mined materials")
+            for material in view["materials"]
+                this.Note(material["name"] "  ·  " T("{1} mined, {2} residue", material["units"], material["residue"]), "555555", 26)
+        }
+    }
+
+    StatisticsTick() {
+        if this.closed || this.currentSection != "statistics" || !this.HasOwnProp("statisticsStatus")
+            return
+        stats := UsageStatistics.Snapshot(this.owner, , this.statisticsFilters)
+        pending := stats["view"].Get("pending", false)
+        if pending != this.statisticsPending || stats["scanning"] != this.statisticsScanning {
+            this.Render()
+            return
+        }
+        try this.statisticsStatus.Text := T(stats["scanStatus"]) "`n" stats["progressText"]
+        if pending || stats["scanning"]
+            SetTimer(this.statisticsTimer, pending ? -350 : -1500)
+    }
+
+    StatisticsFilter(key, value) {
+        this.statisticsFilters[key] := value
+        this.Render()
+    }
+
+    StatisticsRefresh() {
+        UsageStatistics.Snapshot(this.owner, , Map("character", this.statisticsFilters["character"], "range", this.statisticsFilters["range"], "refresh", true))
+        this.Render()
+    }
+
+    StatisticsScan(start) {
+        stats := UsageStatistics.ForOwner(this.owner)
+        if start
+            stats.StartScan()
+        else
+            stats.StopScan()
+        this.Render()
     }
 
     AddRowTable(kind, groupName := "", ordered := false) {
@@ -114,10 +223,10 @@
         clear := gui.AddButton("x" (recordX + recordW + 8) " y" buttonY " w" clearW " h26", "Clear")
         advanced := gui.AddButton("x" (recordX + recordW + clearW + 16) " y" buttonY " w" advancedW " h26", "Advanced")
         waiting := gui.AddText("x" x " y" y " w" fieldWidth " h26 Hidden Border Center +0x300 BackgroundE0E0E0", "")
-        record.ToolTip := "Record a shortcut. Press Esc or Record again to cancel."
-        clear.ToolTip := "Remove this shortcut assignment."
-        advanced.ToolTip := "Unlock this field to edit AutoHotkey syntax inline. Done returns to readable key names."
-        waiting.ToolTip := "Press and release a shortcut. Mouse buttons and the wheel can be recorded over this area."
+        record.ToolTip := T("Record a shortcut. Press Esc or Record again to cancel.")
+        clear.ToolTip := T("Remove this shortcut assignment.")
+        advanced.ToolTip := T("Unlock this field to edit AutoHotkey syntax inline. Done returns to readable key names.")
+        waiting.ToolTip := T("Press and release a shortcut. Mouse buttons and the wheel can be recorded over this area.")
         meta := IsSet(context) ? context : {key: "dialog|" gui.Hwnd "|" field.Hwnd, group: ""}
         rawKey := this.model.profile "|" meta.key
         helper := {field: field, button: record, clear: clear, advanced: advanced, waiting: waiting,
@@ -129,7 +238,7 @@
             helper.updating := true
             field.Opt("-ReadOnly")
             field.Value := this.shortcutDrafts[rawKey].text
-            advanced.Text := "Done"
+            advanced.Text := T("Done")
             helper.updating := false
         }
         record.OnEvent("Click", ObjBindMethod(this, "RecordShortcut", helper))
@@ -234,7 +343,7 @@
             helper.updating := true
             helper.field.Opt("+ReadOnly")
             helper.field.Value := SettingsValue.HotkeyText(helper.key)
-            helper.advanced.Text := "Advanced"
+            helper.advanced.Text := T("Advanced")
             helper.updating := false
             this.shortcutDrafts.Delete(helper.rawKey)
         } else {
@@ -242,7 +351,7 @@
             helper.updating := true
             helper.field.Opt("-ReadOnly")
             helper.field.Value := helper.key
-            helper.advanced.Text := "Done"
+            helper.advanced.Text := T("Done")
             helper.updating := false
             this.StoreShortcutDraft(helper, helper.key)
             helper.field.Focus()
@@ -426,7 +535,7 @@
         field := this.MainFrame.AddEdit("x20 y" this.y " w" Max(120, width - 262) " h26 ReadOnly", SettingsValue.HotkeyText(raw))
         helper := this.AddRecorder(this.MainFrame, field, this.y, width, ObjBindMethod(this, "SetGroupShortcut", kind, name, key), raw,
             {key: "group|" kind "|" name "|" key, group: kind = "characters" ? "Character groups" : "Non-EVE Applications", groupKind: kind, groupName: name})
-        field.ToolTip := "Switch within this group. Use Record or Advanced to set its shortcut."
+        field.ToolTip := T("Switch within this group. Use Record or Advanced to set its shortcut.")
         field.SettingsHelp := field.ToolTip
         for control in [field, helper.button, helper.clear, helper.advanced]
             control.Enabled := !inherited
@@ -870,7 +979,7 @@
         wasVisible := this.updateNotice.Visible
         this.updateNotice.Visible := available
         this.updateNotice.Text := available ? "Update available: v" this.updateChecker.releaseTag : ""
-        this.updateNotice.ToolTip := "A newer stable version is available. Open About to review and install it."
+        this.updateNotice.ToolTip := T("A newer stable version is available. Open About to review and install it.")
         if available != wasVisible
             this.Layout()
         if this.currentSection = "about" && this.HasOwnProp("versionStatus") {

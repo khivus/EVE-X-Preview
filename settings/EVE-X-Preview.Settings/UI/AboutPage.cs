@@ -39,31 +39,31 @@ public sealed partial class MainWindow
         try {
             var result=await session.ReadAsync("command",new(){["name"]="update-status",["arguments"]=new JsonObject()});
             if(generation==pageGeneration)SetAboutStatus(result);
-        } catch(Exception error) {if(generation==pageGeneration && versionStatus is not null)versionStatus.Text=error.Message;}
+        } catch(Exception error) {if(generation==pageGeneration && versionStatus is not null)versionStatus.Text=T(error.Message);}
     }
     private void SetAboutStatus(JsonObject value) {
         aboutStatus=value;RefreshAboutControls();RefreshReleaseNotice();
         if(value.Bool("installError")) {
             activity=value.Text("status");
-            error.Text=activity;error.IsVisible=true;UpdateStatus();
+            error.Text=T(activity);error.IsVisible=true;UpdateStatus();
         }
     }
     private void RefreshAboutControls()
     {
         if(sectionId!="about")return;
         foreach(var (key,label) in versionLabels) {
-            var tag=aboutStatus.Text(key);label.Text=tag!=""?"v"+tag.TrimStart('v'):key=="installed"?"Loading":aboutStatus.Bool("busy")?"Checking":"Not checked";
+            var tag=aboutStatus.Text(key);label.Text=tag!=""?"v"+tag.TrimStart('v'):T(key=="installed" ? "Loading" : aboutStatus.Bool("busy") ? "Checking" : "Not checked");
         }
-        if(versionStatus is not null)versionStatus.Text=aboutStatus.Text("status","Loading version information");
+        if(versionStatus is not null)versionStatus.Text=T(aboutStatus.Text("status","Loading version information"));
         foreach(var (id,button) in aboutButtons) {
             var command=session.Metadata!.Commands.First(c=>c.Text("id")==id);
             button.IsEnabled=session.Connected&&!busy&&(!command.Bool("runtimeOnly")||session.Role!="offline");
             if(id=="download-settings") {
                 button.IsEnabled &= !aboutStatus.Bool("settingsCurrent") && !aboutStatus.Bool("busy") && aboutStatus.Text("settingsUrl")!="" && !session.Dirty;
-                ToolTip.SetTip(button,aboutStatus.Bool("settingsCurrent")?"The latest settings editor is already installed.":"Download beside EVE-X-Preview and open the editor.");
+                ToolTip.SetTip(button,T(aboutStatus.Bool("settingsCurrent") ? "The latest settings editor is already installed." : "Download beside EVE-X-Preview and open the editor."));
             }
             if(id is "install-stable" or "install-prerelease") {
-                var pre=id=="install-prerelease";button.Content=aboutStatus.Text(pre?"prereleaseLabel":"stableLabel",pre?"Install pre-release (check first)":"Install stable version (check first)").TrimEnd('.');
+                var pre=id=="install-prerelease";button.Content=T(aboutStatus.Text(pre?"prereleaseLabel":"stableLabel",pre?"Install pre-release (check first)":"Install stable version (check first)")).TrimEnd('.');
                 button.IsEnabled &= aboutStatus.Bool(pre?"prereleaseAvailable":"stableAvailable")&&!aboutStatus.Bool("busy")&&!session.Dirty;
                 ToolTip.SetTip(button,session.Dirty?"Apply or discard your settings draft before installing another version.":session.Role=="offline"?"Start EVE-X-Preview to use the installer.":null);
             }

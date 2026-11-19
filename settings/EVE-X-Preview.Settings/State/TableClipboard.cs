@@ -6,7 +6,8 @@ namespace EveX.Settings.State;
 
 public static class TableClipboard
 {
-    public static string Write(JsonArray rows) => string.Join("\r\n", rows.OfType<JsonArray>().Select(row => string.Join('\t', row.Select(cell => Quote(JsonExtensions.Display(cell))))));
+    public static string Write(JsonArray rows) => string.Join("\r\n", rows.OfType<JsonArray>().Select(row =>
+        row.Count == 1 && JsonExtensions.Display(row[0]) == "" ? "\"\"" : string.Join('\t', row.Select(cell => Quote(JsonExtensions.Display(cell))))));
     private static string Quote(string text) => text.IndexOfAny(['\t', '\r', '\n', '"']) < 0 ? text : '"' + text.Replace("\"", "\"\"") + '"';
     public static JsonArray Read(string text, int columns) => ReadCore(text, columns, true);
     public static JsonArray ReadGrid(string text, int availableColumns) => ReadCore(text, availableColumns, false);

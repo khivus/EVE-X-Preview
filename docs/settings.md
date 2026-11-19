@@ -50,7 +50,7 @@ Character shortcuts, colors, labels, exceptions, group members and application a
 | Ctrl+click | Add or remove individual selected cells |
 | Click a column heading | Select that column's existing cells |
 | Ctrl+A | Select all existing cells |
-| Ctrl+C / Ctrl+V | Copy/paste tab-separated cells, including rectangular blocks from a spreadsheet |
+| Ctrl+C / Ctrl+X / Ctrl+V | Copy, cut, or paste a rectangular range with tabs between columns and line breaks between rows. Cut clears editable cells after copying. |
 | Type `1` or `0` with several cells selected | Fill selected cells; useful for Yes/No columns |
 | Ctrl+Enter while editing | Fill the selected cells with the entered value |
 | Delete | Clear editable selected cells |

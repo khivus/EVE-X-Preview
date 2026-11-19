@@ -91,6 +91,7 @@ public sealed partial class MainWindow
     }
     private TextBlock SearchText(string text)
     {
+        text = T(text);
         var block = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var words = (search.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var offset = 0;

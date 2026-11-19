@@ -446,6 +446,13 @@ class SettingsSession {
     }
 
     Command(name, args := 0) {
+        if name = "session-statistics" || name = "statistics-scan-start" || name = "statistics-scan-stop" {
+            if name = "statistics-scan-start"
+                UsageStatistics.ForOwner(this.owner).StartScan(false, this.runtime ? this.owner : this.Facade())
+            else if name = "statistics-scan-stop"
+                UsageStatistics.ForOwner(this.owner).StopScan()
+            return UsageStatistics.Snapshot(this.owner, , args is Map ? args : Map())
+        }
         args := args is Map ? args : Map(), descriptor := 0
         for command in SettingsContract.Commands()
             if command["id"] = name

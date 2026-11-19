@@ -5,7 +5,7 @@ class HotkeyFeedback {
         if !this.HasOwnProp("clearTimer")
             this.clearTimer := (*) => ToolTip(,,,18)
         SetTimer(this.clearTimer, 0)
-        ToolTip(message,,,18)
+        ToolTip(T(message),,,18)
         SetTimer(this.clearTimer, -1500)
     }
     static Hide() {
@@ -37,17 +37,17 @@ class HotkeyFeedback {
                 case "Close_All_EVE_Win_Hotkey":
                     app.HotkeyFeedback("Closing eligible EVE clients...")
                     count := app.CloseAllEVEWindows()
-                    message := count ? "Close requested for " count " EVE client" (count = 1 ? "" : "s") : "No eligible EVE clients to close"
+                    message := count ? T("EVE clients asked to close: {1}", count) : "No eligible EVE clients to close"
                 case "Reload_Program_Hotkey", "Exit_Program_Hotkey":
                     action := id = "Exit_Program_Hotkey" ? "exit" : "reload"
                     if !app.RequestRuntimeAction(action, true)
-                        app.HotkeyFeedback((action = "exit" ? "Exit" : "Reload") " blocked: finish, apply or discard Settings first.")
+                        app.HotkeyFeedback(action = "exit" ? "Exit blocked. Finish, apply or discard Settings first." : "Reload blocked. Finish, apply or discard Settings first.")
                     return
                 default: return
             }
             app.HotkeyFeedback(message)
         } catch as err {
-            app.HotkeyFeedback(HotkeyBindings.Settings.Get(id, id) " failed: " err.Message)
+            app.HotkeyFeedback(T("{1} failed: {2}", T(HotkeyBindings.Settings.Get(id, id)), err.Message))
             ProgramLog.Error(err, "Command hotkey " id)
         }
     }

@@ -19,18 +19,18 @@ public sealed partial class MainWindow
     private const double SliderFieldWidth = 420;
     private Control CreateField(JsonObject field, bool horizontal = false)
     {
-        var id = field.Text("id"); var label = field.Text("label");
+        var id = field.Text("id"); var label = T(field.Text("label"));
         var state = session.Snapshot.Object("values").Object(id);
         var key = field.Bool("global") ? "global|" + sectionId + "|" + id : EditKey(id); var pending = session.GetPending(key);
         var current = pending?.Arguments["value"] ?? state["value"] ?? field["default"];
         var panel = new StackPanel { Spacing = 6 };
-        var heading = SearchText(label + (field.Bool("global") && !horizontal ? "  ·  All profiles" : "")); heading.FontWeight = FontWeight.SemiBold;
+        var heading = SearchText(label + (field.Bool("global") && !horizontal ? "  ·  " + T("All profiles") : "")); heading.FontWeight = FontWeight.SemiBold;
         panel.Children.Add(heading);
         if (field.Text("help") is { Length: > 0 } help) panel.Children.Add(SearchText(help));
         void Change(JsonNode? value) => Stage(key, label, "set", new() { ["id"] = id, ["value"] = value?.DeepClone() });
         var input = TypedInput(field, current, Change, horizontal);
         AutomationProperties.SetName(input, label);
-        AutomationProperties.SetHelpText(input, field.Text("help"));
+        AutomationProperties.SetHelpText(input, T(field.Text("help")));
         input.IsEnabled = !state.Bool("inherited") && state.Bool("enabled", true);
         var feedback = new TextBlock { TextWrapping = TextWrapping.Wrap };
         BindFeedback(key, id, feedback, input);
@@ -61,13 +61,13 @@ public sealed partial class MainWindow
         };
         if (kind is "bool" or "boolean")
         {
-            var toggle = new ToggleSwitch { IsChecked = JsonExtensions.IsTrue(current), OnContent = "On", OffContent = "Off" };
+            var toggle = new ToggleSwitch { IsChecked = JsonExtensions.IsTrue(current), OnContent = MainWindow.T("On"), OffContent = MainWindow.T("Off") };
             toggle.IsCheckedChanged += (_, _) => changed(JsonValue.Create(toggle.IsChecked == true)); return toggle;
         }
         var choices = (kind == "gesture" ? session.Metadata!.Value.Array("gestures") : field.Array("choices")).OfType<JsonObject>().ToArray();
         if (choices.Length != 0)
         {
-            var select = new ComboBox { ItemsSource = choices.Select(c => c.Text("label")).ToArray(), HorizontalAlignment = HorizontalAlignment.Left, MinWidth = compact ? 0 : 250, MaxWidth = 600 };
+            var select = new ComboBox { ItemsSource = choices.Select(c => T(c.Text("label"))).ToArray(), HorizontalAlignment = HorizontalAlignment.Left, MinWidth = compact ? 0 : 250, MaxWidth = 600 };
             select.SelectedIndex = Array.FindIndex(choices, choice => JsonExtensions.Display(choice["value"]) == value);
             select.SelectionChanged += (_, _) => { if (select.SelectedIndex >= 0) changed(choices[select.SelectedIndex]["value"]?.DeepClone()); }; return select;
         }
@@ -122,7 +122,7 @@ public sealed partial class MainWindow
             text.MinWidth=250;text.MaxWidth=double.PositiveInfinity;text.HorizontalAlignment=HorizontalAlignment.Stretch;
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), MaxWidth = 600, HorizontalAlignment = HorizontalAlignment.Left };
             row.Children.Add(text);
-            var browse = new Button { Content = "Browse", Margin = new Thickness(8, 0, 0, 0) }; Grid.SetColumn(browse, 1); row.Children.Add(browse);
+            var browse = new Button { Content = MainWindow.T("Browse"), Margin = new Thickness(8, 0, 0, 0) }; Grid.SetColumn(browse, 1); row.Children.Add(browse);
             browse.Click += async (_, _) =>
             {
                 await ProtectModalAsync(true);
@@ -147,7 +147,7 @@ public sealed partial class MainWindow
         if (kind == "color")
         {
             text.Width = double.NaN; text.MinWidth = 0; text.HorizontalAlignment=HorizontalAlignment.Stretch; text.Padding = new Thickness(compact ? 3 : 8, 4);
-            text.FontSize = compact ? 12 : 14; text.PlaceholderText = "RRGGBB";
+            text.FontSize = compact ? 12 : 14; text.PlaceholderText = MainWindow.T("RRGGBB");
             var choose = new Button { Width = compact ? 30 : 36, Height = 34, MinHeight = 0, Padding = new Thickness(0), Margin = new Thickness(4,0,0,0), BorderThickness = new Thickness(1.5), Cursor = new Cursor(StandardCursorType.Hand) };
             choose.Classes.Add("color-swatch");
             var glyph = new TextBlock { Text = "✎", FontSize = 16, FontWeight = FontWeight.Bold };
@@ -223,16 +223,16 @@ internal sealed class HotkeyEditor : StackPanel
         this.compact=compact;
         Spacing = 6;
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions(compact ? "*,Auto,Auto,Auto" : "220,Auto,Auto,Auto"), HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Left };
-        text = new TextBox { Text = value, PlaceholderText = "No shortcut", IsReadOnly = true };
-        record = new Button { Content = "Record", Margin = new Thickness(8, 0, 0, 0) };
-        var clear = new Button { Content = "Clear", Margin = new Thickness(8, 0, 0, 0) };
+        text = new TextBox { Text = value, PlaceholderText = MainWindow.T("No shortcut"), IsReadOnly = true };
+        record = new Button { Content = MainWindow.T("Record"), Margin = new Thickness(8, 0, 0, 0) };
+        var clear = new Button { Content = MainWindow.T("Clear"), Margin = new Thickness(8, 0, 0, 0) };
         row.Children.Add(text); Grid.SetColumn(record, 1); row.Children.Add(record); Grid.SetColumn(clear, 2); row.Children.Add(clear); Children.Add(row);
-        var advanced = new Button { Content = "Advanced", Margin = new Thickness(8, 0, 0, 0) }; Grid.SetColumn(advanced, 3); row.Children.Add(advanced);
-        var help = new TextBlock { Text = "Record a shortcut, or enable advanced syntax (^ Ctrl, ! Alt, + Shift, # Win). Esc cancels recording. Mouse buttons may also be recorded.", TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 };
+        var advanced = new Button { Content = MainWindow.T("Advanced"), Margin = new Thickness(8, 0, 0, 0) }; Grid.SetColumn(advanced, 3); row.Children.Add(advanced);
+        var help = new TextBlock { Text = MainWindow.T("Record a shortcut, or enable advanced syntax (^ Ctrl, ! Alt, + Shift, # Win). Esc cancels recording. Mouse buttons may also be recorded."), TextWrapping = TextWrapping.Wrap, Opacity = .65, FontSize = 12 };
         ToolTip.SetTip(this, help.Text);
         advanced.Click += (_, _) => { text.IsReadOnly = !text.IsReadOnly; advanced.Content = text.IsReadOnly ? "Advanced" : "Done"; text.Focus(); };
         if (compact) {
-            record.Content = "●"; clear.Content = "×"; advanced.Content = "A";
+            record.Content = "●"; clear.Content = "×"; advanced.Content = MainWindow.T("A");
             foreach(var button in new[]{record,clear,advanced}) { button.Padding = new Thickness(0); button.Margin = new Thickness(3,0,0,0); button.Width=28;button.MinWidth=28;button.Height=34;button.HorizontalContentAlignment=HorizontalAlignment.Center;button.VerticalContentAlignment=VerticalAlignment.Center; }
             ToolTip.SetTip(record,"Record shortcut"); ToolTip.SetTip(clear,"Clear shortcut"); ToolTip.SetTip(advanced,"Advanced AutoHotkey syntax");
         }

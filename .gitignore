@@ -5,6 +5,7 @@ build/
 # Files
 *.exe
 *.json
+!res/locales.json
 !settings/**/app.manifest
 !settings/**/Fixtures/*.json
 EVE-X-Preview*.log

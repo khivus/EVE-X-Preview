@@ -34,6 +34,8 @@ A Windows tool for managing multiple EVE Online clients with live thumbnails, mo
 - [Updates and diagnostics](docs/updates-and-diagnostics.md)
 - [Source setup, tests and contributing](docs/development.md)
 - [Modern and internal settings editors](docs/modern-settings.md)
+- [Change the interface language or add a translation](docs/localization.md)
+- [Statistics and log archive scans](docs/statistics.md)
 
 Guides live in `docs/` so each page can be linked directly and updated with the matching code release.
 
