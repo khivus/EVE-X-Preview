@@ -513,7 +513,8 @@ class SettingsSession {
                 if this.Dirty
                     throw SettingsServiceError("busy", "Apply or discard the settings draft before replacing the editor.")
                 facade.SettingsDownloader.Start(facade.updateChecker.settingsUrl, facade.updateChecker.settingsTag)
-            case "update-status": return Map("status", facade.SettingsDownloader.status != "" ? facade.SettingsDownloader.status : facade.updateChecker.status, "busy", SettingsContract.Bool(facade.updateChecker.busy || facade.SettingsDownloader.busy),
+            case "update-status": return Map("status", facade.installStatus != "" ? facade.installStatus : facade.SettingsDownloader.status != "" ? facade.SettingsDownloader.status : facade.updateChecker.status, "busy", SettingsContract.Bool(facade.installBusy || facade.updateChecker.busy || facade.SettingsDownloader.busy),
+                "installError", SettingsContract.Bool(facade.installError),
                 "stable", facade.updateChecker.releaseTag, "prerelease", facade.updateChecker.preReleaseTag, "installed", facade.programVersion,
                 "settingsVersion", facade.updateChecker.settingsTag, "settingsUrl", facade.updateChecker.settingsUrl,
                 "settingsCurrent", SettingsContract.Bool(facade.SettingsDownloader.Current(facade.updateChecker.settingsTag)),
@@ -524,7 +525,7 @@ class SettingsSession {
             case "install-stable", "install-prerelease":
                 if this.Dirty
                     throw SettingsServiceError("busy", "Apply or discard your settings draft before installing another version.")
-                SetTimer((*) => facade.InstallVersion(name = "install-prerelease"), -20)
+                facade.QueueInstall(name = "install-prerelease")
             case "changelog": SetTimer((*) => ChangelogWindow.Show(false, facade.S_Gui.Hwnd), -20)
             case "documentation": Run("https://github.com/khivus/EVE-X-Preview/blob/dev/README.MD")
             case "report-problem": Run("https://github.com/khivus/EVE-X-Preview/issues/new")
@@ -542,6 +543,9 @@ class SettingsSession {
 ; without constructing SettingsWorkbench or the normal Main_Class runtime.
 class SettingsSessionRuntime extends SettingsWorkbenchPages {
     message := ""
+    installStatus := ""
+    installBusy := false
+    installError := false
     __New(session) {
         this.session := session
         this.owner := session.owner
@@ -572,8 +576,33 @@ class SettingsSessionRuntime extends SettingsWorkbenchPages {
     }
     HasDraftChanges() => this.session.Dirty
     Changed() => this._JSON := this.model.config
-    UpdateStatus(message) => this.message := message
-    ShowError(message) => this.message := message
+    QueueInstall(pre) {
+        if this.installBusy
+            throw SettingsServiceError("busy", "An installer handoff is already in progress.")
+        this.installBusy := true, this.installError := false
+        this.UpdateStatus("Preparing installer…")
+        this.installTimer := ObjBindMethod(this, "RunInstall", pre)
+        SetTimer(this.installTimer, -20)
+    }
+    RunInstall(pre) {
+        try this.InstallVersion(pre)
+        catch as err {
+            ProgramLog.Error(err, "Starting installer from modern settings")
+            this.ShowError("The installer could not be started. " err.Message)
+        } finally this.installBusy := false
+    }
+    UpdateStatus(message) {
+        this.message := message
+        if this.installBusy
+            this.installStatus := message
+    }
+    ShowError(message) {
+        this.message := message
+        if this.installBusy {
+            this.installStatus := message, this.installError := true
+            ProgramLog.Add("Installer handoff failed: " message, "WARN")
+        }
+    }
     StopTestThumbnail() {
         if this.HasOwnProp("settingsThumbnail") && IsObject(this.settingsThumbnail) {
             this.settingsThumbnail.Close()
@@ -583,6 +612,8 @@ class SettingsSessionRuntime extends SettingsWorkbenchPages {
             this.S_Gui.Hide()
     }
     Dispose() {
+        if this.HasOwnProp("installTimer")
+            SetTimer(this.installTimer, 0)
         this.StopTestThumbnail()
         this.settingsSoundPlayer.Dispose()
         if this.updateChecker.busy

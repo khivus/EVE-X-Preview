@@ -25,12 +25,14 @@ class ReleaseInstaller {
         }
         if !RegExMatch(currentVersion, "^\d+(\.\d+){1,3}$")
             throw Error("Invalid installed version for updater recovery.")
-        ; Never obtain an installer from a downgrade target: it may predate the
-        ; recovery protocol. A missing compatible installer fails without launch.
-        Download("https://github.com/khivus/EVE-X-Preview/releases/download/v" currentVersion "/EVE-X-Preview-Updater.exe", destination)
+        ; An installed build's release may have been removed. Bootstrap from
+        ; the current stable release, never from a potentially old downgrade
+        ; target, and require the recovery protocol before allowing execution.
+        this.DownloadUpdater("https://github.com/khivus/EVE-X-Preview/releases/latest/download/EVE-X-Preview-Updater.exe", destination)
         if !this.RecoveryUpdater(destination)
-            throw Error("Restore the matching EVE-X-Preview-Updater.exe beside the application before retrying this update.")
+            throw Error("Download a compatible EVE-X-Preview-Updater.exe from the latest stable release and place it beside the application before retrying.")
     }
+    static DownloadUpdater(url, destination) => Download(url, destination)
     __New(mainPath, tag, sourceDirectory := "") {
         if !RegExMatch(tag, "^\d+(\.\d+){1,3}$")
             throw ValueError("Invalid release version.")

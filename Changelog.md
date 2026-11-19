@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## Unreleased
+
+### Changed
+* When the updater is missing or incompatible, EVE-X-Preview downloads a compatible updater from the latest stable release. Updates can proceed even if the installed version’s release is no longer on GitHub (#22).
+
+### Fixed
+* Modern Settings now shows errors that occur after you confirm an update and lets you retry (#22).
+
 ## v1.7.0.8
 
 ### Added
