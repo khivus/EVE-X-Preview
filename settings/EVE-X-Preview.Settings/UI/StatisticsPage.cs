@@ -116,7 +116,7 @@ public sealed partial class MainWindow
                         tile.Children.Add(new TextBlock { Text = metric.Text("value"), FontSize = 30, FontWeight = FontWeight.SemiBold });
                         tile.Children.Add(Muted(metric.Text("label")));
                         if (requestedCharacter == "" && metric.Text("character") is { Length: > 0 } leader)
-                            tile.Children.Add(Muted(T("Top character") + ": " + leader));
+                            tile.Children.Add(Muted(leader));
                         else if (requestedCharacter == "" && category.Text("title") != "Saved configuration" && metric.Number("value") > 0)
                             tile.Children.Add(Muted("No character history available"));
                         metrics.Children.Add(tile);
@@ -133,7 +133,7 @@ public sealed partial class MainWindow
                     if (entries.Length == 0) continue;
                     var group = new StackPanel { Spacing = 8 };
                     group.Children.Add(new TextBlock { Text = T(title), FontWeight = FontWeight.SemiBold });
-                    TableHeading(group, "2*,*,2*", label, "Records", "Top character");
+                    TableHeading(group, "2*,*,2*", label, "Records", "Character");
                     foreach (var entry in entries)
                     {
                         var row = TableLine("2*,*,2*");
@@ -148,7 +148,7 @@ public sealed partial class MainWindow
                 {
                     var group = new StackPanel { Spacing = 8 };
                     group.Children.Add(new TextBlock { Text = T("Mined materials"), FontWeight = FontWeight.SemiBold });
-                    TableHeading(group, "2*,*,*,2*", "Material", "Mined units", "Residue units", "Top character");
+                    TableHeading(group, "2*,*,*,2*", "Material", "Mined units", "Residue units", "Character");
                     var clipboard = new TableCellClipboard(this, group);
                     foreach (var material in materials.OrderByDescending(m => m.Number("units")))
                     {
@@ -201,6 +201,7 @@ public sealed partial class MainWindow
         dashboard.DetachedFromVisualTree += (_, _) => timer.Stop();
         page.Children.Add(filters);
         page.Children.Add(Muted("Character and date filters apply to EVE log statistics."));
+        page.Children.Add(Muted("With All characters selected, each character name identifies the leader for that statistic."));
         page.Children.Add(actions);
         page.Children.Add(status);
         page.Children.Add(progress);
