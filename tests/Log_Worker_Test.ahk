@@ -400,6 +400,8 @@ StatisticsExtendedTest() {
             . stamp "(combat) 100 to Target - Laser II - Hits`n"
             . stamp "(combat) 1 to Target - Ogre II - Hits`n"
             . stamp "(combat) 1 to Target - Hammerhead II - Hits`n"
+            . stamp "(combat) 1 to Vecamia - Welcome to VEC[S.UP](Astrahus) - Ogre I - Penetrates`n"
+            . stamp "(combat) 1 to System - Crowd Pleaser[XDA](Metenox Moon Drill) - Light Scoped Entropic Disintegrator - Hits`n"
             . stamp "(combat) 20 remote armor repaired to Friend - Repairer II`n"
             . stamp "(combat) 30 remote shield boosted by Friend - Booster II`n"
             . stamp "(combat) 40 remote hull repaired to Friend - Hull Repairer II`n"
@@ -447,11 +449,11 @@ StatisticsExtendedTest() {
         AssertEqual("Alice", view["leaders"]["count7"])
         AssertEqual("Alice", view["leaders"]["count10"])
         AssertEqual("Alice", view["leaders"]["count13"])
-        AssertEqual(2, view["drones"].Length)
+        AssertEqual(3, view["drones"].Length)
         for drone in view["drones"]
             AssertEqual("Alice", drone["character"])
         for module in view["modules"]
-            AssertFalse(module["name"] = "Ogre II" || module["name"] = "Hammerhead II")
+            AssertFalse(module["name"] = "Ogre II" || module["name"] = "Hammerhead II" || InStr(module["name"], "Astrahus") || InStr(module["name"], "Moon Drill"))
         for module in view["modules"]
             if module["name"] = "Laser II" {
                 AssertEqual(3, module["count"])
@@ -469,14 +471,17 @@ StatisticsExtendedTest() {
         AssertEqual(6, view["extra"]["burstMaxRecipients"])
         ; Downgrade the checkpoint marker to verify backfill replaces aggregates.
         indexPath := storage "\archive-index.tsv"
-        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V4", ";V3")
+        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V5", ";V4")
         old := RegExReplace(old, ";@extra,hull(?:Given|Received),[^;|`t`r`n]*")
+        old := StrReplace(old, "@modules,Light Scoped Entropic Disintegrator,", "@modules,Crowd Pleaser[XDA](Metenox Moon Drill) - Light Scoped Entropic Disintegrator,")
         FileDelete(indexPath)
         FileAppend(old, indexPath, "UTF-8-RAW")
         RunStatisticsFixtureScan(job, request)
         view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
         AssertEqual(2, view["extra"]["pleaseWait"], "Backfill replaces old counts instead of adding duplicates.")
         AssertFalse(view["extendedNeedsRescan"])
+        for module in view["modules"]
+            AssertFalse(InStr(module["name"], "Moon Drill"), "Rescan replaces polluted structure/module aggregates.")
         AssertEqual(4, view["extra"]["burstApplications"])
         AssertEqual(29, view["extra"]["burstRecipients"])
         AssertEqual(20, view["extra"]["burstMaxRecipients"])

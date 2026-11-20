@@ -13,6 +13,7 @@ public sealed partial class MainWindow
     private string statisticsRange = "all";
     private string[] statisticsCharacters = [];
     private readonly Dictionary<string, int> statisticsListLimits = new();
+    private readonly Dictionary<string, Vector> statisticsListOffsets = new();
 
     private void RenderStatistics()
     {
@@ -106,7 +107,6 @@ public sealed partial class MainWindow
                 if (content == lastContent) return;
                 lastContent = content;
                 dashboard.Children.Clear();
-                StackPanel? burstCategory = null;
                 foreach (var category in stats.Array("categories"))
                 {
                     var group = new StackPanel { Spacing = 12 };
@@ -124,11 +124,20 @@ public sealed partial class MainWindow
                         metrics.Children.Add(tile);
                     }
                     group.Children.Add(metrics);
-                    if (category.Text("title") == "Command and mining bursts") burstCategory = group;
+                    if (category.Text("title") == "Command and mining bursts" && view.Array("bursts")
+                        .OrderByDescending(e => e.Number("count")).ThenBy(e => e.Text("name")).FirstOrDefault() is { } burst)
+                    {
+                        var tile = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 24, 6), MaxWidth = 280 };
+                        tile.Children.Add(new TextBlock { Text = burst.Text("name"), FontSize = 22,
+                            FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
+                        tile.Children.Add(Muted("Most used burst type"));
+                        tile.Children.Add(Muted(burst.Text("count") + " " + T("applications")));
+                        if (requestedCharacter == "") tile.Children.Add(Muted(burst.Text("character")));
+                        metrics.Children.Add(tile);
+                    }
                     dashboard.Children.Add(Card(group));
                 }
                 foreach (var (key, title, label) in new[] {
-                    ("bursts", "Most used burst types", "Burst"),
                     ("modules", "Most used modules", "Module"),
                     ("drones", "Most used drones / fighters", "Drone / fighter"),
                     ("systems", "Most visited systems", "System") })
@@ -137,8 +146,7 @@ public sealed partial class MainWindow
                     if (entries.Length == 0) continue;
                     var table = StatisticsRanking(key, title, "2*,*,2*", [label, "Records", "Character"],
                         entries.Select(e => new[] { e.Text("name"), e.Text("count"), requestedCharacter == "" ? e.Text("character") : "" }).ToArray());
-                    if (key == "bursts" && burstCategory is not null) burstCategory.Children.Add(table);
-                    else dashboard.Children.Add(Card(table));
+                    dashboard.Children.Add(Card(table));
                 }
                 if (view.Array("materials") is { Count: > 0 } materials)
                 {
@@ -195,8 +203,7 @@ public sealed partial class MainWindow
 
     private Control StatisticsRanking(string key, string title, string columns, string[] headings, string[][] entries)
     {
-        // The header shares the page scroll viewport, so the title, row count and
-        // column labels remain together without a nested scroll area.
+        // Only rows scroll. The title, amount selector and column labels stay visible.
         var table = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto"), ClipToBounds = true };
         var headerContent = new StackPanel { Spacing = 8 };
         var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
@@ -213,57 +220,55 @@ public sealed partial class MainWindow
         Grid.SetColumn(amount, 2); heading.Children.Add(amount);
         headerContent.Children.Add(heading);
         TableHeading(headerContent, columns, headings);
-        var translation = new TranslateTransform();
         var header = new Border { Child = headerContent, Padding = new Thickness(0, 8),
-            RenderTransform = translation, ZIndex = 1, Classes = { "statistics-header" } };
+            Classes = { "statistics-header" } };
         var rows = new StackPanel();
-        Grid.SetRow(rows, 1);
-        table.Children.Add(rows); table.Children.Add(header);
+        var viewport = new ScrollViewer { Content = rows,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+        Grid.SetRow(viewport, 1);
+        table.Children.Add(viewport); table.Children.Add(header);
 
-        void Populate()
+        void Populate(bool resetOffset = true)
         {
-            table.Children.Remove(rows);
+            var offset = resetOffset ? default : statisticsListOffsets.GetValueOrDefault(key);
+            if (resetOffset) statisticsListOffsets[key] = default;
             rows = new StackPanel();
-            Grid.SetRow(rows, 1);
-            table.Children.Add(rows);
-            var clipboard = new TableCellClipboard(this, rows);
+            viewport.Content = rows;
+            var count = Math.Min(entries.Length, statisticsListLimits.GetValueOrDefault(key, 5));
+            viewport.VerticalScrollBarVisibility = count > 10 ? Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+                : Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
+            viewport.IsScrollChainingEnabled = count <= 10;
+            viewport.MaxHeight = count > 10 ? 360 : double.PositiveInfinity;
+            viewport.Offset = default;
             foreach (var values in entries.Take(statisticsListLimits.GetValueOrDefault(key, 5)))
             {
                 var row = TableLine(columns);
                 for (var column = 0; column < values.Length; column++)
                     row.Children.Add(TableCell(Muted(values[column]), column));
                 rows.Children.Add(row);
-                for (var column = 0; column < values.Length; column++)
-                {
-                    var index = column;
-                    clipboard.Add(row, column, () => values[index]);
-                }
             }
+            if (!resetOffset) Dispatcher.UIThread.Post(() => viewport.Offset = offset, DispatcherPriority.Loaded);
         }
-        void PinHeader()
+        var attached = false;
+        viewport.AttachedToVisualTree += (_, _) => attached = true;
+        viewport.DetachedFromVisualTree += (_, _) => attached = false;
+        viewport.ScrollChanged += (_, _) => { if (attached) statisticsListOffsets[key] = viewport.Offset; };
+        viewport.LayoutUpdated += (_, _) =>
         {
-            if (table.TranslatePoint(default, pageScroll) is not { } origin) return;
-            translation.Y = Math.Clamp(-origin.Y, 0, Math.Max(0, table.Bounds.Height - header.Bounds.Height));
-        }
-        EventHandler<ScrollChangedEventArgs> scroll = (_, _) => PinHeader();
-        EventHandler layout = (_, _) => PinHeader();
-        table.AttachedToVisualTree += (_, _) => { pageScroll.ScrollChanged += scroll; table.LayoutUpdated += layout; };
-        table.DetachedFromVisualTree += (_, _) => { pageScroll.ScrollChanged -= scroll; table.LayoutUpdated -= layout; };
+            headerContent.Margin = new Thickness(0, 0, Math.Max(0, viewport.Bounds.Width - viewport.Viewport.Width), 0);
+            if (rows.Children.Count <= 10 || rows.Children[9].Bounds.Height <= 0) return;
+            // Account for wrapped names and varying font sizes rather than assuming
+            // all rows have the same height. Fit exactly the first ten rows.
+            var height = rows.Children[9].Bounds.Bottom + rows.Children[9].Margin.Bottom;
+            if (Math.Abs(viewport.MaxHeight - height) > 0.5) viewport.MaxHeight = height;
+        };
         amount.SelectionChanged += (_, _) =>
         {
             if (amount.SelectedIndex < 0) return;
-            var wasPinned = translation.Y > 0;
             statisticsListLimits[key] = choices[amount.SelectedIndex];
             Populate();
-            // Reducing a long list while its header is pinned returns to that
-            // list's first rows instead of stranding the user in the next card.
-            if (wasPinned) Dispatcher.UIThread.Post(() =>
-            {
-                if (table.TranslatePoint(default, pageScroll) is { } origin)
-                    pageScroll.Offset = new Vector(pageScroll.Offset.X, Math.Max(0, pageScroll.Offset.Y + origin.Y));
-            }, DispatcherPriority.Loaded);
         };
-        Populate();
+        Populate(false);
         return table;
     }
 

@@ -453,7 +453,7 @@ class StatisticsArchive {
         if !entry.HasOwnProp("detail")
             return true
         for row in StrSplit(entry.detail, "|")
-            if row != "" && !InStr(row, ";V4")
+            if row != "" && !InStr(row, ";V5")
                 return true
         return false
     }
@@ -670,13 +670,13 @@ class StatisticsArchive {
             this.Bump(day.bursts, burst[1])
             this.Bump(day.modules, burst[1])
         }
-        if RegExMatch(text, "i)\(combat\)\s*([\d,.]+) remote (armor repaired|shield boosted|hull repaired|structure repaired) (by|to) .+? - (.+)$", &repair) {
+        if RegExMatch(text, "i)\(combat\)\s*([\d,.]+) remote (armor repaired|shield boosted|hull repaired|structure repaired) (by|to) .+ - (.+)$", &repair) {
             direction := repair[3] = "by" ? "Received" : "Given"
             type := repair[2] = "armor repaired" ? "armor" : repair[2] = "shield boosted" ? "shield" : "hull"
             this.Bump(day.extra, type direction, Number(StrReplace(repair[1], ",")))
             this.Bump(day.extra, "logisticsRecords")
             this.Bump(day.modules, Trim(repair[4]))
-        } else if InStr(text, "(combat)") && RegExMatch(text, " - (.+?) - (?:Hits|Smashes|Penetrates|Grazes|Glances Off|Wrecks|misses)", &module)
+        } else if InStr(text, "(combat)") && RegExMatch(text, ".* - (.+?) - (?:Hits|Smashes|Penetrates|Grazes|Glances Off|Wrecks|misses)", &module)
             this.Bump(day.modules, Trim(module[1]))
         else if RegExMatch(text, "External factors are preventing your (.+?) from responding", &module)
             this.Bump(day.modules, Trim(module[1]))
@@ -719,7 +719,7 @@ class StatisticsArchive {
             row .= "," day.peak[1] "," day.peak[2] ",,0,0," day.extraResidue
                 . "," day.alpha[1] "," day.alpha[2] "," day.combatIndexed
             if day.extendedIndexed
-                row .= ";V4"
+                row .= ";V5"
             for field in ["extra", "modules", "systems", "bursts"]
                 for name, count in day.%field%
                     row .= ";@" field "," this.Escape(name) "," count
@@ -738,7 +738,7 @@ class StatisticsArchive {
             parts := StrSplit(row, ";")
             values := StrSplit(parts[1], ",")
             day := this.NewDay()
-            day.extendedIndexed := InStr(row, ";V4") != 0
+            day.extendedIndexed := InStr(row, ";V5") != 0
             loop StatisticsArchive.MetricCount - 2
                 day.values[A_Index + 2] := Number(values[A_Index + 1])
             offset := StatisticsArchive.MetricCount
@@ -753,7 +753,7 @@ class StatisticsArchive {
             for index, part in parts {
                 if index = 1
                     continue
-                if part = "V2" || part = "V3" || part = "V4"
+                if part = "V2" || part = "V3" || part = "V4" || part = "V5"
                     continue
                 fields := StrSplit(part, ",")
                 if SubStr(fields[1], 1, 1) = "@" {
