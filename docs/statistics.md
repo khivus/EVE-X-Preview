@@ -31,3 +31,11 @@ The most appearing module counts named weapons/drones in combat hit records, rem
 The top 10 systems counts “Channel changed to Local” entries in chat logs, so it measures recorded visits, not time spent in a system. Repeated visits and the same visit recorded by several characters each count. Last session excludes chat, so system rankings are empty for that filter.
 
 With All characters selected, each combat peak shows its winning character independently; the module and system rankings show the character with the most records for that entry. Tied characters use the first indexed character. Character and UTC date filters apply to all these statistics. Run Scan or resume log archives once to backfill older checkpoints; the scan replaces their aggregates without adding duplicates. Only aggregate names and counts are saved, not chat messages.
+
+## Character leaders and drones
+
+All characters shows a top character for every indexed combat, travel, activity, logistics, fleet and mining total, as well as each combat peak and ranking. Game log counts are a proxy for logins (one indexed file per session); copied files can inflate them. Character leaders obey the selected UTC date range. With a single character selected, leader captions are hidden. A tie uses the first indexed character with that value. Zero totals have no leader. The saved-configuration character count is an inventory total, so it has no individual winner.
+
+Live switching, thumbnail, alert and monitoring counters now persist character contributions. Older lifetime app totals cannot be attributed retrospectively: leaders use only activity collected since this update. Counters without character history show that explicitly. The longest switching combo is attributed to the character receiving focus on the final switch.
+
+Drone and fighter names come from official ESI universe categories 18 and 87 (snapshot 2026-11-21), embedded for offline use. Ogre and other drone variants are ranked separately from modules, using the previously indexed combat names without another archive rescan. Rankings measure appearances in supported combat and notification records, not activation cycles.

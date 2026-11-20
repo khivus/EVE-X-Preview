@@ -32,6 +32,8 @@ class UsageStatistics {
         this.directory := directory
         this.path := directory "\totals.json"
         this.saved := Map()
+        this.characterCounts := Map()
+        this.savedCharacterCounts := Map()
         for key in UsageStatistics.Counters
             this.%key% := 0, this.saved[key] := 0
         this.totals := UsageStatistics.ReadTotals(this.path)
@@ -51,11 +53,42 @@ class UsageStatistics {
             SetTimer(this.scanTimer, -60000, -10)
     }
 
-    ConfirmSwitch(holdDelay, tick := A_TickCount) {
+    ConfirmSwitch(holdDelay, tick := A_TickCount, character := "") {
         this.switchesConfirmed += 1
         this.combo := this.lastSwitch < 0 || tick - this.lastSwitch > 5 * holdDelay ? 1 : this.combo + 1
         this.lastSwitch := tick
         this.maxCombo := Max(this.maxCombo, this.combo)
+        this.Attribute("switchesConfirmed", character)
+        this.Attribute("maxCombo", character, this.combo)
+    }
+
+    Attribute(key, character, amount := 1) {
+        character := RegExReplace(Trim(character), "^EVE - ")
+        if character = "" || character = "EVE" || character = "Char Screen"
+            return
+        if !this.characterCounts.Has(character)
+            this.characterCounts[character] := Map()
+        counts := this.characterCounts[character]
+        counts[key] := key = "maxCombo" ? Max(counts.Get(key, 0), amount) : counts.Get(key, 0) + amount
+    }
+
+    CharacterLeaders() {
+        counts := Map(), bests := Map(), leaders := Map()
+        for character, values in this.totals.Get("characters", Map())
+            counts[character] := values.Clone()
+        for character, values in this.characterCounts {
+            if !counts.Has(character)
+                counts[character] := Map()
+            saved := this.savedCharacterCounts.Get(character, Map())
+            for key, value in values
+                counts[character][key] := key = "maxCombo" ? Max(counts[character].Get(key, 0), value)
+                    : counts[character].Get(key, 0) + value - saved.Get(key, 0)
+        }
+        for character, values in counts
+            for key, value in values
+                if value > bests.Get(key, 0)
+                    bests[key] := value, leaders[key] := character
+        return leaders
     }
 
     static ReadTotals(path) {
@@ -75,6 +108,9 @@ class UsageStatistics {
             current[key] := this.%key%
             dirty := dirty || current[key] != this.saved[key]
         }
+        for character, values in this.characterCounts
+            for key, value in values
+                dirty := dirty || value != this.savedCharacterCounts.Get(character, Map()).Get(key, 0)
         if !dirty
             return
         mutex := DllCall("CreateMutexW", "Ptr", 0, "Int", 0, "Str", "Local\EVE-X-Preview.StatisticsTotals", "Ptr")
@@ -89,6 +125,16 @@ class UsageStatistics {
             totals := UsageStatistics.ReadTotals(this.path)
             for key, value in current
                 totals[key] := this.Combined(totals, value, key)
+            characters := totals.Get("characters", Map())
+            for character, values in this.characterCounts {
+                if !characters.Has(character)
+                    characters[character] := Map()
+                saved := this.savedCharacterCounts.Get(character, Map())
+                for key, value in values
+                    characters[character][key] := key = "maxCombo" ? Max(characters[character].Get(key, 0), value)
+                        : characters[character].Get(key, 0) + value - saved.Get(key, 0)
+            }
+            totals["characters"] := characters
             temporary := this.path "." DllCall("GetCurrentProcessId") ".tmp"
             if FileExist(temporary)
                 FileDelete(temporary)
@@ -96,6 +142,8 @@ class UsageStatistics {
             FileMove(temporary, this.path, true)
             this.totals := totals
             this.saved := current
+            for character, values in this.characterCounts
+                this.savedCharacterCounts[character] := values.Clone()
         } catch as err {
             ProgramLog.Add("Statistics save failed: " err.Message, "WARN")
         } finally {
@@ -240,7 +288,7 @@ class UsageStatistics {
     }
 
     ParseView(text) {
-        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "systems", [], "leaders", Map())
+        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "drones", [], "systems", [], "leaders", Map())
         for line in StrSplit(text, "`n", "`r") {
             fields := StrSplit(line, "`t")
             if !fields.Length
@@ -257,7 +305,7 @@ class UsageStatistics {
                     }
                 case "E": result["extendedNeedsRescan"] := !Number(fields[2])
                 case "X": result["extra"][fields[2]] := Number(fields[3])
-                case "U", "Y": result[fields[1] = "U" ? "modules" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
+                case "U", "Y", "R": result[fields[1] = "U" ? "modules" : fields[1] = "R" ? "drones" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
                 case "T": result["leaders"][fields[2]] := fields[3]
                 case "P": result["characters"].Push(fields[2])
                 case "M": result["materials"].Push(Map("name", fields[2], "units", Number(fields[3]), "residue", Number(fields[4])))
@@ -353,6 +401,34 @@ class UsageStatistics {
             }
             categories.Push(this.Category("Mining and gas harvesting", "Gas harvested (units)", gas, "Other materials mined (units)", solid,
                 "Named residue (units)", residue, "Unattributed residue records (units)", view["extraResidue"]))
+        }
+        if filters && filters.Get("character", "") = "" {
+            keys := Map("Gas harvested (units)", "gas", "Other materials mined (units)", "solid",
+                "Named residue (units)", "residue", "Unattributed residue records (units)", "extraResidue")
+            for group in this.ArchiveGroups
+                loop (group.Length - 1) // 2
+                    keys[group[2 * A_Index + 1]] := "count" group[2 * A_Index]
+            for label, key in Map("Armor repaired (given)", "armorGiven", "Armor repaired (received)", "armorReceived",
+                "Shield boosted (given)", "shieldGiven", "Shield boosted (received)", "shieldReceived",
+                "Hull repaired (given)", "hullGiven", "Hull repaired (received)", "hullReceived", "Logistics records", "logisticsRecords",
+                "Fleet warps", "fleetWarps", "Regroups", "regroups", "Please wait messages", "pleaseWait")
+                keys[label] := key
+            appLeaders := stats ? stats.CharacterLeaders() : Map()
+            for label, key in Map("Switch requests", "switchesRequested", "Confirmed focus changes", "switchesConfirmed",
+                "Longest switching combo", "maxCombo", "Character launches (thumbnails created)", "characterLaunches",
+                "Alerts triggered", "alertsTriggered", "Enabled events observed", "monitoredEvents",
+                "Monitored damage taken", "monitoredDamageIn", "Monitored damage dealt", "monitoredDamageOut",
+                "Monitored local system changes", "monitoredSystemChanges") {
+                keys[label] := "app:" key
+            }
+            for category in categories
+                for metric in category["metrics"]
+                    if keys.Has(metric["label"])
+                        metric["character"] := InStr(keys[metric["label"]], "app:") = 1
+                            ? appLeaders.Get(SubStr(keys[metric["label"]], 5), "")
+                            : view.Get("leaders", Map()).Get(keys[metric["label"]], "")
+            for material in view.Get("materials", [])
+                material["character"] := view.Get("leaders", Map()).Get("material:" material["name"], "")
         }
         return Map("enabled", !!live, "available", !!stats, "scanning", !!(stats && stats.job && stats.job.busy),
             "scanStatus", stats ? stats.status : "", "categories", categories, "view", view,

@@ -61,7 +61,7 @@ class LocalChatMonitor {
             }
             if previous
                 previous.file.Close()
-            reader := {path: path, file: file, pending: "", system: seed.system, hwnd: active[character],
+            reader := {character: character, path: path, file: file, pending: "", system: seed.system, hwnd: active[character],
                 identity: identity, generation: this.discovery.generation, dropFragment: false, statisticsAfter: seed.cursor}
             ; Re-read a small tail to retain lines completed after the worker's snapshot.
             this.SeekRecentTail(reader, Min(seed.cursor, file.Length))
@@ -134,8 +134,11 @@ class LocalChatMonitor {
                 continue
             }
             if RegExMatch(line, "^\x{FEFF}?\s*\[\s*\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\s*\] EVE System > Channel changed to Local :\s*(.+?)\s*$", &match) {
-                if track && reader.system != match[1]
+                if track && reader.system != match[1] {
                     stats.monitoredSystemChanges += 1
+                    if stats is UsageStatistics
+                        stats.Attribute("monitoredSystemChanges", reader.character)
+                }
                 reader.system := match[1], reader.needsSeed := false
             }
         }

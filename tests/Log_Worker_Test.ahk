@@ -166,6 +166,8 @@ StatisticsFilterTest() {
         RunStatisticsFixtureScan(job, request)
         todayResult := RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nmonth")
         AssertTrue(InStr(todayResult, "P`tBob"))
+        allView := RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall")
+        AssertTrue(InStr(allView, "T`tcount1`tAlice"), "Alice has more game sessions indexed.")
         AssertTrue(InStr(todayResult, "M`tFullerite-C32`t2000`t30"))
         AssertTrue(InStr(todayResult, "M`tGneiss`t42`t0"))
         monthly := StrSplit(StrSplit(todayResult, "`n")[1], "`t")
@@ -396,12 +398,17 @@ StatisticsExtendedTest() {
         FileAppend("Listener: Alice`nSession Started: 2026.11.20 12:00:00`n"
             . stamp "(combat) 100 to Target - Laser II - Hits`n"
             . stamp "(combat) 100 to Target - Laser II - Hits`n"
+            . stamp "(combat) 1 to Target - Ogre II - Hits`n"
+            . stamp "(combat) 1 to Target - Hammerhead II - Hits`n"
             . stamp "(combat) 20 remote armor repaired to Friend - Repairer II`n"
             . stamp "(combat) 30 remote shield boosted by Friend - Booster II`n"
             . stamp "(combat) 40 remote hull repaired to Friend - Hull Repairer II`n"
             . stamp "(combat) 50 remote structure repaired by Friend - Hull Repairer II`n"
             . stamp "(notify) Following Friend in warp`n"
             . stamp "(notify) Regrouping to Friend`n"
+            . stamp "(notify) Jumping from Jita to Perimeter`n"
+            . stamp "(notify) Undocking from station`n"
+            . stamp "(notify) A Conduit Field activated by Friend`n"
             . stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
         FileAppend("Listener: Bob`nSession Started: 2026.11.20 12:00:00`n"
             . stamp "(combat) 150 to Target - Laser II - Hits`n", game "\20261120_120000_2.txt", "UTF-8-RAW")
@@ -423,6 +430,18 @@ StatisticsExtendedTest() {
         AssertEqual(1, view["extra"]["pleaseWait"])
         AssertEqual("Alice", view["leaders"]["peak2"])
         AssertEqual("Bob", view["leaders"]["alpha2"])
+        AssertEqual("Alice", view["leaders"]["count3"])
+        AssertEqual("Alice", view["leaders"]["count5"])
+        AssertEqual("Alice", view["leaders"]["fleetWarps"])
+        AssertEqual("Alice", view["leaders"]["count8"])
+        AssertEqual("Alice", view["leaders"]["count7"])
+        AssertEqual("Alice", view["leaders"]["count10"])
+        AssertEqual("Alice", view["leaders"]["count13"])
+        AssertEqual(2, view["drones"].Length)
+        for drone in view["drones"]
+            AssertEqual("Alice", drone["character"])
+        for module in view["modules"]
+            AssertFalse(module["name"] = "Ogre II" || module["name"] = "Hammerhead II")
         for module in view["modules"]
             if module["name"] = "Laser II" {
                 AssertEqual(3, module["count"])
@@ -451,6 +470,34 @@ StatisticsExtendedTest() {
                 AssertEqual(2, system["count"])
     } finally {
         job.Close(), stats.Close()
+        DirDelete(directory, true)
+    }
+}
+
+TestRunner.Register("Statistics character counters persist once and merge new activity", StatisticsCharacterCountersTest)
+StatisticsCharacterCountersTest() {
+    directory := A_Temp "\EVE-X-Preview-CharacterCounters-" A_TickCount
+    owner := {_JSON: JSON.Load(default_JSON)}
+    stats := UsageStatistics(owner, directory)
+    try {
+        stats.switchesRequested += 3
+        stats.Attribute("switchesRequested", "EVE - Alice", 2)
+        stats.Attribute("switchesRequested", "EVE - Bob", 1)
+        stats.ConfirmSwitch(100, 100, "Alice")
+        stats.Flush()
+        stats.Flush()
+        AssertEqual(2, UsageStatistics.ReadTotals(stats.path)["characters"]["Alice"]["switchesRequested"])
+        AssertEqual("Alice", stats.CharacterLeaders()["switchesRequested"])
+        stats.Attribute("switchesRequested", "Bob", 4)
+        AssertEqual("Bob", stats.CharacterLeaders()["switchesRequested"])
+        stats.Flush()
+        AssertEqual(5, UsageStatistics.ReadTotals(stats.path)["characters"]["Bob"]["switchesRequested"])
+        stats.Close()
+        stats := UsageStatistics(owner, directory)
+        AssertEqual("Bob", stats.CharacterLeaders()["switchesRequested"])
+        AssertEqual("Alice", stats.CharacterLeaders()["switchesConfirmed"])
+    } finally {
+        stats.Close()
         DirDelete(directory, true)
     }
 }

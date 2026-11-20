@@ -816,10 +816,299 @@ class StatisticsArchive {
                     }
                 }
             }
-            if covered
+            if covered {
                 totals[1] += entry.values[1], totals[2] += entry.values[2]
+                if !byCharacter.Has(entry.character)
+                    byCharacter[entry.character] := archive.NewDay()
+                byCharacter[entry.character].values[1] += entry.values[1]
+                byCharacter[entry.character].values[2] += entry.values[2]
+            }
         }
         return archive.FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed, combined, byCharacter)
+    }
+
+    PickLeader(leaders, bests, key, character, value) {
+        if value > bests.Get(key, 0) {
+            bests[key] := value
+            leaders[key] := character
+        }
+    }
+
+    IsDrone(name) {
+        ; Official ESI universe categories 18 (drones) and 87 (fighters), 2026-11-21.
+        ; Names are embedded so archive filtering works offline and in compiled workers.
+        static names := Map()
+        if !names.Count {
+            names.CaseSense := "Off"
+            names["'Aergia' Hobgoblin SW-300"] := true
+            names["'Augmented' Acolyte"] := true
+            names["'Augmented' Berserker"] := true
+            names["'Augmented' Hammerhead"] := true
+            names["'Augmented' Hobgoblin"] := true
+            names["'Augmented' Hornet"] := true
+            names["'Augmented' Ice Harvesting Drone"] := true
+            names["'Augmented' Infiltrator"] := true
+            names["'Augmented' Mining Drone"] := true
+            names["'Augmented' Ogre"] := true
+            names["'Augmented' Praetor"] := true
+            names["'Augmented' Valkyrie"] := true
+            names["'Augmented' Vespa"] := true
+            names["'Augmented' Warrior"] := true
+            names["'Augmented' Wasp"] := true
+            names["'Dunk' Salvage Drone"] := true
+            names["'Excavator' Ice Harvesting Drone"] := true
+            names["'Excavator' Mining Drone"] := true
+            names["'Integrated' Acolyte"] := true
+            names["'Integrated' Berserker"] := true
+            names["'Integrated' Hammerhead"] := true
+            names["'Integrated' Hobgoblin"] := true
+            names["'Integrated' Hornet"] := true
+            names["'Integrated' Infiltrator"] := true
+            names["'Integrated' Ogre"] := true
+            names["'Integrated' Praetor"] := true
+            names["'Integrated' Valkyrie"] := true
+            names["'Integrated' Vespa"] := true
+            names["'Integrated' Warrior"] := true
+            names["'Integrated' Wasp"] := true
+            names["'Pluto' Ice Harvesting Drone"] := true
+            names["'Pluto' Mining Drone"] := true
+            names["'Subverted' JVN-UC49"] := true
+            names["10mn webscramblifying Drone"] := true
+            names["Able_PLACEHOLDER"] := true
+            names["Academy Acolyte"] := true
+            names["Academy Hobgoblin"] := true
+            names["Academy Warrior"] := true
+            names["Acolyte EV-300"] := true
+            names["Acolyte I"] := true
+            names["Acolyte II"] := true
+            names["Acolyte TD-300"] := true
+            names["Ametat I"] := true
+            names["Ametat II"] := true
+            names["Antaeus I"] := true
+            names["Antaeus II"] := true
+            names["Arabellata SW-900-I"] := true
+            names["Aralez"] := true
+            names["Atlas SD-900-I"] := true
+            names["Baker_PLACEHOLDER"] := true
+            names["Berserker I"] := true
+            names["Berserker II"] := true
+            names["Berserker SW-900"] := true
+            names["Berserker TP-900"] := true
+            names["Bouncer I"] := true
+            names["Bouncer II"] := true
+            names["Caldari Navy Dragonfly"] := true
+            names["Caldari Navy Hornet"] := true
+            names["Caldari Navy Locust"] := true
+            names["Caldari Navy Scarab"] := true
+            names["Caldari Navy Vespa"] := true
+            names["Caldari Navy Warden"] := true
+            names["Caldari Navy Wasp"] := true
+            names["Cenobite I"] := true
+            names["Cenobite II"] := true
+            names["Charlie_PLACEHOLDER"] := true
+            names["Civilian Hobgoblin"] := true
+            names["Civilian Mining Drone"] := true
+            names["Curator I"] := true
+            names["Curator II"] := true
+            names["Cyclops I"] := true
+            names["Cyclops II"] := true
+            names["Darter TP-600-I"] := true
+            names["Dog_PLACEHOLDER"] := true
+            names["Dragonfly I"] := true
+            names["Dragonfly II"] := true
+            names["Dromi I"] := true
+            names["Dromi II"] := true
+            names["Easy_PLACEHOLDER"] := true
+            names["Einherji I"] := true
+            names["Einherji II"] := true
+            names["Equite I"] := true
+            names["Equite II"] := true
+            names["FA-14 Templar"] := true
+            names["Federation Navy Firbolg"] := true
+            names["Federation Navy Garde"] := true
+            names["Federation Navy Hammerhead"] := true
+            names["Federation Navy Hobgoblin"] := true
+            names["Federation Navy Ogre"] := true
+            names["Federation Navy Satyr"] := true
+            names["Federation Navy Siren"] := true
+            names["Fighter Uno"] := true
+            names["Firbolg I"] := true
+            names["Firbolg II"] := true
+            names["Garde I"] := true
+            names["Garde II"] := true
+            names["Gecko"] := true
+            names["Gram I"] := true
+            names["Gram II"] := true
+            names["Gungnir I"] := true
+            names["Gungnir II"] := true
+            names["Hammerhead I"] := true
+            names["Hammerhead II"] := true
+            names["Hammerhead SD-600"] := true
+            names["Harvester Mining Drone"] := true
+            names["Heavy Armor Maintenance Bot I"] := true
+            names["Heavy Armor Maintenance Bot II"] := true
+            names["Heavy Hull Maintenance Bot I"] := true
+            names["Heavy Hull Maintenance Bot II"] := true
+            names["Heavy Mutated Drone"] := true
+            names["Heavy Shield Maintenance Bot I"] := true
+            names["Heavy Shield Maintenance Bot II"] := true
+            names["Hellhound I"] := true
+            names["Hobgoblin I"] := true
+            names["Hobgoblin II"] := true
+            names["Hobgoblin SD-300"] := true
+            names["Hornet EC-300"] := true
+            names["Hornet I"] := true
+            names["Hornet II"] := true
+            names["Humboldt EC-900-I"] := true
+            names["Huntsman SW-600-I"] := true
+            names["Ice Harvesting Drone I"] := true
+            names["Ice Harvesting Drone II"] := true
+            names["Immaculate TD-600-I"] := true
+            names["Imperial Navy Acolyte"] := true
+            names["Imperial Navy Cenobite"] := true
+            names["Imperial Navy Curator"] := true
+            names["Imperial Navy Equite"] := true
+            names["Imperial Navy Infiltrator"] := true
+            names["Imperial Navy Praetor"] := true
+            names["Imperial Navy Templar"] := true
+            names["Infiltrator EV-600"] := true
+            names["Infiltrator I"] := true
+            names["Infiltrator II"] := true
+            names["Infiltrator TD-600"] := true
+            names["Inshore EC-300-I"] := true
+            names["Light Armor Maintenance Bot I"] := true
+            names["Light Armor Maintenance Bot II"] := true
+            names["Light Hull Maintenance Bot I"] := true
+            names["Light Hull Maintenance Bot II"] := true
+            names["Light Mutated Drone"] := true
+            names["Light Shield Maintenance Bot I"] := true
+            names["Light Shield Maintenance Bot II"] := true
+            names["Locust I"] := true
+            names["Locust II"] := true
+            names["Luna SD-600-I"] := true
+            names["Malleus I"] := true
+            names["Malleus II"] := true
+            names["Mantis I"] := true
+            names["Mantis II"] := true
+            names["Medium Armor Maintenance Bot I"] := true
+            names["Medium Armor Maintenance Bot II"] := true
+            names["Medium Hull Maintenance Bot I"] := true
+            names["Medium Hull Maintenance Bot II"] := true
+            names["Medium Mutated Drone"] := true
+            names["Medium Shield Maintenance Bot I"] := true
+            names["Medium Shield Maintenance Bot II"] := true
+            names["Meganeura TP-900-I"] := true
+            names["Mining Drone - Elite"] := true
+            names["Mining Drone - Improved"] := true
+            names["Mining Drone I"] := true
+            names["Mining Drone II"] := true
+            names["Mosquito EV-600-I"] := true
+            names["Mutated 'Excavator' Ice Harvesting Drone"] := true
+            names["Mutated 'Excavator' Mining Drone"] := true
+            names["Mutated Ice Harvesting Drone"] := true
+            names["Mutated Mining Drone"] := true
+            names["Nertic EC-600-I"] := true
+            names["Ogre I"] := true
+            names["Ogre II"] := true
+            names["Ogre SD-900"] := true
+            names["Orbweaver SW-300-I"] := true
+            names["Praetor EV-900"] := true
+            names["Praetor I"] := true
+            names["Praetor II"] := true
+            names["Praetor TD-900"] := true
+            names["QA Salvage Drone"] := true
+            names["Repair Drone"] := true
+            names["Republic Fleet Berserker"] := true
+            names["Republic Fleet Bouncer"] := true
+            names["Republic Fleet Dromi"] := true
+            names["Republic Fleet Einherji"] := true
+            names["Republic Fleet Gram"] := true
+            names["Republic Fleet Valkyrie"] := true
+            names["Republic Fleet Warrior"] := true
+            names["Salvage Drone I"] := true
+            names["Salvage Drone II"] := true
+            names["Satyr I"] := true
+            names["Satyr II"] := true
+            names["Scarab I"] := true
+            names["Scarab II"] := true
+            names["Sentry Mutated Drone"] := true
+            names["Shadow"] := true
+            names["Siren I"] := true
+            names["Siren II"] := true
+            names["Skimmer TP-300-I"] := true
+            names["Standup Ametat I"] := true
+            names["Standup Ametat II"] := true
+            names["Standup Antaeus I"] := true
+            names["Standup Antaeus II"] := true
+            names["Standup Cenobite I"] := true
+            names["Standup Cenobite II"] := true
+            names["Standup Cyclops I"] := true
+            names["Standup Cyclops II"] := true
+            names["Standup Dragonfly I"] := true
+            names["Standup Dragonfly II"] := true
+            names["Standup Dromi I"] := true
+            names["Standup Dromi II"] := true
+            names["Standup Einherji I"] := true
+            names["Standup Einherji II"] := true
+            names["Standup Equite I"] := true
+            names["Standup Equite II"] := true
+            names["Standup Firbolg I"] := true
+            names["Standup Firbolg II"] := true
+            names["Standup Gram I"] := true
+            names["Standup Gram II"] := true
+            names["Standup Gungnir I"] := true
+            names["Standup Gungnir II"] := true
+            names["Standup Locust I"] := true
+            names["Standup Locust II"] := true
+            names["Standup Malleus I"] := true
+            names["Standup Malleus II"] := true
+            names["Standup Mantis I"] := true
+            names["Standup Mantis II"] := true
+            names["Standup Satyr I"] := true
+            names["Standup Satyr II"] := true
+            names["Standup Scarab I"] := true
+            names["Standup Scarab II"] := true
+            names["Standup Shadow"] := true
+            names["Standup Siren I"] := true
+            names["Standup Siren II"] := true
+            names["Standup Templar I"] := true
+            names["Standup Templar II"] := true
+            names["Standup Termite I"] := true
+            names["Standup Termite II"] := true
+            names["Standup Tyrfing I"] := true
+            names["Standup Tyrfing II"] := true
+            names["Stellate TD-300-I"] := true
+            names["Stigmella SD-300-I"] := true
+            names["Tabanida EV-900-I"] := true
+            names["Templar I"] := true
+            names["Templar II"] := true
+            names["Termite I"] := true
+            names["Termite II"] := true
+            names["Tick EV-300-I"] := true
+            names["Torafugu TD-900-I"] := true
+            names["Tutorial Attack Drone"] := true
+            names["Tyrfing I"] := true
+            names["Tyrfing II"] := true
+            names["Unanchoring Drone"] := true
+            names["Valkyrie I"] := true
+            names["Valkyrie II"] := true
+            names["Valkyrie SW-600"] := true
+            names["Valkyrie TP-600"] := true
+            names["Vespa EC-600"] := true
+            names["Vespa I"] := true
+            names["Vespa II"] := true
+            names["Warden I"] := true
+            names["Warden II"] := true
+            names["Warp Scrambling Drone"] := true
+            names["Warrior I"] := true
+            names["Warrior II"] := true
+            names["Warrior SW-300"] := true
+            names["Warrior TP-300"] := true
+            names["Wasp EC-900"] := true
+            names["Wasp I"] := true
+            names["Wasp II"] := true
+        }
+        return names.Has(name)
     }
 
     FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed, combined := 0, byCharacter := 0) {
@@ -841,9 +1130,31 @@ class StatisticsArchive {
                         if value > best
                             best := value, leader := character
                     }
-                    result .= (field = "modules" ? "U" : "Y") "`t" name "`t" count "`t" leader "`n"
+                    result .= (field = "modules" ? (this.IsDrone(name) ? "R" : "U") : "Y") "`t" name "`t" count "`t" leader "`n"
                 }
             }
+            leaders := Map(), bests := Map()
+            for character, day in byCharacter {
+                if character = ""
+                    continue
+                loop StatisticsArchive.MetricCount
+                    this.PickLeader(leaders, bests, "count" A_Index, character, day.values[A_Index])
+                for key, value in day.extra
+                    this.PickLeader(leaders, bests, key, character, value)
+                gas := 0, solid := 0, residue := 0
+                for material, amounts in day.mining {
+                    if RegExMatch(material, "i)^(Fullerite-)|\b(?:Cytoserocin|Mykoserocin)\b")
+                        gas += amounts[1]
+                    else
+                        solid += amounts[1]
+                    residue += amounts[2]
+                    this.PickLeader(leaders, bests, "material:" material, character, amounts[1])
+                }
+                for key, value in Map("gas", gas, "solid", solid, "residue", residue, "extraResidue", day.extraResidue)
+                    this.PickLeader(leaders, bests, key, character, value)
+            }
+            for key, character in leaders
+                result .= "T`t" key "`t" character "`n"
             for field in ["peak", "alpha"] {
                 loop 2 {
                     index := A_Index, best := 0, leader := ""

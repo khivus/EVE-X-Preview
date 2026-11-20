@@ -101,7 +101,7 @@ public sealed partial class MainWindow
                     var indexed = names.Select(JsonExtensions.Display).Order(StringComparer.CurrentCultureIgnoreCase).ToArray();
                     if (!indexed.SequenceEqual(statisticsCharacters)) { statisticsCharacters = indexed; ShowCharacters(); }
                 }
-                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
+                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("drones").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
                 if (content == lastContent) return;
                 lastContent = content;
                 dashboard.Children.Clear();
@@ -116,14 +116,17 @@ public sealed partial class MainWindow
                         tile.Children.Add(new TextBlock { Text = metric.Text("value"), FontSize = 30, FontWeight = FontWeight.SemiBold });
                         tile.Children.Add(Muted(metric.Text("label")));
                         if (requestedCharacter == "" && metric.Text("character") is { Length: > 0 } leader)
-                            tile.Children.Add(Muted(leader));
+                            tile.Children.Add(Muted(T("Top character") + ": " + leader));
+                        else if (requestedCharacter == "" && category.Text("title") != "Saved configuration" && metric.Number("value") > 0)
+                            tile.Children.Add(Muted("No character history available"));
                         metrics.Children.Add(tile);
                     }
                     group.Children.Add(metrics);
                     dashboard.Children.Add(Card(group));
                 }
                 foreach (var (key, title, label, limit) in new[] {
-                    ("modules", "Most appearing module", "Module", 1),
+                    ("modules", "Most used module", "Module", 1),
+                    ("drones", "Most used drone / fighter", "Drone / fighter", 1),
                     ("systems", "Most visited systems (top 10)", "System", 10) })
                 {
                     var entries = view.Array(key).OrderByDescending(e => e.Number("count")).ThenBy(e => e.Text("name")).Take(limit).ToArray();
@@ -145,14 +148,15 @@ public sealed partial class MainWindow
                 {
                     var group = new StackPanel { Spacing = 8 };
                     group.Children.Add(new TextBlock { Text = T("Mined materials"), FontWeight = FontWeight.SemiBold });
-                    TableHeading(group, "2*,*,*", "Material", "Mined units", "Residue units");
+                    TableHeading(group, "2*,*,*,2*", "Material", "Mined units", "Residue units", "Top character");
                     var clipboard = new TableCellClipboard(this, group);
                     foreach (var material in materials.OrderByDescending(m => m.Number("units")))
                     {
-                        var row = TableLine("2*,*,*");
+                        var row = TableLine("2*,*,*,2*");
                         row.Children.Add(TableCell(Muted(material.Text("name")), 0));
                         row.Children.Add(TableCell(Muted(material.Text("units")), 1));
                         row.Children.Add(TableCell(Muted(material.Text("residue")), 2));
+                        row.Children.Add(TableCell(Muted(requestedCharacter == "" ? material.Text("character") : ""), 3));
                         group.Children.Add(row);
                         clipboard.Add(row, 0, () => material.Text("name"));
                         clipboard.Add(row, 1, () => material.Text("units"));

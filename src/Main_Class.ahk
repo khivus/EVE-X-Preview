@@ -1091,7 +1091,7 @@ Class Main_Class extends ThumbWindow {
                 "; target=" pending.hwnd "; foreground=" hwnd)
             This.pendingEVEActivation := 0
             if This.usageStatistics && hwnd = pending.hwnd
-                This.usageStatistics.ConfirmSwitch(This.GroupsHoldDelay)
+                This.usageStatistics.ConfirmSwitch(This.GroupsHoldDelay, , pending.HasOwnProp("character") ? pending.character : "")
             return 0
         }
         return pending
@@ -1906,8 +1906,10 @@ Class Main_Class extends ThumbWindow {
         This.UpdateWindowGroupsOnTitleChange(Win_Hwnd, Win_Title)
         try {
         This.ThumbWindows.%Win_Hwnd% := This.Create_Thumbnail(Win_Hwnd, Win_Title)
-        if This.usageStatistics
+        if This.usageStatistics {
             This.usageStatistics.characterLaunches += 1
+            This.usageStatistics.Attribute("characterLaunches", Win_Title)
+        }
         This.ThumbHwnd_EvEHwnd[This.ThumbWindows.%Win_Hwnd%["Window"].Hwnd] := Win_Hwnd
         This.ThumbWindows.%Win_Hwnd%["Window"].OldTitle := "EVE"
 
@@ -2251,9 +2253,11 @@ Class Main_Class extends ThumbWindow {
 
         ; A request is not proof of foreground focus. Keep only a short-lived
         ; candidate; the group lookup still uses its configured retry budget.
-        This.pendingEVEActivation := {hwnd: hwnd, source: This._GetForegroundHwnd(), expires: A_TickCount + 250}
-        if This.usageStatistics
+        This.pendingEVEActivation := {hwnd: hwnd, source: This._GetForegroundHwnd(), expires: A_TickCount + 250, character: title}
+        if This.usageStatistics {
             This.usageStatistics.switchesRequested += 1
+            This.usageStatistics.Attribute("switchesRequested", title)
+        }
         ProgramLog.Add("Activation requested; target=" hwnd "; source=" This.pendingEVEActivation.source)
 
         If (DllCall("IsIconic", "UInt", hwnd)) {
@@ -3295,7 +3299,7 @@ Class Main_Class extends ThumbWindow {
                 for line in lines
                     reader["dps"].AddLine(line, now)
             } else
-                reader["dps"].AddBatch(lines, , track ? stats : 0)
+                reader["dps"].AddBatch(lines, , track ? stats : 0, charName)
             if hwnd
                 This.RefreshCharacterDPS(reader["dps"], hwnd, now, suppressDisplay)
         }
@@ -3327,8 +3331,11 @@ Class Main_Class extends ThumbWindow {
             if event != "" && event != "stoppedShooting" && (pendingEvent = "" || This.lastEventPriority)
                 pendingEvent := event
         }
-        if observed
+        if observed {
             stats.monitoredEvents += observed
+            if stats is UsageStatistics
+                stats.Attribute("monitoredEvents", charName, observed)
+        }
         ; Repeated hits need one visual alert update per poll, not a border
         ; teardown/rebuild for every line. Preserve the first/last event setting.
         if shootingObserved {
@@ -3373,8 +3380,10 @@ Class Main_Class extends ThumbWindow {
             This.endEvent(charName, hwnd)
 
         This.debugToolTipText .= "handleEventActivation: event " event " triggered for: " charName "`n"
-        if This.usageStatistics
+        if This.usageStatistics {
             This.usageStatistics.alertsTriggered += 1
+            This.usageStatistics.Attribute("alertsTriggered", charName)
+        }
         SetTimer(This.debugToolTipMethod, This.debugToolTipDelay)
 
         if !muteSound
