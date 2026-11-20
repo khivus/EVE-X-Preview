@@ -240,7 +240,7 @@ class UsageStatistics {
     }
 
     ParseView(text) {
-        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0)
+        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "systems", [], "leaders", Map())
         for line in StrSplit(text, "`n", "`r") {
             fields := StrSplit(line, "`t")
             if !fields.Length
@@ -255,6 +255,10 @@ class UsageStatistics {
                         result["alpha"] := [Number(fields[18]), Number(fields[19])]
                         result["combatNeedsRescan"] := !Number(fields[20])
                     }
+                case "E": result["extendedNeedsRescan"] := !Number(fields[2])
+                case "X": result["extra"][fields[2]] := Number(fields[3])
+                case "U", "Y": result[fields[1] = "U" ? "modules" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
+                case "T": result["leaders"][fields[2]] := fields[3]
                 case "P": result["characters"].Push(fields[2])
                 case "M": result["materials"].Push(Map("name", fields[2], "units", Number(fields[3]), "residue", Number(fields[4])))
             }
@@ -324,9 +328,20 @@ class UsageStatistics {
             }
         }
         if view.Has("peaks") {
+            extra := view["extra"]
+            categories.Push(this.Category("Logistics", "Armor repaired (given)", extra.Get("armorGiven", 0),
+                "Armor repaired (received)", extra.Get("armorReceived", 0), "Shield boosted (given)", extra.Get("shieldGiven", 0),
+                "Shield boosted (received)", extra.Get("shieldReceived", 0), "Logistics records", extra.Get("logisticsRecords", 0)))
+            categories.Push(this.Category("Fleet and waiting", "Fleet warps", extra.Get("fleetWarps", 0),
+                "Regroups", extra.Get("regroups", 0), "Please wait messages", extra.Get("pleaseWait", 0)))
             categories.Push(this.Category("Combat peaks", "Peak incoming DPS (10 seconds)", Round(view["peaks"][1], 2),
                 "Peak outgoing DPS (10 seconds)", Round(view["peaks"][2], 2),
                 "Peak incoming alpha strike", view["alpha"][1], "Peak outgoing alpha strike", view["alpha"][2]))
+            if filters && filters.Get("character", "") = "" {
+                metrics := categories[-1]["metrics"]
+                for index, key in ["peak1", "peak2", "alpha1", "alpha2"]
+                    metrics[index]["character"] := view["leaders"].Get(key, "")
+            }
             gas := 0, solid := 0, residue := 0
             for material in view["materials"] {
                 if RegExMatch(material["name"], "i)^(Fullerite-)|\b(?:Cytoserocin|Mykoserocin)\b")

@@ -383,3 +383,66 @@ LocalScanWindowOrderTest() {
         FileDelete(path)
     }
 }
+
+TestRunner.Register("Statistics extended events survive resume and attribute independent peaks", StatisticsExtendedTest)
+StatisticsExtendedTest() {
+    directory := A_Temp "\EVE-X-Preview-Extended-" A_TickCount
+    game := directory "\game", chat := directory "\chat", storage := directory "\statistics"
+    DirCreate(game), DirCreate(chat)
+    job := LogScanJob(), stats := UsageStatistics({_JSON: JSON.Load(default_JSON)}, storage)
+    try {
+        stamp := "[ 2026.11.20 12:00:01 ] "
+        alice := game "\20261120_120000_1.txt"
+        FileAppend("Listener: Alice`nSession Started: 2026.11.20 12:00:00`n"
+            . stamp "(combat) 100 to Target - Laser II - Hits`n"
+            . stamp "(combat) 100 to Target - Laser II - Hits`n"
+            . stamp "(combat) 20 remote armor repaired to Friend - Repairer II`n"
+            . stamp "(combat) 30 remote shield boosted by Friend - Booster II`n"
+            . stamp "(notify) Following Friend in warp`n"
+            . stamp "(notify) Regrouping to Friend`n"
+            . stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
+        FileAppend("Listener: Bob`nSession Started: 2026.11.20 12:00:00`n"
+            . stamp "(combat) 150 to Target - Laser II - Hits`n", game "\20261120_120000_2.txt", "UTF-8-RAW")
+        FileAppend("Listener: Alice`nSession Started: 2026.11.20 12:00:00`n"
+            . stamp "EVE System > Channel changed to Local : Jita`n"
+            . stamp "EVE System > Channel changed to Local : Amarr`n"
+            . stamp "EVE System > Channel changed to Local : Jita`n", chat "\Local_20261120_120000_1.txt", "UTF-16")
+        request := "statistics`n" game "`n" chat "`n" storage
+        RunStatisticsFixtureScan(job, request)
+        RunStatisticsFixtureScan(job, request)
+        view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
+        AssertEqual(20, view["extra"]["armorGiven"])
+        AssertEqual(30, view["extra"]["shieldReceived"])
+        AssertEqual(1, view["extra"]["fleetWarps"])
+        AssertEqual(1, view["extra"]["regroups"])
+        AssertEqual(1, view["extra"]["pleaseWait"])
+        AssertEqual("Alice", view["leaders"]["peak2"])
+        AssertEqual("Bob", view["leaders"]["alpha2"])
+        for module in view["modules"]
+            if module["name"] = "Laser II" {
+                AssertEqual(3, module["count"])
+                AssertEqual("Alice", module["character"])
+            }
+        AssertEqual(2, view["systems"].Length)
+        FileAppend(stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
+        RunStatisticsFixtureScan(job, request)
+        view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nall"))
+        AssertEqual(2, view["extra"]["pleaseWait"])
+        AssertEqual(20, view["extra"]["armorGiven"])
+        ; Remove extension records to simulate a pre-feature checkpoint.
+        indexPath := storage "\archive-index.tsv"
+        old := RegExReplace(FileRead(indexPath, "UTF-8"), ";(?:V2|@(?:extra|modules|systems),[^;|`t`r`n]*)")
+        FileDelete(indexPath)
+        FileAppend(old, indexPath, "UTF-8-RAW")
+        RunStatisticsFixtureScan(job, request)
+        view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
+        AssertEqual(2, view["extra"]["pleaseWait"], "Backfill replaces old counts instead of adding duplicates.")
+        AssertFalse(view["extendedNeedsRescan"])
+        for system in view["systems"]
+            if system["name"] = "Jita"
+                AssertEqual(2, system["count"])
+    } finally {
+        job.Close(), stats.Close()
+        DirDelete(directory, true)
+    }
+}

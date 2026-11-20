@@ -434,7 +434,7 @@ class StatisticsArchive {
     ProcessFile(path, stamp, kind) {
         key := this.paths.Get(path, "")
         entry := key != "" ? this.files[key] : 0
-        upgrade := entry && kind = "game" && !this.liveSince && this.CombatNeedsBackfill(entry)
+        upgrade := entry && !this.liveSince && (this.CombatNeedsBackfill(entry) || this.ExtendedNeedsBackfill(entry))
         if !entry || (entry.stamp != stamp && (this.liveSince = "" || entry.stamp != "live:" stamp)) || !entry.HasOwnProp("detail") || upgrade {
             try this.ScanFile(path, stamp, kind)
             catch as err {
@@ -447,6 +447,15 @@ class StatisticsArchive {
             this.finished += 1
         if A_TickCount - this.lastCheck >= 3000
             this.Checkpoint(true)
+    }
+
+    ExtendedNeedsBackfill(entry) {
+        if !entry.HasOwnProp("detail")
+            return true
+        for row in StrSplit(entry.detail, "|")
+            if row != "" && !InStr(row, ";V2")
+                return true
+        return false
     }
 
     CombatNeedsBackfill(entry) => (entry.values[4] || entry.values[5])
@@ -463,7 +472,7 @@ class StatisticsArchive {
             key := Format("{}:{}:{}:{}:{}", kind, NumGet(info, 28, "UInt"), NumGet(info, 44, "UInt"), NumGet(info, 48, "UInt"), NumGet(info, 4, "Int64"))
             previous := this.files.Get(key, 0)
             partial := previous && InStr(previous.stamp, "live:") = 1
-            upgrade := previous && kind = "game" && this.CombatNeedsBackfill(previous)
+            upgrade := previous && (this.CombatNeedsBackfill(previous) || this.ExtendedNeedsBackfill(previous))
             backfill := (partial || upgrade) && this.liveSince = ""
             window := StatisticsDamageWindow(), legacyWindow := false
             if previous && !backfill && previous.HasOwnProp("detail")
@@ -532,6 +541,7 @@ class StatisticsArchive {
     }
 
     CountLine(line, kind, values, day, dayStart, time, window) {
+        this.CountExtended(line, kind, day)
         if kind = "game" {
             if InStr(line, "(combat)") {
                 values[3] += 1
@@ -641,7 +651,34 @@ class StatisticsArchive {
         }
     }
 
-    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0}
+    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0, extra: Map(), modules: Map(), systems: Map(), extendedIndexed: true}
+
+    Bump(counts, key, amount := 1) => counts[key] := counts.Get(key, 0) + amount
+
+    CountExtended(line, kind, day) {
+        text := RegExReplace(line, "<[^>]*>")
+        if kind = "chat" {
+            if RegExMatch(text, "EVE System > Channel changed to Local :\s*(.+?)\s*$", &system)
+                this.Bump(day.systems, system[1])
+            return
+        }
+        if RegExMatch(text, "i)\(combat\)\s*([\d,.]+) remote (armor repaired|shield boosted) (by|to) .+? - (.+)$", &repair) {
+            direction := repair[3] = "by" ? "Received" : "Given"
+            type := repair[2] = "armor repaired" ? "armor" : "shield"
+            this.Bump(day.extra, type direction, Number(StrReplace(repair[1], ",")))
+            this.Bump(day.extra, "logisticsRecords")
+            this.Bump(day.modules, Trim(repair[4]))
+        } else if InStr(text, "(combat)") && RegExMatch(text, " - (.+?) - (?:Hits|Smashes|Penetrates|Grazes|Glances Off|Wrecks|misses)", &module)
+            this.Bump(day.modules, Trim(module[1]))
+        else if RegExMatch(text, "External factors are preventing your (.+?) from responding", &module)
+            this.Bump(day.modules, Trim(module[1]))
+        if RegExMatch(text, "\(notify\) Following .+ in warp")
+            this.Bump(day.extra, "fleetWarps")
+        if RegExMatch(text, "\(notify\) Regrouping(?: to .+)?\s*$")
+            this.Bump(day.extra, "regroups")
+        if RegExMatch(text, "\(notify\) Please wait\.\.\.\s*$")
+            this.Bump(day.extra, "pleaseWait")
+    }
 
     CountMining(line, day) {
         line := RegExReplace(line, "<[^>]*>")
@@ -673,6 +710,11 @@ class StatisticsArchive {
             ; lives on the file so it can continue across midnight and resumes.
             row .= "," day.peak[1] "," day.peak[2] ",,0,0," day.extraResidue
                 . "," day.alpha[1] "," day.alpha[2] "," day.combatIndexed
+            if day.extendedIndexed
+                row .= ";V2"
+            for field in ["extra", "modules", "systems"]
+                for name, count in day.%field%
+                    row .= ";@" field "," this.Escape(name) "," count
             for material, record in day.mining
                 row .= ";" this.Escape(material) "," record[1] "," record[2]
             text .= (text = "" ? "" : "|") row
@@ -688,6 +730,7 @@ class StatisticsArchive {
             parts := StrSplit(row, ";")
             values := StrSplit(parts[1], ",")
             day := this.NewDay()
+            day.extendedIndexed := InStr(row, ";V2") != 0
             loop StatisticsArchive.MetricCount - 2
                 day.values[A_Index + 2] := Number(values[A_Index + 1])
             offset := StatisticsArchive.MetricCount
@@ -702,7 +745,15 @@ class StatisticsArchive {
             for index, part in parts {
                 if index = 1
                     continue
+                if part = "V2"
+                    continue
                 fields := StrSplit(part, ",")
+                if SubStr(fields[1], 1, 1) = "@" {
+                    field := SubStr(fields[1], 2)
+                    if field = "extra" || field = "modules" || field = "systems"
+                        day.%field%[this.Unescape(fields[2])] := Number(fields[3])
+                    continue
+                }
                 day.mining[this.Unescape(fields[1])] := [Number(fields[2]), Number(fields[3])]
             }
         }
@@ -713,7 +764,7 @@ class StatisticsArchive {
         if FileExist(storage "\dashboard.tsv")
             return this.ViewDashboard(storage, character, range)
         archive := StatisticsArchive(storage)
-        names := Map(), recent := Map(), mining := Map()
+        names := Map(), recent := Map(), mining := Map(), combined := archive.NewDay(), byCharacter := Map()
         names.CaseSense := recent.CaseSense := "Off"
         totals := archive.EmptyMetrics(), peaks := [0, 0], alpha := [0, 0], residue := 0, combatIndexed := true
         offsets := Map("day", 0, "week", -6, "month", -29, "year", -364)
@@ -748,6 +799,10 @@ class StatisticsArchive {
                     if since && date < since
                         continue
                     covered := true
+                    archive.MergeDay(combined, day)
+                    if !byCharacter.Has(entry.character)
+                        byCharacter[entry.character] := archive.NewDay()
+                    archive.MergeDay(byCharacter[entry.character], day)
                     loop StatisticsArchive.MetricCount - 2
                         totals[A_Index + 2] += day.values[A_Index + 2]
                     peaks[1] := Max(peaks[1], day.peak[1]), peaks[2] := Max(peaks[2], day.peak[2])
@@ -764,16 +819,41 @@ class StatisticsArchive {
             if covered
                 totals[1] += entry.values[1], totals[2] += entry.values[2]
         }
-        return archive.FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed)
+        return archive.FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed, combined, byCharacter)
     }
 
-    FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed) {
+    FormatView(totals, peaks, residue, names, mining, alpha, combatIndexed, combined := 0, byCharacter := 0) {
         result := "D`t" this.Join(totals) "`t" peaks[1] "`t" peaks[2] "`t" residue
             . "`t" alpha[1] "`t" alpha[2] "`t" combatIndexed "`n"
         for name in names
             result .= "P`t" name "`n"
         for material, amount in mining
             result .= "M`t" material "`t" amount[1] "`t" amount[2] "`n"
+        if combined {
+            result .= "E`t" combined.extendedIndexed "`n"
+            for key, value in combined.extra
+                result .= "X`t" key "`t" value "`n"
+            for field in ["modules", "systems"] {
+                for name, count in combined.%field% {
+                    leader := "", best := 0
+                    for character, day in byCharacter {
+                        value := day.%field%.Get(name, 0)
+                        if value > best
+                            best := value, leader := character
+                    }
+                    result .= (field = "modules" ? "U" : "Y") "`t" name "`t" count "`t" leader "`n"
+                }
+            }
+            for field in ["peak", "alpha"] {
+                loop 2 {
+                    index := A_Index, best := 0, leader := ""
+                    for character, day in byCharacter
+                        if day.%field%[index] > best
+                            best := day.%field%[index], leader := character
+                    result .= "T`t" field index "`t" leader "`n"
+                }
+            }
+        }
         return result
     }
 
@@ -849,8 +929,12 @@ class StatisticsArchive {
         target.peak[2] := Max(target.peak[2], day.peak[2])
         target.alpha[1] := Max(target.alpha[1], day.alpha[1])
         target.alpha[2] := Max(target.alpha[2], day.alpha[2])
+        target.extendedIndexed := target.extendedIndexed && day.extendedIndexed
         target.combatIndexed := target.combatIndexed && day.combatIndexed
         target.extraResidue += day.extraResidue
+        for field in ["extra", "modules", "systems"]
+            for name, count in day.%field%
+                this.Bump(target.%field%, name, count)
         for material, count in day.mining {
             if !target.mining.Has(material)
                 target.mining[material] := [0, 0]
@@ -861,7 +945,7 @@ class StatisticsArchive {
 
     static ViewDashboard(storage, character, range) {
         reader := StatisticsArchive(storage, "", false)
-        names := Map(), combined := reader.NewDay()
+        names := Map(), combined := reader.NewDay(), byCharacter := Map()
         names.CaseSense := "Off"
         kind := range = "session" ? "S" : "D"
         offsets := Map("day", 0, "week", -6, "month", -29, "year", -364)
@@ -893,9 +977,12 @@ class StatisticsArchive {
             day.values[1] := Number(fields[4])
             day.values[2] := Number(fields[5])
             reader.MergeDay(combined, day)
+            if !byCharacter.Has(name)
+                byCharacter[name] := reader.NewDay()
+            reader.MergeDay(byCharacter[name], day)
         }
         return reader.FormatView(combined.values, combined.peak, combined.extraResidue, names, combined.mining,
-            combined.alpha, combined.combatIndexed)
+            combined.alpha, combined.combatIndexed, combined, byCharacter)
     }
 
     CompactIfNeeded() {

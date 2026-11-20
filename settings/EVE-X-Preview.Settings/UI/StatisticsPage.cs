@@ -84,6 +84,7 @@ public sealed partial class MainWindow
                 if (view.Bool("deferred")) status.Text += "\n" + T("Filtered results update when the scan finishes or stops.");
                 if (view.Text("error") is { Length: > 0 } viewError) status.Text += "\n" + T(viewError);
                 if (view.Bool("combatNeedsRescan")) status.Text += "\n" + T("Run an archive scan to calculate combat peaks for older indexed logs.");
+                if (view.Bool("extendedNeedsRescan")) status.Text += "\n" + T("Run an archive scan to calculate logistics, fleet, module and system statistics for older logs.");
                 var scan = stats.Object("progress");
                 var total = scan.Int("total");
                 progress.IsVisible = scanning || total > 0;
@@ -100,7 +101,7 @@ public sealed partial class MainWindow
                     var indexed = names.Select(JsonExtensions.Display).Order(StringComparer.CurrentCultureIgnoreCase).ToArray();
                     if (!indexed.SequenceEqual(statisticsCharacters)) { statisticsCharacters = indexed; ShowCharacters(); }
                 }
-                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString();
+                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
                 if (content == lastContent) return;
                 lastContent = content;
                 dashboard.Children.Clear();
@@ -114,9 +115,30 @@ public sealed partial class MainWindow
                         var tile = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 24, 6) };
                         tile.Children.Add(new TextBlock { Text = metric.Text("value"), FontSize = 30, FontWeight = FontWeight.SemiBold });
                         tile.Children.Add(Muted(metric.Text("label")));
+                        if (requestedCharacter == "" && metric.Text("character") is { Length: > 0 } leader)
+                            tile.Children.Add(Muted(leader));
                         metrics.Children.Add(tile);
                     }
                     group.Children.Add(metrics);
+                    dashboard.Children.Add(Card(group));
+                }
+                foreach (var (key, title, label, limit) in new[] {
+                    ("modules", "Most appearing module", "Module", 1),
+                    ("systems", "Most visited systems (top 10)", "System", 10) })
+                {
+                    var entries = view.Array(key).OrderByDescending(e => e.Number("count")).ThenBy(e => e.Text("name")).Take(limit).ToArray();
+                    if (entries.Length == 0) continue;
+                    var group = new StackPanel { Spacing = 8 };
+                    group.Children.Add(new TextBlock { Text = T(title), FontWeight = FontWeight.SemiBold });
+                    TableHeading(group, "2*,*,2*", label, "Records", "Top character");
+                    foreach (var entry in entries)
+                    {
+                        var row = TableLine("2*,*,2*");
+                        row.Children.Add(TableCell(Muted(entry.Text("name")), 0));
+                        row.Children.Add(TableCell(Muted(entry.Text("count")), 1));
+                        row.Children.Add(TableCell(Muted(requestedCharacter == "" ? entry.Text("character") : ""), 2));
+                        group.Children.Add(row);
+                    }
                     dashboard.Children.Add(Card(group));
                 }
                 if (view.Array("materials") is { Count: > 0 } materials)

@@ -21,3 +21,13 @@ Monitored files and archive scans share one index, so rereading a file through a
 Peak incoming and outgoing DPS use each character sessionâ€™s highest rolling 10-second damage total divided by 10. Peak alpha strikes track the largest single logged hit in each direction. The all-characters view shows the highest individual peaks. A window that spans midnight belongs to the UTC day of its last hit. Run an archive scan once to calculate the new combat peaks for previously indexed logs.
 
 Mining totals come from explicit quantities in the logs and show units of each material, including harvested gas and named residue. Separate unattributed residue messages are shown on their own because they do not name a material. The index stores file paths, character names, offsets, and aggregate counts. It does not store chat text.
+
+## Logistics, fleet activity and locations
+
+Logistics shows armor repaired and shields boosted, separately for amounts given and received, plus the number of logistics records (including zero-amount records). Fleet activity counts “Following … in warp”, “Regrouping” / “Regrouping to …”, and exact “Please wait...” notifications. These are logged records rather than deduplicated fleet commands.
+
+The most appearing module counts named weapons/drones in combat hit records, remote repair/boost modules, and modules named in “External factors are preventing…” notifications. This measures appearances in supported log messages, not activation cycles.
+
+The top 10 systems counts “Channel changed to Local” entries in chat logs, so it measures recorded visits, not time spent in a system. Repeated visits and the same visit recorded by several characters each count. Last session excludes chat, so system rankings are empty for that filter.
+
+With All characters selected, each combat peak shows its winning character independently; the module and system rankings show the character with the most records for that entry. Tied characters use the first indexed character. Character and UTC date filters apply to all these statistics. Run Scan or resume log archives once to backfill older checkpoints; the scan replaces their aggregates without adding duplicates. Only aggregate names and counts are saved, not chat messages.
