@@ -385,8 +385,8 @@ class UsageStatistics {
                 "Recipient applications", extra.Get("burstRecipients", 0), "Most members affected by one burst", extra.Get("burstMaxRecipients", 0)))
             categories.Push(this.Category("Fleet and waiting", "Fleet warps", extra.Get("fleetWarps", 0),
                 "Regroups", extra.Get("regroups", 0), "Please wait messages", extra.Get("pleaseWait", 0)))
-            categories.Push(this.Category("Combat peaks", "Peak incoming DPS (10 seconds)", Round(view["peaks"][1], 2),
-                "Peak outgoing DPS (10 seconds)", Round(view["peaks"][2], 2),
+            categories.Push(this.Category("Combat peaks", "Peak incoming DPS (10 seconds)", Round(view["peaks"][1]),
+                "Peak outgoing DPS (10 seconds)", Round(view["peaks"][2]),
                 "Peak incoming alpha strike", view["alpha"][1], "Peak outgoing alpha strike", view["alpha"][2]))
             if filters && filters.Get("character", "") = "" {
                 metrics := categories[-1]["metrics"]
