@@ -12,6 +12,7 @@ public sealed partial class MainWindow
     private string statisticsCharacter = "";
     private string statisticsRange = "all";
     private string[] statisticsCharacters = [];
+    private readonly Dictionary<string, int> statisticsListLimits = new();
 
     private void RenderStatistics()
     {
@@ -105,6 +106,7 @@ public sealed partial class MainWindow
                 if (content == lastContent) return;
                 lastContent = content;
                 dashboard.Children.Clear();
+                StackPanel? burstCategory = null;
                 foreach (var category in stats.Array("categories"))
                 {
                     var group = new StackPanel { Spacing = 12 };
@@ -122,48 +124,29 @@ public sealed partial class MainWindow
                         metrics.Children.Add(tile);
                     }
                     group.Children.Add(metrics);
+                    if (category.Text("title") == "Command and mining bursts") burstCategory = group;
                     dashboard.Children.Add(Card(group));
                 }
-                foreach (var (key, title, label, limit) in new[] {
-                    ("bursts", "Most used burst type", "Burst", 1),
-                    ("modules", "Most used module", "Module", 1),
-                    ("drones", "Most used drone / fighter", "Drone / fighter", 1),
-                    ("systems", "Most visited systems (top 10)", "System", 10) })
+                foreach (var (key, title, label) in new[] {
+                    ("bursts", "Most used burst types", "Burst"),
+                    ("modules", "Most used modules", "Module"),
+                    ("drones", "Most used drones / fighters", "Drone / fighter"),
+                    ("systems", "Most visited systems", "System") })
                 {
-                    var entries = view.Array(key).OrderByDescending(e => e.Number("count")).ThenBy(e => e.Text("name")).Take(limit).ToArray();
+                    var entries = view.Array(key).OrderByDescending(e => e.Number("count")).ThenBy(e => e.Text("name")).ToArray();
                     if (entries.Length == 0) continue;
-                    var group = new StackPanel { Spacing = 8 };
-                    group.Children.Add(new TextBlock { Text = T(title), FontWeight = FontWeight.SemiBold });
-                    TableHeading(group, "2*,*,2*", label, "Records", "Character");
-                    foreach (var entry in entries)
-                    {
-                        var row = TableLine("2*,*,2*");
-                        row.Children.Add(TableCell(Muted(entry.Text("name")), 0));
-                        row.Children.Add(TableCell(Muted(entry.Text("count")), 1));
-                        row.Children.Add(TableCell(Muted(requestedCharacter == "" ? entry.Text("character") : ""), 2));
-                        group.Children.Add(row);
-                    }
-                    dashboard.Children.Add(Card(group));
+                    var table = StatisticsRanking(key, title, "2*,*,2*", [label, "Records", "Character"],
+                        entries.Select(e => new[] { e.Text("name"), e.Text("count"), requestedCharacter == "" ? e.Text("character") : "" }).ToArray());
+                    if (key == "bursts" && burstCategory is not null) burstCategory.Children.Add(table);
+                    else dashboard.Children.Add(Card(table));
                 }
                 if (view.Array("materials") is { Count: > 0 } materials)
                 {
-                    var group = new StackPanel { Spacing = 8 };
-                    group.Children.Add(new TextBlock { Text = T("Mined materials"), FontWeight = FontWeight.SemiBold });
-                    TableHeading(group, "2*,*,*,2*", "Material", "Mined units", "Residue units", "Character");
-                    var clipboard = new TableCellClipboard(this, group);
-                    foreach (var material in materials.OrderByDescending(m => m.Number("units")))
-                    {
-                        var row = TableLine("2*,*,*,2*");
-                        row.Children.Add(TableCell(Muted(material.Text("name")), 0));
-                        row.Children.Add(TableCell(Muted(material.Text("units")), 1));
-                        row.Children.Add(TableCell(Muted(material.Text("residue")), 2));
-                        row.Children.Add(TableCell(Muted(requestedCharacter == "" ? material.Text("character") : ""), 3));
-                        group.Children.Add(row);
-                        clipboard.Add(row, 0, () => material.Text("name"));
-                        clipboard.Add(row, 1, () => material.Text("units"));
-                        clipboard.Add(row, 2, () => material.Text("residue"));
-                    }
-                    dashboard.Children.Add(Card(group));
+                    var entries = materials.OrderByDescending(m => m.Number("units")).ThenBy(m => m.Text("name"));
+                    dashboard.Children.Add(Card(StatisticsRanking("materials", "Mined materials", "2*,*,*,2*",
+                        ["Material", "Mined units", "Residue units", "Character"],
+                        entries.Select(m => new[] { m.Text("name"), m.Text("units"), m.Text("residue"),
+                            requestedCharacter == "" ? m.Text("character") : "" }).ToArray())));
                 }
             }
             catch (Exception error)
@@ -209,4 +192,79 @@ public sealed partial class MainWindow
         page.Children.Add(dashboard);
         _ = RefreshAsync();
     }
+
+    private Control StatisticsRanking(string key, string title, string columns, string[] headings, string[][] entries)
+    {
+        // The header shares the page scroll viewport, so the title, row count and
+        // column labels remain together without a nested scroll area.
+        var table = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto"), ClipToBounds = true };
+        var headerContent = new StackPanel { Spacing = 8 };
+        var heading = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
+        heading.Children.Add(new TextBlock { Text = T(title), FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+        var show = Muted("Show");
+        show.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+        show.Margin = new Thickness(12, 0, 8, 0);
+        Grid.SetColumn(show, 1); heading.Children.Add(show);
+        int[] choices = [5, 10, 25, 50, 100, int.MaxValue];
+        var limit = statisticsListLimits.GetValueOrDefault(key, 5);
+        var amount = new ComboBox { MinWidth = 85, ItemsSource = choices.Select(n => n == int.MaxValue ? T("All") : n.ToString()).ToArray(),
+            SelectedIndex = Array.IndexOf(choices, limit) };
+        Grid.SetColumn(amount, 2); heading.Children.Add(amount);
+        headerContent.Children.Add(heading);
+        TableHeading(headerContent, columns, headings);
+        var translation = new TranslateTransform();
+        var header = new Border { Child = headerContent, Padding = new Thickness(0, 8),
+            RenderTransform = translation, ZIndex = 1, Classes = { "statistics-header" } };
+        var rows = new StackPanel();
+        Grid.SetRow(rows, 1);
+        table.Children.Add(rows); table.Children.Add(header);
+
+        void Populate()
+        {
+            table.Children.Remove(rows);
+            rows = new StackPanel();
+            Grid.SetRow(rows, 1);
+            table.Children.Add(rows);
+            var clipboard = new TableCellClipboard(this, rows);
+            foreach (var values in entries.Take(statisticsListLimits.GetValueOrDefault(key, 5)))
+            {
+                var row = TableLine(columns);
+                for (var column = 0; column < values.Length; column++)
+                    row.Children.Add(TableCell(Muted(values[column]), column));
+                rows.Children.Add(row);
+                for (var column = 0; column < values.Length; column++)
+                {
+                    var index = column;
+                    clipboard.Add(row, column, () => values[index]);
+                }
+            }
+        }
+        void PinHeader()
+        {
+            if (table.TranslatePoint(default, pageScroll) is not { } origin) return;
+            translation.Y = Math.Clamp(-origin.Y, 0, Math.Max(0, table.Bounds.Height - header.Bounds.Height));
+        }
+        EventHandler<ScrollChangedEventArgs> scroll = (_, _) => PinHeader();
+        EventHandler layout = (_, _) => PinHeader();
+        table.AttachedToVisualTree += (_, _) => { pageScroll.ScrollChanged += scroll; table.LayoutUpdated += layout; };
+        table.DetachedFromVisualTree += (_, _) => { pageScroll.ScrollChanged -= scroll; table.LayoutUpdated -= layout; };
+        amount.SelectionChanged += (_, _) =>
+        {
+            if (amount.SelectedIndex < 0) return;
+            var wasPinned = translation.Y > 0;
+            statisticsListLimits[key] = choices[amount.SelectedIndex];
+            Populate();
+            // Reducing a long list while its header is pinned returns to that
+            // list's first rows instead of stranding the user in the next card.
+            if (wasPinned) Dispatcher.UIThread.Post(() =>
+            {
+                if (table.TranslatePoint(default, pageScroll) is { } origin)
+                    pageScroll.Offset = new Vector(pageScroll.Offset.X, Math.Max(0, pageScroll.Offset.Y + origin.Y));
+            }, DispatcherPriority.Loaded);
+        };
+        Populate();
+        return table;
+    }
+
 }
