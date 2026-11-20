@@ -331,7 +331,8 @@ class UsageStatistics {
             extra := view["extra"]
             categories.Push(this.Category("Logistics", "Armor repaired (given)", extra.Get("armorGiven", 0),
                 "Armor repaired (received)", extra.Get("armorReceived", 0), "Shield boosted (given)", extra.Get("shieldGiven", 0),
-                "Shield boosted (received)", extra.Get("shieldReceived", 0), "Logistics records", extra.Get("logisticsRecords", 0)))
+                "Shield boosted (received)", extra.Get("shieldReceived", 0),
+                "Hull repaired (given)", extra.Get("hullGiven", 0), "Hull repaired (received)", extra.Get("hullReceived", 0), "Logistics records", extra.Get("logisticsRecords", 0)))
             categories.Push(this.Category("Fleet and waiting", "Fleet warps", extra.Get("fleetWarps", 0),
                 "Regroups", extra.Get("regroups", 0), "Please wait messages", extra.Get("pleaseWait", 0)))
             categories.Push(this.Category("Combat peaks", "Peak incoming DPS (10 seconds)", Round(view["peaks"][1], 2),

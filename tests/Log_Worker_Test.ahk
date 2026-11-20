@@ -398,6 +398,8 @@ StatisticsExtendedTest() {
             . stamp "(combat) 100 to Target - Laser II - Hits`n"
             . stamp "(combat) 20 remote armor repaired to Friend - Repairer II`n"
             . stamp "(combat) 30 remote shield boosted by Friend - Booster II`n"
+            . stamp "(combat) 40 remote hull repaired to Friend - Hull Repairer II`n"
+            . stamp "(combat) 50 remote structure repaired by Friend - Hull Repairer II`n"
             . stamp "(notify) Following Friend in warp`n"
             . stamp "(notify) Regrouping to Friend`n"
             . stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
@@ -413,6 +415,9 @@ StatisticsExtendedTest() {
         view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
         AssertEqual(20, view["extra"]["armorGiven"])
         AssertEqual(30, view["extra"]["shieldReceived"])
+        AssertEqual(40, view["extra"]["hullGiven"])
+        AssertEqual(50, view["extra"]["hullReceived"])
+        AssertEqual(4, view["extra"]["logisticsRecords"])
         AssertEqual(1, view["extra"]["fleetWarps"])
         AssertEqual(1, view["extra"]["regroups"])
         AssertEqual(1, view["extra"]["pleaseWait"])
@@ -431,13 +436,16 @@ StatisticsExtendedTest() {
         AssertEqual(20, view["extra"]["armorGiven"])
         ; Remove extension records to simulate a pre-feature checkpoint.
         indexPath := storage "\archive-index.tsv"
-        old := RegExReplace(FileRead(indexPath, "UTF-8"), ";(?:V2|@(?:extra|modules|systems),[^;|`t`r`n]*)")
+        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V3", ";V2")
+        old := RegExReplace(old, ";@extra,hull(?:Given|Received),[^;|`t`r`n]*")
         FileDelete(indexPath)
         FileAppend(old, indexPath, "UTF-8-RAW")
         RunStatisticsFixtureScan(job, request)
         view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
         AssertEqual(2, view["extra"]["pleaseWait"], "Backfill replaces old counts instead of adding duplicates.")
         AssertFalse(view["extendedNeedsRescan"])
+        AssertEqual(40, view["extra"]["hullGiven"], "Backfill upgrades pre-hull checkpoints.")
+        AssertEqual(50, view["extra"]["hullReceived"])
         for system in view["systems"]
             if system["name"] = "Jita"
                 AssertEqual(2, system["count"])

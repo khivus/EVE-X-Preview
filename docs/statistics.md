@@ -24,7 +24,7 @@ Mining totals come from explicit quantities in the logs and show units of each m
 
 ## Logistics, fleet activity and locations
 
-Logistics shows armor repaired and shields boosted, separately for amounts given and received, plus the number of logistics records (including zero-amount records). Fleet activity counts “Following … in warp”, “Regrouping” / “Regrouping to …”, and exact “Please wait...” notifications. These are logged records rather than deduplicated fleet commands.
+Logistics shows armor repaired, shields boosted and hull repaired (including records named structure repairs), separately for amounts given and received, plus the number of logistics records (including zero-amount records). Fleet activity counts “Following … in warp”, “Regrouping” / “Regrouping to …”, and exact “Please wait...” notifications. These are logged records rather than deduplicated fleet commands.
 
 The most appearing module counts named weapons/drones in combat hit records, remote repair/boost modules, and modules named in “External factors are preventing…” notifications. This measures appearances in supported log messages, not activation cycles.
 
