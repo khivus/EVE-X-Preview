@@ -39,3 +39,9 @@ All characters shows a top character for every indexed combat, travel, activity,
 Live switching, thumbnail, alert and monitoring counters now persist character contributions. Older lifetime app totals cannot be attributed retrospectively: leaders use only activity collected since this update. Counters without character history show that explicitly. The longest switching combo is attributed to the character receiving focus on the final switch.
 
 Drone and fighter names come from official ESI universe categories 18 and 87 (snapshot 2026-11-21), embedded for offline use. Ogre and other drone variants are ranked separately from modules, using the previously indexed combat names without another archive rescan. Rankings measure appearances in supported combat and notification records, not activation cycles.
+
+## Command and mining bursts
+
+Burst statistics include all module types whose notifications say they applied bonuses to fleet members: armor, shield, skirmish, information and mining bursts, including named variants. Each matching notification counts as one application. Recipient applications sums the number of members in each message; repeated recipients count again. The maximum is the largest number affected by a single recorded application, never a sum of daily maximums.
+
+In All characters, the name beside recipient applications is the combined boosting leader across all burst types, ranked by total recipient applications. Burst applications and the single-application maximum have their own character leaders. Most used burst type ranks module names by application count. Successful burst notifications also contribute to the module usage ranking. Filters apply as usual. Run an archive scan to backfill older checkpoints without double-counting.

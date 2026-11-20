@@ -288,7 +288,7 @@ class UsageStatistics {
     }
 
     ParseView(text) {
-        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "drones", [], "systems", [], "leaders", Map())
+        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "drones", [], "bursts", [], "systems", [], "leaders", Map())
         for line in StrSplit(text, "`n", "`r") {
             fields := StrSplit(line, "`t")
             if !fields.Length
@@ -305,7 +305,7 @@ class UsageStatistics {
                     }
                 case "E": result["extendedNeedsRescan"] := !Number(fields[2])
                 case "X": result["extra"][fields[2]] := Number(fields[3])
-                case "U", "Y", "R": result[fields[1] = "U" ? "modules" : fields[1] = "R" ? "drones" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
+                case "U", "Y", "R", "B": result[fields[1] = "U" ? "modules" : fields[1] = "R" ? "drones" : fields[1] = "B" ? "bursts" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
                 case "T": result["leaders"][fields[2]] := fields[3]
                 case "P": result["characters"].Push(fields[2])
                 case "M": result["materials"].Push(Map("name", fields[2], "units", Number(fields[3]), "residue", Number(fields[4])))
@@ -381,6 +381,8 @@ class UsageStatistics {
                 "Armor repaired (received)", extra.Get("armorReceived", 0), "Shield boosted (given)", extra.Get("shieldGiven", 0),
                 "Shield boosted (received)", extra.Get("shieldReceived", 0),
                 "Hull repaired (given)", extra.Get("hullGiven", 0), "Hull repaired (received)", extra.Get("hullReceived", 0), "Logistics records", extra.Get("logisticsRecords", 0)))
+            categories.Push(this.Category("Command and mining bursts", "Burst applications", extra.Get("burstApplications", 0),
+                "Recipient applications", extra.Get("burstRecipients", 0), "Most members affected by one burst", extra.Get("burstMaxRecipients", 0)))
             categories.Push(this.Category("Fleet and waiting", "Fleet warps", extra.Get("fleetWarps", 0),
                 "Regroups", extra.Get("regroups", 0), "Please wait messages", extra.Get("pleaseWait", 0)))
             categories.Push(this.Category("Combat peaks", "Peak incoming DPS (10 seconds)", Round(view["peaks"][1], 2),
@@ -411,7 +413,8 @@ class UsageStatistics {
             for label, key in Map("Armor repaired (given)", "armorGiven", "Armor repaired (received)", "armorReceived",
                 "Shield boosted (given)", "shieldGiven", "Shield boosted (received)", "shieldReceived",
                 "Hull repaired (given)", "hullGiven", "Hull repaired (received)", "hullReceived", "Logistics records", "logisticsRecords",
-                "Fleet warps", "fleetWarps", "Regroups", "regroups", "Please wait messages", "pleaseWait")
+                "Burst applications", "burstApplications", "Recipient applications", "burstRecipients",
+                "Most members affected by one burst", "burstMaxRecipients", "Fleet warps", "fleetWarps", "Regroups", "regroups", "Please wait messages", "pleaseWait")
                 keys[label] := key
             appLeaders := stats ? stats.CharacterLeaders() : Map()
             for label, key in Map("Switch requests", "switchesRequested", "Confirmed focus changes", "switchesConfirmed",

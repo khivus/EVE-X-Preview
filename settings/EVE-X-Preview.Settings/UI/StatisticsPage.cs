@@ -84,7 +84,7 @@ public sealed partial class MainWindow
                 if (view.Bool("deferred")) status.Text += "\n" + T("Filtered results update when the scan finishes or stops.");
                 if (view.Text("error") is { Length: > 0 } viewError) status.Text += "\n" + T(viewError);
                 if (view.Bool("combatNeedsRescan")) status.Text += "\n" + T("Run an archive scan to calculate combat peaks for older indexed logs.");
-                if (view.Bool("extendedNeedsRescan")) status.Text += "\n" + T("Run an archive scan to calculate logistics, fleet, module and system statistics for older logs.");
+                if (view.Bool("extendedNeedsRescan")) status.Text += "\n" + T("Run an archive scan to calculate logistics, fleet, burst, module and system statistics for older logs.");
                 var scan = stats.Object("progress");
                 var total = scan.Int("total");
                 progress.IsVisible = scanning || total > 0;
@@ -101,7 +101,7 @@ public sealed partial class MainWindow
                     var indexed = names.Select(JsonExtensions.Display).Order(StringComparer.CurrentCultureIgnoreCase).ToArray();
                     if (!indexed.SequenceEqual(statisticsCharacters)) { statisticsCharacters = indexed; ShowCharacters(); }
                 }
-                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("drones").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
+                var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("bursts").ToJsonString() + view.Array("drones").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
                 if (content == lastContent) return;
                 lastContent = content;
                 dashboard.Children.Clear();
@@ -125,6 +125,7 @@ public sealed partial class MainWindow
                     dashboard.Children.Add(Card(group));
                 }
                 foreach (var (key, title, label, limit) in new[] {
+                    ("bursts", "Most used burst type", "Burst", 1),
                     ("modules", "Most used module", "Module", 1),
                     ("drones", "Most used drone / fighter", "Drone / fighter", 1),
                     ("systems", "Most visited systems (top 10)", "System", 10) })

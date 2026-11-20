@@ -453,7 +453,7 @@ class StatisticsArchive {
         if !entry.HasOwnProp("detail")
             return true
         for row in StrSplit(entry.detail, "|")
-            if row != "" && !InStr(row, ";V3")
+            if row != "" && !InStr(row, ";V4")
                 return true
         return false
     }
@@ -651,7 +651,7 @@ class StatisticsArchive {
         }
     }
 
-    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0, extra: Map(), modules: Map(), systems: Map(), extendedIndexed: true}
+    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0, extra: Map(), modules: Map(), systems: Map(), bursts: Map(), extendedIndexed: true}
 
     Bump(counts, key, amount := 1) => counts[key] := counts.Get(key, 0) + amount
 
@@ -661,6 +661,14 @@ class StatisticsArchive {
             if RegExMatch(text, "EVE System > Channel changed to Local :\s*(.+?)\s*$", &system)
                 this.Bump(day.systems, system[1])
             return
+        }
+        if RegExMatch(text, "\(notify\) Your (.+?) has applied bonuses to ([\d,]+) fleet members?\.\s*$", &burst) && InStr(burst[1], "Burst") {
+            recipients := Number(StrReplace(burst[2], ","))
+            this.Bump(day.extra, "burstApplications")
+            this.Bump(day.extra, "burstRecipients", recipients)
+            day.extra["burstMaxRecipients"] := Max(day.extra.Get("burstMaxRecipients", 0), recipients)
+            this.Bump(day.bursts, burst[1])
+            this.Bump(day.modules, burst[1])
         }
         if RegExMatch(text, "i)\(combat\)\s*([\d,.]+) remote (armor repaired|shield boosted|hull repaired|structure repaired) (by|to) .+? - (.+)$", &repair) {
             direction := repair[3] = "by" ? "Received" : "Given"
@@ -711,8 +719,8 @@ class StatisticsArchive {
             row .= "," day.peak[1] "," day.peak[2] ",,0,0," day.extraResidue
                 . "," day.alpha[1] "," day.alpha[2] "," day.combatIndexed
             if day.extendedIndexed
-                row .= ";V3"
-            for field in ["extra", "modules", "systems"]
+                row .= ";V4"
+            for field in ["extra", "modules", "systems", "bursts"]
                 for name, count in day.%field%
                     row .= ";@" field "," this.Escape(name) "," count
             for material, record in day.mining
@@ -730,7 +738,7 @@ class StatisticsArchive {
             parts := StrSplit(row, ";")
             values := StrSplit(parts[1], ",")
             day := this.NewDay()
-            day.extendedIndexed := InStr(row, ";V3") != 0
+            day.extendedIndexed := InStr(row, ";V4") != 0
             loop StatisticsArchive.MetricCount - 2
                 day.values[A_Index + 2] := Number(values[A_Index + 1])
             offset := StatisticsArchive.MetricCount
@@ -745,12 +753,12 @@ class StatisticsArchive {
             for index, part in parts {
                 if index = 1
                     continue
-                if part = "V2" || part = "V3"
+                if part = "V2" || part = "V3" || part = "V4"
                     continue
                 fields := StrSplit(part, ",")
                 if SubStr(fields[1], 1, 1) = "@" {
                     field := SubStr(fields[1], 2)
-                    if field = "extra" || field = "modules" || field = "systems"
+                    if field = "extra" || field = "modules" || field = "systems" || field = "bursts"
                         day.%field%[this.Unescape(fields[2])] := Number(fields[3])
                     continue
                 }
@@ -1122,7 +1130,7 @@ class StatisticsArchive {
             result .= "E`t" combined.extendedIndexed "`n"
             for key, value in combined.extra
                 result .= "X`t" key "`t" value "`n"
-            for field in ["modules", "systems"] {
+            for field in ["modules", "systems", "bursts"] {
                 for name, count in combined.%field% {
                     leader := "", best := 0
                     for character, day in byCharacter {
@@ -1130,7 +1138,7 @@ class StatisticsArchive {
                         if value > best
                             best := value, leader := character
                     }
-                    result .= (field = "modules" ? (this.IsDrone(name) ? "R" : "U") : "Y") "`t" name "`t" count "`t" leader "`n"
+                    result .= (field = "modules" ? (this.IsDrone(name) ? "R" : "U") : field = "bursts" ? "B" : "Y") "`t" name "`t" count "`t" leader "`n"
                 }
             }
             leaders := Map(), bests := Map()
@@ -1243,9 +1251,12 @@ class StatisticsArchive {
         target.extendedIndexed := target.extendedIndexed && day.extendedIndexed
         target.combatIndexed := target.combatIndexed && day.combatIndexed
         target.extraResidue += day.extraResidue
-        for field in ["extra", "modules", "systems"]
+        for field in ["extra", "modules", "systems", "bursts"]
             for name, count in day.%field%
-                this.Bump(target.%field%, name, count)
+                if field = "extra" && name = "burstMaxRecipients"
+                    target.extra[name] := Max(target.extra.Get(name, 0), count)
+                else
+                    this.Bump(target.%field%, name, count)
         for material, count in day.mining {
             if !target.mining.Has(material)
                 target.mining[material] := [0, 0]

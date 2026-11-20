@@ -404,6 +404,8 @@ StatisticsExtendedTest() {
             . stamp "(combat) 30 remote shield boosted by Friend - Booster II`n"
             . stamp "(combat) 40 remote hull repaired to Friend - Hull Repairer II`n"
             . stamp "(combat) 50 remote structure repaired by Friend - Hull Repairer II`n"
+            . stamp "(notify) Your <b>Mining Foreman Burst II</b> has applied bonuses to <b>6</b> fleet members.`n"
+            . stamp "(notify) Your Armor Command Burst II has applied bonuses to 1 fleet member.`n"
             . stamp "(notify) Following Friend in warp`n"
             . stamp "(notify) Regrouping to Friend`n"
             . stamp "(notify) Jumping from Jita to Perimeter`n"
@@ -411,7 +413,8 @@ StatisticsExtendedTest() {
             . stamp "(notify) A Conduit Field activated by Friend`n"
             . stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
         FileAppend("Listener: Bob`nSession Started: 2026.11.20 12:00:00`n"
-            . stamp "(combat) 150 to Target - Laser II - Hits`n", game "\20261120_120000_2.txt", "UTF-8-RAW")
+            . stamp "(combat) 150 to Target - Laser II - Hits`n"
+            . stamp "(notify) Your Shield Command Burst II has applied bonuses to 20 fleet members.`n", game "\20261120_120000_2.txt", "UTF-8-RAW")
         FileAppend("Listener: Alice`nSession Started: 2026.11.20 12:00:00`n"
             . stamp "EVE System > Channel changed to Local : Jita`n"
             . stamp "EVE System > Channel changed to Local : Amarr`n"
@@ -425,6 +428,13 @@ StatisticsExtendedTest() {
         AssertEqual(40, view["extra"]["hullGiven"])
         AssertEqual(50, view["extra"]["hullReceived"])
         AssertEqual(4, view["extra"]["logisticsRecords"])
+        AssertEqual(3, view["extra"]["burstApplications"])
+        AssertEqual(27, view["extra"]["burstRecipients"])
+        AssertEqual(20, view["extra"]["burstMaxRecipients"])
+        AssertEqual("Alice", view["leaders"]["burstApplications"])
+        AssertEqual("Bob", view["leaders"]["burstRecipients"])
+        AssertEqual("Bob", view["leaders"]["burstMaxRecipients"])
+        AssertEqual(3, view["bursts"].Length)
         AssertEqual(1, view["extra"]["fleetWarps"])
         AssertEqual(1, view["extra"]["regroups"])
         AssertEqual(1, view["extra"]["pleaseWait"])
@@ -448,14 +458,18 @@ StatisticsExtendedTest() {
                 AssertEqual("Alice", module["character"])
             }
         AssertEqual(2, view["systems"].Length)
-        FileAppend(stamp "(notify) Please wait...`n", alice, "UTF-8-RAW")
+        FileAppend(stamp "(notify) Please wait...`n"
+            . stamp "(notify) Your Mining Foreman Burst II has applied bonuses to 2 fleet members.`n", alice, "UTF-8-RAW")
         RunStatisticsFixtureScan(job, request)
         view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nall"))
         AssertEqual(2, view["extra"]["pleaseWait"])
         AssertEqual(20, view["extra"]["armorGiven"])
-        ; Remove extension records to simulate a pre-feature checkpoint.
+        AssertEqual(3, view["extra"]["burstApplications"])
+        AssertEqual(9, view["extra"]["burstRecipients"])
+        AssertEqual(6, view["extra"]["burstMaxRecipients"])
+        ; Downgrade the checkpoint marker to verify backfill replaces aggregates.
         indexPath := storage "\archive-index.tsv"
-        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V3", ";V2")
+        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V4", ";V3")
         old := RegExReplace(old, ";@extra,hull(?:Given|Received),[^;|`t`r`n]*")
         FileDelete(indexPath)
         FileAppend(old, indexPath, "UTF-8-RAW")
@@ -463,6 +477,14 @@ StatisticsExtendedTest() {
         view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`n`nall"))
         AssertEqual(2, view["extra"]["pleaseWait"], "Backfill replaces old counts instead of adding duplicates.")
         AssertFalse(view["extendedNeedsRescan"])
+        AssertEqual(4, view["extra"]["burstApplications"])
+        AssertEqual(29, view["extra"]["burstRecipients"])
+        AssertEqual(20, view["extra"]["burstMaxRecipients"])
+        for burst in view["bursts"]
+            if burst["name"] = "Mining Foreman Burst II" {
+                AssertEqual(2, burst["count"])
+                AssertEqual("Alice", burst["character"])
+            }
         AssertEqual(40, view["extra"]["hullGiven"], "Backfill upgrades pre-hull checkpoints.")
         AssertEqual(50, view["extra"]["hullReceived"])
         for system in view["systems"]
