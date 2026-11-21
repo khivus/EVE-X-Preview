@@ -453,7 +453,7 @@ class StatisticsArchive {
         if !entry.HasOwnProp("detail")
             return true
         for row in StrSplit(entry.detail, "|")
-            if row != "" && !InStr(row, ";V5")
+            if row != "" && !InStr(row, ";V6")
                 return true
         return false
     }
@@ -550,11 +550,29 @@ class StatisticsArchive {
                     values[direction + 3] += damage
                     second := dayStart + Number(SubStr(time, 1, 2)) * 3600
                         + Number(SubStr(time, 4, 2)) * 60 + Number(SubStr(time, 7, 2))
-                    day.alpha[direction] := Max(day.alpha[direction], damage)
-                    day.peak[direction] := Max(day.peak[direction], window.Add(second, direction, damage))
+                    peer := this.HitPeer(line)
+                    if peer != ""
+                        this.Bump(day.contacts, (direction = 1 ? "damageIn:" : "damageOut:") peer, damage)
+                    if damage > day.alpha[direction]
+                        day.alpha[direction] := damage, day.alphaPeers[direction] := peer
+                    rate := window.Add(second, direction, damage, peer)
+                    if rate > day.peak[direction]
+                        day.peak[direction] := rate, day.peakPeers[direction] := window.TopPeer(direction)
                 }
-                else if InStr(line, "misses")
+                else if InStr(line, "misses") {
                     values[6] += 1
+                    text := RegExReplace(line, "<[^>]*>")
+                    if RegExMatch(text, "\(combat\) (.+?) misses you completely", &miss)
+                        key := "missIn", peer := Trim(miss[1])
+                    else if RegExMatch(text, "\(combat\) Your .+? misses (.+?) completely", &miss)
+                        key := "missOut", peer := Trim(miss[1])
+                    else
+                        key := "", peer := ""
+                    if key != "" {
+                        this.Bump(day.extra, key)
+                        this.Bump(day.contacts, key ":" peer)
+                    }
+                }
             } else if InStr(line, "(mining)")
                 this.CountMining(line, day)
             else if InStr(line, "Jumping from") || InStr(line, "jumping to")
@@ -651,7 +669,7 @@ class StatisticsArchive {
         }
     }
 
-    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0, extra: Map(), modules: Map(), systems: Map(), bursts: Map(), extendedIndexed: true}
+    NewDay() => {values: this.EmptyMetrics(), peak: [0, 0], alpha: [0, 0], combatIndexed: true, mining: Map(), extraResidue: 0, extra: Map(), modules: Map(), systems: Map(), bursts: Map(), contacts: Map(), peakPeers: ["", ""], alphaPeers: ["", ""], extendedIndexed: true}
 
     Bump(counts, key, amount := 1) => counts[key] := counts.Get(key, 0) + amount
 
@@ -688,6 +706,18 @@ class StatisticsArchive {
             this.Bump(day.extra, "pleaseWait")
     }
 
+    HitPeer(line) {
+        ; The outer bold name ends immediately before the weapon delimiter.
+        if RegExMatch(line, "i)(?:from|to)(?:<[^>]*>|\s)*(.+?)</b><font size=\d+><color=0x[0-9a-f]+> - ", &peer)
+            return Trim(RegExReplace(peer[1], "<[^>]*>"))
+        text := RegExReplace(line, "<[^>]*>")
+        if RegExMatch(text, "i)\(combat\)\s*[\d.]+ (?:from|to) (.+) - .+? - (?:Hits|Smashes|Penetrates|Grazes|Glances Off|Wrecks)", &peer)
+            return Trim(peer[1])
+        if RegExMatch(text, "i)\(combat\)\s*[\d.]+ (?:from|to) (.+)$", &peer)
+            return Trim(peer[1])
+        return ""
+    }
+
     CountMining(line, day) {
         line := RegExReplace(line, "<[^>]*>")
         if RegExMatch(line, "i)\(mining\)\s*You mined ([\d,]+) units? of (.+?)(?: with a lost residue of ([\d,]+) units?)?\s*[.]?$", &mined) {
@@ -719,10 +749,12 @@ class StatisticsArchive {
             row .= "," day.peak[1] "," day.peak[2] ",,0,0," day.extraResidue
                 . "," day.alpha[1] "," day.alpha[2] "," day.combatIndexed
             if day.extendedIndexed
-                row .= ";V5"
-            for field in ["extra", "modules", "systems", "bursts"]
+                row .= ";V6"
+            for field in ["extra", "modules", "systems", "bursts", "contacts"]
                 for name, count in day.%field%
                     row .= ";@" field "," this.Escape(name) "," count
+            loop 2
+                row .= ";@peer,peak" A_Index "," this.Escape(day.peakPeers[A_Index]) ";@peer,alpha" A_Index "," this.Escape(day.alphaPeers[A_Index])
             for material, record in day.mining
                 row .= ";" this.Escape(material) "," record[1] "," record[2]
             text .= (text = "" ? "" : "|") row
@@ -738,7 +770,7 @@ class StatisticsArchive {
             parts := StrSplit(row, ";")
             values := StrSplit(parts[1], ",")
             day := this.NewDay()
-            day.extendedIndexed := InStr(row, ";V5") != 0
+            day.extendedIndexed := InStr(row, ";V6") != 0
             loop StatisticsArchive.MetricCount - 2
                 day.values[A_Index + 2] := Number(values[A_Index + 1])
             offset := StatisticsArchive.MetricCount
@@ -753,12 +785,17 @@ class StatisticsArchive {
             for index, part in parts {
                 if index = 1
                     continue
-                if part = "V2" || part = "V3" || part = "V4" || part = "V5"
+                if part = "V2" || part = "V3" || part = "V4" || part = "V5" || part = "V6"
                     continue
                 fields := StrSplit(part, ",")
                 if SubStr(fields[1], 1, 1) = "@" {
                     field := SubStr(fields[1], 2)
-                    if field = "extra" || field = "modules" || field = "systems" || field = "bursts"
+                    if field = "peer" {
+                        index := Number(SubStr(fields[2], -1))
+                        day.%(InStr(fields[2], "peak") = 1 ? "peakPeers" : "alphaPeers")%[index] := this.Unescape(fields[3])
+                        continue
+                    }
+                    if field = "extra" || field = "modules" || field = "systems" || field = "bursts" || field = "contacts"
                         day.%field%[this.Unescape(fields[2])] := Number(fields[3])
                     continue
                 }
@@ -1161,6 +1198,18 @@ class StatisticsArchive {
                 for key, value in Map("gas", gas, "solid", solid, "residue", residue, "extraResidue", day.extraResidue)
                     this.PickLeader(leaders, bests, key, character, value)
             }
+            for key in ["damageIn", "damageOut", "missIn", "missOut"] {
+                best := 0, peer := ""
+                for contact, value in combined.contacts
+                    if InStr(contact, key ":") = 1 && value > best
+                        best := value, peer := SubStr(contact, StrLen(key) + 2)
+                result .= "C`t" key "`t" peer "`n"
+            }
+            for field in ["peak", "alpha"]
+                loop 2 {
+                    peers := field "Peers"
+                    result .= "C`t" field A_Index "`t" combined.%peers%[A_Index] "`n"
+                }
             for key, character in leaders
                 result .= "T`t" key "`t" character "`n"
             for field in ["peak", "alpha"] {
@@ -1244,14 +1293,17 @@ class StatisticsArchive {
     MergeDay(target, day) {
         loop StatisticsArchive.MetricCount
             target.values[A_Index] += day.values[A_Index]
-        target.peak[1] := Max(target.peak[1], day.peak[1])
-        target.peak[2] := Max(target.peak[2], day.peak[2])
-        target.alpha[1] := Max(target.alpha[1], day.alpha[1])
-        target.alpha[2] := Max(target.alpha[2], day.alpha[2])
+        for field in ["peak", "alpha"]
+            loop 2
+                if day.%field%[A_Index] > target.%field%[A_Index] {
+                    target.%field%[A_Index] := day.%field%[A_Index]
+                    peers := field "Peers"
+                    target.%peers%[A_Index] := day.%peers%[A_Index]
+                }
         target.extendedIndexed := target.extendedIndexed && day.extendedIndexed
         target.combatIndexed := target.combatIndexed && day.combatIndexed
         target.extraResidue += day.extraResidue
-        for field in ["extra", "modules", "systems", "bursts"]
+        for field in ["extra", "modules", "systems", "bursts", "contacts"]
             for name, count in day.%field%
                 if field = "extra" && name = "burstMaxRecipients"
                     target.extra[name] := Max(target.extra.Get(name, 0), count)
@@ -1335,7 +1387,7 @@ class StatisticsDamageWindow {
     seconds := []
     totals := [0, 0]
 
-    Add(second, direction, damage) {
+    Add(second, direction, damage, peer := "") {
         buckets := this.seconds
         if buckets.Length && second < buckets[-1][1] {
             buckets.Length := 0
@@ -1346,18 +1398,42 @@ class StatisticsDamageWindow {
             this.totals[1] -= expired[2], this.totals[2] -= expired[3]
         }
         if !buckets.Length || buckets[-1][1] != second
-            buckets.Push([second, 0, 0])
+            buckets.Push([second, 0, 0, Map(), Map()])
+        if peer != ""
+            buckets[-1][direction + 3][peer] := buckets[-1][direction + 3].Get(peer, 0) + damage
         buckets[-1][direction + 1] += damage
         this.totals[direction] += damage
         return this.totals[direction] / 10
+    }
+
+    TopPeer(direction) {
+        totals := Map(), best := 0, peer := ""
+        for bucket in this.seconds
+            for name, amount in bucket[direction + 3] {
+                totals[name] := totals.Get(name, 0) + amount
+                if totals[name] > best
+                    best := totals[name], peer := name
+            }
+        return peer
     }
 
     Serialize() {
         if !this.seconds.Length
             return "-"
         text := ""
-        for bucket in this.seconds
+        for bucket in this.seconds {
             text .= (text = "" ? "" : ";") bucket[1] "," bucket[2] "," bucket[3]
+            loop 2 {
+                peers := ""
+                for name, damage in bucket[A_Index + 3] {
+                    encoded := ""
+                    loop parse name
+                        encoded .= (encoded = "" ? "" : ".") Ord(A_LoopField)
+                    peers .= (peers = "" ? "" : "/") encoded ":" damage
+                }
+                text .= "," peers
+            }
+        }
         return text
     }
 
@@ -1371,6 +1447,18 @@ class StatisticsDamageWindow {
             second := Number(fields[1])
             this.Add(second, 1, Number(fields[2]))
             this.Add(second, 2, Number(fields[3]))
+            if fields.Length >= 5
+                loop 2 {
+                    direction := A_Index
+                    for item in StrSplit(fields[direction + 3], "/") {
+                        if item = ""
+                            continue
+                        parts := StrSplit(item, ":"), name := ""
+                        for code in StrSplit(parts[1], ".")
+                            name .= Chr(Number(code))
+                        this.seconds[-1][direction + 3][name] := Number(parts[2])
+                    }
+                }
         }
     }
 }

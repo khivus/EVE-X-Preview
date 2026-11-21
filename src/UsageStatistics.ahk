@@ -288,7 +288,7 @@ class UsageStatistics {
     }
 
     ParseView(text) {
-        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "drones", [], "bursts", [], "systems", [], "leaders", Map())
+        result := Map("characters", [], "counts", [], "materials", [], "peaks", [0, 0], "alpha", [0, 0], "extraResidue", 0, "extra", Map(), "modules", [], "drones", [], "bursts", [], "systems", [], "leaders", Map(), "counterparts", Map())
         for line in StrSplit(text, "`n", "`r") {
             fields := StrSplit(line, "`t")
             if !fields.Length
@@ -306,6 +306,7 @@ class UsageStatistics {
                 case "E": result["extendedNeedsRescan"] := !Number(fields[2])
                 case "X": result["extra"][fields[2]] := Number(fields[3])
                 case "U", "Y", "R", "B": result[fields[1] = "U" ? "modules" : fields[1] = "R" ? "drones" : fields[1] = "B" ? "bursts" : "systems"].Push(Map("name", fields[2], "count", Number(fields[3]), "character", fields[4]))
+                case "C": result["counterparts"][fields[2]] := fields[3]
                 case "T": result["leaders"][fields[2]] := fields[3]
                 case "P": result["characters"].Push(fields[2])
                 case "M": result["materials"].Push(Map("name", fields[2], "units", Number(fields[3]), "residue", Number(fields[4])))
@@ -372,7 +373,13 @@ class UsageStatistics {
                 archive := []
                 loop (group.Length - 1) // 2
                     archive.Push(group[2 * A_Index + 1], counts[group[2 * A_Index]])
-                categories.Push(this.Category(group[1], archive*))
+                category := this.Category(group[1], archive*)
+                if group[1] = "Combat archive" && view.Has("extra") {
+                    category["metrics"].Pop()
+                    category["metrics"].Push(Map("label", "Incoming misses", "value", view["extra"].Get("missIn", 0)))
+                    category["metrics"].Push(Map("label", "Outgoing misses", "value", view["extra"].Get("missOut", 0)))
+                }
+                categories.Push(category)
             }
         }
         if view.Has("peaks") {
@@ -413,7 +420,7 @@ class UsageStatistics {
             for label, key in Map("Armor repaired (given)", "armorGiven", "Armor repaired (received)", "armorReceived",
                 "Shield boosted (given)", "shieldGiven", "Shield boosted (received)", "shieldReceived",
                 "Hull repaired (given)", "hullGiven", "Hull repaired (received)", "hullReceived", "Logistics records", "logisticsRecords",
-                "Burst applications", "burstApplications", "Recipient applications", "burstRecipients",
+                "Incoming misses", "missIn", "Outgoing misses", "missOut", "Burst applications", "burstApplications", "Recipient applications", "burstRecipients",
                 "Most members affected by one burst", "burstMaxRecipients", "Fleet warps", "fleetWarps", "Regroups", "regroups", "Please wait messages", "pleaseWait")
                 keys[label] := key
             appLeaders := stats ? stats.CharacterLeaders() : Map()
@@ -432,6 +439,28 @@ class UsageStatistics {
                             : view.Get("leaders", Map()).Get(keys[metric["label"]], "")
             for material in view.Get("materials", [])
                 material["character"] := view.Get("leaders", Map()).Get("material:" material["name"], "")
+        }
+        peers := Map("Damage taken", ["damageIn", "Most from"], "Damage dealt", ["damageOut", "Most to"],
+            "Incoming misses", ["missIn", "Most from"], "Outgoing misses", ["missOut", "Most to"],
+            "Peak incoming DPS (10 seconds)", ["peak1", "Main source"], "Peak outgoing DPS (10 seconds)", ["peak2", "Main target"],
+            "Peak incoming alpha strike", ["alpha1", "From"], "Peak outgoing alpha strike", ["alpha2", "To"])
+        peakIndex := 0, combatIndex := 0
+        for index, category in categories {
+            if category["title"] = "Combat peaks"
+                peakIndex := index
+            if category["title"] = "Combat archive"
+                combatIndex := index
+            for metric in category["metrics"]
+                if peers.Has(metric["label"]) {
+                    info := peers[metric["label"]]
+                    name := view.Get("counterparts", Map()).Get(info[1], "")
+                    if name != ""
+                        metric["counterpart"] := info[2] ": " name
+                }
+        }
+        if peakIndex && combatIndex && peakIndex > combatIndex + 1 {
+            peaks := categories.RemoveAt(peakIndex)
+            categories.InsertAt(combatIndex + 1, peaks)
         }
         return Map("enabled", !!live, "available", !!stats, "scanning", !!(stats && stats.job && stats.job.busy),
             "scanStatus", stats ? stats.status : "", "categories", categories, "view", view,

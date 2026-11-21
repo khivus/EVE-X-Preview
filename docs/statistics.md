@@ -8,7 +8,7 @@ The switching combo uses confirmed changes of focus. A gap greater than five tim
 
 With live collection on, the app records switching and launch activity and uses the enabled alert, DPS, and Local monitoring features to count observed records. **Collect all supported log events live** also works with alerts or log monitoring off. In that mode a background worker checks new and changed game and chat logs about once a minute and indexes supported records from the time the app started. Manual archive scans fill in earlier records without double-counting the live results. The **Live monitoring** card shows the appâ€™s observed totals separately from the indexed game and chat records.
 
-Choose **Stop archive scan** to save progress and pause scheduled scans for the current run. **Scan or resume log archives** continues from saved file positions and checks for new files or appended records. The dashboard shows when it loads checkpoints, finds files, scans records, and prepares totals. Once the file count is known, it shows the percentage, unreadable files, and estimated time remaining. Filters use the latest completed dashboard snapshot and remain available during later scans.
+Choose **Stop archive scan** to save progress and pause scheduled scans for the current run. **Scan all logs** continues from saved file positions and checks for new files or appended records. The dashboard shows when it loads checkpoints, finds files, scans records, and prepares totals. Once the file count is known, it shows the percentage, unreadable files, and estimated time remaining. Filters use the latest completed dashboard snapshot and remain available during later scans.
 
 The worker writes its phases, counts, and errors to `%LOCALAPPDATA%\EVE-X-Preview\Statistics\scan.log`, with one rotated copy. The scan log contains no chat text or game records.
 
@@ -30,7 +30,7 @@ The most appearing module counts named weapons/drones in combat hit records, rem
 
 The top 10 systems counts “Channel changed to Local” entries in chat logs, so it measures recorded visits, not time spent in a system. Repeated visits and the same visit recorded by several characters each count. Last session excludes chat, so system rankings are empty for that filter.
 
-With All characters selected, each combat peak shows its winning character independently; the module and system rankings show the character with the most records for that entry. Tied characters use the first indexed character. Character and UTC date filters apply to all these statistics. Run Scan or resume log archives once to backfill older checkpoints; the scan replaces their aggregates without adding duplicates. Only aggregate names and counts are saved, not chat messages.
+With All characters selected, each combat peak shows its winning character independently; the module and system rankings show the character with the most records for that entry. Tied characters use the first indexed character. Character and UTC date filters apply to all these statistics. Run Scan all logs once to backfill older checkpoints; the scan replaces their aggregates without adding duplicates. Only aggregate names and counts are saved, not chat messages.
 
 ## Character leaders and drones
 
@@ -49,3 +49,9 @@ In All characters, the name beside recipient applications is the combined boosti
 ## Ranking tables
 
 The most used burst type is a single metric alongside the other Command and mining bursts totals. Other rankings (modules, drones/fighters, systems and mined materials) default to five rows. Each Show dropdown offers 5, 10, 25, 50, 100 or All. Selections are retained independently while this settings window is open, including across filter changes, refreshes and page navigation. If more than ten rows are displayed, only the rows scroll inside the table; its title, dropdown and column labels remain visible. Statistics cells cannot be selected. Run an archive scan after this update to replace older module/drone names that accidentally included structure names containing a dash.
+
+## Combat counterparts
+
+Combat peaks appears immediately below Combat archive as a separate card. Damage totals show the source/target contributing the most damage across the selected logs. Incoming and outgoing misses are counted separately and show the source/target with the most misses. Combat counterpart names are the names written by EVE and can include NPCs, structures, ships and corporation tags, not only player names.
+
+Alpha shows the counterpart for the largest single hit. Peak DPS shows the largest contributing source/target in the winning rolling ten-second window; the full DPS value can include other counterparts. Contributions are retained across scan checkpoints and midnight. Character captions still identify the controlled character leading each statistic. Run Scan all logs once to backfill counterpart and directional-miss data in older checkpoints. Subsequent scans skip unchanged files and resume appended records.

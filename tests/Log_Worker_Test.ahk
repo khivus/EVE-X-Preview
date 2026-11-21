@@ -471,7 +471,7 @@ StatisticsExtendedTest() {
         AssertEqual(6, view["extra"]["burstMaxRecipients"])
         ; Downgrade the checkpoint marker to verify backfill replaces aggregates.
         indexPath := storage "\archive-index.tsv"
-        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V5", ";V4")
+        old := StrReplace(FileRead(indexPath, "UTF-8"), ";V6", ";V5")
         old := RegExReplace(old, ";@extra,hull(?:Given|Received),[^;|`t`r`n]*")
         old := StrReplace(old, "@modules,Light Scoped Entropic Disintegrator,", "@modules,Crowd Pleaser[XDA](Metenox Moon Drill) - Light Scoped Entropic Disintegrator,")
         FileDelete(indexPath)
@@ -525,6 +525,42 @@ StatisticsCharacterCountersTest() {
         AssertEqual("Alice", stats.CharacterLeaders()["switchesConfirmed"])
     } finally {
         stats.Close()
+        DirDelete(directory, true)
+    }
+}
+
+TestRunner.Register("Statistics combat counterparts track resumed DPS windows and directional misses", StatisticsCombatPeersTest)
+StatisticsCombatPeersTest() {
+    directory := A_Temp "\EVE-X-Preview-CombatPeers-" A_TickCount
+    game := directory "\game", storage := directory "\statistics"
+    DirCreate(game)
+    job := LogScanJob(), stats := UsageStatistics({_JSON: JSON.Load(default_JSON)}, storage)
+    try {
+        path := game "\20261120_235950_1.txt"
+        FileAppend("Listener: Alice`nSession Started: 2026.11.20 23:59:50`n"
+            . "[ 2026.11.20 23:59:58 ] (combat) 60 from Raider A - Laser II - Hits`n"
+            . "[ 2026.11.20 23:59:59 ] (combat) 50 from Raider B - Laser II - Hits`n", path, "UTF-8-RAW")
+        request := "statistics`n" game "`n`n" storage
+        RunStatisticsFixtureScan(job, request)
+        FileAppend("[ 2026.11.21 00:00:01 ] (combat) 20 from Raider B - Laser II - Hits`n"
+            . "[ 2026.11.21 00:00:01 ] (combat) <b>25</b> to <b>System - Target</b><font size=10><color=0x77ffffff> - Ogre I - Hits`n"
+            . "[ 2026.11.21 00:00:01 ] (combat) Raider C misses you completely`n"
+            . "[ 2026.11.21 00:00:01 ] (combat) Your Ogre I misses Station - Target completely - Ogre I`n", path, "UTF-8-RAW")
+        RunStatisticsFixtureScan(job, request)
+        RunStatisticsFixtureScan(job, request)
+        view := stats.ParseView(RunStatisticsFixtureScan(job, "statistics-view`n" storage "`nAlice`nall"))
+        AssertEqual(13, view["peaks"][1])
+        AssertEqual("Raider B", view["counterparts"]["peak1"], "The leading contributor survives resume and midnight.")
+        AssertEqual("Raider A", view["counterparts"]["alpha1"])
+        AssertEqual("Raider B", view["counterparts"]["damageIn"])
+        AssertEqual("System - Target", view["counterparts"]["damageOut"])
+        AssertEqual("System - Target", view["counterparts"]["alpha2"])
+        AssertEqual(1, view["extra"]["missIn"])
+        AssertEqual(1, view["extra"]["missOut"])
+        AssertEqual("Raider C", view["counterparts"]["missIn"])
+        AssertEqual("Station - Target", view["counterparts"]["missOut"])
+    } finally {
+        job.Close(), stats.Close()
         DirDelete(directory, true)
     }
 }

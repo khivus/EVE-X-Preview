@@ -19,7 +19,7 @@ public sealed partial class MainWindow
     {
         var dashboard = new StackPanel { Spacing = 12 };
         var status = Muted("");
-        var start = new Button { Content = T("Scan or resume log archives"), IsEnabled = false };
+        var start = new Button { Content = T("Scan all logs"), IsEnabled = false };
         var stop = new Button { Content = T("Stop archive scan"), IsEnabled = false };
         var refresh = new Button { Content = T("Refresh statistics") };
         var actions = new WrapPanel { Children = { start, stop, refresh } };
@@ -121,6 +121,9 @@ public sealed partial class MainWindow
                             tile.Children.Add(Muted(leader));
                         else if (requestedCharacter == "" && category.Text("title") != "Saved configuration" && metric.Number("value") > 0)
                             tile.Children.Add(Muted("No character history available"));
+                        if (metric.Text("counterpart") is { Length: > 0 } counterpart)
+                            tile.Children.Add(new TextBlock { Text = counterpart, MaxWidth = 360,
+                                TextWrapping = TextWrapping.Wrap, Classes = { "muted" } });
                         metrics.Children.Add(tile);
                     }
                     group.Children.Add(metrics);
@@ -195,6 +198,7 @@ public sealed partial class MainWindow
         page.Children.Add(Muted("Character and date filters apply to EVE log statistics."));
         page.Children.Add(Muted("With All characters selected, each character name identifies the leader for that statistic."));
         page.Children.Add(actions);
+        page.Children.Add(Muted("Rescans are faster: unchanged logs are skipped and changed logs resume from saved progress."));
         page.Children.Add(status);
         page.Children.Add(progress);
         page.Children.Add(dashboard);
