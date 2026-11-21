@@ -1,6 +1,7 @@
 # Folders
 .vs/
 build/
+artifacts/
 
 # Files
 *.exe
