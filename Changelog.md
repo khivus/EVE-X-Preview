@@ -1,5 +1,22 @@
 ﻿# Changelog
 
+## v1.7.1.1
+
+### Added
+* Logistics statistics for armor, shield and hull repairs given and received.
+* Fleet warp, regroup and waiting-message counts, plus separate module and drone/fighter rankings.
+* Command and mining burst statistics: applications, recipients, maximum members affected, most-used burst type and combined boosting leader.
+* Top characters across statistics, a top-systems list from Local visits, and combat source/target details for damage totals, peak DPS and alpha strikes.
+* Separate incoming and outgoing miss counts with their most frequent sources and targets.
+
+### Changed
+* Ranking lists default to five entries, with a row-count selector and internal scrolling above ten rows.
+* Burst type appears alongside burst totals; Combat peaks appears directly below Combat archive. DPS statistics display whole numbers.
+* Renamed the archive scan button to Scan all logs and explained faster rescans using saved progress.
+
+### Fixed
+* Structure names containing dashes no longer appear as module names; older indexed records are corrected by rescanning.
+
 ## v1.7.1.0
 
 ### Added
