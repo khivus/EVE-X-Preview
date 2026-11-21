@@ -80,6 +80,7 @@ CharacterListWindowTest() {
         AssertTrue(!DllCall("IsWindowVisible", "Ptr", list.gui.Hwnd))
     } finally {
         SetTimer(list.tick, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x2B, list.systemDrawCallback, 0)
         OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
@@ -139,6 +140,7 @@ CharacterListLayoutTest() {
         AssertEqual(NumGet(rect, 12, "Int")-NumGet(rect, 4, "Int"), NumGet(client, 12, "Int"))
     } finally {
         SetTimer(list.tick, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x2B, list.systemDrawCallback, 0)
         OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
@@ -204,6 +206,7 @@ CharacterListDragReleaseTest() {
     } finally {
         list.FinishDrag(true)
         SetTimer(list.tick, 0), SetTimer(list.dragTimer, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x2B, list.systemDrawCallback, 0)
         OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
@@ -220,7 +223,7 @@ CharacterListSystemLayoutTest() {
         list.items := [{name: "Alice", title: "EVE - Alice", key: "Alice", hwnd: 1000, loggedOut: false}]
         list.Render()
         AssertEqual("Jita", list.systemPool[1].Text)
-        AssertTrue(WinGetStyle(list.systemPool[1].Hwnd) & 2)
+        AssertEqual(13, WinGetStyle(list.systemPool[1].Hwnd) & 15)
         list.pool[1].GetPos(&nx,, &nw)
         list.systemPool[1].GetPos(&sx,, &sw)
         AssertTrue(nx+nw <= sx)
@@ -236,6 +239,12 @@ CharacterListSystemLayoutTest() {
         owner.systemLogMonitor.readers["EVE - Alice"].system := "Amarr"
         list.Render()
         AssertEqual("Amarr", list.systemPool[1].Text)
+        owner.systemLogMonitor.readers["EVE - Alice"].system := "Tekaima"
+        list.Render()
+        AssertEqual("Tekaima", list.systemPaint[list.systemPool[1].Hwnd].text)
+        owner.systemLogMonitor.readers["EVE - Alice"].system := "Jita"
+        list.Render()
+        AssertEqual("Jita", list.systemPaint[list.systemPool[1].Hwnd].text)
         owner.systemTrackingEnabled := false
         list.Render()
         AssertTrue(!list.systemPool[1].Visible)
@@ -246,7 +255,48 @@ CharacterListSystemLayoutTest() {
     } finally {
         list.FinishDrag(true)
         SetTimer(list.tick, 0), SetTimer(list.dragTimer, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x2B, list.systemDrawCallback, 0)
         OnMessage(0x20, list.cursorCallback, 0)
+        OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
+        OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
+        list.gui.Destroy()
+    }
+}
+TestRunner.Register("CharacterList system label repaint removes old glyph pixels", CharacterListSystemPaintTest)
+CharacterListSystemPaintTest() {
+    owner := {_JSON: JSON.Load(default_JSON), EVEExe: "ahk_exe CharacterListMissingFixture.exe", Save_Settings_Delay_Timer: (*) => 0}
+    owner._JSON["_Profiles"]["Default"]["Character List"]["CharacterListEnabled"] := 1
+    list := CharacterList(owner)
+    dc := DllCall("CreateCompatibleDC", "Ptr", 0, "Ptr")
+    info := Buffer(40, 0), pixels := 0
+    NumPut("UInt", 40, "Int", 140, "Int", -28, "UShort", 1, "UShort", 32, info)
+    bitmap := DllCall("CreateDIBSection", "Ptr", dc, "Ptr", info, "UInt", 0, "Ptr*", &pixels, "Ptr", 0, "UInt", 0, "Ptr")
+    previous := DllCall("SelectObject", "Ptr", dc, "Ptr", bitmap, "Ptr")
+    try {
+        list.items := [{key: "test", name: "Pilot", hwnd: 1000, loggedOut: false}]
+        list.Render()
+        control := list.systemPool[1].Hwnd
+        draw := Buffer(A_PtrSize = 8 ? 64 : 48, 0)
+        NumPut("Ptr", control, draw, A_PtrSize = 8 ? 24 : 20)
+        NumPut("Ptr", dc, draw, A_PtrSize = 8 ? 32 : 24)
+        rectOffset := A_PtrSize = 8 ? 40 : 28
+        NumPut("Int", 140, "Int", 28, draw, rectOffset+8)
+        list.systemPaint[control] := {text: "Jita", background: "202124", foreground: "ECEEF2"}
+        list.DrawSystemLabel(0, draw.Ptr, 0x2B, list.gui.Hwnd)
+        DllCall("GdiFlush")
+        expected := Buffer(140*28*4)
+        DllCall("RtlMoveMemory", "Ptr", expected, "Ptr", pixels, "UPtr", expected.Size)
+        list.systemPaint[control].text := "Tekaima longer name"
+        list.DrawSystemLabel(0, draw.Ptr, 0x2B, list.gui.Hwnd)
+        list.systemPaint[control].text := "Jita"
+        list.DrawSystemLabel(0, draw.Ptr, 0x2B, list.gui.Hwnd)
+        DllCall("GdiFlush")
+        AssertEqual(0, DllCall("msvcrt\memcmp", "Ptr", expected, "Ptr", pixels, "UPtr", expected.Size, "Cdecl Int"))
+    } finally {
+        DllCall("SelectObject", "Ptr", dc, "Ptr", previous)
+        DllCall("DeleteObject", "Ptr", bitmap), DllCall("DeleteDC", "Ptr", dc)
+        SetTimer(list.tick, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x2B, list.systemDrawCallback, 0), OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
         list.gui.Destroy()

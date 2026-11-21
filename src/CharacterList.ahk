@@ -23,7 +23,9 @@
     __New(owner) {
         this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.systemPool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
         CharacterList.Migrate(owner._JSON)
-        this.events := Map()
+        this.events := Map(), this.systemPaint := Map()
+        this.systemDrawCallback := ObjBindMethod(this, "DrawSystemLabel")
+        OnMessage(0x2B, this.systemDrawCallback)
         this.dragTimer := ObjBindMethod(this, "PollDrag")
         this.cursorCallback := ObjBindMethod(this, "ClientCursor")
         OnMessage(0x20, this.cursorCallback)
@@ -147,6 +149,33 @@
         }
         return ""
     }
+    DrawSystemLabel(wParam, lParam, msg, hwnd) {
+        if !lParam
+            return
+        control := NumGet(lParam, A_PtrSize = 8 ? 24 : 20, "Ptr")
+        if !this.systemPaint.Has(control)
+            return
+        paint := this.systemPaint[control]
+        dc := NumGet(lParam, A_PtrSize = 8 ? 32 : 24, "Ptr")
+        rect := lParam+(A_PtrSize = 8 ? 40 : 28)
+        saved := DllCall("SaveDC", "Ptr", dc, "Int")
+        brush := DllCall("CreateSolidBrush", "UInt", SettingsTheme.BGR(paint.background), "Ptr")
+        try {
+            ; Erase the full field before right-aligning the new string. Native
+            ; right-aligned static text can leave trailing glyphs after scrolling.
+            DllCall("FillRect", "Ptr", dc, "Ptr", rect, "Ptr", brush)
+            font := SendMessage(0x31, 0, 0,, control)
+            if font
+                DllCall("SelectObject", "Ptr", dc, "Ptr", font)
+            DllCall("SetBkMode", "Ptr", dc, "Int", 1)
+            DllCall("SetTextColor", "Ptr", dc, "UInt", SettingsTheme.BGR(paint.foreground))
+            DllCall("DrawTextW", "Ptr", dc, "Str", paint.text, "Int", -1, "Ptr", rect, "UInt", 0x8826)
+        } finally {
+            DllCall("DeleteObject", "Ptr", brush)
+            DllCall("RestoreDC", "Ptr", dc, "Int", saved)
+        }
+        return true
+    }
     Place(control, x, y, width, height) {
         control.GetPos(&oldX, &oldY, &oldWidth, &oldHeight)
         if x != oldX || y != oldY || width != oldWidth || height != oldHeight
@@ -219,7 +248,7 @@
                     if count > this.pool.Length {
                         this.eventBorders.Push(g.AddText("x0 y0 w1 h1", ""))
                         this.pool.Push(g.AddText("x0 y0 w1 h28 +0x100 +0x200 +0x4000", ""))
-                        this.systemPool.Push(g.AddText("x0 y0 w1 h28 Right +0x100 +0x200 +0x4000", ""))
+                        this.systemPool.Push(g.AddText("x0 y0 w1 h28 +0x10D", ""))
                     }
                     cell := this.pool[count]
                     x := 8+(horizontal ? slot.along-this.offset : slot.lane)*cw
@@ -245,6 +274,7 @@
                         label .= " · " event[1]
                     font := (active ? "bold " : "norm ") "c" colors["foreground"]
                     this.PaintText(cell, label, background, font)
+                    this.systemPaint[systemCell.Hwnd] := {text: system, background: background, foreground: colors["foreground"]}
                     this.PaintText(systemCell, system, background, font)
                     systemCell.Visible := system != ""
                     cell.Visible := true, this.cells[cell.Hwnd] := slot.index
@@ -290,7 +320,7 @@
         } finally {
             if this.gui {
                 SendMessage(0xB, 1, 0,, this.gui.Hwnd)
-                DllCall("RedrawWindow", "Ptr", this.gui.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x181)
+                DllCall("RedrawWindow", "Ptr", this.gui.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x185)
             }
             this.rendering := false
         }
