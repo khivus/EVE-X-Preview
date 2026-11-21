@@ -6,6 +6,15 @@ class SettingsSchema {
     static Pages := ["Thumbnails", "Switching", "EVE windows", "Monitoring & alerts", "Profiles", "Other applications", "Statistics", "Application"]
 
     static __New() {
+        this.Section("Thumbnails", "character-list", "Character list", "", "Independent from thumbnail visibility. Click a character to switch; drag entries to reorder. Use the top-left arrow to collapse, the title bar to move, the edges to resize, and the mouse wheel to scroll.")
+        this.Field("CharacterListEnabled", "Show character list", "bool",,,,, ["CharacterListEnabled"], "", true)
+        this.Field("CharacterListColumns", "Number of columns", "integer", 1, 12,,, ["CharacterListColumns"], "", true)
+        this.Field("CharacterListColumnWidth", "Column width", "integer", 100, 1600, "px",, ["CharacterListColumnWidth"], "", true)
+        this.Field("CharacterListDirection", "Fill direction", "choice",,,,, ["CharacterListDirection"], "", true)
+        this.Choices("CharacterListDirection", "Vertical", "vertical", "Horizontal", "horizontal")
+        this.Field("CharacterListSort", "Default sort order", "choice",,,, "Dragging switches to Custom order. Select another order to reset sorting.", ["CharacterListSort"], "", true)
+        this.Choices("CharacterListSort", "Character name A–Z", "name", "Character name Z–A", "descending", "Oldest client first", "oldest", "Newest client first", "newest", "Custom order", "manual")
+
         this.Section("Thumbnails", "appearance", "Appearance", "Thumbnails Visuals")
         this.Field("ShowThumbnailTextOverlay", "Show text on thumbnails", "bool")
         this.Field("ThumbnailTextFont", "Label font", "font",,,, "Choose an installed font. The test thumbnail previews your changes.")

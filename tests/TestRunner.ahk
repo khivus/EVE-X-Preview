@@ -258,4 +258,5 @@ AssertThrows(callback, expectedText := "", message := "Expected callback to thro
 #Include "Settings_Editor_Test.ahk"
 #Include "Settings_Themes_Test.ahk"
 #Include "Update_1704_Test.ahk"
+#Include "Character_List_Test.ahk"
 TestRunner.RunAll()

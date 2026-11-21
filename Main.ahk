@@ -27,6 +27,7 @@ if A_IsCompiled && DirExist(A_ScriptDir "\.EVE-X-Preview-update") {
 #Include "src/GameLogDiscovery.ahk"
 #Include "src/Main_Class.ahk"
 #Include "src/ThumbWindow.ahk"
+#Include "src/CharacterList.ahk"
 #Include "src/TrayMenu.ahk"
 #Include "src/Propertys.ahk"
 #Include "src/Settings_Gui.ahk"

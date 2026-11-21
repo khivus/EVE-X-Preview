@@ -282,6 +282,7 @@ Class Main_Class extends ThumbWindow {
         ProgramLog.Add("Monitoring started; profile=" This.LastUsedProfile "; EVE windows=" WinGetList(This.EVEExe).Length "; slow thumbnail creation=" This.SlowThumbnailCreation)
         SetTimer(ObjBindMethod(This, "HandleMainTimer"), This.ThumbnailPollingInterval)
         This.StartForegroundThumbnailRefresh()
+        This.CharacterListWindow := CharacterList(This)
         OnExit(ObjBindMethod(This, "CloseLivePreviews"))
         
         ;Timer property to remove Thumbnails for closed EVE windows 
