@@ -227,7 +227,7 @@ CharacterListSystemLayoutTest() {
         list.pool[1].GetPos(&nx,, &nw)
         list.systemPool[1].GetPos(&sx,, &sw)
         AssertTrue(nx+nw <= sx)
-        AssertEqual(8+list.Get("ColumnWidth", 220)-8, sx+sw)
+        AssertEqual(8+list.Get("ColumnWidth", 220)-4, sx+sw)
         list.gui.GetPos(,,, &height)
         AssertEqual(76, height)
         Loop 3 {

@@ -21,7 +21,7 @@
                 config.Delete("CharacterList" key)
     }
     __New(owner) {
-        this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.systemPool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
+        this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.dividers := [], this.systemPool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
         CharacterList.Migrate(owner._JSON)
         this.events := Map(), this.systemPaint := Map()
         this.systemDrawCallback := ObjBindMethod(this, "DrawSystemLabel")
@@ -256,14 +256,14 @@
                     if horizontal && y+28 > height-8
                         continue
                     system := this.SystemLabel(entry), systemCell := this.systemPool[count]
-                    systemWidth := system = "" ? 0 : Min(cw-28, Max(20, Round((cw-8)*0.4)))
-                    this.Place(cell, x, y, cw-8-systemWidth, 28)
-                    this.Place(systemCell, x+cw-8-systemWidth, y, Max(1, systemWidth), 28)
+                    systemWidth := system = "" ? 0 : Min(cw-28, Max(20, Round((cw-4)*0.4)))
+                    this.Place(cell, x, y, cw-4-systemWidth, 28)
+                    this.Place(systemCell, x+cw-4-systemWidth, y, Max(1, systemWidth), 28)
                     active := this.HasOwnProp("lastActive") && entry.hwnd = this.lastActive
                     event := this.EventState(entry.hwnd)
                     background := active ? colors["selection"] : colors["background"]
                     border := this.eventBorders[count]
-                    this.Place(border, x-1, y-1, cw-6, 30)
+                    this.Place(border, x-1, y-1, cw-2, 30)
                     border.Visible := event[2] != ""
                     if event[2] != ""
                         border.Opt("Background" event[2])
@@ -288,6 +288,19 @@
                     this.eventBorders[i].Visible := false
                     this.systemPool[i].Visible := false
                 }
+            dividerCount := collapsed ? 0 : Max(0, (horizontal ? visible : cols)-1)
+            Loop dividerCount {
+                i := A_Index
+                if i > this.dividers.Length
+                    this.dividers.Push(g.AddText("x0 y0 w1 h1", ""))
+                divider := this.dividers[i]
+                this.Place(divider, 8+i*cw-2, 36, 1, Max(1, height-48))
+                this.PaintText(divider, "", colors.Get("line", colors["selection"]), "norm")
+                divider.Visible := true
+            }
+            for i, divider in this.dividers
+                if i > dividerCount
+                    divider.Visible := false
             this.track.Visible := !collapsed && this.maxOffset > 0
             this.thumb.Visible := !collapsed && this.maxOffset > 0
             this.insertion.Opt("Background" colors["accent"])
@@ -485,7 +498,7 @@
             }
         px := 8+(horizontal ? boundary-this.offset : lane)*cw
         py := 36+(horizontal ? lane : boundary-this.offset)*32
-        this.insertion.Move(horizontal ? px-3 : px, horizontal ? py : py-2, horizontal ? 3 : cw-8, horizontal ? 28 : 3)
+        this.insertion.Move(horizontal ? px-3 : px, horizontal ? py : py-2, horizontal ? 3 : cw-4, horizontal ? 28 : 3)
         this.insertion.Visible := true
         DllCall("SetWindowPos", "Ptr", this.insertion.Hwnd, "Ptr", 0, "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
         return {lane: lane, before: before}
