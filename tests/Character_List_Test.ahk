@@ -80,6 +80,7 @@ CharacterListWindowTest() {
         AssertTrue(!DllCall("IsWindowVisible", "Ptr", list.gui.Hwnd))
     } finally {
         SetTimer(list.tick, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
         if list.gui
@@ -138,6 +139,7 @@ CharacterListLayoutTest() {
         AssertEqual(NumGet(rect, 12, "Int")-NumGet(rect, 4, "Int"), NumGet(client, 12, "Int"))
     } finally {
         SetTimer(list.tick, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x20, list.cursorCallback, 0)
         OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
         OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
         list.gui.Destroy()
@@ -160,4 +162,51 @@ CharacterListEventsTest() {
     AssertEqual(0, list.events.Count)
     list.EventStart("test", 123), list.EventEnd(123)
     AssertEqual(0, list.events.Count)
+}
+
+TestRunner.Register("CharacterList nonblocking drag release inserts and leaves no native frame", CharacterListDragReleaseTest)
+CharacterListDragReleaseTest() {
+    owner := {_JSON: JSON.Load(default_JSON), EVEExe: "ahk_exe CharacterListMissingFixture.exe", Save_Settings_Delay_Timer: (*) => 0}
+    owner._JSON["_Profiles"]["Default"]["Character List"]["CharacterListEnabled"] := 1
+    list := CharacterList(owner)
+    try {
+        list.items := [{key: "one", name: "One", hwnd: 1, loggedOut: false}, {key: "two", name: "Two", hwnd: 2, loggedOut: false}, {key: "three", name: "Three", hwnd: 3, loggedOut: false}]
+        list.Render()
+        list.gui.GetClientPos(&gx, &gy)
+        list.BeginDrag("row", gx+20, gy+48, 1)
+        SetTimer(list.dragTimer, 0)
+        AssertTrue(list.dragging)
+        AssertEqual(list.gui.Hwnd, DllCall("GetCapture", "Ptr"))
+        list.UpdateDrag(gx+20, gy+102, true)
+        AssertTrue(list.insertion.Visible)
+        list.UpdateDrag(gx+20, gy+102, false)
+        AssertTrue(!list.dragging)
+        AssertTrue(!list.insertion.Visible)
+        AssertEqual("two", list.items[1].key)
+        AssertEqual("one", list.items[2].key)
+        AssertEqual("three", list.items[3].key)
+        AssertTrue(DllCall("GetCapture", "Ptr") != list.gui.Hwnd)
+        for active in [0, 1, 0] {
+            SendMessage(0x86, active, 0,, list.gui.Hwnd)
+            AssertEqual(0, WinGetStyle(list.gui.Hwnd) & 0xC40000)
+        }
+        list.gui.GetPos(&wx, &wy, &width, &height)
+        list.BeginDrag("resize", wx+width-1, wy+60, 0, "R")
+        SetTimer(list.dragTimer, 0)
+        list.UpdateDrag(wx+width+19, wy+60, false)
+        list.gui.GetPos(,, &resized)
+        AssertEqual(width+20, resized)
+        AssertEqual(0, WinGetStyle(list.gui.Hwnd) & 0xC40000)
+        list.BeginDrag("row", gx+20, gy+48, 1)
+        SetTimer(list.dragTimer, 0)
+        list.FinishDrag(true)
+        AssertEqual("two", list.items[1].key)
+    } finally {
+        list.FinishDrag(true)
+        SetTimer(list.tick, 0), SetTimer(list.dragTimer, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x20, list.cursorCallback, 0)
+        OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
+        OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
+        list.gui.Destroy()
+    }
 }

@@ -24,6 +24,9 @@
         this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
         CharacterList.Migrate(owner._JSON)
         this.events := Map()
+        this.dragTimer := ObjBindMethod(this, "PollDrag")
+        this.cursorCallback := ObjBindMethod(this, "ClientCursor")
+        OnMessage(0x20, this.cursorCallback)
         this.ncCallback := ObjBindMethod(this, "NonClient")
         OnMessage(0x83, this.ncCallback), OnMessage(0x84, this.ncCallback)
         this.tick := ObjBindMethod(this, "Refresh"), this.mouse := ObjBindMethod(this, "MouseDown"), this.wheelCallback := ObjBindMethod(this, "Wheel"), this.endMove := ObjBindMethod(this, "SaveBounds")
@@ -141,7 +144,7 @@
         this.rendering := true
         try {
             if !this.gui {
-                this.gui := Gui("-Caption +Resize +ToolWindow -DPIScale", "EVE character list")
+                this.gui := Gui("-Caption -Border -Resize +ToolWindow -DPIScale", "EVE character list")
                 this.gui.OnEvent("Size", ObjBindMethod(this, "Resize"))
                 this.gui.OnEvent("Close", (*) => this.Put("Enabled", 0))
                 this.arrow := this.gui.AddText("x4 y5 w24 h24 +0x100 BackgroundTrans", "")
@@ -166,7 +169,8 @@
             this.arrow.Text := collapsed ? "▶" : "▼"
             this.heading.Text := width >= 140 ? "Characters · " this.items.Length : ""
             this.heading.Move(30, 5, Max(1, width-64), 24), this.dots.Move(width-28, 2, 24, 28)
-            g.Opt(this.Get("LockPosition", 0) ? "-Resize" : "+Resize")
+            ; Resizing is handled in client space; never enable the native sizing frame.
+            g.Opt("-Caption -Border -Resize")
             WinSetAlwaysOnTop(this.Get("AlwaysOnTop", 1), g.Hwnd)
             horizontal := this.Get("Direction", "vertical") = "horizontal"
             visible := horizontal ? Max(1, Floor((width-16)/cw)) : Max(1, Floor((height-56)/32))
@@ -335,17 +339,7 @@
     NonClient(wParam, lParam, msg, hwnd) {
         if !this.gui || hwnd != this.gui.Hwnd
             return
-        if msg = 0x83
-            return 0
-        if this.Get("LockPosition", 0)
-            return 1
-        rect := Buffer(16)
-        DllCall("GetWindowRect", "Ptr", hwnd, "Ptr", rect)
-        x := (lParam & 0xFFFF), y := (lParam >> 16 & 0xFFFF)
-        x := x >= 32768 ? x-65536 : x, y := y >= 32768 ? y-65536 : y
-        left := x-NumGet(rect, 0, "Int") < 4, right := NumGet(rect, 8, "Int")-x <= 4
-        top := y-NumGet(rect, 4, "Int") < 4, bottom := NumGet(rect, 12, "Int")-y <= 4
-        return top ? (left ? 13 : right ? 14 : 12) : bottom ? (left ? 16 : right ? 17 : 15) : left ? 10 : right ? 11 : 1
+        return msg = 0x83 ? 0 : 1
     }
     EventStart(event, hwnd) {
         if !this.Get("Enabled", 0)
@@ -428,55 +422,117 @@
             order.Push(item.key)
         this.Put("Lanes", assignments), this.Put("AutoFill", 0), this.Put("Order", order), this.Put("Sort", "manual")
     }
-    MouseDown(wParam, lParam, msg, hwnd) {
-        if !this.gui
+    EdgeAt(x, y, width, height) {
+        if this.Get("LockPosition", 0)
+            return ""
+        return (x < 5 ? "L" : x >= width-5 ? "R" : "") (y < 5 ? "T" : y >= height-5 ? "B" : "")
+    }
+    ClientCursor(wParam, lParam, msg, hwnd) {
+        if !this.gui || hwnd != this.gui.Hwnd || this.Get("LockPosition", 0)
             return
+        point := Buffer(8)
+        DllCall("GetCursorPos", "Ptr", point)
+        this.gui.GetClientPos(&gx, &gy, &width, &height)
+        edge := this.EdgeAt(NumGet(point, 0, "Int")-gx, NumGet(point, 4, "Int")-gy, width, height)
+        if edge = ""
+            return
+        cursor := StrLen(edge) = 2 ? ((edge = "LT" || edge = "RB") ? 32642 : 32643) : (edge = "L" || edge = "R") ? 32644 : 32645
+        DllCall("SetCursor", "Ptr", DllCall("LoadCursor", "Ptr", 0, "Ptr", cursor, "Ptr"))
+        return 1
+    }
+    BeginDrag(mode, x, y, index := 0, edge := "") {
+        this.gui.GetPos(&wx, &wy, &width, &height)
+        this.dragState := {mode: mode, startX: x, startY: y, wx: wx, wy: wy, width: width, height: height, index: index, edge: edge, moved: false, drop: 0}
+        this.dragging := true
+        DllCall("SetCapture", "Ptr", this.gui.Hwnd)
+        SetTimer(this.dragTimer, 16)
+    }
+    PollDrag(*) {
+        if !this.dragging
+            return
+        if DllCall("GetCapture", "Ptr") != this.gui.Hwnd || (DllCall("GetAsyncKeyState", "Int", 0x1B, "Short") & 0x8000) {
+            this.FinishDrag(true)
+            return
+        }
+        point := Buffer(8)
+        DllCall("GetCursorPos", "Ptr", point)
+        try this.UpdateDrag(NumGet(point, 0, "Int"), NumGet(point, 4, "Int"), !!(DllCall("GetAsyncKeyState", "Int", 1, "Short") & 0x8000))
+        catch as err {
+            this.FinishDrag(true)
+            throw err
+        }
+    }
+    UpdateDrag(x, y, pressed) {
+        state := this.dragState, dx := x-state.startX, dy := y-state.startY
+        if Abs(dx)+Abs(dy) >= 6
+            state.moved := true
+        if state.mode = "row" && state.moved {
+            this.gui.GetClientPos(&gx, &gy, &gw, &gh)
+            if x >= gx+4 && x < gx+gw-4 && y >= gy+32 && y < gy+gh-12 {
+                state.drop := this.DropAt(x-gx, y-gy)
+                ToolTip("Moving " this.items[state.index].name " · insert at line")
+            } else {
+                state.drop := 0, this.insertion.Visible := false
+                ToolTip("Moving " this.items[state.index].name " · choose a gap")
+            }
+        } else if state.mode = "scroll" {
+            this.gui.GetClientPos(&gx, &gy)
+            this.ScrollAt(x-gx, y-gy)
+        } else if state.mode = "move" {
+            DllCall("SetWindowPos", "Ptr", this.gui.Hwnd, "Ptr", 0, "Int", state.wx+dx, "Int", state.wy+dy, "Int", 0, "Int", 0, "UInt", 0x15)
+        } else if state.mode = "resize" {
+            width := Max(66, state.width+(InStr(state.edge, "L") ? -dx : InStr(state.edge, "R") ? dx : 0))
+            height := Max(100, state.height+(InStr(state.edge, "T") ? -dy : InStr(state.edge, "B") ? dy : 0))
+            wx := state.wx+(InStr(state.edge, "L") ? state.width-width : 0)
+            wy := state.wy+(InStr(state.edge, "T") ? state.height-height : 0)
+            DllCall("SetWindowPos", "Ptr", this.gui.Hwnd, "Ptr", 0, "Int", wx, "Int", wy, "Int", width, "Int", height, "UInt", 0x14)
+        }
+        if !pressed
+            this.FinishDrag(false)
+    }
+    FinishDrag(cancel := false) {
+        if !this.dragging
+            return
+        state := this.dragState
+        SetTimer(this.dragTimer, 0)
+        this.dragging := false
+        if DllCall("GetCapture", "Ptr") = this.gui.Hwnd
+            DllCall("ReleaseCapture")
+        this.insertion.Visible := false
+        ToolTip()
+        if !cancel {
+            if state.mode = "row" {
+                if !state.moved {
+                    try this.owner.ActivateEVEWindow(this.items[state.index].hwnd)
+                } else if state.drop
+                    this.ApplyDrop(state.index, state.drop)
+            } else if state.mode = "move" || state.mode = "resize"
+                this.SaveBounds(0, 0, 0, this.gui.Hwnd)
+        }
+        this.signature := ""
+    }
+    MouseDown(wParam, lParam, msg, hwnd) {
+        if !this.gui || this.dragging
+            return
+        point := Buffer(8)
+        DllCall("GetCursorPos", "Ptr", point)
+        x := NumGet(point, 0, "Int"), y := NumGet(point, 4, "Int")
         if hwnd = this.track.Hwnd || hwnd = this.thumb.Hwnd {
-            this.dragging := true
-            try {
-                while GetKeyState("LButton", "P") {
-                    MouseGetPos(&x, &y)
-                    this.gui.GetClientPos(&gx, &gy)
-                    this.ScrollAt(x-gx, y-gy)
-                    Sleep(16)
-                }
-            } finally this.dragging := false
+            this.BeginDrag("scroll", x, y)
+            return 0
+        }
+        if this.cells.Has(hwnd) {
+            this.BeginDrag("row", x, y, this.cells[hwnd])
             return 0
         }
         if hwnd = this.heading.Hwnd || hwnd = this.gui.Hwnd {
-            if !this.Get("LockPosition", 0)
-                PostMessage(0xA1, 2,,, this.gui.Hwnd)
-            return
+            this.gui.GetClientPos(&gx, &gy, &width, &height)
+            edge := this.EdgeAt(x-gx, y-gy, width, height)
+            if edge != ""
+                this.BeginDrag("resize", x, y, 0, edge)
+            else if !this.Get("LockPosition", 0)
+                this.BeginDrag("move", x, y)
+            return 0
         }
-        if !this.cells.Has(hwnd)
-            return
-        index := this.cells[hwnd], entry := this.items[index]
-        MouseGetPos(&startX, &startY)
-        this.dragging := true, moved := false, drop := 0
-        try {
-            while GetKeyState("LButton", "P") {
-                MouseGetPos(&x, &y, &window)
-                if Abs(x-startX)+Abs(y-startY) >= 6 {
-                    moved := true
-                    this.gui.GetClientPos(&gx, &gy, &gw, &gh)
-                    if x >= gx+4 && x < gx+gw-4 && y >= gy+32 && y < gy+gh-12 {
-                        drop := this.DropAt(x-gx, y-gy)
-                        ToolTip("Moving " entry.name " · insert at line")
-                    } else {
-                        drop := 0, this.insertion.Visible := false
-                        ToolTip("Moving " entry.name " · choose a gap")
-                    }
-                }
-                Sleep(16)
-            }
-            if !moved {
-                try this.owner.ActivateEVEWindow(entry.hwnd)
-            } else if drop
-                this.ApplyDrop(index, drop)
-        } finally {
-            this.insertion.Visible := false
-            ToolTip(), this.dragging := false, this.signature := ""
-        }
-        return 0
     }
 }
