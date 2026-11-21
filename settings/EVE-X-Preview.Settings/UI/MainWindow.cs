@@ -276,6 +276,8 @@ public sealed partial class MainWindow : Window
     {
         if (session.Metadata is not { } metadata) return;
         rendering = true;
+        // Restoring focus to a statistics filter must not pull the reader back to the top.
+        pageScroll.BringIntoViewOnFocusChange = sectionId != "statistics";
         profileBaselines.TryAdd(session.Profile, session.Snapshot.Object("draft").Object("config").Copy());
         var offset = renderedScrollKey==ScrollKey ? pageScroll.Offset : scrollPositions.GetValueOrDefault(ScrollKey, default);
         requestedScroll=offset;renderedScrollKey=ScrollKey;

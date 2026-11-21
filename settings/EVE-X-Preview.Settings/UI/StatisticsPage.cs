@@ -17,7 +17,7 @@ public sealed partial class MainWindow
 
     private void RenderStatistics()
     {
-        var dashboard = new StackPanel { Spacing = 12 };
+        var dashboardHost = new ContentControl();
         var status = Muted("");
         var start = new Button { Content = T("Scan all logs"), IsEnabled = false };
         var stop = new Button { Content = T("Stop archive scan"), IsEnabled = false };
@@ -106,7 +106,8 @@ public sealed partial class MainWindow
                 var content = stats.Array("categories").ToJsonString() + view.Array("materials").ToJsonString() + view.Array("bursts").ToJsonString() + view.Array("drones").ToJsonString() + view.Array("modules").ToJsonString() + view.Array("systems").ToJsonString();
                 if (content == lastContent) return;
                 lastContent = content;
-                dashboard.Children.Clear();
+                // Build off-tree so polling never exposes an empty dashboard to layout.
+                var dashboard = new StackPanel { Spacing = 12 };
                 foreach (var category in stats.Array("categories"))
                 {
                     var group = new StackPanel { Spacing = 12 };
@@ -159,6 +160,11 @@ public sealed partial class MainWindow
                         entries.Select(m => new[] { m.Text("name"), m.Text("units"), m.Text("residue"),
                             requestedCharacter == "" ? m.Text("character") : "" }).ToArray())));
                 }
+                var offset = pageScroll.Offset;
+                dashboardHost.Content = dashboard;
+                // Recalculate the extent before restoring; a shorter result is clamped normally.
+                pageScroll.UpdateLayout();
+                pageScroll.Offset = offset;
             }
             catch (Exception error)
             {
@@ -193,7 +199,7 @@ public sealed partial class MainWindow
             if (viewGeneration != pageGeneration || closing) { timer.Stop(); return; }
             await RefreshAsync();
         };
-        dashboard.DetachedFromVisualTree += (_, _) => timer.Stop();
+        dashboardHost.DetachedFromVisualTree += (_, _) => timer.Stop();
         page.Children.Add(filters);
         page.Children.Add(Muted("Character and date filters apply to EVE log statistics."));
         page.Children.Add(Muted("With All characters selected, each character name identifies the leader for that statistic."));
@@ -201,7 +207,7 @@ public sealed partial class MainWindow
         page.Children.Add(Muted("Rescans are faster: unchanged logs are skipped and changed logs resume from saved progress."));
         page.Children.Add(status);
         page.Children.Add(progress);
-        page.Children.Add(dashboard);
+        page.Children.Add(dashboardHost);
         _ = RefreshAsync();
     }
 
