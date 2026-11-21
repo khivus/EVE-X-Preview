@@ -1,20 +1,13 @@
 ﻿; Labels and validation are independent of the legacy JSON keys. Reorganizing
 ; pages never moves a user's stored values or changes their profile ownership.
 class SettingsSchema {
+    static Icons := Map("appearance", "◈", "labels", "▤", "character-appearance", "◐", "layout", "▦", "placement", "⇥", "character-list", "☷", "visibility", "◉", "hidden-characters", "⊘", "mouse-actions", "☝", "shortcuts", "⌨", "character-shortcuts", "⚿", "character-groups", "♟", "quick-group", "ϟ", "switching-behavior", "⇆", "advanced-switching", "⚙", "window-behavior", "▣", "close-protection", "⛨", "sources", "⌕", "monitored-characters", "♙", "systems", "☼", "alert-behavior", "♬", "events", "⚑", "dps", "∑", "sounds", "♫", "profiles", "♜", "inheritance", "↳", "app-groups", "▧", "app-shortcuts", "⌘", "statistics", "▥", "interface", "◎", "tray", "☰", "performance", "⌛", "diagnostics", "◍", "about", "ⓘ")
+    static PageIcons := Map("Thumbnails", "▰", "Switching", "⤨", "EVE windows", "▢", "Monitoring & alerts", "⚠", "Profiles", "☻", "Other applications", "⌑", "Statistics", "▨", "Application", "❖")
     static Fields := Map()
     static Sections := []
     static Pages := ["Thumbnails", "Switching", "EVE windows", "Monitoring & alerts", "Profiles", "Other applications", "Statistics", "Application"]
 
     static __New() {
-        this.Section("Thumbnails", "character-list", "Character list", "", "Independent from thumbnail visibility. Click a character to switch; drag entries to reorder. Use the top-left arrow to collapse, the title bar to move, the edges to resize, and the mouse wheel to scroll.")
-        this.Field("CharacterListEnabled", "Show character list", "bool",,,,, ["CharacterListEnabled"], "", true)
-        this.Field("CharacterListColumns", "Number of columns", "integer", 1, 12,,, ["CharacterListColumns"], "", true)
-        this.Field("CharacterListColumnWidth", "Column width", "integer", 100, 1600, "px",, ["CharacterListColumnWidth"], "", true)
-        this.Field("CharacterListDirection", "Fill direction", "choice",,,,, ["CharacterListDirection"], "", true)
-        this.Choices("CharacterListDirection", "Vertical", "vertical", "Horizontal", "horizontal")
-        this.Field("CharacterListSort", "Default sort order", "choice",,,, "Dragging switches to Custom order. Select another order to reset sorting.", ["CharacterListSort"], "", true)
-        this.Choices("CharacterListSort", "Character name A–Z", "name", "Character name Z–A", "descending", "Oldest client first", "oldest", "Newest client first", "newest", "Custom order", "manual")
-
         this.Section("Thumbnails", "appearance", "Appearance", "Thumbnails Visuals")
         this.Field("ShowThumbnailTextOverlay", "Show text on thumbnails", "bool")
         this.Field("ThumbnailTextFont", "Label font", "font",,,, "Choose an installed font. The test thumbnail previews your changes.")
@@ -71,6 +64,24 @@ class SettingsSchema {
             "Bottom to top; left to right", 7, "Bottom to top; right to left", 8)
         this.Field("ShiftThumbHorizontalStep", "Horizontal placement step", "integer", 0, 16384, "px", "0 = use each thumbnail's width.")
         this.Field("ShiftThumbVerticalStep", "Vertical placement step", "integer", 0, 16384, "px", "0 = use each thumbnail's height.")
+
+        this.Section("Thumbnails", "character-list", "Character list", "Character List", "Independent from thumbnail visibility. Click a character to switch; drag entries to reorder. Use the top-left arrow to collapse, the Characters heading to move, the edges to resize, and the mouse wheel to scroll.")
+        this.Field("CharacterListEnabled", "Show character list", "bool",,,,, ["Character List", "CharacterListEnabled"])
+        this.Field("CharacterListColumns", "Number of columns", "integer", 1, 12,,, ["Character List", "CharacterListColumns"])
+        this.Field("CharacterListColumnWidth", "Column width", "integer", 50, 1600, "px",, ["Character List", "CharacterListColumnWidth"])
+        this.Field("CharacterListDirection", "Fill direction", "choice",,,,, ["Character List", "CharacterListDirection"])
+        this.Choices("CharacterListDirection", "Vertical", "vertical", "Horizontal", "horizontal")
+        this.Field("CharacterListSort", "Default sort order", "choice",,,, "Dragging switches to Custom order. Select another order to reset sorting.", ["Character List", "CharacterListSort"])
+        this.Choices("CharacterListSort", "Character name A–Z", "name", "Character name Z–A", "descending", "Oldest client first", "oldest", "Newest client first", "newest", "Custom order", "manual")
+
+        this.Field("CharacterListAlwaysOnTop", "Always on top", "bool")
+        this.Field("CharacterListLockPosition", "Lock position", "bool")
+        this.Field("CharacterListAutoSavePosition", "Auto save position", "bool")
+        this.Field("CharacterListOpacity", "Window opacity", "integer", 10, 100, "%")
+        this.Field("CharacterListShowHwnd", "Show HWND for logged-out clients", "bool")
+        this.Field("CharacterListGroupLoggedOut", "Group logged-out clients", "bool",,,, "In name order, logged-out clients appear last for A–Z and first for Z–A.")
+        this.Field("CharacterListGroupSystems", "Group characters by solar system", "bool",,,, "Uses EVE local chat logs; enable chat logging in EVE. Unknown locations are grouped together.")
+        this.Field("CharacterListHideOnLostFocus", "Hide while EVE is not focused", "bool")
 
         this.Section("Thumbnails", "visibility", "Visibility", "Thumbnails Behavior")
         this.Field("HideThumbnails", "Hide all thumbnails", "bool")

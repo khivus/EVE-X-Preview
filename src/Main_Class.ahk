@@ -2877,7 +2877,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     startSystemTracking() {
-        if !This.systemTrackingEnabled
+        if !This.systemTrackingEnabled && !(This.HasOwnProp("CharacterListWindow") && This.CharacterListWindow.Get("Enabled", 0) && This.CharacterListWindow.Get("GroupSystems", 0))
             return
         This.systemLogMonitor := LocalChatMonitor(This)
         This.systemMonitorMethod := ObjBindMethod(This, "monitorCharacterSystems")
@@ -2904,7 +2904,7 @@ Class Main_Class extends ThumbWindow {
                 continue
             if title = "EVE"
                 continue
-            if This.monitorOnlySelectedChars {
+            if This.monitorOnlySelectedChars && !(This.HasOwnProp("CharacterListWindow") && This.CharacterListWindow.Get("Enabled", 0) && This.CharacterListWindow.Get("GroupSystems", 0)) {
                 selected := false
                 for name in This.charsToMonitor {
                     if name = title {

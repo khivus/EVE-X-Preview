@@ -1,6 +1,6 @@
 ﻿; The editor owns a draft. Runtime state is touched only after a successful Apply.
 class SettingsModel {
-    static LegacyGroups := ["Thumbnails Behavior", "Thumbnails Visuals", "Thumbnails Interactions", "Thumbnail Visibility",
+    static LegacyGroups := ["Character List", "Thumbnails Behavior", "Thumbnails Visuals", "Thumbnails Interactions", "Thumbnail Visibility",
         "Custom Colors", "Hotkeys Settings", "Hotkey Groups", "Character shortcuts", "Character groups", "Client Settings", "Game Logs Monitoring",
         "Monitored Events", "DPS Monitoring", "Focused-client sounds", "Focused-client DPS", "Non-EVE Applications", "Tray Menu Settings", "Other"]
 
@@ -27,6 +27,7 @@ class SettingsModel {
             if !field.global && field.group != ""
                 units[field.group].Push({path: field.path, legacy: field.legacyGroup})
         extras := [
+            ["character-list", "Character List", ["Character List"]],
             ["labels", "Thumbnails Visuals", ["Thumbnails Visuals", "CustomThumbnailNames"]],
             ["character-appearance", "Custom Colors", ["Custom Colors", "cColors"]],
             ["character-shortcuts", "Character shortcuts", ["Hotkeys Settings", "CharacterHotkeys"]],
@@ -46,6 +47,8 @@ class SettingsModel {
     }
 
     __New(config) {
+        config := this.Clone(config)
+        CharacterList.Migrate(config)
         this.original := this.Clone(config)
         this.config := this.Clone(config)
         this.defaults := JSON.Load(default_JSON)

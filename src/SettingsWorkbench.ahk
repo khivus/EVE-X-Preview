@@ -315,13 +315,13 @@ class SettingsWorkbench extends SettingsWorkbenchPages {
                         matching.Push(section)
                 if !matching.Length
                     continue
-                root := this.nav.Add(T(page), 0, "Bold")
+                root := this.nav.Add(SettingsSchema.PageIcons[page] "  " T(page), 0, "Bold")
                 this.navRoots.Push(root)
                 this.navPages[root] := page
                 this.navItems[root] := matching[1].id
                 expand := query != "" || this.expandedPages.Get(page, false)
                 for section in matching {
-                    item := this.nav.Add(T(section.navTitle), root)
+                    item := this.nav.Add(SettingsSchema.Icons[section.id] "  " T(section.navTitle), root)
                     this.navItems[item] := section.id
                     this.navSections[section.id] := item
                 }

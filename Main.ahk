@@ -162,6 +162,7 @@ Load_JSONUnlocked(interactive := true) {
             MsgBox "Your settings file was created by a newer version of EVE-X-Preview. Some settings or migrations may be incompatible with this older program version; changes made by the newer config may not be reversible and the program may behave incorrectly.", "Warning! Settings versions missmatch!"
 
         ; Merge: default -> user, but don't overwrite user's explicit values
+        CharacterList.Migrate(UJSON)
         MigrateThumbnailNameSettings(UJSON)
         SettingsFonts.NormalizeLegacyDefaults(UJSON)
         _JSON := JsonMergeNoOverwrite(DJSON, UJSON)

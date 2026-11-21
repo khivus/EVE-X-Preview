@@ -89,7 +89,7 @@ class SettingsContract {
     static Export() {
         defaults := JSON.Load(default_JSON), sections := [], fields := [], tables := [], events := [], commands := this.Commands()
         for section in SettingsSchema.Sections {
-            entry := Map("id", section.id, "page", section.page, "title", section.title, "help", section.help,
+            entry := Map("id", section.id, "page", section.page, "title", section.title, "icon", SettingsSchema.Icons[section.id], "pageIcon", SettingsSchema.PageIcons[section.page], "help", section.help,
                 "group", section.group, "fields", section.fields.Clone(), "tables", [], "commands", [])
             for kind in this.TableKinds
                 if SettingsTables.Group(kind) = section.id

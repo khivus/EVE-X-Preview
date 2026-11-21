@@ -260,11 +260,11 @@ public sealed partial class MainWindow : Window
         {
             var visible = group.Where(Matches).ToArray();
             if (visible.Length == 0) continue;
-            navigation.Children.Add(new TextBlock { Text = T(group.Key).ToUpperInvariant(), FontSize = 10, LetterSpacing = 1.4, Opacity = .62, FontWeight = FontWeight.SemiBold, Margin = new Thickness(10, 17, 0, 5) });
+            navigation.Children.Add(new TextBlock { Text = group.First().Text("pageIcon") + "  " + T(group.Key).ToUpperInvariant(), FontSize = 10, LetterSpacing = 1.4, Opacity = .62, FontWeight = FontWeight.SemiBold, Margin = new Thickness(10, 17, 0, 5) });
             foreach (var section in visible)
             {
                 var id = section.Text("id");
-                var button = new Button { Content = SearchText(section.Text("title")), Classes = { "nav" } };
+                var button = new Button { Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = section.Text("icon"), Width = 20 }, SearchText(section.Text("title")) } }, Classes = { "nav" } };
                 if (id == sectionId) button.Classes.Add("selected");
                 button.Click += async (_, _) => { try { await NavigateToAsync(id); } catch(Exception e) { ShowError(e); } };
                 navigation.Children.Add(button);
