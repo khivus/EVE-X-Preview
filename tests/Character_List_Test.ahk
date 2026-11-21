@@ -210,3 +210,45 @@ CharacterListDragReleaseTest() {
         list.gui.Destroy()
     }
 }
+
+TestRunner.Register("CharacterList fits contents and right aligns existing system labels", CharacterListSystemLayoutTest)
+CharacterListSystemLayoutTest() {
+    owner := {_JSON: JSON.Load(default_JSON), EVEExe: "ahk_exe CharacterListMissingFixture.exe", Save_Settings_Delay_Timer: (*) => 0, systemTrackingEnabled: true, systemLogMonitor: {readers: Map("EVE - Alice", {system: "Jita"})}}
+    owner._JSON["_Profiles"]["Default"]["Character List"]["CharacterListEnabled"] := 1
+    list := CharacterList(owner)
+    try {
+        list.items := [{name: "Alice", title: "EVE - Alice", key: "Alice", hwnd: 1000, loggedOut: false}]
+        list.Render()
+        AssertEqual("Jita", list.systemPool[1].Text)
+        AssertTrue(WinGetStyle(list.systemPool[1].Hwnd) & 2)
+        list.pool[1].GetPos(&nx,, &nw)
+        list.systemPool[1].GetPos(&sx,, &sw)
+        AssertTrue(nx+nw <= sx)
+        AssertEqual(8+list.Get("ColumnWidth", 220)-8, sx+sw)
+        list.gui.GetPos(,,, &height)
+        AssertEqual(76, height)
+        Loop 3 {
+            list.Render()
+            list.gui.GetPos(,,, &height)
+            AssertEqual(76, height)
+        }
+        AssertEqual(340, list.Get("Height", 0))
+        owner.systemLogMonitor.readers["EVE - Alice"].system := "Amarr"
+        list.Render()
+        AssertEqual("Amarr", list.systemPool[1].Text)
+        owner.systemTrackingEnabled := false
+        list.Render()
+        AssertTrue(!list.systemPool[1].Visible)
+        list.Put("Direction", "horizontal"), list.Put("Columns", 2)
+        list.Render()
+        list.gui.GetPos(,,, &height)
+        AssertEqual(112, height)
+    } finally {
+        list.FinishDrag(true)
+        SetTimer(list.tick, 0), SetTimer(list.dragTimer, 0), SetTimer(owner.Save_Settings_Delay_Timer, 0)
+        OnMessage(0x20, list.cursorCallback, 0)
+        OnMessage(0x83, list.ncCallback, 0), OnMessage(0x84, list.ncCallback, 0)
+        OnMessage(0x201, list.mouse, 0), OnMessage(0x20A, list.wheelCallback, 0), OnMessage(0x232, list.endMove, 0)
+        list.gui.Destroy()
+    }
+}

@@ -21,7 +21,7 @@
                 config.Delete("CharacterList" key)
     }
     __New(owner) {
-        this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
+        this.owner := owner, this.gui := 0, this.signature := "", this.offset := 0, this.pool := [], this.systemPool := [], this.eventBorders := [], this.cells := Map(), this.dragging := false
         CharacterList.Migrate(owner._JSON)
         this.events := Map()
         this.dragTimer := ObjBindMethod(this, "PollDrag")
@@ -64,7 +64,7 @@
                 title := WinGetTitle(hwnd), name := RegExReplace(title, "^EVE - ", ""), created := 0
                 loggedOut := title = "EVE" || title = "Char Screen"
                 try created := this.owner.GetProcessCreationTime(WinGetPID(hwnd))[3]
-                entries.Push({hwnd: hwnd, name: name, created: created, loggedOut: loggedOut, key: loggedOut ? "hwnd:" hwnd : name})
+                entries.Push({hwnd: hwnd, name: name, created: created, title: title, loggedOut: loggedOut, key: loggedOut ? "hwnd:" hwnd : name})
             }
         }
         mode := this.Get("Sort", "name"), order := this.Get("Order", [])
@@ -124,7 +124,7 @@
         }
         entries := this.Entries(), keys := []
         for entry in entries
-            keys.Push([entry.key, entry.name, this.EventState(entry.hwnd)])
+            keys.Push([entry.key, entry.name, this.SystemLabel(entry), this.EventState(entry.hwnd)])
         signature := JSON.Dump([keys, this.Data, this.Colors(), this.ProfileName, active])
         if signature != this.signature {
             this.signature := signature, this.items := entries
@@ -140,11 +140,33 @@
             return SettingsPalettes.Items[mode]
         return Map("background", dark ? "202124" : "F7F7F7", "foreground", dark ? "ECEEF2" : "202020", "accent", dark ? "76B7FF" : "0078D4", "selection", dark ? "304C70" : "CCE4FF")
     }
+    SystemLabel(entry) {
+        try {
+            if this.owner.systemTrackingEnabled && !entry.loggedOut
+                return this.owner.systemLogMonitor.readers[entry.HasOwnProp("title") ? entry.title : entry.name].system
+        }
+        return ""
+    }
+    Place(control, x, y, width, height) {
+        control.GetPos(&oldX, &oldY, &oldWidth, &oldHeight)
+        if x != oldX || y != oldY || width != oldWidth || height != oldHeight
+            control.Move(x, y, width, height)
+    }
+    PaintText(control, text, background, font) {
+        style := background "|" font
+        if !control.HasOwnProp("listPaintStyle") || control.listPaintStyle != style {
+            control.Opt("Background" background)
+            control.SetFont(font)
+            control.listPaintStyle := style
+        }
+        if control.Text != text
+            control.Text := text
+    }
     Render() {
         this.rendering := true
         try {
             if !this.gui {
-                this.gui := Gui("-Caption -Border -Resize +ToolWindow -DPIScale", "EVE character list")
+                this.gui := Gui("-Caption -Border -Resize +ToolWindow +E0x02000000 -DPIScale", "EVE character list")
                 this.gui.OnEvent("Size", ObjBindMethod(this, "Resize"))
                 this.gui.OnEvent("Close", (*) => this.Put("Enabled", 0))
                 this.arrow := this.gui.AddText("x4 y5 w24 h24 +0x100 BackgroundTrans", "")
@@ -163,21 +185,29 @@
                 height := Max(height, 52+cols*32)
                 width := Max(66, this.Get("Width", 0) ? this.Get("Width", 0) : cols*cw+16)
             }
-            g.BackColor := colors["background"]
+            wasVisible := DllCall("IsWindowVisible", "Ptr", g.Hwnd)
+            SendMessage(0xB, 0, 0,, g.Hwnd) ; WM_SETREDRAW
+            if g.BackColor != colors["background"]
+                g.BackColor := colors["background"]
             g.SetFont("s10 c" colors["foreground"], "Segoe UI")
-            this.arrow.SetFont("c" colors["foreground"]), this.heading.SetFont("c" colors["foreground"]), this.dots.SetFont("s14 c" colors["foreground"])
-            this.arrow.Text := collapsed ? "▶" : "▼"
-            this.heading.Text := width >= 140 ? "Characters · " this.items.Length : ""
+            this.PaintText(this.arrow, collapsed ? "▶" : "▼", colors["background"], "c" colors["foreground"])
+            this.PaintText(this.heading, width >= 140 ? "Characters · " this.items.Length : "", colors["background"], "c" colors["foreground"])
+            this.PaintText(this.dots, "⋯", colors["background"], "s14 c" colors["foreground"])
             this.heading.Move(30, 5, Max(1, width-64), 24), this.dots.Move(width-28, 2, 24, 28)
             ; Resizing is handled in client space; never enable the native sizing frame.
-            g.Opt("-Caption -Border -Resize")
-            WinSetAlwaysOnTop(this.Get("AlwaysOnTop", 1), g.Hwnd)
+            if WinGetStyle(g.Hwnd) & 0xC40000
+                g.Opt("-Caption -Border -Resize")
+            topmost := this.Get("AlwaysOnTop", 1)
+            if !!(WinGetExStyle(g.Hwnd) & 8) != !!topmost
+                WinSetAlwaysOnTop(topmost, g.Hwnd)
             horizontal := this.Get("Direction", "vertical") = "horizontal"
-            visible := horizontal ? Max(1, Floor((width-16)/cw)) : Max(1, Floor((height-56)/32))
+            visible := horizontal ? Max(1, Floor((width-16)/cw)) : Max(1, Floor((height-44)/32))
             this.layout := this.BuildLayout(this.items, visible)
             extent := 0
             for slot in this.layout
                 extent := Max(extent, slot.along+1)
+            ; Saved height is a viewport limit, not a permanent empty hit area.
+            height := horizontal ? 48+cols*32 : 44+Min(visible, Max(1, extent))*32
             this.maxOffset := Max(0, extent-visible), this.offset := Min(this.offset, this.maxOffset)
             this.visibleSpan := visible, this.contentWidth := width, this.contentHeight := height
             this.cells := Map(), this.placements := Map(), count := 0
@@ -188,36 +218,45 @@
                     count += 1, entry := this.items[slot.index]
                     if count > this.pool.Length {
                         this.eventBorders.Push(g.AddText("x0 y0 w1 h1", ""))
-                        this.pool.Push(g.AddText("x0 y0 w1 h28 +0x100 +0x200", ""))
+                        this.pool.Push(g.AddText("x0 y0 w1 h28 +0x100 +0x200 +0x4000", ""))
+                        this.systemPool.Push(g.AddText("x0 y0 w1 h28 Right +0x100 +0x200 +0x4000", ""))
                     }
                     cell := this.pool[count]
                     x := 8+(horizontal ? slot.along-this.offset : slot.lane)*cw
                     y := 36+(horizontal ? slot.lane : slot.along-this.offset)*32
-                    if horizontal && y+28 > height-16
+                    if horizontal && y+28 > height-8
                         continue
-                    cell.Move(x, y, cw-8, 28)
+                    system := this.SystemLabel(entry), systemCell := this.systemPool[count]
+                    systemWidth := system = "" ? 0 : Min(cw-28, Max(20, Round((cw-8)*0.4)))
+                    this.Place(cell, x, y, cw-8-systemWidth, 28)
+                    this.Place(systemCell, x+cw-8-systemWidth, y, Max(1, systemWidth), 28)
                     active := this.HasOwnProp("lastActive") && entry.hwnd = this.lastActive
                     event := this.EventState(entry.hwnd)
-                    cell.Opt("Background" (active ? colors["selection"] : colors["background"]))
+                    background := active ? colors["selection"] : colors["background"]
                     border := this.eventBorders[count]
-                    border.Move(x-1, y-1, cw-6, 30)
+                    this.Place(border, x-1, y-1, cw-6, 30)
                     border.Visible := event[2] != ""
                     if event[2] != ""
                         border.Opt("Background" event[2])
-                    cell.SetFont((active ? "bold " : "norm ") "c" colors["foreground"])
                     label := entry.name
                     if entry.loggedOut && this.Get("ShowHwnd", 0)
                         label .= " [" Format("0x{:X}", entry.hwnd) "]"
                     if event[1] != ""
                         label .= " · " event[1]
-                    cell.Text := label
+                    font := (active ? "bold " : "norm ") "c" colors["foreground"]
+                    this.PaintText(cell, label, background, font)
+                    this.PaintText(systemCell, system, background, font)
+                    systemCell.Visible := system != ""
                     cell.Visible := true, this.cells[cell.Hwnd] := slot.index
+                    if system != ""
+                        this.cells[systemCell.Hwnd] := slot.index
                     this.placements[cell.Hwnd] := {lane: slot.lane, along: slot.along, x: x, y: y, index: slot.index}
                 }
             for i, cell in this.pool
                 if i > count {
                     cell.Visible := false
                     this.eventBorders[i].Visible := false
+                    this.systemPool[i].Visible := false
                 }
             this.track.Visible := !collapsed && this.maxOffset > 0
             this.thumb.Visible := !collapsed && this.maxOffset > 0
@@ -238,12 +277,26 @@
                 this.shownProfile := this.Config["LastUsedProfile"]
             } else
                 g.GetPos(&wx, &wy)
-            DllCall("SetWindowPos", "Ptr", g.Hwnd, "Ptr", 0, "Int", wx, "Int", wy, "Int", width, "Int", collapsed ? 32 : height, "UInt", 0x54)
-            WinSetTransparent(Round(Max(10, this.Get("Opacity", 100))*2.55), g.Hwnd)
-        } finally this.rendering := false
+            targetHeight := collapsed ? 32 : height
+            this.renderedWidth := width, this.renderedHeight := targetHeight
+            g.GetPos(&currentX, &currentY, &currentWidth, &currentHeight)
+            if wx != currentX || wy != currentY || width != currentWidth || targetHeight != currentHeight || !wasVisible
+                DllCall("SetWindowPos", "Ptr", g.Hwnd, "Ptr", 0, "Int", wx, "Int", wy, "Int", width, "Int", targetHeight, "UInt", 0x54)
+            opacity := Round(Max(10, this.Get("Opacity", 100))*2.55)
+            if !this.HasOwnProp("paintedOpacity") || this.paintedOpacity != opacity {
+                WinSetTransparent(opacity, g.Hwnd)
+                this.paintedOpacity := opacity
+            }
+        } finally {
+            if this.gui {
+                SendMessage(0xB, 1, 0,, this.gui.Hwnd)
+                DllCall("RedrawWindow", "Ptr", this.gui.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x181)
+            }
+            this.rendering := false
+        }
     }
     Resize(guiObj, minMax, width, height) {
-        if minMax = -1 || this.Get("Collapsed", 0) || (this.HasOwnProp("rendering") && this.rendering)
+        if minMax = -1 || this.Get("Collapsed", 0) || (this.HasOwnProp("rendering") && this.rendering) || (this.HasOwnProp("renderedWidth") && width = this.renderedWidth && height = this.renderedHeight)
             return
         if this.Get("Direction", "vertical") = "horizontal" {
             if width != this.Get("Width", 0) || height != this.Get("Height", 340) {
@@ -271,7 +324,10 @@
     Wheel(wParam, lParam, msg, hwnd) {
         if !this.gui || (hwnd != this.gui.Hwnd && !this.cells.Has(hwnd))
             return
-        this.offset := Min(this.maxOffset, Max(0, this.offset+((wParam >> 16 & 0x8000) ? 1 : -1))), this.signature := ""
+        nextOffset := Min(this.maxOffset, Max(0, this.offset+((wParam >> 16 & 0x8000) ? 1 : -1)))
+        if nextOffset = this.offset
+            return 0
+        this.offset := nextOffset, this.signature := ""
         if this.dragging
             this.Render()
         else
@@ -377,8 +433,10 @@
     ScrollAt(x, y) {
         horizontal := this.Get("Direction", "vertical") = "horizontal"
         fraction := horizontal ? (x-8)/Max(1, this.contentWidth-16) : (y-36)/Max(1, this.contentHeight-48)
-        this.offset := Round(Max(0, Min(1, fraction))*this.maxOffset)
-        this.signature := ""
+        nextOffset := Round(Max(0, Min(1, fraction))*this.maxOffset)
+        if nextOffset = this.offset
+            return
+        this.offset := nextOffset, this.signature := ""
         this.Render()
     }
     DropAt(x, y) {
