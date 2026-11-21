@@ -42,12 +42,13 @@
     "CharacterListAutoSavePosition": 1,
     "CharacterListOpacity": 100,
     "CharacterListShowHwnd": 0,
-    "CharacterListGroupLoggedOut": 1,
-    "CharacterListGroupSystems": 0,
+    "CharacterListAutoFill": 1,
+    "CharacterListLanes": {},
     "CharacterListHideOnLostFocus": 0,
     "CharacterListX": 40,
     "CharacterListY": 80,
     "CharacterListHeight": 340,
+    "CharacterListWidth": 0,
     "CharacterListCollapsed": 0
 },
             "Thumbnails Behavior": {

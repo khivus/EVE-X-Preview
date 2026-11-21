@@ -2877,7 +2877,7 @@ Class Main_Class extends ThumbWindow {
     }
 
     startSystemTracking() {
-        if !This.systemTrackingEnabled && !(This.HasOwnProp("CharacterListWindow") && This.CharacterListWindow.Get("Enabled", 0) && This.CharacterListWindow.Get("GroupSystems", 0))
+        if !This.systemTrackingEnabled
             return
         This.systemLogMonitor := LocalChatMonitor(This)
         This.systemMonitorMethod := ObjBindMethod(This, "monitorCharacterSystems")
@@ -2904,7 +2904,7 @@ Class Main_Class extends ThumbWindow {
                 continue
             if title = "EVE"
                 continue
-            if This.monitorOnlySelectedChars && !(This.HasOwnProp("CharacterListWindow") && This.CharacterListWindow.Get("Enabled", 0) && This.CharacterListWindow.Get("GroupSystems", 0)) {
+            if This.monitorOnlySelectedChars {
                 selected := false
                 for name in This.charsToMonitor {
                     if name = title {
@@ -3362,7 +3362,7 @@ Class Main_Class extends ThumbWindow {
         focused := This.EventSourceActive(hwnd)
         hideVisual := focused && (This.supressForFocused || This.HideThumbForActiveWin)
         muteSound := focused && This.SuppressFocusedEventSounds
-        if hideVisual && muteSound
+        if hideVisual && muteSound && !(This.HasOwnProp("CharacterListWindow") && This.CharacterListWindow.Get("Enabled", 0) && !This.supressForFocused)
             return
         if !shooting && (This.monitoredChars[charName]["event"] = "" || This.monitoredChars[charName]["event"] = "stoppedShooting")
             return
@@ -3389,6 +3389,8 @@ Class Main_Class extends ThumbWindow {
 
         if !muteSound
             This.PlayEventSound(charName, event)
+        if This.HasOwnProp("CharacterListWindow")
+            This.CharacterListWindow.EventStart(event, hwnd)
         if !hideVisual && !This.HideThumbnails && This.flashBorderEnabled { ; Flashing border if enabled
             try {
                 This.flashMethod[charName] := Map()
@@ -3431,6 +3433,8 @@ Class Main_Class extends ThumbWindow {
     }
 
     endEvent(charName, hwnd) {
+        if This.HasOwnProp("CharacterListWindow")
+            This.CharacterListWindow.EventEnd(hwnd)
         if !This.eventMethods.Has(charName)
             return
         SetTimer(This.eventMethods[charName], 0)
